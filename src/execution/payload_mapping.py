@@ -138,12 +138,14 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         ),
         None,
     )
-    interaction_state: Literal["completed", "missing_result"] = (
-        "completed" if tool_result is not None else "missing_result"
-    )
+    interaction_state: str
+    if tool_result is None:
+        interaction_state = "missing_result"
+    else:
+        interaction_state = "completed"
     interaction: ToolInteraction = ToolInteraction(
-        call=tool_call,
         state=interaction_state,
+        call=tool_call,
         result=tool_result,
     )
     return interaction
