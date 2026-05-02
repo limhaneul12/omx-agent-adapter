@@ -38,6 +38,9 @@ def test_read_runtime_status_falls_back_to_stderr(monkeypatch) -> None:
     assert result.has_active_modes is None
     assert result.active_mode_names == []
     assert result.mode_statuses == {}
+    assert len(result.anomalies) == 1
+    assert result.anomalies[0].category == "stderr_fallback"
+    assert result.anomalies[0].message == "worker notify failed"
 
 
 def test_read_runtime_status_marks_active_modes_when_summary_is_not_idle(
@@ -55,6 +58,9 @@ def test_read_runtime_status_marks_active_modes_when_summary_is_not_idle(
     assert result.has_active_modes is True
     assert result.active_mode_names == ["ralph"]
     assert result.mode_statuses == {"ralph": "active"}
+    assert [mode_snapshot.name for mode_snapshot in result.mode_snapshots] == ["ralph"]
+    assert result.mode_snapshots[0].status == "active"
+    assert result.anomalies == []
 
 
 def test_read_runtime_status_extracts_multiple_active_mode_names(
@@ -72,6 +78,45 @@ def test_read_runtime_status_extracts_multiple_active_mode_names(
     assert result.has_active_modes is True
     assert result.active_mode_names == ["ralph", "team"]
     assert result.mode_statuses == {"ralph": "active", "team": "active"}
+
+
+def test_read_runtime_status_builds_per_mode_snapshots_for_mixed_statuses(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="ralph: active\nteam: paused\nhud: idle\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert [mode_snapshot.name for mode_snapshot in result.mode_snapshots] == [
+        "ralph",
+        "team",
+        "hud",
+    ]
+    assert [mode_snapshot.status for mode_snapshot in result.mode_snapshots] == [
+        "active",
+        "paused",
+        "idle",
+    ]
+
+
+def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="ralph: active\nteam: spinning\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.mode_statuses == {"ralph": "active", "team": "unknown"}
+    assert len(result.anomalies) == 1
+    assert result.anomalies[0].category == "unknown_mode_status"
+    assert result.anomalies[0].mode_name == "team"
+    assert result.anomalies[0].message == "spinning"
 
 
 def test_extract_active_mode_names_ignores_non_status_lines() -> None:
