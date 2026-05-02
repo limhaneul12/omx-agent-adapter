@@ -35,8 +35,10 @@ def test_decode_event_lines_splits_item_completed_payloads() -> None:
     ]
 
 
-def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbors() -> None:
-    payload = '\n'.join(
+def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbors() -> (
+    None
+):
+    payload = "\n".join(
         [
             '{"type":"turn.started","id":"before"}',
             '{"type":"broken",',
@@ -54,3 +56,22 @@ def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbor
 
 def test_decode_event_lines_is_async() -> None:
     assert inspect.iscoroutinefunction(decode_event_lines)
+
+
+def test_decode_event_lines_skips_non_dict_json_payloads_without_dropping_valid_neighbors() -> (
+    None
+):
+    payload = "\n".join(
+        [
+            '{"type":"turn.started","id":"before"}',
+            '["not","a","mapping"]',
+            '{"type":"turn.completed","id":"after"}',
+        ]
+    )
+
+    events = asyncio.run(decode_event_lines(payload))
+
+    assert events == [
+        {"type": "turn.started", "id": "before"},
+        {"type": "turn.completed", "id": "after"},
+    ]

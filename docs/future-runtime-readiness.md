@@ -21,6 +21,7 @@ UI, dashboard, and frontend concerns remain out of scope.
 - `src/runtime/runtime_snapshot.py`
   - Reads `omx status` output and derives runtime state from OMX stdout/stderr conventions.
   - Assumes OMX mode lines use `name: status` formatting and that `No active modes.` is the idle summary.
+  - Exposes typed mode snapshots and normalized runtime anomalies above the raw CLI output.
 - `src/execution/invoke.py`
   - Invokes OMX commands directly and is therefore bound to OMX command behavior.
 
@@ -34,6 +35,7 @@ UI, dashboard, and frontend concerns remain out of scope.
   - Interaction state semantics (`completed`, `missing_result`) are downstream-control concepts, not OMX-only UI concerns.
 - `src/schemas/runtime_schemas.py`
   - `RuntimeStatus` is already a normalized runtime-facing contract rather than a raw CLI dump.
+  - `RuntimeModeSnapshot` and `RuntimeStatusAnomaly` provide stable typed runtime sub-surfaces.
 - `docs/rules/schema-boundary-rules.md`
   - Boundary ownership, transport-seam discipline, and normalized public contract expectations.
 - `docs/rules/type-development-rules.md`
@@ -42,8 +44,8 @@ UI, dashboard, and frontend concerns remain out of scope.
 ### Not yet decided / not yet proven generic
 
 - Whether `ExecToolCall.arguments: str` should remain the only stable argument contract or gain a second normalized lane.
-- Whether runtime mode state should stay as `mode_statuses: dict[str, RuntimeModeStatus]` or graduate to richer per-mode objects.
-- Whether runtime normalization needs an anomaly/report surface comparable to execution reporting.
+- Whether `mode_statuses` should remain alongside `mode_snapshots` long-term or eventually collapse to one canonical runtime-mode surface.
+- Whether runtime anomalies should remain inline on `RuntimeStatus` or graduate to a richer report surface comparable to execution reporting.
 - Whether a second runtime will map cleanly onto the existing execution event kinds or require a transport-specific promotion fork.
 
 ## Second-Runtime Readiness Checklist

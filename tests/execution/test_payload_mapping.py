@@ -4,11 +4,13 @@ from execution.payload_mapping import (
     build_tool_interaction,
     build_tool_interaction_report,
     build_tool_interactions,
+    is_promotable_execution_payload,
     promote_exec_message,
     promote_exec_output,
     promote_exec_tool_call,
     promote_exec_tool_result,
     promote_execution_contract,
+    route_execution_payload,
     split_event_payloads,
 )
 from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
@@ -45,6 +47,70 @@ def test_split_event_payloads_extracts_item_completed_output_item_payload() -> N
 
 
 def test_split_event_payloads_extracts_item_completed_tool_result_payload() -> None:
+    payload = {
+        "type": "item.completed",
+        "item": {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        },
+    }
+
+    result = split_event_payloads(payload)
+
+    assert result == [
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    ]
+
+
+def test_split_event_payloads_keeps_item_completed_payload_when_item_is_not_dict() -> None:
+    payload = {"type": "item.completed", "item": ["not", "a", "mapping"]}
+
+    result = split_event_payloads(payload)
+
+    assert result == [payload]
+
+
+def test_is_promotable_execution_payload_accepts_supported_type() -> None:
+    payload = {"type": "message", "text": "done"}
+
+    result = is_promotable_execution_payload(payload)
+
+    assert result is True
+
+
+def test_is_promotable_execution_payload_rejects_unsupported_type() -> None:
+    payload = {"type": "turn.started", "id": "t1"}
+
+    result = is_promotable_execution_payload(payload)
+
+    assert result is False
+
+
+def test_route_execution_payload_promotes_supported_payload_type() -> None:
+    payload = {"type": "message", "text": "done"}
+
+    result = route_execution_payload(payload)
+
+    assert result.__class__.__name__ == "ExecMessage"
+    assert result.kind == "message"
+    assert result.text == "done"
+
+
+def test_route_execution_payload_keeps_raw_passthrough_for_unsupported_type() -> None:
+    payload = {"type": "turn.started", "id": "t1"}
+
+    result = route_execution_payload(payload)
+
+    assert result == payload
+
+
     payload = {
         "type": "item.completed",
         "item": {

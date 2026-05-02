@@ -10,10 +10,13 @@ from schemas.execution_schemas import (
 )
 from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
 
-ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
-
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
 ExecutionPayload = dict[str, object]
+ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
+RoutedExecutionPayload = ExecutionContract | ExecutionPayload
+PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
+    {"message", "output_text", "tool_call", "tool_result"}
+)
 
 ANOMALY_SUMMARIES: dict[str, str] = {
     "duplicate_result": "additional tool result observed after first matched result",
@@ -41,6 +44,39 @@ def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
 
     split_payloads: list[ExecutionPayload] = [payload]
     return split_payloads
+
+
+def is_promotable_execution_payload(payload: ExecutionPayload) -> bool:
+    """Checks whether one raw execution payload can become a stable contract.
+
+    Args:
+        payload [ExecutionPayload]: Raw execution payload inspected before contract promotion.
+
+    Returns:
+        bool: `True` when the payload type matches a supported execution contract, otherwise `False`.
+    """
+    payload_type: object | None = payload.get("type")
+    is_promotable: bool = isinstance(payload_type, str) and (
+        payload_type in PROMOTABLE_EXECUTION_PAYLOAD_TYPES
+    )
+    return is_promotable
+
+
+def route_execution_payload(payload: ExecutionPayload) -> RoutedExecutionPayload:
+    """Routes one raw execution payload to promotion or raw passthrough.
+
+    Args:
+        payload [ExecutionPayload]: Raw execution payload after transport parsing and event splitting.
+
+    Returns:
+        RoutedExecutionPayload: Promoted execution contract for supported payload types, otherwise the raw payload passthrough lane.
+    """
+    if not is_promotable_execution_payload(payload):
+        passthrough_payload: ExecutionPayload = payload
+        return passthrough_payload
+
+    contract: ExecutionContract = promote_execution_contract(payload)
+    return contract
 
 
 def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
@@ -131,8 +167,7 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         (
             event
             for event in events
-            if isinstance(event, ExecToolResult)
-            and event.call_id == tool_call.call_id
+            if isinstance(event, ExecToolResult) and event.call_id == tool_call.call_id
         ),
         None,
     )
@@ -183,7 +218,9 @@ def _collect_tool_results_by_call_id(
     for event in events:
         if not isinstance(event, ExecToolResult):
             continue
-        tool_results: list[ExecToolResult] = grouped_results.setdefault(event.call_id, [])
+        tool_results: list[ExecToolResult] = grouped_results.setdefault(
+            event.call_id, []
+        )
         tool_results.append(event)
     return grouped_results
 
@@ -203,8 +240,8 @@ def build_tool_interaction_report(
     matched_call_ids: set[str] = {
         interaction.call.call_id for interaction in interactions
     }
-    tool_results_by_call_id: dict[str, list[ExecToolResult]] = _collect_tool_results_by_call_id(
-        events
+    tool_results_by_call_id: dict[str, list[ExecToolResult]] = (
+        _collect_tool_results_by_call_id(events)
     )
     duplicate_results: list[ExecToolResult] = []
     call_id: str
@@ -216,13 +253,10 @@ def build_tool_interaction_report(
     unmatched_results: list[ExecToolResult] = [
         event
         for event in events
-        if isinstance(event, ExecToolResult)
-        and event.call_id not in matched_call_ids
+        if isinstance(event, ExecToolResult) and event.call_id not in matched_call_ids
     ]
     missing_result_calls: list[ExecToolCall] = [
-        interaction.call
-        for interaction in interactions
-        if interaction.result is None
+        interaction.call for interaction in interactions if interaction.result is None
     ]
     anomalies: list[ToolInteractionAnomaly] = [
         *[
