@@ -139,9 +139,11 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         ),
         None,
     )
-    interaction_state: ToolInteractionState = (
-        "missing_result" if tool_result is None else "completed"
-    )
+    interaction_state: str
+    if tool_result is None:
+        interaction_state = "missing_result"
+    else:
+        interaction_state = "completed"
     interaction: ToolInteraction = ToolInteraction(
         state=interaction_state,
         call=tool_call,

@@ -59,7 +59,7 @@ class ToolInteractionAnomaly(AdapterSchema):
 class ToolInteraction(AdapterSchema):
     model_config = ConfigDict(extra="forbid")
 
-    state: ToolInteractionState
+    state: Literal["completed", "missing_result"]
     call: ExecToolCall
     state: Literal["completed", "missing_result"]
     result: ExecToolResult | None = None
