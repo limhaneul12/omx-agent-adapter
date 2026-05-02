@@ -1,3 +1,6 @@
+import asyncio
+import inspect
+
 from runtime import runtime_snapshot
 
 
@@ -8,6 +11,96 @@ class DummyResult:
 
 
 def test_read_runtime_status_uses_stdout(monkeypatch) -> None:
-    monkeypatch.setattr(runtime_snapshot, "run_omx_command", lambda args: DummyResult(stdout="No active modes.\n"))
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="No active modes.\n"),
+    )
 
-    assert runtime_snapshot.read_runtime_status() == "No active modes."
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == "No active modes."
+    assert result.has_active_modes is False
+    assert result.active_mode_names == []
+    assert result.mode_statuses == {}
+
+
+def test_read_runtime_status_falls_back_to_stderr(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="", stderr="worker notify failed\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == "worker notify failed"
+    assert result.has_active_modes is None
+    assert result.active_mode_names == []
+    assert result.mode_statuses == {}
+
+
+def test_read_runtime_status_marks_active_modes_when_summary_is_not_idle(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="ralph: active\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == "ralph: active"
+    assert result.has_active_modes is True
+    assert result.active_mode_names == ["ralph"]
+    assert result.mode_statuses == {"ralph": "active"}
+
+
+def test_read_runtime_status_extracts_multiple_active_mode_names(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="ralph: active\nteam: active\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == "ralph: active\nteam: active"
+    assert result.has_active_modes is True
+    assert result.active_mode_names == ["ralph", "team"]
+    assert result.mode_statuses == {"ralph": "active", "team": "active"}
+
+
+def test_extract_active_mode_names_ignores_non_status_lines() -> None:
+    stdout = "ralph: active\nstatus ok\nteam: active\n"
+
+    result = runtime_snapshot._extract_active_mode_names(stdout)
+
+    assert result == ["ralph", "team"]
+
+
+def test_parse_active_mode_name_rejects_non_active_status() -> None:
+    assert runtime_snapshot._parse_active_mode_name("team: paused") is None
+
+
+def test_extract_mode_statuses_keeps_known_non_active_status_tokens() -> None:
+    stdout = "ralph: active\nteam: paused\nhud: idle\n"
+
+    result = runtime_snapshot._extract_mode_statuses(stdout)
+
+    assert result == {"ralph": "active", "team": "paused", "hud": "idle"}
+
+
+def test_extract_mode_statuses_preserves_unknown_status_tokens() -> None:
+    stdout = "ralph: active\nteam: spinning\n"
+
+    result = runtime_snapshot._extract_mode_statuses(stdout)
+
+    assert result == {"ralph": "active", "team": "unknown"}
+
+
+def test_read_runtime_status_is_async() -> None:
+    assert inspect.iscoroutinefunction(runtime_snapshot.read_runtime_status)

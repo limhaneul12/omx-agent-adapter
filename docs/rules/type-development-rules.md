@@ -39,6 +39,8 @@ Use the boundary rule set for:
 
 - Public adapter surfaces should be explicitly typed.
 - Avoid pushing `dict[str, Any]` through the core adapter surface.
+- Avoid broad `dict[str, object]` in production source unless the dynamic boundary truly requires it.
+- If a raw dictionary shape must remain, keep it localized to the parsing/normalization seam and add a short justification comment explaining why a stronger contract is not yet justified.
 - Avoid broad `Any` unless the dynamic boundary truly requires it.
 - If a runtime seam is inherently dynamic, localize that looseness to parsing/normalization boundaries and convert to explicit contracts quickly.
 
@@ -56,6 +58,32 @@ Current direction:
 - production `src/` code should remain stricter than tests,
 - do not silence type issues casually,
 - do not use broad casts or `Any` as the first escape hatch.
+
+## Return Style Rule
+
+- Production source should prefer returning named local variables over direct expression returns.
+- Especially in validation, normalization, transformation, and aggregation code, assign the final value to a clearly named variable before returning it.
+- Use the variable name to make the returned meaning obvious to a future reader or agent.
+- Trivial passthroughs may be tolerated, but named returns are the default preference.
+
+## Async Boundary Rule
+
+- Keep core transformation and schema logic synchronous by default.
+- Introduce `async` only at real boundary points where the code waits on external I/O, subprocess execution, or stream ingestion.
+- Prefer a thin async entrypoint over spreading `async` through pure helpers.
+- When bridging existing blocking code, prefer `asyncio.to_thread(...)` at the boundary instead of rewriting pure internals into coroutine-style code.
+- Do not convert small deterministic helpers to `async` unless they actually await something meaningful.
+- If a function becomes async, add or update tests so the async contract is explicit.
+
+Examples of good async candidates in this repo:
+- OMX subprocess/status invocation boundaries
+- execution event-stream ingestion boundaries
+
+Examples that should usually remain sync:
+- payload normalization
+- schema promotion
+- anomaly assembly
+- small parsing helpers with no external wait state
 
 ## Design Principle
 

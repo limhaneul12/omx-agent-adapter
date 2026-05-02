@@ -227,6 +227,23 @@ Use a short comment only when it communicates something the code itself cannot m
 
 - Public CLI commands, public-facing adapter entrypoints, and custom exceptions may use short docstrings.
 - Keep docstrings concise and factual.
+- Use Google-style Python docstrings when a docstring is present.
+- Start with a short summary line ending in punctuation that explains what the function does.
+- Leave one blank line between the summary and any section blocks.
+- Use the exact Google-style section labels when relevant:
+  - `Args:`
+  - `Returns:`
+  - `Yields:`
+  - `Raises:`
+- Under `Args:`, document one parameter per line as `name [Type]: description`.
+- Explain how each parameter is used, not just what it is called.
+- Under `Returns:`, document returned values as `Type: description`.
+- Explain what shape or meaning comes back to the caller, not just the type name.
+- Do not repeat types in prose beyond the required `[Type]` and `Type:` field markers.
+- Use `Returns:` only when the function returns a meaningful value.
+- Omit `Returns:` for side-effect-only functions that return `None`.
+- Use `Yields:` instead of `Returns:` for generator functions.
+- Use `Raises:` only for caller-relevant exceptions.
 - Do not write essay-style docstrings for straightforward internal helpers.
 
 ### Review questions
