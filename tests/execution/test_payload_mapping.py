@@ -241,6 +241,44 @@ def test_promote_execution_contract_selects_tool_result_contract_for_item_comple
     assert result.__class__.__name__ == "ExecToolCall"
 
 
+def test_build_tool_interaction_returns_completed_state_for_matched_result() -> None:
+    tool_call = promote_execution_contract(
+        {
+            "type": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": '{"pattern":"TODO"}',
+        }
+    )
+    tool_result = promote_execution_contract(
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+
+    result = build_tool_interaction([tool_call, tool_result])
+
+    assert result.state == "completed"
+
+
+def test_build_tool_interaction_returns_missing_result_state_without_match() -> None:
+    tool_call = promote_execution_contract(
+        {
+            "type": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": '{"pattern":"TODO"}',
+        }
+    )
+
+    result = build_tool_interaction([tool_call])
+
+    assert result.state == "missing_result"
+
+
 def test_build_tool_interaction_returns_joined_tool_call_and_result() -> None:
     tool_call = promote_execution_contract(
         {
@@ -418,6 +456,7 @@ def test_build_tool_interaction_report_surfaces_unmatched_tool_result() -> None:
     assert len(report.unmatched_results) == 1
     assert report.unmatched_results[0].call_id == "call-999"
     assert report.unmatched_results[0].text == "orphan-match"
+    assert report.anomalies[0].summary == "tool result did not match any known tool call"
 
 
 def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -> None:
@@ -458,6 +497,7 @@ def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -
     assert len(report.duplicate_results) == 1
     assert report.duplicate_results[0].call_id == "call-123"
     assert report.duplicate_results[0].text == "duplicate-match"
+    assert report.anomalies[0].summary == "additional tool result observed after first matched result"
 
 
 def test_build_tool_interaction_report_separates_orphan_and_duplicate_results() -> None:
@@ -541,6 +581,7 @@ def test_build_tool_interaction_report_surfaces_missing_result_calls() -> None:
     assert report.interactions[1].state == "completed"
     assert len(report.missing_result_calls) == 1
     assert report.missing_result_calls[0].call_id == "call-123"
+    assert report.anomalies[-1].summary == "tool call completed without a matching tool result"
     assert report.missing_result_calls[0].tool_name == "grep"
 
 

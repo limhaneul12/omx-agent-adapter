@@ -20,6 +20,21 @@ def test_decode_event_lines_keeps_transport_parse_separate_from_contracts() -> N
     assert events == [{"type": "turn.started", "extra": {"debug": True}}]
 
 
+def test_decode_event_lines_splits_item_completed_payloads() -> None:
+    payload = '{"type":"item.completed","item":{"type":"tool_result","tool_name":"grep","call_id":"call-123","text":"match"}}\n'
+
+    events = asyncio.run(decode_event_lines(payload))
+
+    assert events == [
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    ]
+
+
 def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbors() -> None:
     payload = '\n'.join(
         [

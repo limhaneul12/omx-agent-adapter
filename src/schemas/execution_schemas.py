@@ -52,6 +52,7 @@ class ToolInteractionAnomaly(AdapterSchema):
     category: Literal["unmatched_result", "duplicate_result", "missing_result"]
     related_call_id: NonEmptyString
     tool_name: NonEmptyString
+    summary: NonEmptyString
 
 
 class ToolInteraction(AdapterSchema):
@@ -59,6 +60,7 @@ class ToolInteraction(AdapterSchema):
 
     state: Literal["completed", "missing_result"] = "missing_result"
     call: ExecToolCall
+    state: Literal["completed", "missing_result"]
     result: ExecToolResult | None = None
 
     @model_validator(mode="after")

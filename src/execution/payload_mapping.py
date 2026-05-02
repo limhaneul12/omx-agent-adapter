@@ -1,3 +1,5 @@
+from typing import Literal
+
 from schemas.execution_schemas import (
     ExecMessage,
     ExecOutput,
@@ -14,6 +16,12 @@ ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
 ExecutionPayload = dict[str, object]
 ToolResultKey = tuple[str, str]
+
+ANOMALY_SUMMARIES: dict[str, str] = {
+    "duplicate_result": "additional tool result observed after first matched result",
+    "unmatched_result": "tool result did not match any known tool call",
+    "missing_result": "tool call completed without a matching tool result",
+}
 
 
 def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
@@ -130,8 +138,12 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         ),
         None,
     )
+    interaction_state: Literal["completed", "missing_result"] = (
+        "completed" if tool_result is not None else "missing_result"
+    )
     interaction: ToolInteraction = ToolInteraction(
         call=tool_call,
+        state=interaction_state,
         result=tool_result,
     )
     return interaction
@@ -201,6 +213,7 @@ def build_tool_interaction_report(
                 category="duplicate_result",
                 related_call_id=result.call_id,
                 tool_name=result.tool_name,
+                summary=ANOMALY_SUMMARIES["duplicate_result"],
             )
             for result in duplicate_results
         ],
@@ -209,6 +222,7 @@ def build_tool_interaction_report(
                 category="unmatched_result",
                 related_call_id=result.call_id,
                 tool_name=result.tool_name,
+                summary=ANOMALY_SUMMARIES["unmatched_result"],
             )
             for result in unmatched_results
         ],
@@ -217,6 +231,7 @@ def build_tool_interaction_report(
                 category="missing_result",
                 related_call_id=call.call_id,
                 tool_name=call.tool_name,
+                summary=ANOMALY_SUMMARIES["missing_result"],
             )
             for call in missing_result_calls
         ],
