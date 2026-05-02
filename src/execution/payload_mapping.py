@@ -14,7 +14,6 @@ ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
 ExecutionPayload = dict[str, object]
-ToolResultKey = tuple[str, str]
 
 ANOMALY_SUMMARIES: dict[str, str] = {
     "duplicate_result": "additional tool result observed after first matched result",
@@ -168,6 +167,27 @@ def build_tool_interactions(
     return interactions
 
 
+def _collect_tool_results_by_call_id(
+    events: list[ExecutionContract],
+) -> dict[str, list[ExecToolResult]]:
+    """Collects tool-result contracts grouped by call identifier.
+
+    Args:
+        events [list[ExecutionContract]]: Promoted execution contracts collected from one execution stream.
+
+    Returns:
+        dict[str, list[ExecToolResult]]: Tool-result contracts grouped in stream order by their stable call identifier.
+    """
+    grouped_results: dict[str, list[ExecToolResult]] = {}
+    event: ExecutionContract
+    for event in events:
+        if not isinstance(event, ExecToolResult):
+            continue
+        tool_results: list[ExecToolResult] = grouped_results.setdefault(event.call_id, [])
+        tool_results.append(event)
+    return grouped_results
+
+
 def build_tool_interaction_report(
     events: list[ExecutionContract],
 ) -> ToolInteractionReport:
@@ -180,21 +200,19 @@ def build_tool_interaction_report(
         ToolInteractionReport: Report containing matched interactions plus duplicate, unmatched, and missing-result anomaly buckets.
     """
     interactions: list[ToolInteraction] = build_tool_interactions(events)
-    matched_result_keys: set[ToolResultKey] = {
-        (interaction.result.call_id, interaction.result.text)
-        for interaction in interactions
-        if interaction.result is not None
-    }
     matched_call_ids: set[str] = {
         interaction.call.call_id for interaction in interactions
     }
-    duplicate_results: list[ExecToolResult] = [
-        event
-        for event in events
-        if isinstance(event, ExecToolResult)
-        and event.call_id in matched_call_ids
-        and (event.call_id, event.text) not in matched_result_keys
-    ]
+    tool_results_by_call_id: dict[str, list[ExecToolResult]] = _collect_tool_results_by_call_id(
+        events
+    )
+    duplicate_results: list[ExecToolResult] = []
+    call_id: str
+    tool_results: list[ExecToolResult]
+    for call_id, tool_results in tool_results_by_call_id.items():
+        if call_id not in matched_call_ids:
+            continue
+        duplicate_results.extend(tool_results[1:])
     unmatched_results: list[ExecToolResult] = [
         event
         for event in events

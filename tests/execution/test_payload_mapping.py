@@ -459,6 +459,45 @@ def test_build_tool_interaction_report_surfaces_unmatched_tool_result() -> None:
     assert report.anomalies[0].summary == "tool result did not match any known tool call"
 
 
+def test_build_tool_interaction_report_surfaces_same_text_duplicate_result() -> None:
+    tool_call = promote_execution_contract(
+        {
+            "type": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": '{"pattern":"TODO"}',
+        }
+    )
+    first_result = promote_execution_contract(
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+    duplicate_result = promote_execution_contract(
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+
+    report = build_tool_interaction_report(
+        [tool_call, first_result, duplicate_result]
+    )
+
+    assert len(report.interactions) == 1
+    assert report.interactions[0].result is not None
+    assert report.interactions[0].result.text == "match"
+    assert len(report.duplicate_results) == 1
+    assert report.duplicate_results[0].call_id == "call-123"
+    assert report.duplicate_results[0].text == "match"
+    assert report.anomalies[0].category == "duplicate_result"
+
+
 def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -> None:
     tool_call = promote_execution_contract(
         {
