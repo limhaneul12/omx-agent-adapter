@@ -119,6 +119,44 @@ def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> N
     assert result.anomalies[0].message == "spinning"
 
 
+def test_read_runtime_status_reports_empty_transport_output(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="", stderr=""),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == ""
+    assert result.has_active_modes is None
+    assert result.mode_statuses == {}
+    assert len(result.anomalies) == 1
+    assert result.anomalies[0].category == "empty_transport_output"
+    assert result.anomalies[0].message == "omx status returned no stdout or stderr output"
+    assert result.anomalies[0].mode_name is None
+
+
+def test_read_runtime_status_keeps_stderr_fallback_when_stdout_has_noise_lines(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="status ok\n", stderr="worker notify failed\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.summary == "status ok"
+    assert result.has_active_modes is True
+    assert result.mode_statuses == {}
+    assert len(result.anomalies) == 1
+    assert result.anomalies[0].category == "unparseable_stdout"
+    assert result.anomalies[0].message == "status ok"
+    assert result.anomalies[0].mode_name is None
+
+
 def test_extract_active_mode_names_ignores_non_status_lines() -> None:
     stdout = "ralph: active\nstatus ok\nteam: active\n"
 

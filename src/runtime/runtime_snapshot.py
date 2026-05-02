@@ -145,9 +145,18 @@ def _build_runtime_status_anomalies(
         stderr [str]: Normalized stderr text returned from `omx status`.
 
     Returns:
-        list[RuntimeStatusAnomaly]: Runtime anomalies derived from stderr fallback usage and unknown mode-status tokens.
+        list[RuntimeStatusAnomaly]: Runtime anomalies derived from empty transport output, stderr fallback usage, unparseable stdout, and unknown mode-status tokens.
     """
     anomalies: list[RuntimeStatusAnomaly] = []
+
+    if not stdout and not stderr:
+        anomalies.append(
+            RuntimeStatusAnomaly(
+                category="empty_transport_output",
+                message="omx status returned no stdout or stderr output",
+            )
+        )
+        return anomalies
 
     if not stdout and stderr:
         anomalies.append(
@@ -160,6 +169,15 @@ def _build_runtime_status_anomalies(
 
     if not stdout:
         return anomalies
+
+    mode_statuses: dict[str, RuntimeModeStatus] = _extract_mode_statuses(stdout)
+    if not mode_statuses and stdout != IDLE_RUNTIME_SUMMARY:
+        anomalies.append(
+            RuntimeStatusAnomaly(
+                category="unparseable_stdout",
+                message=stdout,
+            )
+        )
 
     line: str
     for line in stdout.splitlines():

@@ -5,7 +5,12 @@ from pydantic import ConfigDict, Field
 from schemas.common_schemas import AdapterSchema
 
 RuntimeModeStatus = Literal["active", "paused", "idle", "unknown"]
-RuntimeStatusAnomalyCategory = Literal["stderr_fallback", "unknown_mode_status"]
+RuntimeStatusAnomalyCategory = Literal[
+    "stderr_fallback",
+    "unknown_mode_status",
+    "empty_transport_output",
+    "unparseable_stdout",
+]
 
 
 class RuntimeModeSnapshot(AdapterSchema):
