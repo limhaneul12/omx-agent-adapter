@@ -265,6 +265,7 @@ def test_build_tool_interaction_returns_joined_tool_call_and_result() -> None:
     assert result.state == "completed"
     assert result.call.tool_name == "grep"
     assert result.call.arguments == '{"pattern":"TODO"}'
+    assert result.state == "completed"
     assert result.result is not None
     assert result.result.call_id == "call-123"
     assert result.result.text == "match"
