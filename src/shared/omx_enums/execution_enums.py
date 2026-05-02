@@ -6,3 +6,10 @@ class ExecutionEventKind(StrEnum):
     TURN_STARTED = "turn.started"
     ITEM_COMPLETED = "item.completed"
     TURN_COMPLETED = "turn.completed"
+
+
+class ExecutionPayloadKind(StrEnum):
+    MESSAGE = "message"
+    OUTPUT_TEXT = "output_text"
+    TOOL_CALL = "tool_call"
+    TOOL_RESULT = "tool_result"

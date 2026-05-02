@@ -3,6 +3,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from schemas.common_schemas import NonEmptyString
+from shared.omx_enums.execution_enums import ExecutionPayloadKind
 
 ToolInteractionState = Literal["completed", "missing_result"]
 ExecutionAnomalyCategory = Literal[
@@ -34,7 +35,7 @@ class ExecMessage(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["message"]
+    kind: Literal[ExecutionPayloadKind.MESSAGE]
     text: str
 
 
@@ -43,7 +44,7 @@ class ExecOutput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["output_text"]
+    kind: Literal[ExecutionPayloadKind.OUTPUT_TEXT]
     text: str
 
 
@@ -52,7 +53,7 @@ class ExecToolCall(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["tool_call"]
+    kind: Literal[ExecutionPayloadKind.TOOL_CALL]
     tool_name: NonEmptyString
     call_id: NonEmptyString
     arguments: str
@@ -63,7 +64,7 @@ class ExecToolResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["tool_result"]
+    kind: Literal[ExecutionPayloadKind.TOOL_RESULT]
     tool_name: NonEmptyString
     call_id: NonEmptyString
     text: str

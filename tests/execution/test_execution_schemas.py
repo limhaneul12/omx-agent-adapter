@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.execution_schemas import ExecRequest, ExecutionEventDecodeRequest
+from schemas.execution_schemas import (
+    ExecMessage,
+    ExecRequest,
+    ExecToolCall,
+    ExecutionEventDecodeRequest,
+)
+from shared.omx_enums.execution_enums import ExecutionPayloadKind
 
 
 def test_exec_request_accepts_prompt_and_optional_cwd() -> None:
@@ -40,5 +46,23 @@ def test_execution_event_decode_request_rejects_unexpected_extra_fields() -> Non
             {
                 "payload": '{"type":"message","text":"done"}\n',
                 "unexpected": True,
+            }
+        )
+
+
+def test_exec_message_uses_named_execution_payload_kind() -> None:
+    result = ExecMessage.model_validate({"kind": "message", "text": "done"})
+
+    assert result.kind is ExecutionPayloadKind.MESSAGE
+
+
+def test_exec_tool_call_rejects_non_tool_call_kind() -> None:
+    with pytest.raises(ValidationError):
+        ExecToolCall.model_validate(
+            {
+                "kind": "message",
+                "tool_name": "grep",
+                "call_id": "call-123",
+                "arguments": "{}",
             }
         )
