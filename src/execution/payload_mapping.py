@@ -1,5 +1,3 @@
-from typing import Literal
-
 from schemas.execution_schemas import (
     ExecMessage,
     ExecOutput,

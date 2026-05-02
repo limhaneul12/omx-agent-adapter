@@ -9,6 +9,8 @@ RuntimeStatusAnomalyCategory = Literal["stderr_fallback", "unknown_mode_status"]
 
 
 class RuntimeModeSnapshot(AdapterSchema):
+    """Represents one normalized runtime mode status."""
+
     model_config = ConfigDict(extra="forbid")
 
     name: str
@@ -16,6 +18,8 @@ class RuntimeModeSnapshot(AdapterSchema):
 
 
 class RuntimeStatusAnomaly(AdapterSchema):
+    """Represents a normalized runtime-status anomaly."""
+
     model_config = ConfigDict(extra="forbid")
 
     category: RuntimeStatusAnomalyCategory
@@ -24,6 +28,8 @@ class RuntimeStatusAnomaly(AdapterSchema):
 
 
 class RuntimeStatus(AdapterSchema):
+    """Represents normalized OMX runtime status output."""
+
     model_config = ConfigDict(extra="forbid")
 
     summary: str

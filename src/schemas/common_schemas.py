@@ -1,5 +1,5 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
 class AdapterSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    """Provides the shared Pydantic base class for adapter contracts."""
