@@ -41,6 +41,8 @@ async def read_runtime_status() -> RuntimeStatus:
         stdout=stdout,
         stderr=stderr,
     )
+    has_anomalies: bool = bool(anomalies)
+    anomaly_count: int = len(anomalies)
     result: RuntimeStatus = RuntimeStatus.model_validate(
         {
             "summary": summary,
@@ -49,6 +51,8 @@ async def read_runtime_status() -> RuntimeStatus:
             "mode_snapshots": mode_snapshots,
             "mode_statuses": mode_statuses,
             "anomalies": anomalies,
+            "has_anomalies": has_anomalies,
+            "anomaly_count": anomaly_count,
         }
     )
     return result

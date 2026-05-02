@@ -43,3 +43,5 @@ class RuntimeStatus(AdapterSchema):
     mode_snapshots: list[RuntimeModeSnapshot] = Field(default_factory=list)
     mode_statuses: dict[str, RuntimeModeStatus] = Field(default_factory=dict)
     anomalies: list[RuntimeStatusAnomaly] = Field(default_factory=list)
+    has_anomalies: bool = False
+    anomaly_count: int = 0
