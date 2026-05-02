@@ -130,7 +130,10 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         ),
         None,
     )
-    interaction: ToolInteraction = ToolInteraction(call=tool_call, result=tool_result)
+    interaction: ToolInteraction = ToolInteraction(
+        call=tool_call,
+        result=tool_result,
+    )
     return interaction
 
 

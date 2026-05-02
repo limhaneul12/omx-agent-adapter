@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from pydantic import ConfigDict, StringConstraints
+from pydantic import ConfigDict, StringConstraints, model_validator
 
 from schemas.common_schemas import AdapterSchema
 
@@ -57,8 +57,17 @@ class ToolInteractionAnomaly(AdapterSchema):
 class ToolInteraction(AdapterSchema):
     model_config = ConfigDict(extra="forbid")
 
+    state: Literal["completed", "missing_result"] = "missing_result"
     call: ExecToolCall
     result: ExecToolResult | None = None
+
+    @model_validator(mode="after")
+    def _set_state(self) -> "ToolInteraction":
+        if self.result is None:
+            self.state = "missing_result"
+        else:
+            self.state = "completed"
+        return self
 
 
 class ToolInteractionReport(AdapterSchema):

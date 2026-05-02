@@ -262,6 +262,7 @@ def test_build_tool_interaction_returns_joined_tool_call_and_result() -> None:
     result = build_tool_interaction([tool_call, tool_result])
 
     assert result.call.call_id == "call-123"
+    assert result.state == "completed"
     assert result.call.tool_name == "grep"
     assert result.call.arguments == '{"pattern":"TODO"}'
     assert result.result is not None
@@ -282,6 +283,7 @@ def test_build_tool_interaction_keeps_call_without_result() -> None:
     result = build_tool_interaction([tool_call])
 
     assert result.call.call_id == "call-123"
+    assert result.state == "missing_result"
     assert result.result is None
 
 
@@ -410,6 +412,7 @@ def test_build_tool_interaction_report_surfaces_unmatched_tool_result() -> None:
 
     assert len(report.interactions) == 1
     assert report.interactions[0].call.call_id == "call-123"
+    assert report.interactions[0].state == "missing_result"
     assert report.interactions[0].result is None
     assert len(report.unmatched_results) == 1
     assert report.unmatched_results[0].call_id == "call-999"
@@ -447,6 +450,7 @@ def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -
     )
 
     assert len(report.interactions) == 1
+    assert report.interactions[0].state == "completed"
     assert report.interactions[0].result is not None
     assert report.interactions[0].result.text == "first-match"
     assert len(report.unmatched_results) == 0
@@ -532,6 +536,8 @@ def test_build_tool_interaction_report_surfaces_missing_result_calls() -> None:
     )
 
     assert len(report.interactions) == 2
+    assert report.interactions[0].state == "missing_result"
+    assert report.interactions[1].state == "completed"
     assert len(report.missing_result_calls) == 1
     assert report.missing_result_calls[0].call_id == "call-123"
     assert report.missing_result_calls[0].tool_name == "grep"
