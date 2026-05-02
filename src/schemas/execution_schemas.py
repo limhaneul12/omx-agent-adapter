@@ -5,6 +5,7 @@ from pydantic import ConfigDict, StringConstraints, model_validator
 from schemas.common_schemas import AdapterSchema
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
+ToolInteractionState = Literal["completed", "missing_result"]
 
 
 class ExecRequest(AdapterSchema):
@@ -58,7 +59,7 @@ class ToolInteractionAnomaly(AdapterSchema):
 class ToolInteraction(AdapterSchema):
     model_config = ConfigDict(extra="forbid")
 
-    state: Literal["completed", "missing_result"]
+    state: ToolInteractionState
     call: ExecToolCall
     state: Literal["completed", "missing_result"]
     result: ExecToolResult | None = None
