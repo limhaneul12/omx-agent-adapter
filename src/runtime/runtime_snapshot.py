@@ -2,13 +2,18 @@
 
 import asyncio
 
+import orjson
+
 from execution.invoke import run_omx_command
 from schemas.runtime_schemas import (
+    ActiveRuntimeModes,
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatus,
     RuntimeStatusAnomaly,
+    RuntimeStatusRequest,
 )
+from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
 
 IDLE_RUNTIME_SUMMARY = "No active modes."
 ACTIVE_MODE_MARKER = "active"
@@ -20,15 +25,18 @@ KNOWN_MODE_STATUS_MARKERS: tuple[RuntimeModeStatus, ...] = (
 )
 
 
-async def read_runtime_status() -> RuntimeStatus:
+async def read_runtime_status(
+    request: RuntimeStatusRequest | None = None,
+) -> RuntimeStatus:
     """Reads and normalizes OMX runtime status.
 
     Args:
-        None: This function does not accept caller-provided arguments.
+        request [RuntimeStatusRequest | None]: Typed runtime status request. The current surface does not expose request options yet.
 
     Returns:
         RuntimeStatus: Normalized runtime status built from `omx status` stdout or stderr fallback output.
     """
+    normalized_request: RuntimeStatusRequest = request or RuntimeStatusRequest()
     command_result = await asyncio.to_thread(run_omx_command, ["status"])
     stdout: str = command_result.stdout.strip()
     stderr: str = command_result.stderr.strip()
@@ -55,6 +63,55 @@ async def read_runtime_status() -> RuntimeStatus:
             "anomaly_count": anomaly_count,
         }
     )
+    _ = normalized_request
+    return result
+
+
+async def read_active_runtime_modes() -> ActiveRuntimeModes:
+    """Reads and normalizes OMX active runtime modes.
+
+    Returns:
+        ActiveRuntimeModes: Typed active-mode contract built from `omx state list-active --json`.
+    """
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        ["state", "list-active", "--json"],
+    )
+    stdout: str = command_result.stdout.strip()
+    result: ActiveRuntimeModes = _normalize_active_runtime_modes(stdout)
+    return result
+
+
+def _normalize_active_runtime_modes(stdout: str) -> ActiveRuntimeModes:
+    """Normalizes `omx state list-active --json` stdout into a stable contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx state list-active --json`.
+
+    Returns:
+        ActiveRuntimeModes: Validated active runtime mode contract.
+
+    Raises:
+        RuntimeSurfaceError: Raised when the transport is empty, not JSON, or not a JSON object.
+    """
+    if not stdout:
+        raise RuntimeSurfaceError(
+            "omx state list-active returned no stdout output"
+        )
+
+    try:
+        parsed_payload: object = orjson.loads(stdout)
+    except orjson.JSONDecodeError as error:
+        raise RuntimeSurfaceError(
+            "omx state list-active returned unparseable JSON output"
+        ) from error
+
+    if not isinstance(parsed_payload, dict):
+        raise RuntimeSurfaceError(
+            "omx state list-active returned a non-object JSON payload"
+        )
+
+    result: ActiveRuntimeModes = ActiveRuntimeModes.model_validate(parsed_payload)
     return result
 
 

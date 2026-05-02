@@ -1,7 +1,12 @@
 import asyncio
 import inspect
 
+import pytest
+from pydantic import ValidationError
+
 from runtime import runtime_snapshot
+from schemas.runtime_schemas import RuntimeStatusRequest
+from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
 
 
 class DummyResult:
@@ -23,6 +28,21 @@ def test_read_runtime_status_uses_stdout(monkeypatch) -> None:
     assert result.has_active_modes is False
     assert result.active_mode_names == []
     assert result.mode_statuses == {}
+
+
+def test_read_runtime_status_accepts_typed_request(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="No active modes.\n"),
+    )
+
+    result = asyncio.run(
+        runtime_snapshot.read_runtime_status(RuntimeStatusRequest())
+    )
+
+    assert result.summary == "No active modes."
+    assert result.has_active_modes is False
 
 
 def test_read_runtime_status_falls_back_to_stderr(monkeypatch) -> None:
@@ -185,6 +205,57 @@ def test_read_runtime_status_reports_no_anomalies_for_idle_stdout(monkeypatch) -
     assert result.anomalies == []
     assert result.has_anomalies is False
     assert result.anomaly_count == 0
+
+
+def test_read_active_runtime_modes_returns_typed_contract(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout='{"active_modes":["ralph","run"]}\n'),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_active_runtime_modes())
+
+    assert result.active_modes == ["ralph", "run"]
+
+
+def test_read_active_runtime_modes_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="not-json\n"),
+    )
+
+    with pytest.raises(RuntimeSurfaceError):
+        asyncio.run(runtime_snapshot.read_active_runtime_modes())
+
+
+def test_read_active_runtime_modes_rejects_non_mapping_transport(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout='["ralph","run"]\n'),
+    )
+
+    with pytest.raises(RuntimeSurfaceError):
+        asyncio.run(runtime_snapshot.read_active_runtime_modes())
+
+
+def test_read_active_runtime_modes_preserves_contract_validation_boundary(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout='{"active_modes":["ralph"],"unexpected":true}\n'),
+    )
+
+    with pytest.raises(ValidationError):
+        asyncio.run(runtime_snapshot.read_active_runtime_modes())
 
 
 def test_extract_active_mode_names_ignores_non_status_lines() -> None:

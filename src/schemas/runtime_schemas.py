@@ -1,8 +1,8 @@
 from typing import Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.common_schemas import AdapterSchema
+from schemas.common_schemas import NonEmptyString
 
 RuntimeModeStatus = Literal["active", "paused", "idle", "unknown"]
 RuntimeStatusAnomalyCategory = Literal[
@@ -13,28 +13,42 @@ RuntimeStatusAnomalyCategory = Literal[
 ]
 
 
-class RuntimeModeSnapshot(AdapterSchema):
+class RuntimeStatusRequest(BaseModel):
+    """Represents the typed request boundary for runtime status reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ActiveRuntimeModes(BaseModel):
+    """Represents the normalized active-runtime mode list."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    active_modes: list[NonEmptyString] = Field(default_factory=list)
+
+
+class RuntimeModeSnapshot(BaseModel):
     """Represents one normalized runtime mode status."""
 
     model_config = ConfigDict(extra="forbid")
 
-    name: str
+    name: NonEmptyString
     status: RuntimeModeStatus
     raw_status_text: str | None = None
     has_uncertainty: bool = False
 
 
-class RuntimeStatusAnomaly(AdapterSchema):
+class RuntimeStatusAnomaly(BaseModel):
     """Represents a normalized runtime-status anomaly."""
 
     model_config = ConfigDict(extra="forbid")
 
     category: RuntimeStatusAnomalyCategory
     message: str
-    mode_name: str | None = None
+    mode_name: NonEmptyString | None = None
 
 
-class RuntimeStatus(AdapterSchema):
+class RuntimeStatus(BaseModel):
     """Represents normalized OMX runtime status output."""
 
     model_config = ConfigDict(extra="forbid")

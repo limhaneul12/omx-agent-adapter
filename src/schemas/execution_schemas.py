@@ -1,10 +1,9 @@
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import ConfigDict, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
-from schemas.common_schemas import AdapterSchema
+from schemas.common_schemas import NonEmptyString
 
-NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 ToolInteractionState = Literal["completed", "missing_result"]
 ExecutionAnomalyCategory = Literal[
     "unmatched_result",
@@ -13,16 +12,24 @@ ExecutionAnomalyCategory = Literal[
 ]
 
 
-class ExecRequest(AdapterSchema):
+class ExecRequest(BaseModel):
     """Represents a normalized execution request."""
 
     model_config = ConfigDict(extra="forbid")
 
     prompt: NonEmptyString
-    cwd: str | None = None
+    cwd: NonEmptyString | None = None
 
 
-class ExecMessage(AdapterSchema):
+class ExecutionEventDecodeRequest(BaseModel):
+    """Represents the typed request boundary for execution event decoding."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payload: NonEmptyString
+
+
+class ExecMessage(BaseModel):
     """Represents a promoted execution message event."""
 
     model_config = ConfigDict(extra="forbid")
@@ -31,7 +38,7 @@ class ExecMessage(AdapterSchema):
     text: str
 
 
-class ExecOutput(AdapterSchema):
+class ExecOutput(BaseModel):
     """Represents promoted plain-text execution output."""
 
     model_config = ConfigDict(extra="forbid")
@@ -40,7 +47,7 @@ class ExecOutput(AdapterSchema):
     text: str
 
 
-class ExecToolCall(AdapterSchema):
+class ExecToolCall(BaseModel):
     """Represents a promoted tool-call event."""
 
     model_config = ConfigDict(extra="forbid")
@@ -51,7 +58,7 @@ class ExecToolCall(AdapterSchema):
     arguments: str
 
 
-class ExecToolResult(AdapterSchema):
+class ExecToolResult(BaseModel):
     """Represents a promoted tool-result event."""
 
     model_config = ConfigDict(extra="forbid")
@@ -62,7 +69,7 @@ class ExecToolResult(AdapterSchema):
     text: str
 
 
-class ToolInteractionAnomaly(AdapterSchema):
+class ToolInteractionAnomaly(BaseModel):
     """Represents a normalized anomaly from tool interaction grouping."""
 
     model_config = ConfigDict(extra="forbid")
@@ -73,7 +80,7 @@ class ToolInteractionAnomaly(AdapterSchema):
     summary: NonEmptyString
 
 
-class ToolInteraction(AdapterSchema):
+class ToolInteraction(BaseModel):
     """Represents one tool call paired with its first matching result."""
 
     model_config = ConfigDict(extra="forbid")
@@ -91,7 +98,7 @@ class ToolInteraction(AdapterSchema):
         return self
 
 
-class ToolInteractionReport(AdapterSchema):
+class ToolInteractionReport(BaseModel):
     """Represents grouped tool interactions plus anomaly buckets."""
 
     model_config = ConfigDict(extra="forbid")

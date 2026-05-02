@@ -3,20 +3,29 @@ import asyncio
 import orjson
 
 from execution.payload_mapping import ExecutionPayload, split_event_payloads
+from schemas.execution_schemas import ExecutionEventDecodeRequest
 
 
-async def decode_event_lines(payload: str) -> list[ExecutionPayload]:
+async def decode_event_lines(
+    request: ExecutionEventDecodeRequest | str,
+) -> list[ExecutionPayload]:
     """Decodes raw execution event lines into transport payloads.
 
     Args:
-        payload [str]: Raw JSONL-like execution stream text that will be parsed line by line.
+        request [ExecutionEventDecodeRequest | str]: Typed decode request or raw JSONL-like execution stream text.
 
     Returns:
         list[ExecutionPayload]: Parsed transport payloads after malformed-line skipping and item-completed splitting.
     """
+    normalized_request: ExecutionEventDecodeRequest
+    if isinstance(request, ExecutionEventDecodeRequest):
+        normalized_request = request
+    else:
+        normalized_request = ExecutionEventDecodeRequest(payload=request)
+
     events: list[ExecutionPayload] = await asyncio.to_thread(
         _decode_event_lines_sync,
-        payload,
+        normalized_request.payload,
     )
     return events
 

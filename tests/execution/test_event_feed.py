@@ -2,12 +2,23 @@ import asyncio
 import inspect
 
 from execution.event_feed import decode_event_lines
+from schemas.execution_schemas import ExecutionEventDecodeRequest
 
 
 def test_decode_event_lines_ignores_non_json_lines() -> None:
     payload = 'note\n{"type": "turn.started"}\n'
 
     events = asyncio.run(decode_event_lines(payload))
+
+    assert events == [{"type": "turn.started"}]
+
+
+def test_decode_event_lines_accepts_typed_request() -> None:
+    request = ExecutionEventDecodeRequest(
+        payload='note\n{"type": "turn.started"}\n'
+    )
+
+    events = asyncio.run(decode_event_lines(request))
 
     assert events == [{"type": "turn.started"}]
 

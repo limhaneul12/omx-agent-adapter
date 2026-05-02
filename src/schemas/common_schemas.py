@@ -1,5 +1,5 @@
-from pydantic import BaseModel
+from typing import Annotated
 
+from pydantic import StringConstraints
 
-class AdapterSchema(BaseModel):
-    """Provides the shared Pydantic base class for adapter contracts."""
+NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
