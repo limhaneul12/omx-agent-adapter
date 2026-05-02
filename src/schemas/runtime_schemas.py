@@ -20,6 +20,8 @@ class RuntimeModeSnapshot(AdapterSchema):
 
     name: str
     status: RuntimeModeStatus
+    raw_status_text: str | None = None
+    has_uncertainty: bool = False
 
 
 class RuntimeStatusAnomaly(AdapterSchema):

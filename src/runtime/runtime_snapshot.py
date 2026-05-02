@@ -36,7 +36,7 @@ async def read_runtime_status() -> RuntimeStatus:
     has_active_modes: bool | None = _infer_has_active_modes(stdout, summary)
     active_mode_names: list[str] = _extract_active_mode_names(stdout)
     mode_statuses: dict[str, RuntimeModeStatus] = _extract_mode_statuses(stdout)
-    mode_snapshots: list[RuntimeModeSnapshot] = _build_mode_snapshots(mode_statuses)
+    mode_snapshots: list[RuntimeModeSnapshot] = _build_mode_snapshots(stdout)
     anomalies: list[RuntimeStatusAnomaly] = _build_runtime_status_anomalies(
         stdout=stdout,
         stderr=stderr,
@@ -94,6 +94,32 @@ def _extract_active_mode_names(stdout: str) -> list[str]:
     return active_mode_names
 
 
+def _extract_mode_status_entries(
+    stdout: str,
+) -> list[tuple[str, RuntimeModeStatus, str]]:
+    """Extracts typed runtime mode-status entries from status output.
+
+    Args:
+        stdout [str]: Normalized stdout text returned from `omx status`.
+
+    Returns:
+        list[tuple[str, RuntimeModeStatus, str]]: Ordered runtime mode entries containing mode name, normalized status token, and raw status text.
+    """
+    if not stdout or stdout == IDLE_RUNTIME_SUMMARY:
+        empty_mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = []
+        return empty_mode_status_entries
+
+    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = []
+    for line in stdout.splitlines():
+        parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
+            _parse_mode_status_entry(line)
+        )
+        if parsed_mode_status_entry is None:
+            continue
+        mode_status_entries.append(parsed_mode_status_entry)
+    return mode_status_entries
+
+
 def _extract_mode_statuses(stdout: str) -> dict[str, RuntimeModeStatus]:
     """Extracts typed runtime mode statuses from status output.
 
@@ -103,36 +129,38 @@ def _extract_mode_statuses(stdout: str) -> dict[str, RuntimeModeStatus]:
     Returns:
         dict[str, RuntimeModeStatus]: Mapping from mode name to normalized runtime status token.
     """
-    if not stdout or stdout == IDLE_RUNTIME_SUMMARY:
-        empty_mode_statuses: dict[str, RuntimeModeStatus] = {}
-        return empty_mode_statuses
-
-    mode_statuses: dict[str, RuntimeModeStatus] = {}
-    for line in stdout.splitlines():
-        parsed_mode_status: tuple[str, RuntimeModeStatus] | None = _parse_mode_status(line)
-        if parsed_mode_status is None:
-            continue
-        mode_name: str
-        status_text: RuntimeModeStatus
-        mode_name, status_text = parsed_mode_status
-        mode_statuses[mode_name] = status_text
+    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = _extract_mode_status_entries(
+        stdout
+    )
+    mode_statuses: dict[str, RuntimeModeStatus] = {
+        mode_name: status_text
+        for mode_name, status_text, raw_status_text in mode_status_entries
+    }
     return mode_statuses
 
 
 def _build_mode_snapshots(
-    mode_statuses: dict[str, RuntimeModeStatus],
+    stdout: str,
 ) -> list[RuntimeModeSnapshot]:
     """Builds per-mode runtime snapshot objects from normalized statuses.
 
     Args:
-        mode_statuses [dict[str, RuntimeModeStatus]]: Normalized mode-status mapping keyed by mode name.
+        stdout [str]: Normalized stdout text returned from `omx status`.
 
     Returns:
-        list[RuntimeModeSnapshot]: Ordered runtime mode snapshots derived from the normalized status mapping.
+        list[RuntimeModeSnapshot]: Ordered runtime mode snapshots derived from parsed mode-status entries.
     """
+    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = _extract_mode_status_entries(
+        stdout
+    )
     mode_snapshots: list[RuntimeModeSnapshot] = [
-        RuntimeModeSnapshot(name=mode_name, status=status_text)
-        for mode_name, status_text in mode_statuses.items()
+        RuntimeModeSnapshot(
+            name=mode_name,
+            status=status_text,
+            raw_status_text=raw_status_text,
+            has_uncertainty=status_text == "unknown",
+        )
+        for mode_name, status_text, raw_status_text in mode_status_entries
     ]
     return mode_snapshots
 
@@ -207,6 +235,46 @@ def _build_runtime_status_anomalies(
     return anomalies
 
 
+def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | None:
+    """Parses one runtime mode status line into a typed entry.
+
+    Args:
+        line [str]: One line from normalized `omx status` stdout.
+
+    Returns:
+        tuple[str, RuntimeModeStatus, str] | None: Parsed mode name, normalized status token, and raw status text when the line matches the expected shape.
+    """
+    if ":" not in line:
+        return None
+
+    mode_name: str
+    status_text: str
+    mode_name, status_text = line.split(":", maxsplit=1)
+    normalized_mode_name: str = mode_name.strip()
+    normalized_status_text: str = status_text.strip().lower()
+    raw_status_text: str = status_text.strip()
+
+    if not normalized_mode_name:
+        return None
+
+    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None
+    if normalized_status_text == "active":
+        parsed_mode_status_entry = (normalized_mode_name, "active", raw_status_text)
+        return parsed_mode_status_entry
+    if normalized_status_text == "paused":
+        parsed_mode_status_entry = (normalized_mode_name, "paused", raw_status_text)
+        return parsed_mode_status_entry
+    if normalized_status_text == "idle":
+        parsed_mode_status_entry = (normalized_mode_name, "idle", raw_status_text)
+        return parsed_mode_status_entry
+    if normalized_status_text:
+        parsed_mode_status_entry = (normalized_mode_name, "unknown", raw_status_text)
+        return parsed_mode_status_entry
+
+    parsed_mode_status_entry = None
+    return parsed_mode_status_entry
+
+
 def _parse_active_mode_name(line: str) -> str | None:
     """Parses an active mode name from one status line.
 
@@ -216,13 +284,16 @@ def _parse_active_mode_name(line: str) -> str | None:
     Returns:
         str | None: Active mode name when the line describes an active mode, otherwise `None`.
     """
-    parsed_mode_status: tuple[str, RuntimeModeStatus] | None = _parse_mode_status(line)
-    if parsed_mode_status is None:
+    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
+        _parse_mode_status_entry(line)
+    )
+    if parsed_mode_status_entry is None:
         return None
 
     mode_name: str
     status_text: RuntimeModeStatus
-    mode_name, status_text = parsed_mode_status
+    _raw_status_text: str
+    mode_name, status_text, _raw_status_text = parsed_mode_status_entry
     if status_text != ACTIVE_MODE_MARKER:
         return None
 
@@ -239,31 +310,15 @@ def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
     Returns:
         tuple[str, RuntimeModeStatus] | None: Parsed mode name and normalized status token when the line matches the expected shape.
     """
-    if ":" not in line:
+    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
+        _parse_mode_status_entry(line)
+    )
+    if parsed_mode_status_entry is None:
         return None
 
     mode_name: str
-    status_text: str
-    mode_name, status_text = line.split(":", maxsplit=1)
-    normalized_mode_name: str = mode_name.strip()
-    normalized_status_text: str = status_text.strip().lower()
-
-    if not normalized_mode_name:
-        return None
-
-    parsed_mode_status: tuple[str, RuntimeModeStatus] | None
-    if normalized_status_text == "active":
-        parsed_mode_status = (normalized_mode_name, "active")
-        return parsed_mode_status
-    if normalized_status_text == "paused":
-        parsed_mode_status = (normalized_mode_name, "paused")
-        return parsed_mode_status
-    if normalized_status_text == "idle":
-        parsed_mode_status = (normalized_mode_name, "idle")
-        return parsed_mode_status
-    if normalized_status_text:
-        parsed_mode_status = (normalized_mode_name, "unknown")
-        return parsed_mode_status
-
-    parsed_mode_status = None
+    status_text: RuntimeModeStatus
+    _raw_status_text: str
+    mode_name, status_text, _raw_status_text = parsed_mode_status_entry
+    parsed_mode_status: tuple[str, RuntimeModeStatus] = (mode_name, status_text)
     return parsed_mode_status

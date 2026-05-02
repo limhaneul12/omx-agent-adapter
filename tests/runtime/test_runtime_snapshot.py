@@ -101,6 +101,16 @@ def test_read_runtime_status_builds_per_mode_snapshots_for_mixed_statuses(
         "paused",
         "idle",
     ]
+    assert [mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots] == [
+        "active",
+        "paused",
+        "idle",
+    ]
+    assert [mode_snapshot.has_uncertainty for mode_snapshot in result.mode_snapshots] == [
+        False,
+        False,
+        False,
+    ]
 
 
 def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:
@@ -119,6 +129,10 @@ def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> N
     assert result.anomalies[0].message == "spinning"
     assert result.has_anomalies is True
     assert result.anomaly_count == 1
+    assert result.mode_snapshots[1].name == "team"
+    assert result.mode_snapshots[1].status == "unknown"
+    assert result.mode_snapshots[1].raw_status_text == "spinning"
+    assert result.mode_snapshots[1].has_uncertainty is True
 
 
 def test_read_runtime_status_reports_empty_transport_output(monkeypatch) -> None:
