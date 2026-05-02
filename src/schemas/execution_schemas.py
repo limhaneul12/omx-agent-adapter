@@ -6,6 +6,11 @@ from schemas.common_schemas import AdapterSchema
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
 ToolInteractionState = Literal["completed", "missing_result"]
+ExecutionAnomalyCategory = Literal[
+    "unmatched_result",
+    "duplicate_result",
+    "missing_result",
+]
 
 
 class ExecRequest(AdapterSchema):
@@ -62,7 +67,7 @@ class ToolInteractionAnomaly(AdapterSchema):
 
     model_config = ConfigDict(extra="forbid")
 
-    category: Literal["unmatched_result", "duplicate_result", "missing_result"]
+    category: ExecutionAnomalyCategory
     related_call_id: NonEmptyString
     tool_name: NonEmptyString
     summary: NonEmptyString

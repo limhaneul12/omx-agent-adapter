@@ -3,6 +3,7 @@ from schemas.execution_schemas import (
     ExecOutput,
     ExecToolCall,
     ExecToolResult,
+    ExecutionAnomalyCategory,
     ToolInteraction,
     ToolInteractionAnomaly,
     ToolInteractionReport,
@@ -18,7 +19,7 @@ PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
     {"message", "output_text", "tool_call", "tool_result"}
 )
 
-ANOMALY_SUMMARIES: dict[str, str] = {
+ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
     "duplicate_result": "additional tool result observed after first matched result",
     "unmatched_result": "tool result did not match any known tool call",
     "missing_result": "tool call completed without a matching tool result",
