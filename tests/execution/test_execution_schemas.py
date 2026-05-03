@@ -118,3 +118,59 @@ def test_tool_interaction_rejects_missing_result_state_when_result_is_present() 
                 "result": tool_result.model_dump(),
             }
         )
+
+
+def test_tool_interaction_rejects_result_for_different_call_id() -> None:
+    tool_call = ExecToolCall.model_validate(
+        {
+            "kind": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": "{}",
+        }
+    )
+    tool_result = ExecToolResult.model_validate(
+        {
+            "kind": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-999",
+            "text": "match",
+        }
+    )
+
+    with pytest.raises(ValidationError):
+        ToolInteraction.model_validate(
+            {
+                "state": "completed",
+                "call": tool_call.model_dump(),
+                "result": tool_result.model_dump(),
+            }
+        )
+
+
+def test_tool_interaction_rejects_result_for_different_tool_name() -> None:
+    tool_call = ExecToolCall.model_validate(
+        {
+            "kind": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": "{}",
+        }
+    )
+    tool_result = ExecToolResult.model_validate(
+        {
+            "kind": "tool_result",
+            "tool_name": "sed",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+
+    with pytest.raises(ValidationError):
+        ToolInteraction.model_validate(
+            {
+                "state": "completed",
+                "call": tool_call.model_dump(),
+                "result": tool_result.model_dump(),
+            }
+        )

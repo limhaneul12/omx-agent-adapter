@@ -104,6 +104,14 @@ class ToolInteraction(BaseModel):
             raise ValueError(
                 "ToolInteraction.state must match whether result is present"
             )
+        if self.result is not None and self.result.call_id != self.call.call_id:
+            raise ValueError(
+                "ToolInteraction.result.call_id must match ToolInteraction.call.call_id"
+            )
+        if self.result is not None and self.result.tool_name != self.call.tool_name:
+            raise ValueError(
+                "ToolInteraction.result.tool_name must match ToolInteraction.call.tool_name"
+            )
         validated_interaction: ToolInteraction = self
         return validated_interaction
 

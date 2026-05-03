@@ -98,7 +98,7 @@ class RuntimeStatus(BaseModel):
 
     summary: str
     has_active_modes: bool | None = None
-    active_mode_names: list[str] = Field(default_factory=list)
+    active_mode_names: list[NonEmptyString] = Field(default_factory=list)
     mode_snapshots: list[RuntimeModeSnapshot] = Field(default_factory=list)
     mode_statuses: dict[str, RuntimeModeStatus] = Field(default_factory=dict)
     anomalies: list[RuntimeStatusAnomaly] = Field(default_factory=list)

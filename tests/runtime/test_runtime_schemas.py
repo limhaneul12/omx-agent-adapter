@@ -7,6 +7,7 @@ from omx_remote.schemas.runtime_schemas import (
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
+    RuntimeStatus,
     RuntimeStatusAnomaly,
     RuntimeStatusRequest,
 )
@@ -84,3 +85,18 @@ def test_active_runtime_modes_rejects_unexpected_extra_fields() -> None:
 def test_active_runtime_modes_rejects_empty_mode_name_entries() -> None:
     with pytest.raises(ValidationError):
         ActiveRuntimeModes.model_validate({"active_modes": ["ralph", ""]})
+
+
+def test_runtime_status_rejects_empty_active_mode_name_entries() -> None:
+    with pytest.raises(ValidationError):
+        RuntimeStatus.model_validate(
+            {
+                "summary": "ralph: active",
+                "active_mode_names": ["ralph", ""],
+                "mode_snapshots": [],
+                "mode_statuses": {"ralph": "active"},
+                "anomalies": [],
+                "has_anomalies": False,
+                "anomaly_count": 0,
+            }
+        )
