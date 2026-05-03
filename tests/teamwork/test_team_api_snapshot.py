@@ -126,6 +126,25 @@ def test_read_team_api_list_tasks_rejects_count_mismatch(monkeypatch) -> None:
         )
 
 
+def test_read_team_api_list_tasks_rejects_non_object_task_payload_item(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":1,"tasks":["not-a-task"]}}\n'
+        ),
+    )
+
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_list_tasks(
+                TeamApiListTasksRequest(team_name="alpha")
+            )
+        )
+
+
 def test_read_team_api_read_events_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_events)
 
