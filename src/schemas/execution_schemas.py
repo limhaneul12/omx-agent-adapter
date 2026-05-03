@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -91,7 +93,8 @@ class ToolInteraction(BaseModel):
     result: ExecToolResult | None = None
 
     @model_validator(mode="after")
-    def _validate_state(self) -> "ToolInteraction":
+    def _validate_state(self) -> ToolInteraction:
+        """Validates that the state of the interaction matches whether a result is present."""
         expected_state: ToolInteractionState
         if self.result is None:
             expected_state = "missing_result"
@@ -115,3 +118,8 @@ class ToolInteractionReport(BaseModel):
     duplicate_results: list[ExecToolResult]
     missing_result_calls: list[ExecToolCall]
     anomalies: list[ToolInteractionAnomaly]
+    interaction_count: int
+    completed_count: int
+    missing_result_count: int
+    duplicate_result_count: int
+    unmatched_result_count: int

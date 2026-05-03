@@ -686,6 +686,11 @@ def test_build_tool_interaction_report_surfaces_missing_result_calls() -> None:
     assert report.missing_result_calls[0].call_id == "call-123"
     assert report.anomalies[-1].summary == "tool call completed without a matching tool result"
     assert report.missing_result_calls[0].tool_name == "grep"
+    assert report.interaction_count == 2
+    assert report.completed_count == 1
+    assert report.missing_result_count == 1
+    assert report.duplicate_result_count == 0
+    assert report.unmatched_result_count == 0
 
 
 def test_build_tool_interaction_report_builds_structured_anomalies() -> None:
@@ -750,6 +755,11 @@ def test_build_tool_interaction_report_builds_structured_anomalies() -> None:
     assert report.anomalies[2].category == "missing_result"
     assert report.anomalies[2].related_call_id == "call-123"
     assert report.anomalies[2].tool_name == "grep"
+    assert report.interaction_count == 2
+    assert report.completed_count == 1
+    assert report.missing_result_count == 1
+    assert report.duplicate_result_count == 1
+    assert report.unmatched_result_count == 1
 
 
 def test_promote_execution_contract_rejects_unsupported_payload_type() -> None:

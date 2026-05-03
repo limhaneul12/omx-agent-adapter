@@ -336,6 +336,13 @@ def build_tool_interaction_report(
         unmatched_results=unmatched_results,
         missing_result_calls=missing_result_calls,
         anomalies=anomalies,
+        interaction_count=len(interactions),
+        completed_count=len(
+            [interaction for interaction in interactions if interaction.state == "completed"]
+        ),
+        missing_result_count=len(missing_result_calls),
+        duplicate_result_count=len(duplicate_results),
+        unmatched_result_count=len(unmatched_results),
     )
     return result
 

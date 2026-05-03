@@ -1,5 +1,5 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class ActiveRuntimeModesTransportPayload(TypedDict):
-    active_modes: object
+    active_modes: Required[object]

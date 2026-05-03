@@ -169,6 +169,15 @@ shared/
   - stable contract validation (`Pydantic`)
 - If a payload may remain partially raw or heterogeneous, preserve that fact at the transport/normalization layer instead of forcing premature schema unification.
 
+## Typed Transport Contract Rule
+
+- In concept-owned transport or normalized `TypedDict` definitions, do not leave required-vs-optional key presence implicit.
+- Use `Required[...]` for keys the seam contract truly guarantees.
+- Use `NotRequired[...]` only for keys that may genuinely be absent at that seam.
+- Do not force `Required[...]` onto raw nested payload shapes whose upstream variability is still intentional or not yet split into honest discriminated transport types.
+- Required key presence and nullable value semantics are separate concerns. A key may be `Required[...]` even when its value is still normalized to `None` before schema validation.
+- Top-level stable subset payloads should prefer explicit `Required[...]` / `NotRequired[...]` annotations because they make agent-facing contract intent obvious.
+
 ## General Principle
 
 When in doubt:

@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import Required, TypedDict
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
@@ -14,24 +14,24 @@ class ExecutionTransportPayload(TypedDict, total=False):
 
 
 class ExecMessageNormalizedPayload(TypedDict):
-    kind: object
-    text: object
+    kind: Required[object]
+    text: Required[object]
 
 
 class ExecOutputNormalizedPayload(TypedDict):
-    kind: object
-    text: object
+    kind: Required[object]
+    text: Required[object]
 
 
 class ExecToolCallNormalizedPayload(TypedDict):
-    kind: object
-    tool_name: object
-    call_id: object
-    arguments: object
+    kind: Required[object]
+    tool_name: Required[object]
+    call_id: Required[object]
+    arguments: Required[object]
 
 
 class ExecToolResultNormalizedPayload(TypedDict):
-    kind: object
-    tool_name: object
-    call_id: object
-    text: object
+    kind: Required[object]
+    tool_name: Required[object]
+    call_id: Required[object]
+    text: Required[object]

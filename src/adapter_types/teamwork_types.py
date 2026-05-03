@@ -1,27 +1,27 @@
-from typing import NotRequired, TypedDict
+from typing import NotRequired, Required, TypedDict
 
 
 class TeamApiEnvelopePayload(TypedDict):
-    ok: object
-    data: object
+    ok: Required[object]
+    data: Required[object]
 
 
 class TeamApiTransportPayload(TypedDict):
-    count: object
+    count: Required[object]
     tasks: NotRequired[object]
     cursor: NotRequired[object]
     events: NotRequired[object]
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):
-    count: object
-    tasks: object
+    count: Required[object]
+    tasks: Required[object]
 
 
 class TeamApiReadEventsNormalizedPayload(TypedDict):
-    count: object
-    cursor: object
-    events: object
+    count: Required[object]
+    cursor: Required[object]
+    events: Required[object]
 
 
 class TeamApiTransportTaskPayload(TypedDict, total=False):
@@ -41,8 +41,8 @@ class TeamApiTransportEventPayload(TypedDict, total=False):
 
 
 class TeamStatusTransportPayload(TypedDict):
-    team_name: object
-    status: object
+    team_name: Required[object]
+    status: Required[object]
     phase: NotRequired[object]
     current_phase: NotRequired[object]
     dead_workers: NotRequired[object]
@@ -50,11 +50,11 @@ class TeamStatusTransportPayload(TypedDict):
 
 
 class TeamStatusNormalizedPayload(TypedDict):
-    team_name: object
-    status: object
-    phase: object
-    dead_workers: object
-    non_reporting_workers: object
+    team_name: Required[object]
+    status: Required[object]
+    phase: Required[object]
+    dead_workers: Required[object]
+    non_reporting_workers: Required[object]
 
 
 class TeamAwaitTransportEventPayload(TypedDict, total=False):
@@ -64,16 +64,16 @@ class TeamAwaitTransportEventPayload(TypedDict, total=False):
 
 
 class TeamAwaitTransportPayload(TypedDict):
-    team_name: object
-    status: object
+    team_name: Required[object]
+    status: Required[object]
     cursor: NotRequired[object]
     event: NotRequired[object]
 
 
 class TeamAwaitNormalizedPayload(TypedDict):
-    team_name: object
-    status: object
-    cursor: object
-    event_type: object
-    event_worker: object
-    event_task_id: object
+    team_name: Required[object]
+    status: Required[object]
+    cursor: Required[object]
+    event_type: Required[object]
+    event_worker: Required[object]
+    event_task_id: Required[object]

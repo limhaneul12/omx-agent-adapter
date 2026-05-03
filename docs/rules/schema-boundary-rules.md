@@ -182,6 +182,17 @@ Only do this when file size or conceptual density justifies it.
 
 Do not over-fragment too early.
 
+## TypedDict Key-Presence Rule
+
+For transport-owned or normalization-owned `TypedDict` contracts:
+- use `Required[...]` when a key is truly part of the seam guarantee,
+- use `NotRequired[...]` when a key may genuinely be absent,
+- do not rely on implicit `total=True` to communicate required-ness,
+- do not over-tighten still-dynamic nested raw payloads just for style consistency.
+- keep key presence separate from value nullability; a field may be `Required[...]` and still carry a normalized `None` value when the stable contract guarantees presence but not population.
+
+This repository prefers explicit key-presence annotations on stable top-level subsets because they document the contract directly where agents and maintainers read it.
+
 ## Dynamic Boundary Rule
 
 Some OMX surfaces may remain dynamic for practical reasons.
