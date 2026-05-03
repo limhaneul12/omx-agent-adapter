@@ -1,3 +1,5 @@
+"""Thin console entrypoint for the OMX agent adapter package."""
+
 import typer
 
 HELP_TEXT = """Agent-facing adapter layer for operating OMX as a stateful runtime.

@@ -1,5 +1,5 @@
 [project]
-name = "omx-agent-adapter"
+name = "agent-remote"
 version = "0.1.0"
 description = "Agent-facing adapter layer for operating OMX as a stateful runtime"
 readme = "README.md"
@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-omx-agent-adapter = "cli:app"
+agent-remote = "omx_agent_adapter_cli:app"
 
 [build-system]
 requires = ["hatchling>=1.27,<2.0"]
@@ -29,11 +29,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build]
 include = [
   "src/**/*.py",
+  "omx_agent_adapter_cli.py",
   "README.md",
 ]
 
 [tool.hatch.build.targets.wheel]
-include = ["src/**/*.py"]
+packages = ["src"]
+force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py"}
 
 [tool.ruff]
 target-version = "py313"
