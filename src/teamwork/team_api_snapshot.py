@@ -12,6 +12,18 @@ from schemas.teamwork_schemas import (
 from shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 
 
+def _validate_count_matches_length(
+    operation_name: str,
+    count_value: int,
+    actual_length: int,
+    collection_name: str,
+) -> None:
+    if count_value != actual_length:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned count that does not match {collection_name} length"
+        )
+
+
 def _normalize_team_api_payload(stdout: str, operation_name: str) -> dict[str, object]:
     """Normalizes one team-api transport payload into the nested data object.
 
@@ -128,6 +140,12 @@ async def read_team_api_list_tasks(
     result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
         normalized_payload
     )
+    _validate_count_matches_length(
+        "omx team api list-tasks",
+        result.count,
+        len(result.tasks),
+        "tasks",
+    )
     return result
 
 
@@ -171,5 +189,11 @@ async def read_team_api_read_events(
         ]
     result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
         normalized_payload
+    )
+    _validate_count_matches_length(
+        "omx team api read-events",
+        result.count,
+        len(result.events),
+        "events",
     )
     return result
