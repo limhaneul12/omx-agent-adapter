@@ -176,3 +176,13 @@ def test_await_team_status_rejects_unparseable_json_transport(monkeypatch) -> No
         asyncio.run(
             team_snapshot.await_team_status(TeamAwaitRequest(team_name="alpha"))
         )
+
+
+def test_load_team_status_transport_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_snapshot._load_team_status_transport_payload("[]")
+
+
+def test_load_team_await_transport_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_snapshot._load_team_await_transport_payload("[]")

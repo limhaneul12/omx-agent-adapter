@@ -2,6 +2,14 @@ import asyncio
 
 import orjson
 
+from adapter_types.teamwork_types import (
+    TeamApiEnvelopePayload,
+    TeamApiListTasksNormalizedPayload,
+    TeamApiReadEventsNormalizedPayload,
+    TeamApiTransportEventPayload,
+    TeamApiTransportPayload,
+    TeamApiTransportTaskPayload,
+)
 from execution.invoke import run_omx_command
 from schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
@@ -24,15 +32,15 @@ def _validate_count_matches_length(
         )
 
 
-def _normalize_team_api_payload(stdout: str, operation_name: str) -> dict[str, object]:
-    """Normalizes one team-api transport payload into the nested data object.
+def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportPayload:
+    """Loads one team-api transport payload into the nested data object.
 
     Args:
         stdout [str]: Raw stdout text returned from one `omx team api ... --json` command.
         operation_name [str]: Human-readable team-api operation name used in error messages.
 
     Returns:
-        dict[str, object]: Nested `data` object from a successful team-api transport payload.
+        TeamApiTransportPayload: Nested `data` object from a successful team-api transport payload.
 
     Raises:
         TeamworkSurfaceError: Raised when the payload is empty, invalid JSON, not a JSON object, reports `ok=false`, or omits the nested data object.
@@ -52,21 +60,30 @@ def _normalize_team_api_payload(stdout: str, operation_name: str) -> dict[str, o
             f"{operation_name} returned a non-object JSON payload"
         )
 
-    ok_value: object | None = parsed_payload.get("ok")
+    envelope_payload: TeamApiEnvelopePayload = {
+        "ok": parsed_payload.get("ok"),
+        "data": parsed_payload.get("data"),
+    }
+    ok_value: object | None = envelope_payload.get("ok")
     if ok_value is not True:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
 
-    data_payload: object | None = parsed_payload.get("data")
+    data_payload: object | None = envelope_payload.get("data")
     if not isinstance(data_payload, dict):
         raise TeamworkSurfaceError(
             f"{operation_name} returned a non-object data payload"
         )
 
-    result: dict[str, object] = data_payload
+    result: TeamApiTransportPayload = {
+        "count": data_payload.get("count"),
+        "tasks": data_payload.get("tasks"),
+        "cursor": data_payload.get("cursor"),
+        "events": data_payload.get("events"),
+    }
     return result
 
 
-def _normalize_team_api_task_payload(task_payload: object) -> dict[str, object]:
+def _normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTaskPayload:
     """Normalizes one raw team-api task item into the typed read-only subset."""
 
     if not isinstance(task_payload, dict):
@@ -74,7 +91,7 @@ def _normalize_team_api_task_payload(task_payload: object) -> dict[str, object]:
             "omx team api list-tasks returned a non-object task payload"
         )
 
-    normalized_payload: dict[str, object] = {
+    normalized_payload: TeamApiTransportTaskPayload = {
         "id": task_payload.get("id"),
         "subject": task_payload.get("subject", task_payload.get("title")),
         "status": task_payload.get("status"),
@@ -83,7 +100,7 @@ def _normalize_team_api_task_payload(task_payload: object) -> dict[str, object]:
     return normalized_payload
 
 
-def _normalize_team_api_event_payload(event_payload: object) -> dict[str, object]:
+def _normalize_team_api_event_payload(event_payload: object) -> TeamApiTransportEventPayload:
     """Normalizes one raw team-api event item into the typed read-only subset."""
 
     if not isinstance(event_payload, dict):
@@ -91,7 +108,7 @@ def _normalize_team_api_event_payload(event_payload: object) -> dict[str, object
             "omx team api read-events returned a non-object event payload"
         )
 
-    normalized_payload: dict[str, object] = {
+    normalized_payload: TeamApiTransportEventPayload = {
         "type": event_payload.get("type"),
         "worker": event_payload.get("worker"),
         "task_id": event_payload.get("task_id"),
@@ -123,12 +140,12 @@ async def read_team_api_list_tasks(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    data_payload: dict[str, object] = _normalize_team_api_payload(
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
         stdout,
         "omx team api list-tasks",
     )
     raw_tasks: object = data_payload.get("tasks")
-    normalized_payload: dict[str, object] = {
+    normalized_payload: TeamApiListTasksNormalizedPayload = {
         "count": data_payload.get("count"),
         "tasks": raw_tasks,
     }
@@ -172,12 +189,12 @@ async def read_team_api_read_events(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    data_payload: dict[str, object] = _normalize_team_api_payload(
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
         stdout,
         "omx team api read-events",
     )
     raw_events: object = data_payload.get("events")
-    normalized_payload: dict[str, object] = {
+    normalized_payload: TeamApiReadEventsNormalizedPayload = {
         "count": data_payload.get("count"),
         "cursor": data_payload.get("cursor"),
         "events": raw_events,

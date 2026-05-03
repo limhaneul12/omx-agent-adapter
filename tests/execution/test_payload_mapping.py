@@ -5,6 +5,7 @@ from execution.payload_mapping import (
     build_tool_interaction_report,
     build_tool_interactions,
     is_promotable_execution_payload,
+    load_execution_payload,
     promote_exec_message,
     promote_exec_output,
     promote_exec_tool_call,
@@ -17,11 +18,16 @@ from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadEr
 
 
 def test_split_event_payloads_returns_payload_by_default() -> None:
-    payload = {"type": "turn.started", "id": "t1"}
+    payload = {"type": "raw_event", "text": "hello"}
 
     result = split_event_payloads(payload)
 
     assert result == [payload]
+
+
+def test_load_execution_payload_requires_mapping() -> None:
+    with pytest.raises(UnsupportedExecutionPayloadError):
+        load_execution_payload("event payload", ["not", "a", "mapping"])
 
 
 def test_split_event_payloads_extracts_item_completed_item_payload() -> None:
@@ -32,7 +38,9 @@ def test_split_event_payloads_extracts_item_completed_item_payload() -> None:
 
     result = split_event_payloads(payload)
 
-    assert result == [{"type": "message", "text": "done"}]
+    assert len(result) == 1
+    assert result[0]["type"] == "message"
+    assert result[0]["text"] == "done"
 
 
 def test_split_event_payloads_extracts_item_completed_output_item_payload() -> None:
@@ -43,7 +51,9 @@ def test_split_event_payloads_extracts_item_completed_output_item_payload() -> N
 
     result = split_event_payloads(payload)
 
-    assert result == [{"type": "output_text", "text": "stream line"}]
+    assert len(result) == 1
+    assert result[0]["type"] == "output_text"
+    assert result[0]["text"] == "stream line"
 
 
 def test_split_event_payloads_extracts_item_completed_tool_result_payload() -> None:
@@ -59,14 +69,11 @@ def test_split_event_payloads_extracts_item_completed_tool_result_payload() -> N
 
     result = split_event_payloads(payload)
 
-    assert result == [
-        {
-            "type": "tool_result",
-            "tool_name": "grep",
-            "call_id": "call-123",
-            "text": "match",
-        }
-    ]
+    assert len(result) == 1
+    assert result[0]["type"] == "tool_result"
+    assert result[0]["tool_name"] == "grep"
+    assert result[0]["call_id"] == "call-123"
+    assert result[0]["text"] == "match"
 
 
 def test_split_event_payloads_keeps_item_completed_payload_when_item_is_not_dict() -> None:

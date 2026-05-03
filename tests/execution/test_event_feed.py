@@ -10,7 +10,8 @@ def test_decode_event_lines_ignores_non_json_lines() -> None:
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [{"type": "turn.started"}]
+    assert len(events) == 1
+    assert events[0]["type"] == "turn.started"
 
 
 def test_decode_event_lines_accepts_typed_request() -> None:
@@ -20,7 +21,8 @@ def test_decode_event_lines_accepts_typed_request() -> None:
 
     events = asyncio.run(decode_event_lines(request))
 
-    assert events == [{"type": "turn.started"}]
+    assert len(events) == 1
+    assert events[0]["type"] == "turn.started"
 
 
 def test_decode_event_lines_keeps_transport_parse_separate_from_contracts() -> None:
@@ -28,7 +30,9 @@ def test_decode_event_lines_keeps_transport_parse_separate_from_contracts() -> N
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [{"type": "turn.started", "extra": {"debug": True}}]
+    assert len(events) == 1
+    assert events[0]["type"] == "turn.started"
+    assert events[0]["extra"] == {"debug": True}
 
 
 def test_decode_event_lines_splits_item_completed_payloads() -> None:
@@ -36,14 +40,11 @@ def test_decode_event_lines_splits_item_completed_payloads() -> None:
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [
-        {
-            "type": "tool_result",
-            "tool_name": "grep",
-            "call_id": "call-123",
-            "text": "match",
-        }
-    ]
+    assert len(events) == 1
+    assert events[0]["type"] == "tool_result"
+    assert events[0]["tool_name"] == "grep"
+    assert events[0]["call_id"] == "call-123"
+    assert events[0]["text"] == "match"
 
 
 def test_decode_event_lines_keeps_item_completed_wrapper_for_unsupported_item_payload() -> (
@@ -53,12 +54,9 @@ def test_decode_event_lines_keeps_item_completed_wrapper_for_unsupported_item_pa
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [
-        {
-            "type": "item.completed",
-            "item": {"type": "turn.started", "id": "t1"},
-        }
-    ]
+    assert len(events) == 1
+    assert events[0]["type"] == "item.completed"
+    assert events[0]["item"] == {"type": "turn.started", "id": "t1"}
 
 
 def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbors() -> (
@@ -74,10 +72,11 @@ def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbor
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [
-        {"type": "turn.started", "id": "before"},
-        {"type": "turn.completed", "id": "after"},
-    ]
+    assert len(events) == 2
+    assert events[0]["type"] == "turn.started"
+    assert events[0]["id"] == "before"
+    assert events[1]["type"] == "turn.completed"
+    assert events[1]["id"] == "after"
 
 
 def test_decode_event_lines_is_async() -> None:
@@ -97,7 +96,8 @@ def test_decode_event_lines_skips_non_dict_json_payloads_without_dropping_valid_
 
     events = asyncio.run(decode_event_lines(payload))
 
-    assert events == [
-        {"type": "turn.started", "id": "before"},
-        {"type": "turn.completed", "id": "after"},
-    ]
+    assert len(events) == 2
+    assert events[0]["type"] == "turn.started"
+    assert events[0]["id"] == "before"
+    assert events[1]["type"] == "turn.completed"
+    assert events[1]["id"] == "after"

@@ -91,3 +91,8 @@ def test_search_sessions_rejects_non_mapping_result_items(monkeypatch) -> None:
 
     with pytest.raises(ValidationError):
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+
+
+def test_load_session_search_transport_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(HistorySurfaceError):
+        session_search._load_session_search_transport_payload("[]")

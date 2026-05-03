@@ -2,6 +2,9 @@
 
 import asyncio
 
+import orjson
+
+from adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
 from execution.invoke import run_omx_command
 from schemas.runtime_schemas import (
     ActiveRuntimeModes,
@@ -12,8 +15,6 @@ from schemas.runtime_schemas import (
     RuntimeStatusRequest,
 )
 from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
-from shared.json_transport import load_json_object_stdout
-from transport_types import TransportObject
 
 IDLE_RUNTIME_SUMMARY = "No active modes."
 ACTIVE_MODE_MARKER = "active"
@@ -90,6 +91,29 @@ async def read_active_runtime_modes() -> ActiveRuntimeModes:
     return result
 
 
+def _load_active_runtime_modes_payload(stdout: str) -> ActiveRuntimeModesTransportPayload:
+    """Loads one active-runtime-modes transport payload from raw stdout."""
+    if not stdout:
+        raise RuntimeSurfaceError("omx state list-active returned no stdout output")
+
+    try:
+        parsed_payload: object = orjson.loads(stdout)
+    except orjson.JSONDecodeError as error:
+        raise RuntimeSurfaceError(
+            "omx state list-active returned unparseable JSON output"
+        ) from error
+
+    if not isinstance(parsed_payload, dict):
+        raise RuntimeSurfaceError(
+            "omx state list-active returned a non-object JSON payload"
+        )
+
+    result: ActiveRuntimeModesTransportPayload = {
+        "active_modes": parsed_payload.get("active_modes"),
+    }
+    return result
+
+
 def _normalize_active_runtime_modes(stdout: str) -> ActiveRuntimeModes:
     """Normalizes `omx state list-active --json` stdout into a stable contract.
 
@@ -102,10 +126,8 @@ def _normalize_active_runtime_modes(stdout: str) -> ActiveRuntimeModes:
     Raises:
         RuntimeSurfaceError: Raised when the transport is empty, not JSON, or not a JSON object.
     """
-    parsed_payload: TransportObject = load_json_object_stdout(
-        stdout,
-        command_name="omx state list-active",
-        error_type=RuntimeSurfaceError,
+    parsed_payload: ActiveRuntimeModesTransportPayload = _load_active_runtime_modes_payload(
+        stdout
     )
 
     result: ActiveRuntimeModes = ActiveRuntimeModes.model_validate(parsed_payload)
@@ -321,49 +343,13 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
     if normalized_status_text == "idle":
         parsed_mode_status_entry = (normalized_mode_name, "idle", raw_status_text)
         return parsed_mode_status_entry
-    if normalized_status_text:
-        parsed_mode_status_entry = (normalized_mode_name, "unknown", raw_status_text)
-        return parsed_mode_status_entry
 
-    parsed_mode_status_entry = None
+    parsed_mode_status_entry = (normalized_mode_name, "unknown", raw_status_text)
     return parsed_mode_status_entry
 
 
-def _parse_active_mode_name(line: str) -> str | None:
-    """Parses an active mode name from one status line.
-
-    Args:
-        line [str]: One line from normalized `omx status` stdout.
-
-    Returns:
-        str | None: Active mode name when the line describes an active mode, otherwise `None`.
-    """
-    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
-        _parse_mode_status_entry(line)
-    )
-    if parsed_mode_status_entry is None:
-        return None
-
-    mode_name: str
-    status_text: RuntimeModeStatus
-    _raw_status_text: str
-    mode_name, status_text, _raw_status_text = parsed_mode_status_entry
-    if status_text != ACTIVE_MODE_MARKER:
-        return None
-
-    active_mode_name: str = mode_name
-    return active_mode_name
-
-
 def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
-    """Parses one runtime mode status line into a typed pair.
-
-    Args:
-        line [str]: One line from normalized `omx status` stdout.
-
-    Returns:
-        tuple[str, RuntimeModeStatus] | None: Parsed mode name and normalized status token when the line matches the expected shape.
-    """
+    """Parses one runtime mode status line into a typed pair."""
     parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
         _parse_mode_status_entry(line)
     )
@@ -372,7 +358,26 @@ def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
 
     mode_name: str
     status_text: RuntimeModeStatus
-    _raw_status_text: str
-    mode_name, status_text, _raw_status_text = parsed_mode_status_entry
-    parsed_mode_status: tuple[str, RuntimeModeStatus] = (mode_name, status_text)
-    return parsed_mode_status
+    raw_status_text: str
+    mode_name, status_text, raw_status_text = parsed_mode_status_entry
+    _ = raw_status_text
+    result: tuple[str, RuntimeModeStatus] = (mode_name, status_text)
+    return result
+
+
+def _parse_active_mode_name(line: str) -> str | None:
+    """Parses one active runtime mode name from a status line."""
+    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
+        _parse_mode_status_entry(line)
+    )
+    if parsed_mode_status_entry is None:
+        return None
+
+    mode_name: str
+    status_text: RuntimeModeStatus
+    raw_status_text: str
+    mode_name, status_text, raw_status_text = parsed_mode_status_entry
+    _ = raw_status_text
+    if status_text != "active":
+        return None
+    return mode_name

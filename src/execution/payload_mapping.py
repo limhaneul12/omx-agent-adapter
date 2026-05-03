@@ -1,3 +1,10 @@
+from adapter_types.execution_types import (
+    ExecMessageNormalizedPayload,
+    ExecOutputNormalizedPayload,
+    ExecToolCallNormalizedPayload,
+    ExecToolResultNormalizedPayload,
+    ExecutionTransportPayload,
+)
 from schemas.execution_schemas import (
     ExecMessage,
     ExecOutput,
@@ -10,10 +17,9 @@ from schemas.execution_schemas import (
     ToolInteractionState,
 )
 from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
-from transport_types import TransportObject
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
-ExecutionPayload = TransportObject
+ExecutionPayload = ExecutionTransportPayload
 ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
 RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
@@ -25,6 +31,29 @@ ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
     "unmatched_result": "tool result did not match any known tool call",
     "missing_result": "tool call completed without a matching tool result",
 }
+
+
+def load_execution_payload(
+    payload_name: str,
+    payload: object,
+) -> ExecutionPayload:
+    """Loads one execution payload from a raw object boundary."""
+    if not isinstance(payload, dict):
+        raise UnsupportedExecutionPayloadError(
+            f"{payload_name} must be a JSON object payload"
+        )
+
+    result: ExecutionPayload = {
+        "type": payload.get("type"),
+        "text": payload.get("text"),
+        "item": payload.get("item"),
+        "tool_name": payload.get("tool_name"),
+        "call_id": payload.get("call_id"),
+        "arguments": payload.get("arguments"),
+        "id": payload.get("id"),
+        "extra": payload.get("extra"),
+    }
+    return result
 
 
 def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
@@ -41,7 +70,10 @@ def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
     if event_type == "item.completed":
         item: object | None = payload.get("item")
         if isinstance(item, dict):
-            item_payload: ExecutionPayload = item
+            item_payload: ExecutionPayload = load_execution_payload(
+                "item.completed item payload",
+                item,
+            )
             if is_promotable_execution_payload(item_payload):
                 split_payloads: list[ExecutionPayload] = [item_payload]
                 return split_payloads
@@ -92,7 +124,7 @@ def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
     Returns:
         ExecMessage: Stable execution message contract built from the normalized raw payload.
     """
-    normalized_payload: ExecutionPayload = {
+    normalized_payload: ExecMessageNormalizedPayload = {
         "kind": payload["type"],
         "text": payload["text"],
     }
@@ -109,7 +141,7 @@ def promote_exec_output(payload: ExecutionPayload) -> ExecOutput:
     Returns:
         ExecOutput: Stable execution output contract built from the normalized raw payload.
     """
-    normalized_payload: ExecutionPayload = {
+    normalized_payload: ExecOutputNormalizedPayload = {
         "kind": payload["type"],
         "text": payload["text"],
     }
@@ -126,7 +158,7 @@ def promote_exec_tool_call(payload: ExecutionPayload) -> ExecToolCall:
     Returns:
         ExecToolCall: Stable execution tool-call contract built from the normalized raw payload.
     """
-    normalized_payload: ExecutionPayload = {
+    normalized_payload: ExecToolCallNormalizedPayload = {
         "kind": payload["type"],
         "tool_name": payload["tool_name"],
         "call_id": payload["call_id"],
@@ -145,7 +177,7 @@ def promote_exec_tool_result(payload: ExecutionPayload) -> ExecToolResult:
     Returns:
         ExecToolResult: Stable execution tool-result contract built from the normalized raw payload.
     """
-    normalized_payload: ExecutionPayload = {
+    normalized_payload: ExecToolResultNormalizedPayload = {
         "kind": payload["type"],
         "tool_name": payload["tool_name"],
         "call_id": payload["call_id"],
@@ -262,70 +294,77 @@ def build_tool_interaction_report(
         if isinstance(event, ExecToolResult) and event.call_id not in matched_call_ids
     ]
     missing_result_calls: list[ExecToolCall] = [
-        interaction.call for interaction in interactions if interaction.result is None
+        interaction.call
+        for interaction in interactions
+        if interaction.state == "missing_result"
+    ]
+    duplicate_anomalies: list[ToolInteractionAnomaly] = [
+        ToolInteractionAnomaly(
+            category="duplicate_result",
+            related_call_id=duplicate_result.call_id,
+            tool_name=duplicate_result.tool_name,
+            summary=ANOMALY_SUMMARIES["duplicate_result"],
+        )
+        for duplicate_result in duplicate_results
+    ]
+    unmatched_anomalies: list[ToolInteractionAnomaly] = [
+        ToolInteractionAnomaly(
+            category="unmatched_result",
+            related_call_id=unmatched_result.call_id,
+            tool_name=unmatched_result.tool_name,
+            summary=ANOMALY_SUMMARIES["unmatched_result"],
+        )
+        for unmatched_result in unmatched_results
+    ]
+    missing_result_anomalies: list[ToolInteractionAnomaly] = [
+        ToolInteractionAnomaly(
+            category="missing_result",
+            related_call_id=missing_result_call.call_id,
+            tool_name=missing_result_call.tool_name,
+            summary=ANOMALY_SUMMARIES["missing_result"],
+        )
+        for missing_result_call in missing_result_calls
     ]
     anomalies: list[ToolInteractionAnomaly] = [
-        *[
-            ToolInteractionAnomaly(
-                category="duplicate_result",
-                related_call_id=result.call_id,
-                tool_name=result.tool_name,
-                summary=ANOMALY_SUMMARIES["duplicate_result"],
-            )
-            for result in duplicate_results
-        ],
-        *[
-            ToolInteractionAnomaly(
-                category="unmatched_result",
-                related_call_id=result.call_id,
-                tool_name=result.tool_name,
-                summary=ANOMALY_SUMMARIES["unmatched_result"],
-            )
-            for result in unmatched_results
-        ],
-        *[
-            ToolInteractionAnomaly(
-                category="missing_result",
-                related_call_id=call.call_id,
-                tool_name=call.tool_name,
-                summary=ANOMALY_SUMMARIES["missing_result"],
-            )
-            for call in missing_result_calls
-        ],
+        *duplicate_anomalies,
+        *unmatched_anomalies,
+        *missing_result_anomalies,
     ]
-    report: ToolInteractionReport = ToolInteractionReport(
+    result: ToolInteractionReport = ToolInteractionReport(
         interactions=interactions,
-        unmatched_results=unmatched_results,
         duplicate_results=duplicate_results,
+        unmatched_results=unmatched_results,
         missing_result_calls=missing_result_calls,
         anomalies=anomalies,
     )
-    return report
+    return result
 
 
 def promote_execution_contract(payload: ExecutionPayload) -> ExecutionContract:
-    """Promotes one raw execution payload into the matching stable contract.
+    """Promotes one raw execution payload into a stable execution contract.
 
     Args:
-        payload [ExecutionPayload]: Raw execution payload after transport parsing and event splitting.
+        payload [ExecutionPayload]: Raw execution payload whose type decides the contract promotion lane.
 
     Returns:
-        ExecutionContract: Stable execution contract selected from the payload type.
+        ExecutionContract: Stable execution contract built from the raw payload.
+
+    Raises:
+        UnsupportedExecutionPayloadError: Raised when the payload type is unsupported.
     """
     payload_type: object | None = payload.get("type")
-
     if payload_type == "message":
-        contract: ExecutionContract = promote_exec_message(payload)
-        return contract
+        result: ExecutionContract = promote_exec_message(payload)
+        return result
     if payload_type == "output_text":
-        contract = promote_exec_output(payload)
-        return contract
+        result = promote_exec_output(payload)
+        return result
     if payload_type == "tool_call":
-        contract = promote_exec_tool_call(payload)
-        return contract
+        result = promote_exec_tool_call(payload)
+        return result
     if payload_type == "tool_result":
-        contract = promote_exec_tool_result(payload)
-        return contract
+        result = promote_exec_tool_result(payload)
+        return result
 
     raise UnsupportedExecutionPayloadError(
         f"unsupported execution payload type: {payload_type}"

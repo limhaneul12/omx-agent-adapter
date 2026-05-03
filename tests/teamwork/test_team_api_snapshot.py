@@ -185,3 +185,11 @@ def test_read_team_api_read_events_normalizes_live_event_payload_shape(
     assert result.events[1].type == "task_completed"
     assert result.events[1].worker == "worker-3"
     assert result.events[1].task_id == "4"
+
+
+def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_snapshot._load_team_api_payload(
+            '{"ok":true,"data":[]}',
+            "omx team api list-tasks",
+        )

@@ -63,3 +63,8 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
 
     with pytest.raises(ValidationError):
         asyncio.run(adapter_probe.probe_adapter(AdapterProbeRequest(target="hermes")))
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload("[]")

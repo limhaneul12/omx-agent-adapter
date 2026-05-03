@@ -1,9 +1,15 @@
 import asyncio
 
+import orjson
+
+from adapter_types.history_types import (
+    SessionSearchNormalizedPayload,
+    SessionSearchTransportPayload,
+    SessionSearchTransportResultPayload,
+)
 from execution.invoke import run_omx_command
 from schemas.history_schemas import SessionSearchRequest, SessionSearchSnapshot
 from shared.exceptions.history_exceptions import HistorySurfaceError
-from shared.json_transport import load_json_object_stdout
 
 
 async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapshot:
@@ -25,18 +31,40 @@ async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapsho
     return result
 
 
+def _load_session_search_transport_payload(stdout: str) -> SessionSearchTransportPayload:
+    """Loads one session-search transport payload from raw stdout."""
+    if not stdout:
+        raise HistorySurfaceError("omx session search returned no stdout output")
+
+    try:
+        parsed_payload: object = orjson.loads(stdout)
+    except orjson.JSONDecodeError as error:
+        raise HistorySurfaceError(
+            "omx session search returned unparseable JSON output"
+        ) from error
+
+    if not isinstance(parsed_payload, dict):
+        raise HistorySurfaceError("omx session search returned a non-object JSON payload")
+
+    result: SessionSearchTransportPayload = {
+        "query": parsed_payload.get("query"),
+        "searched_files": parsed_payload.get("searched_files"),
+        "matched_sessions": parsed_payload.get("matched_sessions"),
+        "results": parsed_payload.get("results"),
+    }
+    return result
+
+
 def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
     """Normalizes one `omx session search ... --json` payload."""
-    parsed_payload: dict[str, object] = load_json_object_stdout(
-        stdout,
-        command_name="omx session search",
-        error_type=HistorySurfaceError,
+    parsed_payload: SessionSearchTransportPayload = _load_session_search_transport_payload(
+        stdout
     )
 
     raw_results: object | None = parsed_payload.get("results")
     normalized_results: object = _normalize_session_search_results(raw_results)
 
-    normalized_payload: dict[str, object] = {
+    normalized_payload: SessionSearchNormalizedPayload = {
         "query": parsed_payload.get("query"),
         "searched_files": parsed_payload.get("searched_files"),
         "matched_sessions": parsed_payload.get("matched_sessions"),
@@ -59,14 +87,13 @@ def _normalize_session_search_results(raw_results: object) -> object:
         if not isinstance(result_item, dict):
             normalized_results.append(result_item)
             continue
-        normalized_results.append(
-            {
-                "session_id": result_item.get("session_id"),
-                "timestamp": result_item.get("timestamp"),
-                "cwd": result_item.get("cwd"),
-                "record_type": result_item.get("record_type"),
-                "line_number": result_item.get("line_number"),
-                "snippet": result_item.get("snippet"),
-            }
-        )
+        normalized_result_item: SessionSearchTransportResultPayload = {
+            "session_id": result_item.get("session_id"),
+            "timestamp": result_item.get("timestamp"),
+            "cwd": result_item.get("cwd"),
+            "record_type": result_item.get("record_type"),
+            "line_number": result_item.get("line_number"),
+            "snippet": result_item.get("snippet"),
+        }
+        normalized_results.append(normalized_result_item)
     return normalized_results

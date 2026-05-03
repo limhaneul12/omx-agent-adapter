@@ -1,9 +1,15 @@
 import asyncio
 
+import orjson
+
+from adapter_types.bridge_types import (
+    AdapterEnvelopeNormalizedPayload,
+    AdapterEnvelopeRuntimePayload,
+    AdapterEnvelopeTransportPayload,
+)
 from execution.invoke import run_omx_command
 from schemas.bridge_schemas import AdapterEnvelopeSnapshot, AdapterProbeRequest
 from shared.exceptions.bridge_exceptions import BridgeSurfaceError
-from shared.json_transport import load_json_object_stdout
 
 
 async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelopeSnapshot:
@@ -24,26 +30,58 @@ async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelope
     return result
 
 
+def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTransportPayload:
+    """Loads one adapter envelope transport payload from raw stdout."""
+    if not stdout:
+        raise BridgeSurfaceError("omx adapt envelope returned no stdout output")
+
+    try:
+        parsed_payload: object = orjson.loads(stdout)
+    except orjson.JSONDecodeError as error:
+        raise BridgeSurfaceError(
+            "omx adapt envelope returned unparseable JSON output"
+        ) from error
+
+    if not isinstance(parsed_payload, dict):
+        raise BridgeSurfaceError("omx adapt envelope returned a non-object JSON payload")
+
+    result: AdapterEnvelopeTransportPayload = {
+        "target": parsed_payload.get("target"),
+        "displayName": parsed_payload.get("displayName"),
+        "summary": parsed_payload.get("summary"),
+        "capabilities": parsed_payload.get("capabilities"),
+        "targetRuntime": parsed_payload.get("targetRuntime"),
+    }
+    return result
+
+
 def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     """Normalizes one `omx adapt <target> envelope --json` payload."""
-    parsed_payload: dict[str, object] = load_json_object_stdout(
-        stdout,
-        command_name="omx adapt envelope",
-        error_type=BridgeSurfaceError,
+    parsed_payload: AdapterEnvelopeTransportPayload = _load_adapter_envelope_transport_payload(
+        stdout
     )
 
     target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
     target_runtime_state: object | None = None
     target_runtime_detail: object | None = None
     if isinstance(target_runtime_payload, dict):
-        target_runtime_state = target_runtime_payload.get("state")
-        target_runtime_detail = target_runtime_payload.get("detail")
+        normalized_target_runtime_payload: AdapterEnvelopeRuntimePayload = {
+            "state": target_runtime_payload.get("state"),
+            "detail": target_runtime_payload.get("detail"),
+        }
+        target_runtime_state = normalized_target_runtime_payload.get("state")
+        target_runtime_detail = normalized_target_runtime_payload.get("detail")
 
-    normalized_payload: dict[str, object] = {
+    capabilities_payload: object | None = parsed_payload.get("capabilities")
+    normalized_capabilities: object = capabilities_payload
+    if capabilities_payload is None:
+        normalized_capabilities = []
+
+    normalized_payload: AdapterEnvelopeNormalizedPayload = {
         "target": parsed_payload.get("target"),
         "display_name": parsed_payload.get("displayName"),
         "summary": parsed_payload.get("summary"),
-        "capabilities": parsed_payload.get("capabilities", []),
+        "capabilities": normalized_capabilities,
         "target_runtime_state": target_runtime_state,
         "target_runtime_detail": target_runtime_detail,
     }

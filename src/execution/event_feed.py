@@ -2,7 +2,11 @@ import asyncio
 
 import orjson
 
-from execution.payload_mapping import ExecutionPayload, split_event_payloads
+from execution.payload_mapping import (
+    ExecutionPayload,
+    load_execution_payload,
+    split_event_payloads,
+)
 from schemas.execution_schemas import ExecutionEventDecodeRequest
 
 
@@ -43,6 +47,12 @@ def _decode_event_lines_sync(payload: str) -> list[ExecutionPayload]:
             continue
         if not isinstance(event_payload, dict):
             continue
-        split_payloads: list[ExecutionPayload] = split_event_payloads(event_payload)
+        normalized_event_payload: ExecutionPayload = load_execution_payload(
+            "decoded execution event payload",
+            event_payload,
+        )
+        split_payloads: list[ExecutionPayload] = split_event_payloads(
+            normalized_event_payload
+        )
         events.extend(split_payloads)
     return events

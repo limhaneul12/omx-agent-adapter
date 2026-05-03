@@ -68,3 +68,8 @@ def test_read_adapter_envelope_preserves_required_contract_validation(monkeypatc
         asyncio.run(
             adapter_envelope.read_adapter_envelope(AdapterProbeRequest(target="hermes"))
         )
+
+
+def test_load_adapter_envelope_transport_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_envelope._load_adapter_envelope_transport_payload("[]")

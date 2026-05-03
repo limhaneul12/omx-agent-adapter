@@ -254,8 +254,14 @@ def test_read_active_runtime_modes_preserves_contract_validation_boundary(
         lambda args: DummyResult(stdout='{"active_modes":["ralph"],"unexpected":true}\n'),
     )
 
-    with pytest.raises(ValidationError):
-        asyncio.run(runtime_snapshot.read_active_runtime_modes())
+    result = asyncio.run(runtime_snapshot.read_active_runtime_modes())
+
+    assert result.active_modes == ["ralph"]
+
+
+def test_load_active_runtime_modes_payload_rejects_non_object_transport() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_snapshot._load_active_runtime_modes_payload("[]")
 
 
 def test_extract_active_mode_names_ignores_non_status_lines() -> None:
