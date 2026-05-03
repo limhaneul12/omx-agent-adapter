@@ -46,6 +46,21 @@ def test_decode_event_lines_splits_item_completed_payloads() -> None:
     ]
 
 
+def test_decode_event_lines_keeps_item_completed_wrapper_for_unsupported_item_payload() -> (
+    None
+):
+    payload = '{"type":"item.completed","item":{"type":"turn.started","id":"t1"}}\n'
+
+    events = asyncio.run(decode_event_lines(payload))
+
+    assert events == [
+        {
+            "type": "item.completed",
+            "item": {"type": "turn.started", "id": "t1"},
+        }
+    ]
+
+
 def test_decode_event_lines_skips_malformed_json_without_dropping_valid_neighbors() -> (
     None
 ):

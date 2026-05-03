@@ -76,3 +76,42 @@ def test_run_omx_command_passes_expected_subprocess_arguments(monkeypatch) -> No
         "capture_output": True,
         "check": False,
     }
+
+
+def test_run_omx_command_returns_typed_result_when_omx_is_missing(
+    monkeypatch,
+) -> None:
+    def raise_file_not_found(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError(2, "No such file or directory", "omx")
+
+    monkeypatch.setattr(subprocess, "run", raise_file_not_found)
+
+    result = run_omx_command(["status"])
+
+    assert result.exit_code == 127
+    assert result.stdout == ""
+    assert "omx" in result.stderr
+    assert "No such file or directory" in result.stderr
+
+
+def test_run_omx_command_normalizes_missing_text_streams(monkeypatch) -> None:
+    completed_process = subprocess.CompletedProcess(
+        args=["omx", "status"],
+        returncode=1,
+        stdout=None,
+        stderr=None,
+    )
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: completed_process,
+    )
+
+    result = run_omx_command(["status"])
+
+    assert result == OmxCommandResult(
+        exit_code=1,
+        stdout="",
+        stderr="",
+    )

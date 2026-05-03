@@ -49,6 +49,11 @@ def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
         "team_name": parsed_payload.get("team_name"),
         "status": parsed_payload.get("status"),
         "phase": phase_value,
+        "dead_workers": parsed_payload.get("dead_workers", []),
+        "non_reporting_workers": parsed_payload.get(
+            "non_reporting_workers",
+            [],
+        ),
     }
     result: TeamStatusSnapshot = TeamStatusSnapshot.model_validate(
         normalized_payload
@@ -95,16 +100,26 @@ def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
 
     event_payload: object | None = parsed_payload.get("event")
     event_type: str | None = None
+    event_worker: str | None = None
+    event_task_id: str | None = None
     if isinstance(event_payload, dict):
         raw_event_type: object | None = event_payload.get("type")
         if isinstance(raw_event_type, str):
             event_type = raw_event_type
+        raw_event_worker: object | None = event_payload.get("worker")
+        if isinstance(raw_event_worker, str):
+            event_worker = raw_event_worker
+        raw_event_task_id: object | None = event_payload.get("task_id")
+        if isinstance(raw_event_task_id, str):
+            event_task_id = raw_event_task_id
 
     normalized_payload: dict[str, object] = {
         "team_name": parsed_payload.get("team_name"),
         "status": parsed_payload.get("status"),
         "cursor": parsed_payload.get("cursor"),
         "event_type": event_type,
+        "event_worker": event_worker,
+        "event_task_id": event_task_id,
     }
     result: TeamAwaitSnapshot = TeamAwaitSnapshot.model_validate(
         normalized_payload

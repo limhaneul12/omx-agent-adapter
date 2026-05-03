@@ -62,6 +62,26 @@ def test_read_team_status_normalizes_current_phase_to_phase(monkeypatch) -> None
     assert result.phase == "team-exec"
 
 
+def test_read_team_status_exposes_worker_edge_lists(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"team_name":"alpha","status":"ok","phase":"team-exec","dead_workers":["worker-2"],"non_reporting_workers":["worker-3"]}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_snapshot.read_team_status(TeamStatusRequest(team_name="alpha"))
+    )
+
+    assert result.team_name == "alpha"
+    assert result.status == "ok"
+    assert result.phase == "team-exec"
+    assert result.dead_workers == ["worker-2"]
+    assert result.non_reporting_workers == ["worker-3"]
+
+
 def test_read_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:
     monkeypatch.setattr(
         team_snapshot,
@@ -124,6 +144,25 @@ def test_await_team_status_normalizes_cursor_and_event_type(monkeypatch) -> None
     assert result.status == "active"
     assert result.cursor == "cursor-1"
     assert result.event_type == "worker_completed"
+
+
+def test_await_team_status_exposes_event_worker_and_task_id(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"team_name":"alpha","status":"event","cursor":"cursor-1","event":{"type":"task_completed","worker":"worker-3","task_id":"4"}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_snapshot.await_team_status(TeamAwaitRequest(team_name="alpha"))
+    )
+
+    assert result.status == "event"
+    assert result.event_type == "task_completed"
+    assert result.event_worker == "worker-3"
+    assert result.event_task_id == "4"
 
 
 def test_await_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:

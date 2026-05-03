@@ -78,3 +78,16 @@ def test_search_sessions_preserves_required_contract_validation(monkeypatch) -> 
 
     with pytest.raises(ValidationError):
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+
+
+def test_search_sessions_rejects_non_mapping_result_items(monkeypatch) -> None:
+    monkeypatch.setattr(
+        session_search,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"query":"hermes","searched_files":1,"matched_sessions":1,"results":["bad-entry"]}\n'
+        ),
+    )
+
+    with pytest.raises(ValidationError):
+        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))

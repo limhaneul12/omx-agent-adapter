@@ -5,7 +5,9 @@ from schemas.execution_schemas import (
     ExecMessage,
     ExecRequest,
     ExecToolCall,
+    ExecToolResult,
     ExecutionEventDecodeRequest,
+    ToolInteraction,
 )
 from shared.omx_enums.execution_enums import ExecutionPayloadKind
 
@@ -64,5 +66,55 @@ def test_exec_tool_call_rejects_non_tool_call_kind() -> None:
                 "tool_name": "grep",
                 "call_id": "call-123",
                 "arguments": "{}",
+            }
+        )
+
+
+def test_tool_interaction_rejects_completed_state_without_result() -> None:
+    tool_call = ExecToolCall.model_validate(
+        {
+            "kind": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": "{}",
+        }
+    )
+
+    with pytest.raises(ValidationError):
+        ToolInteraction.model_validate(
+            {
+                "state": "completed",
+                "call": tool_call.model_dump(),
+                "result": None,
+            }
+        )
+
+
+def test_tool_interaction_rejects_missing_result_state_when_result_is_present() -> (
+    None
+):
+    tool_call = ExecToolCall.model_validate(
+        {
+            "kind": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": "{}",
+        }
+    )
+    tool_result = ExecToolResult.model_validate(
+        {
+            "kind": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+
+    with pytest.raises(ValidationError):
+        ToolInteraction.model_validate(
+            {
+                "state": "missing_result",
+                "call": tool_call.model_dump(),
+                "result": tool_result.model_dump(),
             }
         )

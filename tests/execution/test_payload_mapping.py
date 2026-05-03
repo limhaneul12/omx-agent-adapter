@@ -77,6 +77,19 @@ def test_split_event_payloads_keeps_item_completed_payload_when_item_is_not_dict
     assert result == [payload]
 
 
+def test_split_event_payloads_keeps_item_completed_payload_when_item_type_is_not_promotable() -> (
+    None
+):
+    payload = {
+        "type": "item.completed",
+        "item": {"type": "turn.started", "id": "t1"},
+    }
+
+    result = split_event_payloads(payload)
+
+    assert result == [payload]
+
+
 def test_is_promotable_execution_payload_accepts_supported_type() -> None:
     payload = {"type": "message", "text": "done"}
 
@@ -109,28 +122,6 @@ def test_route_execution_payload_keeps_raw_passthrough_for_unsupported_type() ->
     result = route_execution_payload(payload)
 
     assert result == payload
-
-
-    payload = {
-        "type": "item.completed",
-        "item": {
-            "type": "tool_result",
-            "tool_name": "grep",
-            "call_id": "call-123",
-            "text": "match",
-        },
-    }
-
-    result = split_event_payloads(payload)
-
-    assert result == [
-        {
-            "type": "tool_result",
-            "tool_name": "grep",
-            "call_id": "call-123",
-            "text": "match",
-        }
-    ]
 
 
 def test_promote_exec_message_builds_contract_from_payload() -> None:

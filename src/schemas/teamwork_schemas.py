@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from schemas.common_schemas import NonEmptyString
 
@@ -27,6 +27,8 @@ class TeamStatusSnapshot(BaseModel):
     team_name: NonEmptyString
     status: NonEmptyString
     phase: NonEmptyString | None = None
+    dead_workers: list[NonEmptyString] = Field(default_factory=list)
+    non_reporting_workers: list[NonEmptyString] = Field(default_factory=list)
 
 
 class TeamAwaitSnapshot(BaseModel):
@@ -38,6 +40,8 @@ class TeamAwaitSnapshot(BaseModel):
     status: NonEmptyString
     cursor: NonEmptyString | None = None
     event_type: NonEmptyString | None = None
+    event_worker: NonEmptyString | None = None
+    event_task_id: NonEmptyString | None = None
 
 
 class TeamApiListTasksRequest(BaseModel):
@@ -54,9 +58,9 @@ class TeamApiTaskSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: NonEmptyString
+    subject: NonEmptyString
     status: NonEmptyString
-    title: str | None = None
-    assignee: str | None = None
+    owner: NonEmptyString | None = None
 
 
 class TeamApiListTasksSnapshot(BaseModel):
@@ -82,9 +86,9 @@ class TeamApiEventSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     type: NonEmptyString
-    cursor: str | None = None
-    worker: str | None = None
-    task_id: str | None = None
+    worker: NonEmptyString | None = None
+    task_id: NonEmptyString | None = None
+    message_id: NonEmptyString | None = None
 
 
 class TeamApiReadEventsSnapshot(BaseModel):

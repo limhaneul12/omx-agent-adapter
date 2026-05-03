@@ -1,10 +1,9 @@
 import asyncio
 
-import orjson
-
 from execution.invoke import run_omx_command
 from schemas.bridge_schemas import AdapterProbeRequest, AdapterStatusSnapshot
 from shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from shared.json_transport import load_json_object_stdout
 
 
 async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnapshot:
@@ -27,18 +26,11 @@ async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnap
 
 def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     """Normalizes one `omx adapt <target> status --json` payload."""
-    if not stdout:
-        raise BridgeSurfaceError("omx adapt status returned no stdout output")
-
-    try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
-        raise BridgeSurfaceError(
-            "omx adapt status returned unparseable JSON output"
-        ) from error
-
-    if not isinstance(parsed_payload, dict):
-        raise BridgeSurfaceError("omx adapt status returned a non-object JSON payload")
+    parsed_payload: dict[str, object] = load_json_object_stdout(
+        stdout,
+        command_name="omx adapt status",
+        error_type=BridgeSurfaceError,
+    )
 
     adapter_payload: object | None = parsed_payload.get("adapter")
     adapter_state: object | None = None

@@ -61,6 +61,21 @@ def test_team_status_snapshot_accepts_optional_phase() -> None:
     assert result.phase == "team-exec"
 
 
+def test_team_status_snapshot_accepts_worker_edge_lists() -> None:
+    result = TeamStatusSnapshot.model_validate(
+        {
+            "team_name": "alpha",
+            "status": "ok",
+            "phase": "team-exec",
+            "dead_workers": ["worker-2"],
+            "non_reporting_workers": ["worker-3"],
+        }
+    )
+
+    assert result.dead_workers == ["worker-2"]
+    assert result.non_reporting_workers == ["worker-3"]
+
+
 def test_team_status_snapshot_rejects_unexpected_extra_fields() -> None:
     with pytest.raises(ValidationError):
         TeamStatusSnapshot.model_validate(
@@ -93,6 +108,22 @@ def test_team_await_snapshot_accepts_cursor_and_event_type() -> None:
     assert result.status == "active"
     assert result.cursor == "cursor-1"
     assert result.event_type == "worker_completed"
+
+
+def test_team_await_snapshot_accepts_event_worker_and_task_id() -> None:
+    result = TeamAwaitSnapshot.model_validate(
+        {
+            "team_name": "alpha",
+            "status": "event",
+            "cursor": "cursor-1",
+            "event_type": "task_completed",
+            "event_worker": "worker-3",
+            "event_task_id": "4",
+        }
+    )
+
+    assert result.event_worker == "worker-3"
+    assert result.event_task_id == "4"
 
 
 def test_team_await_snapshot_rejects_unexpected_extra_fields() -> None:

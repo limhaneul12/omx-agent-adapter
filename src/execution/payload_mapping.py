@@ -40,8 +40,10 @@ def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
     if event_type == "item.completed":
         item: object | None = payload.get("item")
         if isinstance(item, dict):
-            split_payloads: list[ExecutionPayload] = [item]
-            return split_payloads
+            item_payload: ExecutionPayload = item
+            if is_promotable_execution_payload(item_payload):
+                split_payloads: list[ExecutionPayload] = [item_payload]
+                return split_payloads
 
     split_payloads: list[ExecutionPayload] = [payload]
     return split_payloads

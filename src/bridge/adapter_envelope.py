@@ -1,10 +1,9 @@
 import asyncio
 
-import orjson
-
 from execution.invoke import run_omx_command
 from schemas.bridge_schemas import AdapterEnvelopeSnapshot, AdapterProbeRequest
 from shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from shared.json_transport import load_json_object_stdout
 
 
 async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelopeSnapshot:
@@ -27,20 +26,11 @@ async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelope
 
 def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     """Normalizes one `omx adapt <target> envelope --json` payload."""
-    if not stdout:
-        raise BridgeSurfaceError("omx adapt envelope returned no stdout output")
-
-    try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
-        raise BridgeSurfaceError(
-            "omx adapt envelope returned unparseable JSON output"
-        ) from error
-
-    if not isinstance(parsed_payload, dict):
-        raise BridgeSurfaceError(
-            "omx adapt envelope returned a non-object JSON payload"
-        )
+    parsed_payload: dict[str, object] = load_json_object_stdout(
+        stdout,
+        command_name="omx adapt envelope",
+        error_type=BridgeSurfaceError,
+    )
 
     target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
     target_runtime_state: object | None = None

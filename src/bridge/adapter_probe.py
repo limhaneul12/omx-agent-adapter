@@ -1,10 +1,9 @@
 import asyncio
 
-import orjson
-
 from execution.invoke import run_omx_command
 from schemas.bridge_schemas import AdapterProbeRequest, AdapterProbeSnapshot
 from shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from shared.json_transport import load_json_object_stdout
 
 
 async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
@@ -37,18 +36,11 @@ def _normalize_adapter_probe(stdout: str) -> AdapterProbeSnapshot:
     Raises:
         BridgeSurfaceError: Raised when the transport is empty, not JSON, or not a JSON object.
     """
-    if not stdout:
-        raise BridgeSurfaceError("omx adapt probe returned no stdout output")
-
-    try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
-        raise BridgeSurfaceError(
-            "omx adapt probe returned unparseable JSON output"
-        ) from error
-
-    if not isinstance(parsed_payload, dict):
-        raise BridgeSurfaceError("omx adapt probe returned a non-object JSON payload")
+    parsed_payload: dict[str, object] = load_json_object_stdout(
+        stdout,
+        command_name="omx adapt probe",
+        error_type=BridgeSurfaceError,
+    )
 
     target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
     target_runtime_state: object | None = None

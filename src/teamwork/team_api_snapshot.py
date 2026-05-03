@@ -54,6 +54,40 @@ def _normalize_team_api_payload(stdout: str, operation_name: str) -> dict[str, o
     return result
 
 
+def _normalize_team_api_task_payload(task_payload: object) -> dict[str, object]:
+    """Normalizes one raw team-api task item into the typed read-only subset."""
+
+    if not isinstance(task_payload, dict):
+        raise TeamworkSurfaceError(
+            "omx team api list-tasks returned a non-object task payload"
+        )
+
+    normalized_payload: dict[str, object] = {
+        "id": task_payload.get("id"),
+        "subject": task_payload.get("subject", task_payload.get("title")),
+        "status": task_payload.get("status"),
+        "owner": task_payload.get("owner", task_payload.get("assignee")),
+    }
+    return normalized_payload
+
+
+def _normalize_team_api_event_payload(event_payload: object) -> dict[str, object]:
+    """Normalizes one raw team-api event item into the typed read-only subset."""
+
+    if not isinstance(event_payload, dict):
+        raise TeamworkSurfaceError(
+            "omx team api read-events returned a non-object event payload"
+        )
+
+    normalized_payload: dict[str, object] = {
+        "type": event_payload.get("type"),
+        "worker": event_payload.get("worker"),
+        "task_id": event_payload.get("task_id"),
+        "message_id": event_payload.get("message_id"),
+    }
+    return normalized_payload
+
+
 async def read_team_api_list_tasks(
     request: TeamApiListTasksRequest,
 ) -> TeamApiListTasksSnapshot:
@@ -77,10 +111,20 @@ async def read_team_api_list_tasks(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    normalized_payload: dict[str, object] = _normalize_team_api_payload(
+    data_payload: dict[str, object] = _normalize_team_api_payload(
         stdout,
         "omx team api list-tasks",
     )
+    raw_tasks: object = data_payload.get("tasks")
+    normalized_payload: dict[str, object] = {
+        "count": data_payload.get("count"),
+        "tasks": raw_tasks,
+    }
+    if isinstance(raw_tasks, list):
+        normalized_payload["tasks"] = [
+            _normalize_team_api_task_payload(task_payload)
+            for task_payload in raw_tasks
+        ]
     result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
         normalized_payload
     )
@@ -110,10 +154,21 @@ async def read_team_api_read_events(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    normalized_payload: dict[str, object] = _normalize_team_api_payload(
+    data_payload: dict[str, object] = _normalize_team_api_payload(
         stdout,
         "omx team api read-events",
     )
+    raw_events: object = data_payload.get("events")
+    normalized_payload: dict[str, object] = {
+        "count": data_payload.get("count"),
+        "cursor": data_payload.get("cursor"),
+        "events": raw_events,
+    }
+    if isinstance(raw_events, list):
+        normalized_payload["events"] = [
+            _normalize_team_api_event_payload(event_payload)
+            for event_payload in raw_events
+        ]
     result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
         normalized_payload
     )

@@ -2,8 +2,6 @@
 
 import asyncio
 
-import orjson
-
 from execution.invoke import run_omx_command
 from schemas.runtime_schemas import (
     ActiveRuntimeModes,
@@ -14,6 +12,7 @@ from schemas.runtime_schemas import (
     RuntimeStatusRequest,
 )
 from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+from shared.json_transport import load_json_object_stdout
 
 IDLE_RUNTIME_SUMMARY = "No active modes."
 ACTIVE_MODE_MARKER = "active"
@@ -94,22 +93,11 @@ def _normalize_active_runtime_modes(stdout: str) -> ActiveRuntimeModes:
     Raises:
         RuntimeSurfaceError: Raised when the transport is empty, not JSON, or not a JSON object.
     """
-    if not stdout:
-        raise RuntimeSurfaceError(
-            "omx state list-active returned no stdout output"
-        )
-
-    try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
-        raise RuntimeSurfaceError(
-            "omx state list-active returned unparseable JSON output"
-        ) from error
-
-    if not isinstance(parsed_payload, dict):
-        raise RuntimeSurfaceError(
-            "omx state list-active returned a non-object JSON payload"
-        )
+    parsed_payload: dict[str, object] = load_json_object_stdout(
+        stdout,
+        command_name="omx state list-active",
+        error_type=RuntimeSurfaceError,
+    )
 
     result: ActiveRuntimeModes = ActiveRuntimeModes.model_validate(parsed_payload)
     return result
