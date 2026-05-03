@@ -12,6 +12,15 @@ def _command_failure_exit_code(error: OSError) -> int:
     return 1
 
 
+def _normalize_completed_process_stream_text(stream_text: str | None) -> str:
+    if stream_text is None:
+        normalized_stream_text: str = ""
+        return normalized_stream_text
+
+    normalized_stream_text = stream_text
+    return normalized_stream_text
+
+
 def run_omx_command(
     arguments: Sequence[str],
     cwd: str | None = None,
@@ -40,9 +49,15 @@ def run_omx_command(
             stdout="",
             stderr=str(error),
         )
+    stdout_text: str = _normalize_completed_process_stream_text(
+        completed_process.stdout
+    )
+    stderr_text: str = _normalize_completed_process_stream_text(
+        completed_process.stderr
+    )
     command_result: OmxCommandResult = OmxCommandResult(
         exit_code=completed_process.returncode,
-        stdout=completed_process.stdout or "",
-        stderr=completed_process.stderr or "",
+        stdout=stdout_text,
+        stderr=stderr_text,
     )
     return command_result

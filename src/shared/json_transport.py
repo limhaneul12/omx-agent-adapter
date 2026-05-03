@@ -1,12 +1,14 @@
 import orjson
 
+from transport_types import TransportObject
+
 
 def load_json_object_stdout[SurfaceErrorT: Exception](
     stdout: str,
     *,
     command_name: str,
     error_type: type[SurfaceErrorT],
-) -> dict[str, object]:
+) -> TransportObject:
     """Parses command stdout as a JSON object for adapter transport seams."""
     if not stdout:
         raise error_type(f"{command_name} returned no stdout output")
@@ -21,5 +23,5 @@ def load_json_object_stdout[SurfaceErrorT: Exception](
     if not isinstance(parsed_payload, dict):
         raise error_type(f"{command_name} returned a non-object JSON payload")
 
-    result: dict[str, object] = dict(parsed_payload)
+    result: TransportObject = dict(parsed_payload)
     return result

@@ -10,9 +10,10 @@ from schemas.execution_schemas import (
     ToolInteractionState,
 )
 from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
+from transport_types import TransportObject
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
-ExecutionPayload = dict[str, object]
+ExecutionPayload = TransportObject
 ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
 RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
@@ -174,9 +175,11 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
         ),
         None,
     )
-    interaction_state: ToolInteractionState = (
-        "missing_result" if tool_result is None else "completed"
-    )
+    interaction_state: ToolInteractionState
+    if tool_result is None:
+        interaction_state = "missing_result"
+    else:
+        interaction_state = "completed"
     interaction: ToolInteraction = ToolInteraction(
         state=interaction_state,
         call=tool_call,

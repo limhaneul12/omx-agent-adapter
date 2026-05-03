@@ -92,12 +92,14 @@ class ToolInteraction(BaseModel):
 
     @model_validator(mode="after")
     def _validate_state(self) -> "ToolInteraction":
-        expected_state: ToolInteractionState = (
-            "missing_result" if self.result is None else "completed"
-        )
+        expected_state: ToolInteractionState
+        if self.result is None:
+            expected_state = "missing_result"
+        else:
+            expected_state = "completed"
         if self.state != expected_state:
             raise ValueError(
-                "tool interaction state must match result presence"
+                "ToolInteraction.state must match whether result is present"
             )
         validated_interaction: ToolInteraction = self
         return validated_interaction
