@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiListTasksSnapshot,
     TeamApiReadEventsRequest,

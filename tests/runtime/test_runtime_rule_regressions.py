@@ -1,14 +1,14 @@
 import asyncio
 from unittest.mock import Mock
 
-from runtime.runtime_snapshot import read_runtime_status
-from schemas.runtime_schemas import RuntimeStatusRequest
+from omx_remote.runtime.runtime_snapshot import read_runtime_status
+from omx_remote.schemas.runtime_schemas import RuntimeStatusRequest
 
 
 def test_read_runtime_status_accepts_missing_request_without_or_fallback(monkeypatch) -> None:
     mock_result = Mock(stdout="No active modes.\n", stderr="")
     monkeypatch.setattr(
-        "runtime.runtime_snapshot.run_omx_command",
+        "omx_remote.runtime.runtime_snapshot.run_omx_command",
         lambda arguments: mock_result,
     )
 
@@ -21,7 +21,7 @@ def test_read_runtime_status_accepts_missing_request_without_or_fallback(monkeyp
 def test_read_runtime_status_accepts_explicit_request_object(monkeypatch) -> None:
     mock_result = Mock(stdout="No active modes.\n", stderr="")
     monkeypatch.setattr(
-        "runtime.runtime_snapshot.run_omx_command",
+        "omx_remote.runtime.runtime_snapshot.run_omx_command",
         lambda arguments: mock_result,
     )
 

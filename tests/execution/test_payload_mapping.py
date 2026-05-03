@@ -1,6 +1,6 @@
 import pytest
 
-from execution.payload_mapping import (
+from omx_remote.execution.payload_mapping import (
     build_tool_interaction,
     build_tool_interaction_report,
     build_tool_interactions,
@@ -14,7 +14,7 @@ from execution.payload_mapping import (
     route_execution_payload,
     split_event_payloads,
 )
-from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
+from omx_remote.shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
 
 
 def test_split_event_payloads_returns_payload_by_default() -> None:

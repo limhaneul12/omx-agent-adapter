@@ -1,12 +1,8 @@
 import asyncio
 import inspect
 
-import pytest
-from pydantic import ValidationError
-
-from runtime import runtime_snapshot
-from schemas.runtime_schemas import RuntimeStatusRequest
-from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+from omx_remote.runtime import runtime_snapshot
+from omx_remote.schemas.runtime_schemas import RuntimeStatusRequest
 
 
 class DummyResult:
@@ -131,6 +127,39 @@ def test_read_runtime_status_builds_per_mode_snapshots_for_mixed_statuses(
         False,
         False,
     ]
+
+
+def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomalies(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(
+            stdout="hud: inactive (phase: n/a)\nralph: ACTIVE (phase: starting)\nteam: inactive (phase: cancelled)\n"
+        ),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.has_active_modes is True
+    assert result.active_mode_names == ["ralph"]
+    assert result.mode_statuses == {
+        "hud": "idle",
+        "ralph": "active",
+        "team": "idle",
+    }
+    assert [mode_snapshot.status for mode_snapshot in result.mode_snapshots] == [
+        "idle",
+        "active",
+        "idle",
+    ]
+    assert [mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots] == [
+        "inactive (phase: n/a)",
+        "ACTIVE (phase: starting)",
+        "inactive (phase: cancelled)",
+    ]
+    assert result.anomalies == []
 
 
 def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:

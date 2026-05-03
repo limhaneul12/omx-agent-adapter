@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import NonEmptyString
 
 
 class TeamStatusRequest(BaseModel):

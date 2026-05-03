@@ -1,6 +1,6 @@
 import subprocess
 
-from execution.invoke import run_omx_command
+from omx_remote.execution.invoke import run_omx_command
 
 
 def test_run_omx_command_normalizes_none_streams_without_or_fallback(monkeypatch) -> None:

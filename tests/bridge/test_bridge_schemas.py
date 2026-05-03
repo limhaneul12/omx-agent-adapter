@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.bridge_schemas import (
+from omx_remote.schemas.bridge_schemas import (
     AdapterCapabilitySnapshot,
     AdapterEnvelopeSnapshot,
     AdapterProbeRequest,

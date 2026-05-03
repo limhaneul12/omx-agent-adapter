@@ -2,21 +2,21 @@ import asyncio
 
 import orjson
 
-from adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teamwork_types import (
     TeamAwaitNormalizedPayload,
     TeamAwaitTransportEventPayload,
     TeamAwaitTransportPayload,
     TeamStatusNormalizedPayload,
     TeamStatusTransportPayload,
 )
-from execution.invoke import run_omx_command
-from schemas.teamwork_schemas import (
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.teamwork_schemas import (
     TeamAwaitRequest,
     TeamAwaitSnapshot,
     TeamStatusRequest,
     TeamStatusSnapshot,
 )
-from shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 
 
 async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
@@ -145,6 +145,11 @@ def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
         stdout
     )
 
+    cursor_payload: object | None = parsed_payload.get("cursor")
+    normalized_cursor: object | None = cursor_payload
+    if cursor_payload == "":
+        normalized_cursor = None
+
     event_payload: object | None = parsed_payload.get("event")
     event_type: str | None = None
     event_worker: str | None = None
@@ -168,7 +173,7 @@ def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
     normalized_payload: TeamAwaitNormalizedPayload = {
         "team_name": parsed_payload.get("team_name"),
         "status": parsed_payload.get("status"),
-        "cursor": parsed_payload.get("cursor"),
+        "cursor": normalized_cursor,
         "event_type": event_type,
         "event_worker": event_worker,
         "event_task_id": event_task_id,

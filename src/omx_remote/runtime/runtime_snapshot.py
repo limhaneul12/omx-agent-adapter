@@ -2,8 +2,8 @@
 
 import asyncio
 
-from execution.invoke import run_omx_command
-from schemas.runtime_schemas import (
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.runtime_schemas import (
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatus,
@@ -18,6 +18,12 @@ KNOWN_MODE_STATUS_MARKERS: tuple[RuntimeModeStatus, ...] = (
     "paused",
     "idle",
     "unknown",
+)
+RUNTIME_STATUS_PREFIXES: tuple[tuple[str, RuntimeModeStatus], ...] = (
+    ("active", "active"),
+    ("paused", "paused"),
+    ("idle", "idle"),
+    ("inactive", "idle"),
 )
 
 
@@ -270,16 +276,23 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
     if not normalized_mode_name:
         return None
 
-    parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None
-    if normalized_status_text == "active":
-        parsed_mode_status_entry = (normalized_mode_name, "active", raw_status_text)
-        return parsed_mode_status_entry
-    if normalized_status_text == "paused":
-        parsed_mode_status_entry = (normalized_mode_name, "paused", raw_status_text)
-        return parsed_mode_status_entry
-    if normalized_status_text == "idle":
-        parsed_mode_status_entry = (normalized_mode_name, "idle", raw_status_text)
-        return parsed_mode_status_entry
+    status_prefix: str
+    normalized_status: RuntimeModeStatus
+    for status_prefix, normalized_status in RUNTIME_STATUS_PREFIXES:
+        if normalized_status_text == status_prefix:
+            parsed_mode_status_entry = (
+                normalized_mode_name,
+                normalized_status,
+                raw_status_text,
+            )
+            return parsed_mode_status_entry
+        if normalized_status_text.startswith(f"{status_prefix} "):
+            parsed_mode_status_entry = (
+                normalized_mode_name,
+                normalized_status,
+                raw_status_text,
+            )
+            return parsed_mode_status_entry
 
     parsed_mode_status_entry = (normalized_mode_name, "unknown", raw_status_text)
     return parsed_mode_status_entry

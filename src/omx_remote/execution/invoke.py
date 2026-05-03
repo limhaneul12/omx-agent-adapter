@@ -1,7 +1,7 @@
 import subprocess
 from collections.abc import Sequence
 
-from schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_schemas import OmxCommandResult
 
 
 def _command_failure_exit_code(error: OSError) -> int:

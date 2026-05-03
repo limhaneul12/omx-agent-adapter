@@ -3,8 +3,8 @@ import subprocess
 import pytest
 from pydantic import ValidationError
 
-from execution.invoke import run_omx_command
-from schemas.invoke_schemas import OmxCommandResult
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.invoke_schemas import OmxCommandResult
 
 
 def test_omx_command_result_accepts_exit_code_stdout_and_stderr() -> None:

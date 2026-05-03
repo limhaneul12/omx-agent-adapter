@@ -4,9 +4,9 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from history import session_search
-from schemas.history_schemas import SessionSearchRequest
-from shared.exceptions.history_exceptions import HistorySurfaceError
+from omx_remote.history import session_search
+from omx_remote.schemas.history_schemas import SessionSearchRequest
+from omx_remote.shared.exceptions.history_exceptions import HistorySurfaceError
 
 
 class DummyResult:

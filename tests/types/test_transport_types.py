@@ -1,4 +1,4 @@
-from adapter_types.bridge_types import (
+from omx_remote.adapter_types.bridge_types import (
     AdapterEnvelopeNormalizedPayload,
     AdapterEnvelopeTransportPayload,
     AdapterProbeNormalizedPayload,
@@ -6,19 +6,19 @@ from adapter_types.bridge_types import (
     AdapterStatusNormalizedPayload,
     AdapterStatusTransportPayload,
 )
-from adapter_types.execution_types import (
+from omx_remote.adapter_types.execution_types import (
     ExecMessageNormalizedPayload,
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
     ExecutionTransportPayload,
 )
-from adapter_types.history_types import (
+from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchTransportPayload,
 )
-from adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
-from adapter_types.teamwork_types import (
+from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
+from omx_remote.adapter_types.teamwork_types import (
     TeamApiListTasksNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiTransportPayload,

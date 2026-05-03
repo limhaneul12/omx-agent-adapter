@@ -4,9 +4,9 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from schemas.teamwork_schemas import TeamAwaitRequest, TeamStatusRequest
-from shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
-from teamwork import team_snapshot
+from omx_remote.schemas.teamwork_schemas import TeamAwaitRequest, TeamStatusRequest
+from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.teamwork import team_snapshot
 
 
 class DummyResult:
@@ -163,6 +163,25 @@ def test_await_team_status_exposes_event_worker_and_task_id(monkeypatch) -> None
     assert result.event_type == "task_completed"
     assert result.event_worker == "worker-3"
     assert result.event_task_id == "4"
+
+
+def test_await_team_status_normalizes_empty_cursor_to_none(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"team_name":"missing-team","status":"missing","cursor":""}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_snapshot.await_team_status(TeamAwaitRequest(team_name="missing-team"))
+    )
+
+    assert result.team_name == "missing-team"
+    assert result.status == "missing"
+    assert result.cursor is None
+    assert result.event_type is None
 
 
 def test_await_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:

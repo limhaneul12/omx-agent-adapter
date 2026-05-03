@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.execution_schemas import (
+from omx_remote.schemas.execution_schemas import (
     ExecMessage,
     ExecRequest,
     ExecToolCall,
@@ -9,7 +9,7 @@ from schemas.execution_schemas import (
     ExecutionEventDecodeRequest,
     ToolInteraction,
 )
-from shared.omx_enums.execution_enums import ExecutionPayloadKind
+from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
 
 
 def test_exec_request_accepts_prompt_and_optional_cwd() -> None:

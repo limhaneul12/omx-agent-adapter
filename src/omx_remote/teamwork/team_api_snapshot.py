@@ -2,7 +2,7 @@ import asyncio
 
 import orjson
 
-from adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teamwork_types import (
     TeamApiEnvelopePayload,
     TeamApiListTasksNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
@@ -10,14 +10,14 @@ from adapter_types.teamwork_types import (
     TeamApiTransportPayload,
     TeamApiTransportTaskPayload,
 )
-from execution.invoke import run_omx_command
-from schemas.teamwork_schemas import (
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiListTasksSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadEventsSnapshot,
 )
-from shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 
 
 def _validate_count_matches_length(

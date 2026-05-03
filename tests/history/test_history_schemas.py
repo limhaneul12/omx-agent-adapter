@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.history_schemas import (
+from omx_remote.schemas.history_schemas import (
     SessionSearchRequest,
     SessionSearchResultSnapshot,
     SessionSearchSnapshot,

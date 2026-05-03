@@ -4,12 +4,12 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiReadEventsRequest,
 )
-from shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
-from teamwork import team_api_snapshot
+from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.teamwork import team_api_snapshot
 
 
 class DummyResult:

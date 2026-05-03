@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import NonEmptyString
 
 RuntimeModeStatus = Literal["active", "paused", "idle", "unknown"]
 RuntimeStatusAnomalyCategory = Literal[

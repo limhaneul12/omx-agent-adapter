@@ -2,14 +2,17 @@ import asyncio
 
 import orjson
 
-from adapter_types.history_types import (
+from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchTransportPayload,
     SessionSearchTransportResultPayload,
 )
-from execution.invoke import run_omx_command
-from schemas.history_schemas import SessionSearchRequest, SessionSearchSnapshot
-from shared.exceptions.history_exceptions import HistorySurfaceError
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.history_schemas import (
+    SessionSearchRequest,
+    SessionSearchSnapshot,
+)
+from omx_remote.shared.exceptions.history_exceptions import HistorySurfaceError
 
 
 async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapshot:

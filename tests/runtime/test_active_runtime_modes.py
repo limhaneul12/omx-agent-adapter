@@ -3,8 +3,8 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-from runtime import active_runtime_modes
-from shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+from omx_remote.runtime import active_runtime_modes
+from omx_remote.shared.exceptions.runtime_exceptions import RuntimeSurfaceError
 
 
 class DummyResult:

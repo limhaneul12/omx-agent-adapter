@@ -1,11 +1,11 @@
-from adapter_types.execution_types import (
+from omx_remote.adapter_types.execution_types import (
     ExecMessageNormalizedPayload,
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
     ExecutionTransportPayload,
 )
-from schemas.execution_schemas import (
+from omx_remote.schemas.execution_schemas import (
     ExecMessage,
     ExecOutput,
     ExecToolCall,
@@ -16,7 +16,9 @@ from schemas.execution_schemas import (
     ToolInteractionReport,
     ToolInteractionState,
 )
-from shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
+from omx_remote.shared.exceptions.execution_exceptions import (
+    UnsupportedExecutionPayloadError,
+)
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
 ExecutionPayload = ExecutionTransportPayload

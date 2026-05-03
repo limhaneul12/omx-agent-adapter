@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.execution_schemas import ToolInteraction
+from omx_remote.schemas.execution_schemas import ToolInteraction
 
 
 def test_tool_interaction_accepts_completed_state_when_result_is_present() -> None:

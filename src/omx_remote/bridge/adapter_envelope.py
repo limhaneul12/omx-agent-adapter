@@ -2,14 +2,17 @@ import asyncio
 
 import orjson
 
-from adapter_types.bridge_types import (
+from omx_remote.adapter_types.bridge_types import (
     AdapterEnvelopeNormalizedPayload,
     AdapterEnvelopeRuntimePayload,
     AdapterEnvelopeTransportPayload,
 )
-from execution.invoke import run_omx_command
-from schemas.bridge_schemas import AdapterEnvelopeSnapshot, AdapterProbeRequest
-from shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.bridge_schemas import (
+    AdapterEnvelopeSnapshot,
+    AdapterProbeRequest,
+)
+from omx_remote.shared.exceptions.bridge_exceptions import BridgeSurfaceError
 
 
 async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelopeSnapshot:

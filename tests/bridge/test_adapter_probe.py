@@ -4,9 +4,9 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from bridge import adapter_probe
-from schemas.bridge_schemas import AdapterProbeRequest
-from shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from omx_remote.bridge import adapter_probe
+from omx_remote.schemas.bridge_schemas import AdapterProbeRequest
+from omx_remote.shared.exceptions.bridge_exceptions import BridgeSurfaceError
 
 
 class DummyResult:

@@ -2,12 +2,12 @@ import asyncio
 
 import orjson
 
-from execution.payload_mapping import (
+from omx_remote.execution.payload_mapping import (
     ExecutionPayload,
     load_execution_payload,
     split_event_payloads,
 )
-from schemas.execution_schemas import ExecutionEventDecodeRequest
+from omx_remote.schemas.execution_schemas import ExecutionEventDecodeRequest
 
 
 async def decode_event_lines(

@@ -4,8 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from schemas.common_schemas import NonEmptyString
-from shared.omx_enums.execution_enums import ExecutionPayloadKind
+from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
 
 ToolInteractionState = Literal["completed", "missing_result"]
 ExecutionAnomalyCategory = Literal[

@@ -1,6 +1,6 @@
 import pytest
 
-from execution.payload_mapping import build_tool_interaction_report, promote_execution_contract
+from omx_remote.execution.payload_mapping import build_tool_interaction_report, promote_execution_contract
 
 
 def test_build_tool_interaction_report_preserves_anomaly_category_order() -> None:

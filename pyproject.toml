@@ -28,14 +28,14 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-  "src/**/*.py",
+  "src/omx_remote/**/*.py",
   "omx_agent_adapter_cli.py",
   "README.md",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src"]
-force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py"}
+packages = ["src/omx_remote"]
+force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py", "src/omx_remote" = "omx_remote"}
 
 [tool.ruff]
 target-version = "py313"
@@ -67,7 +67,7 @@ indent-style = "space"
 
 [tool.pyrefly]
 python-version = "3.13"
-project-includes = ["src"]
+project-includes = ["src/omx_remote"]
 project-excludes = [
   "**/tests/**",
   "**/__pycache__",
@@ -80,10 +80,10 @@ project-excludes = [
   "**/.pytest_cache/**",
   "**/.git/**",
 ]
-search-path = ["src"]
+search-path = ["src/omx_remote"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "src/omx_remote"]
 addopts = "--strict-markers"
 norecursedirs = [".venv", ".pytest_cache", ".ruff_cache", "node_modules"]

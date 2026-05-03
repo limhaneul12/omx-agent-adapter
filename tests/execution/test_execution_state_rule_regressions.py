@@ -1,7 +1,7 @@
 import pytest
 
-from execution.payload_mapping import build_tool_interaction
-from schemas.execution_schemas import ExecToolCall, ExecToolResult
+from omx_remote.execution.payload_mapping import build_tool_interaction
+from omx_remote.schemas.execution_schemas import ExecToolCall, ExecToolResult
 
 
 def test_build_tool_interaction_returns_completed_state_without_ternary_shortcuts() -> None:
