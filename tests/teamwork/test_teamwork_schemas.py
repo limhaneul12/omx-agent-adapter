@@ -2,6 +2,10 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.schemas.teamwork_schemas import (
+    TeamApiEventSnapshot,
+    TeamApiListTasksRequest,
+    TeamApiReadEventsRequest,
+    TeamApiTaskSnapshot,
     TeamAwaitRequest,
     TeamAwaitSnapshot,
     TeamStatusRequest,
@@ -39,6 +43,39 @@ def test_team_await_request_rejects_empty_team_name() -> None:
 def test_team_await_request_rejects_unexpected_extra_fields() -> None:
     with pytest.raises(ValidationError):
         TeamAwaitRequest.model_validate({"team_name": "alpha", "unexpected": True})
+
+
+def test_team_api_list_tasks_request_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiListTasksRequest.model_validate(
+            {"team_name": "alpha", "unexpected": True}
+        )
+
+
+def test_team_api_read_events_request_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiReadEventsRequest.model_validate(
+            {"team_name": "alpha", "unexpected": True}
+        )
+
+
+def test_team_api_task_snapshot_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiTaskSnapshot.model_validate(
+            {
+                "id": "1",
+                "subject": "task",
+                "status": "pending",
+                "unexpected": True,
+            }
+        )
+
+
+def test_team_api_event_snapshot_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiEventSnapshot.model_validate(
+            {"type": "message_received", "unexpected": True}
+        )
 
 
 def test_team_status_snapshot_accepts_minimal_missing_team_payload() -> None:

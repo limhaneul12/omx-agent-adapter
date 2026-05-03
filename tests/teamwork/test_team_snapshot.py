@@ -62,6 +62,25 @@ def test_read_team_status_normalizes_current_phase_to_phase(monkeypatch) -> None
     assert result.phase == "team-exec"
 
 
+def test_read_team_status_defaults_missing_worker_edge_lists_to_empty_lists(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"team_name":"alpha","status":"ok","phase":"team-exec","non_reporting_workers":["worker-3"]}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_snapshot.read_team_status(TeamStatusRequest(team_name="alpha"))
+    )
+
+    assert result.dead_workers == []
+    assert result.non_reporting_workers == ["worker-3"]
+
+
 def test_read_team_status_exposes_worker_edge_lists(monkeypatch) -> None:
     monkeypatch.setattr(
         team_snapshot,
@@ -182,6 +201,25 @@ def test_await_team_status_normalizes_empty_cursor_to_none(monkeypatch) -> None:
     assert result.status == "missing"
     assert result.cursor is None
     assert result.event_type is None
+
+
+def test_await_team_status_ignores_non_object_event_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"team_name":"alpha","status":"active","cursor":"cursor-1","event":[]}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_snapshot.await_team_status(TeamAwaitRequest(team_name="alpha"))
+    )
+
+    assert result.cursor == "cursor-1"
+    assert result.event_type is None
+    assert result.event_worker is None
+    assert result.event_task_id is None
 
 
 def test_await_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:

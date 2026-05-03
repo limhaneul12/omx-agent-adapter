@@ -109,6 +109,23 @@ def test_read_team_api_list_tasks_normalizes_live_task_payload_shape(
     assert result.tasks[0].owner == "worker-1"
 
 
+def test_read_team_api_list_tasks_rejects_count_mismatch(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":2,"tasks":[{"id":"1","subject":"task","status":"pending","owner":"worker-1"}]}}\n'
+        ),
+    )
+
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_list_tasks(
+                TeamApiListTasksRequest(team_name="alpha")
+            )
+        )
+
+
 def test_read_team_api_read_events_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_events)
 
@@ -185,6 +202,31 @@ def test_read_team_api_read_events_normalizes_live_event_payload_shape(
     assert result.events[1].type == "task_completed"
     assert result.events[1].worker == "worker-3"
     assert result.events[1].task_id == "4"
+
+
+def test_read_team_api_read_events_rejects_count_mismatch(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":2,"cursor":"cursor-1","events":[{"type":"message_received","worker":"leader-fixed","message_id":"message-1"}]}}\n'
+        ),
+    )
+
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_read_events(
+                TeamApiReadEventsRequest(team_name="alpha")
+            )
+        )
+
+
+def test_load_team_api_payload_rejects_null_transport_payload() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_snapshot._load_team_api_payload(
+            'null',
+            "omx team api list-tasks",
+        )
 
 
 def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
