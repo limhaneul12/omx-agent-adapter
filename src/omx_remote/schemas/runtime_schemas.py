@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString
 
@@ -17,6 +17,14 @@ class RuntimeStatusRequest(BaseModel):
     """Represents the typed request boundary for runtime status reads."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class RuntimeModeStatusRequest(BaseModel):
+    """Represents the typed request boundary for runtime mode-status reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: NonEmptyString
 
 
 class ActiveRuntimeModes(BaseModel):
@@ -36,6 +44,41 @@ class RuntimeModeSnapshot(BaseModel):
     status: RuntimeModeStatus
     raw_status_text: str | None = None
     has_uncertainty: bool = False
+
+
+class RuntimeModeStatusSnapshot(BaseModel):
+    """Represents one normalized runtime mode-status lookup result."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: NonEmptyString
+    is_active: bool
+    phase: NonEmptyString | None = None
+    state_path: NonEmptyString | None = None
+
+
+class RuntimeModeStatusResult(BaseModel):
+    """Represents the normalized public result for one runtime mode-status read."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    requested_mode: NonEmptyString
+    found: bool
+    mode_snapshot: RuntimeModeStatusSnapshot | None = None
+
+    @model_validator(mode="after")
+    def _validate_mode_snapshot_presence(self) -> "RuntimeModeStatusResult":
+        """Validates that found-state and snapshot presence stay aligned."""
+        if self.found and self.mode_snapshot is None:
+            raise ValueError(
+                "RuntimeModeStatusResult.mode_snapshot is required when found is true"
+            )
+        if not self.found and self.mode_snapshot is not None:
+            raise ValueError(
+                "RuntimeModeStatusResult.mode_snapshot must be absent when found is false"
+            )
+        validated_result: RuntimeModeStatusResult = self
+        return validated_result
 
 
 class RuntimeStatusAnomaly(BaseModel):

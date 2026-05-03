@@ -1,0 +1,141 @@
+import asyncio
+import inspect
+
+import pytest
+from pydantic import ValidationError
+
+from omx_remote.runtime import runtime_mode_status
+from omx_remote.schemas.runtime_schemas import RuntimeModeStatusRequest
+from omx_remote.shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+
+
+class DummyResult:
+    def __init__(self, stdout: str = "{}", stderr: str = "") -> None:
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_read_runtime_mode_status_is_async() -> None:
+    assert inspect.iscoroutinefunction(runtime_mode_status.read_runtime_mode_status)
+
+
+def test_read_runtime_mode_status_returns_typed_snapshot(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"statuses":{"ralph":{"active":true,"phase":"starting","path":"/tmp/ralph-state.json","data":{"current_phase":"starting","iteration":0}}}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        runtime_mode_status.read_runtime_mode_status(
+            RuntimeModeStatusRequest(mode="ralph")
+        )
+    )
+
+    assert result.requested_mode == "ralph"
+    assert result.found is True
+    assert result.mode_snapshot is not None
+    assert result.mode_snapshot.name == "ralph"
+    assert result.mode_snapshot.is_active is True
+    assert result.mode_snapshot.phase == "starting"
+    assert result.mode_snapshot.state_path == "/tmp/ralph-state.json"
+
+
+def test_read_runtime_mode_status_returns_missing_result_for_unknown_mode(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout='{"statuses":{}}\n'),
+    )
+
+    result = asyncio.run(
+        runtime_mode_status.read_runtime_mode_status(
+            RuntimeModeStatusRequest(mode="missing-mode")
+        )
+    )
+
+    assert result.requested_mode == "missing-mode"
+    assert result.found is False
+    assert result.mode_snapshot is None
+
+
+def test_read_runtime_mode_status_uses_nested_current_phase_fallback(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"statuses":{"ralph":{"active":true,"path":"/tmp/ralph-state.json","data":{"current_phase":"executing"}}}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        runtime_mode_status.read_runtime_mode_status(
+            RuntimeModeStatusRequest(mode="ralph")
+        )
+    )
+
+    assert result.mode_snapshot is not None
+    assert result.mode_snapshot.phase == "executing"
+
+
+def test_read_runtime_mode_status_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout="not-json\n"),
+    )
+
+    with pytest.raises(RuntimeSurfaceError):
+        asyncio.run(
+            runtime_mode_status.read_runtime_mode_status(
+                RuntimeModeStatusRequest(mode="ralph")
+            )
+        )
+
+
+def test_read_runtime_mode_status_rejects_non_mapping_transport(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout='["ralph"]\n'),
+    )
+
+    with pytest.raises(RuntimeSurfaceError):
+        asyncio.run(
+            runtime_mode_status.read_runtime_mode_status(
+                RuntimeModeStatusRequest(mode="ralph")
+            )
+        )
+
+
+def test_read_runtime_mode_status_preserves_required_contract_validation(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout='{"statuses":{"ralph":{}}}\n'),
+    )
+
+    with pytest.raises(ValidationError):
+        asyncio.run(
+            runtime_mode_status.read_runtime_mode_status(
+                RuntimeModeStatusRequest(mode="ralph")
+            )
+        )
+
+
+def test_load_runtime_mode_status_payload_rejects_non_object_statuses_payload() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_mode_status._normalize_runtime_mode_status(
+            stdout='{"statuses":[]}',
+            requested_mode="ralph",
+        )
