@@ -15,6 +15,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadManifestRequest,
     TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshotRequest,
+    TeamApiReadWorkerStatusRequest,
+    TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_api_snapshot
@@ -541,24 +543,54 @@ def test_read_team_api_read_manifest_error_returns_typed_error_payload(monkeypat
     assert result.message == "manifest_not_found"
 
 
-def test_read_team_api_read_manifest_returns_typed_snapshot(monkeypatch) -> None:
+def test_read_team_api_read_worker_status_is_async() -> None:
+    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_worker_status)
+
+
+def test_read_team_api_read_worker_status_accepts_typed_request() -> None:
+    coroutine = team_api_snapshot.read_team_api_read_worker_status(
+        TeamApiReadWorkerStatusRequest(team_name="alpha", worker="worker-1")
+    )
+
+    assert inspect.isawaitable(coroutine)
+    asyncio.run(coroutine)
+
+
+def test_read_team_api_read_worker_status_returns_typed_snapshot(monkeypatch) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
         lambda arguments: DummyResult(
-            stdout='{"schema_version":"1.0","ok":true,"operation":"read-manifest","data":{"manifest":{"schema_version":2,"name":"alpha","workers":[{"name":"worker-1"}]}}}\n'
+            stdout='{"schema_version":"1.0","ok":true,"operation":"read-worker-status","data":{"worker":"worker-1","status":{"state":"unknown","updated_at":"1970-01-01T00:00:00.000Z"}}}\n'
         ),
     )
 
     result = asyncio.run(
-        team_api_snapshot.read_team_api_read_manifest(
-            TeamApiReadManifestRequest(team_name="alpha")
+        team_api_snapshot.read_team_api_read_worker_status(
+            TeamApiReadWorkerStatusRequest(team_name="alpha", worker="worker-1")
         )
     )
 
-    assert isinstance(result, TeamApiReadManifestSnapshot)
-    assert result.manifest == {
-        "schema_version": 2,
-        "name": "alpha",
-        "workers": [{"name": "worker-1"}],
-    }
+    assert isinstance(result, TeamApiWorkerStatusSnapshot)
+    assert result.worker == "worker-1"
+    assert result.state == "unknown"
+    assert result.updated_at == "1970-01-01T00:00:00.000Z"
+
+
+def test_read_team_api_read_worker_status_rejects_non_object_status_payload(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"worker":"worker-1","status":[]}}\n'
+        ),
+    )
+
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_read_worker_status(
+                TeamApiReadWorkerStatusRequest(team_name="alpha", worker="worker-1")
+            )
+        )
