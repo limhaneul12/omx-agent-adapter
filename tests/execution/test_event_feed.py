@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import json
 
 from omx_remote.execution.event_feed import decode_event_lines
 from omx_remote.schemas.execution_schemas import ExecutionEventDecodeRequest
@@ -101,3 +102,25 @@ def test_decode_event_lines_skips_non_dict_json_payloads_without_dropping_valid_
     assert events[0]["id"] == "before"
     assert events[1]["type"] == "turn.completed"
     assert events[1]["id"] == "after"
+
+
+def test_decode_event_lines_splits_item_completed_tool_call_payloads() -> None:
+    payload = json.dumps(
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "tool_call",
+                "tool_name": "grep",
+                "call_id": "call-123",
+                "arguments": '{"pattern":"TODO"}',
+            },
+        }
+    ) + "\n"
+
+    events = asyncio.run(decode_event_lines(payload))
+
+    assert len(events) == 1
+    assert events[0]["type"] == "tool_call"
+    assert events[0]["tool_name"] == "grep"
+    assert events[0]["call_id"] == "call-123"
+    assert events[0]["arguments"] == '{"pattern":"TODO"}'

@@ -131,53 +131,50 @@ class ToolInteractionReport(BaseModel):
     missing_result_count: int
     duplicate_result_count: int
     unmatched_result_count: int
-    has_anomalies: bool = False
-    anomaly_count: int = 0
 
     @model_validator(mode="after")
-    def _validate_counts(self) -> ToolInteractionReport:
-        """Validates that cached counts and anomaly flags match the report contents."""
-        expected_interaction_count: int = len(self.interactions)
-        expected_completed_count: int = len(
-            [
-                interaction
-                for interaction in self.interactions
-                if interaction.state == "completed"
-            ]
-        )
-        expected_missing_result_count: int = len(self.missing_result_calls)
-        expected_duplicate_result_count: int = len(self.duplicate_results)
-        expected_unmatched_result_count: int = len(self.unmatched_results)
-        expected_anomaly_count: int = len(self.anomalies)
-        expected_has_anomalies: bool = expected_anomaly_count > 0
-
+    def _validate_summary_counts(self) -> ToolInteractionReport:
+        """Validates that derived summary counters match the underlying lists."""
+        expected_interaction_count = len(self.interactions)
         if self.interaction_count != expected_interaction_count:
             raise ValueError(
-                "ToolInteractionReport.interaction_count must match interactions length"
+                "ToolInteractionReport.interaction_count must match interactions"
             )
+
+        expected_completed_count = len(
+            [interaction for interaction in self.interactions if interaction.state == "completed"]
+        )
         if self.completed_count != expected_completed_count:
             raise ValueError(
                 "ToolInteractionReport.completed_count must match completed interactions"
             )
+
+        expected_missing_result_count = len(self.missing_result_calls)
         if self.missing_result_count != expected_missing_result_count:
             raise ValueError(
-                "ToolInteractionReport.missing_result_count must match missing_result_calls length"
+                "ToolInteractionReport.missing_result_count must match missing_result_calls"
             )
+
+        expected_duplicate_result_count = len(self.duplicate_results)
         if self.duplicate_result_count != expected_duplicate_result_count:
             raise ValueError(
-                "ToolInteractionReport.duplicate_result_count must match duplicate_results length"
+                "ToolInteractionReport.duplicate_result_count must match duplicate_results"
             )
+
+        expected_unmatched_result_count = len(self.unmatched_results)
         if self.unmatched_result_count != expected_unmatched_result_count:
             raise ValueError(
-                "ToolInteractionReport.unmatched_result_count must match unmatched_results length"
+                "ToolInteractionReport.unmatched_result_count must match unmatched_results"
             )
-        if self.anomaly_count != expected_anomaly_count:
+
+        expected_anomaly_count = (
+            expected_duplicate_result_count
+            + expected_unmatched_result_count
+            + expected_missing_result_count
+        )
+        if len(self.anomalies) != expected_anomaly_count:
             raise ValueError(
-                "ToolInteractionReport.anomaly_count must match anomalies length"
-            )
-        if self.has_anomalies != expected_has_anomalies:
-            raise ValueError(
-                "ToolInteractionReport.has_anomalies must match anomaly_count presence"
+                "ToolInteractionReport.anomalies must include one entry per derived anomaly"
             )
 
         validated_report: ToolInteractionReport = self
