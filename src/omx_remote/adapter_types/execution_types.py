@@ -37,7 +37,7 @@ class ExecutionItemTransportPayload(TypedDict, total=False):
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
-    type: object
+    type: str | None
     text: object
     item: object
     tool_name: object
