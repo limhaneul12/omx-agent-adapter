@@ -15,6 +15,7 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionTransportPayload,
     ExecutionUsageTransportPayload,
 )
+from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchTransportPayload,
@@ -135,7 +136,7 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
         "reasoning_output_tokens": 0,
     }
     execution_transport: ExecutionTransportPayload = {
-        "type": "tool_result",
+        "type": ExecutionEventKind.TURN_COMPLETED,
         "tool_name": "grep",
         "call_id": "call-1",
         "text": "match",

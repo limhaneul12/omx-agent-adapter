@@ -4,6 +4,7 @@ from omx_remote.adapter_types.execution_types import (
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
     ExecutionTransportPayload,
+    ExecutionUsageTransportPayload,
 )
 from omx_remote.schemas.execution_schemas import (
     ExecMessage,
@@ -55,6 +56,36 @@ def load_execution_payload(
         "id": payload.get("id"),
         "extra": payload.get("extra"),
     }
+
+    thread_id_value: object | None = payload.get("thread_id")
+    if isinstance(thread_id_value, str):
+        result["thread_id"] = thread_id_value
+
+    usage_value: object | None = payload.get("usage")
+    if isinstance(usage_value, dict):
+        usage_payload: ExecutionUsageTransportPayload = {}
+
+        input_tokens_value: object | None = usage_value.get("input_tokens")
+        if isinstance(input_tokens_value, int):
+            usage_payload["input_tokens"] = input_tokens_value
+
+        cached_input_tokens_value: object | None = usage_value.get(
+            "cached_input_tokens"
+        )
+        if isinstance(cached_input_tokens_value, int):
+            usage_payload["cached_input_tokens"] = cached_input_tokens_value
+
+        output_tokens_value: object | None = usage_value.get("output_tokens")
+        if isinstance(output_tokens_value, int):
+            usage_payload["output_tokens"] = output_tokens_value
+
+        reasoning_output_tokens_value: object | None = usage_value.get(
+            "reasoning_output_tokens"
+        )
+        if isinstance(reasoning_output_tokens_value, int):
+            usage_payload["reasoning_output_tokens"] = reasoning_output_tokens_value
+
+        result["usage"] = usage_payload
     return result
 
 

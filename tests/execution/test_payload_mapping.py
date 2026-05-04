@@ -32,6 +32,55 @@ def test_load_execution_payload_requires_mapping() -> None:
         load_execution_payload("event payload", ["not", "a", "mapping"])
 
 
+def test_load_execution_payload_preserves_live_thread_started_shape() -> None:
+    result = load_execution_payload(
+        "event payload",
+        {"type": "thread.started", "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2"},
+    )
+
+    assert result["type"] == "thread.started"
+    assert result["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+
+
+def test_load_execution_payload_preserves_live_turn_completed_usage_shape() -> None:
+    result = load_execution_payload(
+        "event payload",
+        {
+            "type": "turn.completed",
+            "usage": {
+                "input_tokens": 21848,
+                "cached_input_tokens": 7552,
+                "output_tokens": 5,
+                "reasoning_output_tokens": 0,
+            },
+        },
+    )
+
+    assert result["type"] == "turn.completed"
+    assert result["usage"]["cached_input_tokens"] == 7552
+
+
+def test_load_execution_payload_preserves_live_command_execution_item_shape() -> None:
+    result = load_execution_payload(
+        "event payload",
+        {
+            "type": "item.completed",
+            "item": {
+                "id": "item_1",
+                "type": "command_execution",
+                "command": "/bin/zsh -lc \"printf 'READY\\n'\"",
+                "aggregated_output": "READY\n",
+                "exit_code": 0,
+                "status": "completed",
+            },
+        },
+    )
+
+    assert result["type"] == "item.completed"
+    assert result["item"]["type"] == "command_execution"
+    assert result["item"]["exit_code"] == 0
+
+
 def test_split_event_payloads_extracts_item_completed_item_payload() -> None:
     payload = {
         "type": "item.completed",
