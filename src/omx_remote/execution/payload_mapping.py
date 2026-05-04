@@ -106,6 +106,115 @@ def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTran
     return normalized_payload
 
 
+def _normalize_execution_usage_payload(
+    usage_payload: object,
+) -> ExecutionUsageTransportPayload:
+    """Normalizes one raw execution usage payload into the observed stable subset."""
+    if not isinstance(usage_payload, dict):
+        raise UnsupportedExecutionPayloadError(
+            "execution usage payload must be a JSON object payload"
+        )
+
+    normalized_usage_payload: ExecutionUsageTransportPayload = {}
+
+    input_tokens_value: object | None = usage_payload.get("input_tokens")
+    if isinstance(input_tokens_value, int):
+        normalized_usage_payload["input_tokens"] = input_tokens_value
+
+    cached_input_tokens_value: object | None = usage_payload.get("cached_input_tokens")
+    if isinstance(cached_input_tokens_value, int):
+        normalized_usage_payload["cached_input_tokens"] = cached_input_tokens_value
+
+    output_tokens_value: object | None = usage_payload.get("output_tokens")
+    if isinstance(output_tokens_value, int):
+        normalized_usage_payload["output_tokens"] = output_tokens_value
+
+    reasoning_output_tokens_value: object | None = usage_payload.get(
+        "reasoning_output_tokens"
+    )
+    if isinstance(reasoning_output_tokens_value, int):
+        normalized_usage_payload["reasoning_output_tokens"] = (
+            reasoning_output_tokens_value
+        )
+
+    return normalized_usage_payload
+
+
+def _normalize_execution_event_payload(
+    event_type: str | None,
+    payload: ExecutionTransportPayload,
+) -> ExecutionTransportPayload:
+    """Normalizes event-kind-specific execution payload fields into the observed stable subset."""
+    normalized_payload: ExecutionTransportPayload = {
+        "type": event_type,
+        "text": payload.get("text"),
+        "item": payload.get("item"),
+        "tool_name": payload.get("tool_name"),
+        "call_id": payload.get("call_id"),
+        "arguments": payload.get("arguments"),
+        "id": payload.get("id"),
+        "extra": payload.get("extra"),
+    }
+
+    if event_type == "thread.started":
+        thread_id_value: object | None = payload.get("thread_id")
+        if isinstance(thread_id_value, str):
+            normalized_payload["thread_id"] = thread_id_value
+        return normalized_payload
+
+    if event_type == "turn.completed":
+        usage_value: object | None = payload.get("usage")
+        if isinstance(usage_value, dict):
+            normalized_usage_payload: ExecutionUsageTransportPayload = (
+                _normalize_execution_usage_payload(usage_value)
+            )
+            normalized_payload["usage"] = normalized_usage_payload
+        return normalized_payload
+
+    if event_type == "item.completed":
+        item_value: object | None = payload.get("item")
+        if isinstance(item_value, dict):
+            normalized_item_payload: ExecutionItemTransportPayload = (
+                _normalize_execution_item_payload(item_value)
+            )
+            normalized_payload["item"] = normalized_item_payload
+        return normalized_payload
+
+    return normalized_payload
+
+
+def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayload:
+    """Loads one raw execution transport payload into the owned top-level subset."""
+    if not isinstance(payload, dict):
+        raise UnsupportedExecutionPayloadError(
+            "execution payload must be a JSON object payload"
+        )
+
+    transport_payload: ExecutionTransportPayload = {
+        "type": payload.get("type"),
+        "text": payload.get("text"),
+        "item": payload.get("item"),
+        "tool_name": payload.get("tool_name"),
+        "call_id": payload.get("call_id"),
+        "arguments": payload.get("arguments"),
+        "id": payload.get("id"),
+        "extra": payload.get("extra"),
+    }
+
+    thread_id_value: object | None = payload.get("thread_id")
+    if isinstance(thread_id_value, str):
+        transport_payload["thread_id"] = thread_id_value
+
+    usage_value: object | None = payload.get("usage")
+    if isinstance(usage_value, dict):
+        transport_usage_payload: ExecutionUsageTransportPayload = (
+            _normalize_execution_usage_payload(usage_value)
+        )
+        transport_payload["usage"] = transport_usage_payload
+
+    return transport_payload
+
+
 def load_execution_payload(
     payload_name: str,
     payload: object,
@@ -116,56 +225,17 @@ def load_execution_payload(
             f"{payload_name} must be a JSON object payload"
         )
 
-    item_value: object | None = payload.get("item")
-    normalized_item_value: ExecutionItemTransportPayload | object | None
-    if isinstance(item_value, dict):
-        normalized_item_value = _normalize_execution_item_payload(item_value)
-    else:
-        normalized_item_value = item_value
-
-    event_type_value: str | None = _normalize_execution_event_type(payload.get("type"))
-
-    result: ExecutionPayload = {
-        "type": event_type_value,
-        "text": payload.get("text"),
-        "item": normalized_item_value,
-        "tool_name": payload.get("tool_name"),
-        "call_id": payload.get("call_id"),
-        "arguments": payload.get("arguments"),
-        "id": payload.get("id"),
-        "extra": payload.get("extra"),
-    }
-
-    thread_id_value: object | None = payload.get("thread_id")
-    if isinstance(thread_id_value, str):
-        result["thread_id"] = thread_id_value
-
-    usage_value: object | None = payload.get("usage")
-    if isinstance(usage_value, dict):
-        usage_payload: ExecutionUsageTransportPayload = {}
-
-        input_tokens_value: object | None = usage_value.get("input_tokens")
-        if isinstance(input_tokens_value, int):
-            usage_payload["input_tokens"] = input_tokens_value
-
-        cached_input_tokens_value: object | None = usage_value.get(
-            "cached_input_tokens"
-        )
-        if isinstance(cached_input_tokens_value, int):
-            usage_payload["cached_input_tokens"] = cached_input_tokens_value
-
-        output_tokens_value: object | None = usage_value.get("output_tokens")
-        if isinstance(output_tokens_value, int):
-            usage_payload["output_tokens"] = output_tokens_value
-
-        reasoning_output_tokens_value: object | None = usage_value.get(
-            "reasoning_output_tokens"
-        )
-        if isinstance(reasoning_output_tokens_value, int):
-            usage_payload["reasoning_output_tokens"] = reasoning_output_tokens_value
-
-        result["usage"] = usage_payload
-    return result
+    transport_payload: ExecutionTransportPayload = _load_execution_transport_payload(
+        payload
+    )
+    event_type_value: str | None = _normalize_execution_event_type(
+        transport_payload.get("type")
+    )
+    normalized_payload: ExecutionPayload = _normalize_execution_event_payload(
+        event_type_value,
+        transport_payload,
+    )
+    return normalized_payload
 
 
 def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
