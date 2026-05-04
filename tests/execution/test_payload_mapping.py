@@ -14,7 +14,9 @@ from omx_remote.execution.payload_mapping import (
     route_execution_payload,
     split_event_payloads,
 )
-from omx_remote.shared.exceptions.execution_exceptions import UnsupportedExecutionPayloadError
+from omx_remote.shared.exceptions.execution_exceptions import (
+    UnsupportedExecutionPayloadError,
+)
 
 
 def test_split_event_payloads_returns_payload_by_default() -> None:
@@ -521,6 +523,8 @@ def test_build_tool_interaction_report_surfaces_unmatched_tool_result() -> None:
     assert report.unmatched_results[0].call_id == "call-999"
     assert report.unmatched_results[0].text == "orphan-match"
     assert report.anomalies[0].summary == "tool result did not match any known tool call"
+    assert report.has_anomalies is True
+    assert report.anomaly_count == 2
 
 
 def test_build_tool_interaction_report_surfaces_same_text_duplicate_result() -> None:
@@ -691,6 +695,8 @@ def test_build_tool_interaction_report_surfaces_missing_result_calls() -> None:
     assert report.missing_result_count == 1
     assert report.duplicate_result_count == 0
     assert report.unmatched_result_count == 0
+    assert report.has_anomalies is True
+    assert report.anomaly_count == 1
 
 
 def test_build_tool_interaction_report_builds_structured_anomalies() -> None:
@@ -760,6 +766,8 @@ def test_build_tool_interaction_report_builds_structured_anomalies() -> None:
     assert report.missing_result_count == 1
     assert report.duplicate_result_count == 1
     assert report.unmatched_result_count == 1
+    assert report.has_anomalies is True
+    assert report.anomaly_count == 3
 
 
 def test_promote_execution_contract_rejects_unsupported_payload_type() -> None:
@@ -770,3 +778,28 @@ def test_promote_execution_contract_rejects_unsupported_payload_type() -> None:
         match=r"unsupported execution payload type: turn\.started",
     ):
         promote_execution_contract(payload)
+
+
+def test_build_tool_interaction_report_marks_clean_report_without_anomalies() -> None:
+    tool_call = promote_execution_contract(
+        {
+            "type": "tool_call",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "arguments": "{\"pattern\":\"TODO\"}",
+        }
+    )
+    tool_result = promote_execution_contract(
+        {
+            "type": "tool_result",
+            "tool_name": "grep",
+            "call_id": "call-123",
+            "text": "match",
+        }
+    )
+
+    report = build_tool_interaction_report([tool_call, tool_result])
+
+    assert report.has_anomalies is False
+    assert report.anomaly_count == 0
+

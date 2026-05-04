@@ -8,6 +8,7 @@ from omx_remote.schemas.execution_schemas import (
     ExecToolResult,
     ExecutionEventDecodeRequest,
     ToolInteraction,
+    ToolInteractionReport,
 )
 from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
 
@@ -172,5 +173,48 @@ def test_tool_interaction_rejects_result_for_different_tool_name() -> None:
                 "state": "completed",
                 "call": tool_call.model_dump(),
                 "result": tool_result.model_dump(),
+            }
+        )
+
+
+def test_tool_interaction_report_rejects_inconsistent_count_fields() -> None:
+    with pytest.raises(ValidationError):
+        ToolInteractionReport.model_validate(
+            {
+                "interactions": [
+                    {
+                        "state": "completed",
+                        "call": {
+                            "kind": "tool_call",
+                            "tool_name": "grep",
+                            "call_id": "call-123",
+                            "arguments": "{}",
+                        },
+                        "result": {
+                            "kind": "tool_result",
+                            "tool_name": "grep",
+                            "call_id": "call-123",
+                            "text": "match",
+                        },
+                    }
+                ],
+                "unmatched_results": [
+                    {
+                        "kind": "tool_result",
+                        "tool_name": "awk",
+                        "call_id": "call-999",
+                        "text": "orphan",
+                    }
+                ],
+                "duplicate_results": [],
+                "missing_result_calls": [],
+                "anomalies": [],
+                "interaction_count": 0,
+                "completed_count": 0,
+                "missing_result_count": 1,
+                "duplicate_result_count": 1,
+                "unmatched_result_count": 0,
+                "has_anomalies": True,
+                "anomaly_count": 0,
             }
         )

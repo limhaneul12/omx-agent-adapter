@@ -345,6 +345,8 @@ def build_tool_interaction_report(
         missing_result_count=len(missing_result_calls),
         duplicate_result_count=len(duplicate_results),
         unmatched_result_count=len(unmatched_results),
+        has_anomalies=bool(anomalies),
+        anomaly_count=len(anomalies),
     )
     return result
 
