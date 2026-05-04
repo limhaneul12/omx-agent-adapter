@@ -120,6 +120,14 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
         "type": "agent_message",
         "text": "OK",
     }
+    command_item_transport: ExecutionItemTransportPayload = {
+        "id": "item_1",
+        "type": "command_execution",
+        "command": "/bin/zsh -lc pwd",
+        "aggregated_output": "/Users/imhaneul/Documents/sky_document/project/omx-agent-adapter\n",
+        "exit_code": 0,
+        "status": "completed",
+    }
     usage_transport: ExecutionUsageTransportPayload = {
         "input_tokens": 21848,
         "cached_input_tokens": 7552,
@@ -161,6 +169,9 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     assert execution_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
     assert execution_transport["usage"]["cached_input_tokens"] == 7552
     assert execution_transport["item"]["type"] == "agent_message"
+    assert command_item_transport["type"] == "command_execution"
+    assert command_item_transport["exit_code"] == 0
+    assert command_item_transport["status"] == "completed"
     assert message_normalized["kind"] == "message"
     assert output_normalized["kind"] == "output_text"
     assert tool_result_normalized["call_id"] == "call-1"

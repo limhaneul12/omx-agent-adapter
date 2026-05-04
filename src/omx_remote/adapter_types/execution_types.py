@@ -12,6 +12,10 @@ class ExecutionItemTransportPayload(TypedDict, total=False):
     id: str
     type: str
     text: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
