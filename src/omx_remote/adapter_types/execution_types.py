@@ -27,6 +27,9 @@ class ExecutionItemTransportPayload(TypedDict, total=False):
     id: str
     type: str
     text: str
+    tool_name: str
+    call_id: str
+    arguments: str
     command: str
     aggregated_output: str
     exit_code: int

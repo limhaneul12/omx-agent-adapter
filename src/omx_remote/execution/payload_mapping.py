@@ -3,6 +3,7 @@ from omx_remote.adapter_types.execution_types import (
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
+    ExecutionItemTransportPayload,
     ExecutionTransportPayload,
     ExecutionUsageTransportPayload,
 )
@@ -36,6 +37,58 @@ ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
 }
 
 
+def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTransportPayload:
+    """Normalizes one raw execution item payload into the observed stable subset."""
+    if not isinstance(item_payload, dict):
+        raise UnsupportedExecutionPayloadError(
+            "execution item payload must be a JSON object payload"
+        )
+
+    normalized_payload: ExecutionItemTransportPayload = {}
+
+    id_value: object | None = item_payload.get("id")
+    if isinstance(id_value, str):
+        normalized_payload["id"] = id_value
+
+    type_value: object | None = item_payload.get("type")
+    if isinstance(type_value, str):
+        normalized_payload["type"] = type_value
+
+    text_value: object | None = item_payload.get("text")
+    if isinstance(text_value, str):
+        normalized_payload["text"] = text_value
+
+    tool_name_value: object | None = item_payload.get("tool_name")
+    if isinstance(tool_name_value, str):
+        normalized_payload["tool_name"] = tool_name_value
+
+    call_id_value: object | None = item_payload.get("call_id")
+    if isinstance(call_id_value, str):
+        normalized_payload["call_id"] = call_id_value
+
+    arguments_value: object | None = item_payload.get("arguments")
+    if isinstance(arguments_value, str):
+        normalized_payload["arguments"] = arguments_value
+
+    command_value: object | None = item_payload.get("command")
+    if isinstance(command_value, str):
+        normalized_payload["command"] = command_value
+
+    aggregated_output_value: object | None = item_payload.get("aggregated_output")
+    if isinstance(aggregated_output_value, str):
+        normalized_payload["aggregated_output"] = aggregated_output_value
+
+    exit_code_value: object | None = item_payload.get("exit_code")
+    if isinstance(exit_code_value, int):
+        normalized_payload["exit_code"] = exit_code_value
+
+    status_value: object | None = item_payload.get("status")
+    if isinstance(status_value, str):
+        normalized_payload["status"] = status_value
+
+    return normalized_payload
+
+
 def load_execution_payload(
     payload_name: str,
     payload: object,
@@ -46,10 +99,17 @@ def load_execution_payload(
             f"{payload_name} must be a JSON object payload"
         )
 
+    item_value: object | None = payload.get("item")
+    normalized_item_value: ExecutionItemTransportPayload | object | None
+    if isinstance(item_value, dict):
+        normalized_item_value = _normalize_execution_item_payload(item_value)
+    else:
+        normalized_item_value = item_value
+
     result: ExecutionPayload = {
         "type": payload.get("type"),
         "text": payload.get("text"),
-        "item": payload.get("item"),
+        "item": normalized_item_value,
         "tool_name": payload.get("tool_name"),
         "call_id": payload.get("call_id"),
         "arguments": payload.get("arguments"),

@@ -1,6 +1,7 @@
 import pytest
 
 from omx_remote.execution.payload_mapping import (
+    _normalize_execution_item_payload,
     build_tool_interaction,
     build_tool_interaction_report,
     build_tool_interactions,
@@ -30,6 +31,41 @@ def test_split_event_payloads_returns_payload_by_default() -> None:
 def test_load_execution_payload_requires_mapping() -> None:
     with pytest.raises(UnsupportedExecutionPayloadError):
         load_execution_payload("event payload", ["not", "a", "mapping"])
+
+
+def test_normalize_execution_item_payload_preserves_agent_message_shape() -> None:
+    result = _normalize_execution_item_payload(
+        {
+            "id": "item_0",
+            "type": "agent_message",
+            "text": "OK",
+            "ignored": True,
+        }
+    )
+
+    assert result["id"] == "item_0"
+    assert result["type"] == "agent_message"
+    assert result["text"] == "OK"
+
+
+def test_normalize_execution_item_payload_preserves_command_execution_shape() -> None:
+    result = _normalize_execution_item_payload(
+        {
+            "id": "item_1",
+            "type": "command_execution",
+            "command": "/bin/zsh -lc pwd",
+            "aggregated_output": "/tmp\n",
+            "exit_code": 0,
+            "status": "completed",
+            "ignored": True,
+        }
+    )
+
+    assert result["id"] == "item_1"
+    assert result["type"] == "command_execution"
+    assert result["command"] == "/bin/zsh -lc pwd"
+    assert result["exit_code"] == 0
+    assert result["status"] == "completed"
 
 
 def test_load_execution_payload_preserves_live_thread_started_shape() -> None:
