@@ -12,28 +12,29 @@ UI, dashboard, and frontend concerns remain out of scope.
 
 ### Clearly OMX-specific today
 
-- `src/execution/event_feed.py`
+- `src/omx_remote/execution/event_feed.py`
   - Decodes OMX-flavored JSONL event streams line by line.
   - Understands `item.completed` wrapping and splits wrapped payloads before contract promotion.
-- `src/execution/payload_mapping.py`
+- `src/omx_remote/execution/payload_mapping.py`
   - Promotes OMX execution payload shapes such as `message`, `output_text`, `tool_call`, and `tool_result`.
   - Treats raw payload dictionaries as a transport seam until routing selects a stable contract.
-- `src/runtime/runtime_snapshot.py`
+- `src/omx_remote/runtime/runtime_snapshot.py`
   - Reads `omx status` output and derives runtime state from OMX stdout/stderr conventions.
   - Assumes OMX mode lines use `name: status` formatting and that `No active modes.` is the idle summary.
   - Exposes typed mode snapshots and normalized runtime anomalies above the raw CLI output.
-- `src/execution/invoke.py`
+- `src/omx_remote/execution/invoke.py`
   - Invokes OMX commands directly and is therefore bound to OMX command behavior.
 
 ### Clearly cross-runtime concepts already present
 
-- `src/schemas/execution_schemas.py`
+- `src/omx_remote/schemas/execution_schemas.py`
   - Stable execution contracts: `ExecMessage`, `ExecOutput`, `ExecToolCall`, `ExecToolResult`.
   - Interaction/report contracts: `ToolInteraction`, `ToolInteractionReport`, `ToolInteractionAnomaly`.
-- `src/execution/payload_mapping.py`
+  - `ToolInteractionReport` now carries validated anomaly summary fields (`has_anomalies`, `anomaly_count`) alongside its explicit anomaly buckets.
+- `src/omx_remote/execution/payload_mapping.py`
   - The split between transport parsing, promotion, interaction grouping, and anomaly reporting.
   - Interaction state semantics (`completed`, `missing_result`) are downstream-control concepts, not OMX-only UI concerns.
-- `src/schemas/runtime_schemas.py`
+- `src/omx_remote/schemas/runtime_schemas.py`
   - `RuntimeStatus` is already a normalized runtime-facing contract rather than a raw CLI dump.
   - `RuntimeModeSnapshot` and `RuntimeStatusAnomaly` provide stable typed runtime sub-surfaces.
 - `docs/rules/schema-boundary-rules.md`
