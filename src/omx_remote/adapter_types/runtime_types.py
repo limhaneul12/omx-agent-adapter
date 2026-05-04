@@ -1,45 +1,45 @@
 from typing import NotRequired, Required, TypedDict
 
 
-class ActiveRuntimeModesTransportPayload(TypedDict):
-    active_modes: Required[object]
-
-
-class RuntimeModeStateTransportPayload(TypedDict):
-    exists: Required[object]
-    mode: Required[object]
-    state: NotRequired[object]
-
-
-class RuntimeModeStateNormalizedPayload(TypedDict):
-    mode: Required[object]
-    exists: Required[object]
-    state: Required[object]
-
-
-class RuntimeModeStatusTransportPayload(TypedDict):
-    statuses: Required[object]
+class RuntimeModeStatusDataPayload(TypedDict, total=False):
+    current_phase: str
 
 
 class RuntimeModeStatusEntryPayload(TypedDict):
-    active: Required[object]
-    phase: NotRequired[object]
-    path: NotRequired[object]
-    data: NotRequired[object]
+    active: Required[bool]
+    phase: NotRequired[str | None]
+    path: NotRequired[str | None]
+    data: NotRequired[RuntimeModeStatusDataPayload | None]
 
 
-class RuntimeModeStatusDataPayload(TypedDict, total=False):
-    current_phase: object
+class RuntimeModeStatusTransportPayload(TypedDict):
+    statuses: Required[dict[str, RuntimeModeStatusEntryPayload]]
+
+
+class ActiveRuntimeModesTransportPayload(TypedDict):
+    active_modes: Required[list[str]]
+
+
+class RuntimeModeStateTransportPayload(TypedDict):
+    exists: Required[bool]
+    mode: Required[str]
+    state: NotRequired[dict[str, object] | None]
+
+
+class RuntimeModeStateNormalizedPayload(TypedDict):
+    mode: Required[str]
+    exists: Required[bool]
+    state: Required[dict[str, object] | None]
 
 
 class RuntimeModeStatusNormalizedPayload(TypedDict):
-    name: Required[object]
-    is_active: Required[object]
-    phase: Required[object]
-    state_path: Required[object]
+    name: Required[str]
+    is_active: Required[bool]
+    phase: Required[str | None]
+    state_path: Required[str | None]
 
 
 class RuntimeModeStatusResultNormalizedPayload(TypedDict):
-    requested_mode: Required[object]
-    found: Required[object]
-    mode_snapshot: Required[object]
+    requested_mode: Required[str]
+    found: Required[bool]
+    mode_snapshot: Required[RuntimeModeStatusNormalizedPayload | None]

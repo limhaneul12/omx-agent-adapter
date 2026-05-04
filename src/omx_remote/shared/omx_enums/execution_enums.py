@@ -14,3 +14,14 @@ class ExecutionPayloadKind(StrEnum):
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     COMMAND_EXECUTION = "command_execution"
+
+
+class ToolInteractionState(StrEnum):
+    COMPLETED = "completed"
+    MISSING_RESULT = "missing_result"
+
+
+class ExecutionAnomalyCategory(StrEnum):
+    UNMATCHED_RESULT = "unmatched_result"
+    DUPLICATE_RESULT = "duplicate_result"
+    MISSING_RESULT = "missing_result"

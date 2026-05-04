@@ -49,10 +49,22 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
     if not isinstance(parsed_payload, dict):
         raise RuntimeSurfaceError("omx state read returned a non-object JSON payload")
 
+    exists_value: object | None = parsed_payload.get("exists")
+    if not isinstance(exists_value, bool):
+        raise RuntimeSurfaceError("omx state read returned a non-boolean exists payload")
+
+    mode_value: object | None = parsed_payload.get("mode")
+    if not isinstance(mode_value, str):
+        raise RuntimeSurfaceError("omx state read returned a non-string mode payload")
+
+    state_value: object | None = parsed_payload.get("state")
+    if state_value is not None and not isinstance(state_value, dict):
+        raise RuntimeSurfaceError("omx state read returned a non-object state payload")
+
     result: RuntimeModeStateTransportPayload = {
-        "exists": parsed_payload.get("exists"),
-        "mode": parsed_payload.get("mode"),
-        "state": parsed_payload.get("state"),
+        "exists": exists_value,
+        "mode": mode_value,
+        "state": state_value,
     }
     return result
 
@@ -60,13 +72,11 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
 def _normalize_runtime_mode_state(stdout: str) -> RuntimeModeStateSnapshot:
     """Normalizes `omx state read --json` stdout into a stable contract."""
     payload: RuntimeModeStateTransportPayload = _load_runtime_mode_state_payload(stdout)
-    raw_state_payload: object | None = payload.get("state")
-    if raw_state_payload is not None and not isinstance(raw_state_payload, dict):
-        raise RuntimeSurfaceError("omx state read returned a non-object state payload")
+    raw_state_payload: dict[str, object] | None = payload.get("state")
 
     normalized_payload: RuntimeModeStateNormalizedPayload = {
-        "mode": payload.get("mode"),
-        "exists": payload.get("exists"),
+        "mode": payload["mode"],
+        "exists": payload["exists"],
         "state": raw_state_payload,
     }
     result: RuntimeModeStateSnapshot = RuntimeModeStateSnapshot.model_validate(

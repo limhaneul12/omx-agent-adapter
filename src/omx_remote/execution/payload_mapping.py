@@ -45,9 +45,9 @@ KNOWN_EXECUTION_EVENT_TYPES: frozenset[str] = frozenset(
 )
 
 ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
-    "duplicate_result": "additional tool result observed after first matched result",
-    "unmatched_result": "tool result did not match any known tool call",
-    "missing_result": "tool call completed without a matching tool result",
+    ExecutionAnomalyCategory.DUPLICATE_RESULT: "additional tool result observed after first matched result",
+    ExecutionAnomalyCategory.UNMATCHED_RESULT: "tool result did not match any known tool call",
+    ExecutionAnomalyCategory.MISSING_RESULT: "tool call completed without a matching tool result",
 }
 
 
@@ -485,9 +485,9 @@ def build_tool_interaction(events: list[ExecutionContract]) -> ToolInteraction:
     )
     interaction_state: ToolInteractionState
     if tool_result is None:
-        interaction_state = "missing_result"
+        interaction_state = ToolInteractionState.MISSING_RESULT
     else:
-        interaction_state = "completed"
+        interaction_state = ToolInteractionState.COMPLETED
     interaction: ToolInteraction = ToolInteraction(
         state=interaction_state,
         call=tool_call,
@@ -572,32 +572,32 @@ def build_tool_interaction_report(
     missing_result_calls: list[ExecToolCall] = [
         interaction.call
         for interaction in interactions
-        if interaction.state == "missing_result"
+        if interaction.state == ToolInteractionState.MISSING_RESULT
     ]
     duplicate_anomalies: list[ToolInteractionAnomaly] = [
         ToolInteractionAnomaly(
-            category="duplicate_result",
+            category=ExecutionAnomalyCategory.DUPLICATE_RESULT,
             related_call_id=duplicate_result.call_id,
             tool_name=duplicate_result.tool_name,
-            summary=ANOMALY_SUMMARIES["duplicate_result"],
+            summary=ANOMALY_SUMMARIES[ExecutionAnomalyCategory.DUPLICATE_RESULT],
         )
         for duplicate_result in duplicate_results
     ]
     unmatched_anomalies: list[ToolInteractionAnomaly] = [
         ToolInteractionAnomaly(
-            category="unmatched_result",
+            category=ExecutionAnomalyCategory.UNMATCHED_RESULT,
             related_call_id=unmatched_result.call_id,
             tool_name=unmatched_result.tool_name,
-            summary=ANOMALY_SUMMARIES["unmatched_result"],
+            summary=ANOMALY_SUMMARIES[ExecutionAnomalyCategory.UNMATCHED_RESULT],
         )
         for unmatched_result in unmatched_results
     ]
     missing_result_anomalies: list[ToolInteractionAnomaly] = [
         ToolInteractionAnomaly(
-            category="missing_result",
+            category=ExecutionAnomalyCategory.MISSING_RESULT,
             related_call_id=missing_result_call.call_id,
             tool_name=missing_result_call.tool_name,
-            summary=ANOMALY_SUMMARIES["missing_result"],
+            summary=ANOMALY_SUMMARIES[ExecutionAnomalyCategory.MISSING_RESULT],
         )
         for missing_result_call in missing_result_calls
     ]
@@ -614,7 +614,11 @@ def build_tool_interaction_report(
         anomalies=anomalies,
         interaction_count=len(interactions),
         completed_count=len(
-            [interaction for interaction in interactions if interaction.state == "completed"]
+            [
+                interaction
+                for interaction in interactions
+                if interaction.state == ToolInteractionState.COMPLETED
+            ]
         ),
         missing_result_count=len(missing_result_calls),
         duplicate_result_count=len(duplicate_results),

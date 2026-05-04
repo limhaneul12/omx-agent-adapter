@@ -40,8 +40,23 @@ def _load_active_runtime_modes_payload(stdout: str) -> ActiveRuntimeModesTranspo
             "omx state list-active returned a non-object JSON payload"
         )
 
+    active_modes_payload: object | None = parsed_payload.get("active_modes")
+    if not isinstance(active_modes_payload, list):
+        raise RuntimeSurfaceError(
+            "omx state list-active returned a non-list active_modes payload"
+        )
+
+    normalized_active_modes: list[str] = []
+    active_mode: object
+    for active_mode in active_modes_payload:
+        if not isinstance(active_mode, str):
+            raise RuntimeSurfaceError(
+                "omx state list-active returned a non-string active mode entry"
+            )
+        normalized_active_modes.append(active_mode)
+
     result: ActiveRuntimeModesTransportPayload = {
-        "active_modes": parsed_payload.get("active_modes"),
+        "active_modes": normalized_active_modes,
     }
     return result
 

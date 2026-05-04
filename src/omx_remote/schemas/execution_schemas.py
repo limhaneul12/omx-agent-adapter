@@ -5,14 +5,11 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, NonNegativeInt, model_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString
-from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
-
-ToolInteractionState = Literal["completed", "missing_result"]
-ExecutionAnomalyCategory = Literal[
-    "unmatched_result",
-    "duplicate_result",
-    "missing_result",
-]
+from omx_remote.shared.omx_enums.execution_enums import (
+    ExecutionAnomalyCategory,
+    ExecutionPayloadKind,
+    ToolInteractionState,
+)
 
 
 class ExecRequest(BaseModel):
@@ -120,9 +117,9 @@ class ToolInteraction(BaseModel):
         """Validates that the state of the interaction matches whether a result is present."""
         expected_state: ToolInteractionState
         if self.result is None:
-            expected_state = "missing_result"
+            expected_state = ToolInteractionState.MISSING_RESULT
         else:
-            expected_state = "completed"
+            expected_state = ToolInteractionState.COMPLETED
         if self.state != expected_state:
             raise ValueError(
                 "ToolInteraction.state must match whether result is present"
@@ -160,14 +157,19 @@ class ToolInteractionReport(BaseModel):
     @model_validator(mode="after")
     def _validate_summary_counts(self) -> ToolInteractionReport:
         """Validates that derived summary counters match the underlying lists."""
-        expected_interaction_count = len(self.interactions)
+        expected_interaction_count: int = len(self.interactions)
+        
         if self.interaction_count != expected_interaction_count:
             raise ValueError(
                 "ToolInteractionReport.interaction_count must match interactions"
             )
 
-        expected_completed_count = len(
-            [interaction for interaction in self.interactions if interaction.state == "completed"]
+        expected_completed_count: int = len(
+            [
+                interaction
+                for interaction in self.interactions
+                if interaction.state == ToolInteractionState.COMPLETED
+            ]
         )
         if self.completed_count != expected_completed_count:
             raise ValueError(
@@ -192,7 +194,7 @@ class ToolInteractionReport(BaseModel):
                 "ToolInteractionReport.unmatched_result_count must match unmatched_results"
             )
 
-        expected_anomaly_count = (
+        expected_anomaly_count: int = (
             expected_duplicate_result_count
             + expected_unmatched_result_count
             + expected_missing_result_count

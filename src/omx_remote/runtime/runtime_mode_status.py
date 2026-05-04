@@ -58,46 +58,105 @@ def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransport
             "omx state get-status returned a non-object JSON payload"
         )
 
+    statuses_payload: object | None = parsed_payload.get("statuses")
+    if not isinstance(statuses_payload, dict):
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-object statuses payload"
+        )
+
+    normalized_statuses: dict[str, RuntimeModeStatusEntryPayload] = {}
+    raw_mode_name: object
+    raw_status_payload: object
+    for raw_mode_name, raw_status_payload in statuses_payload.items():
+        if not isinstance(raw_mode_name, str):
+            raise RuntimeSurfaceError(
+                "omx state get-status returned a non-string status key"
+            )
+        normalized_statuses[raw_mode_name] = _normalize_runtime_mode_status_entry_payload(
+            raw_status_payload
+        )
+
     result: RuntimeModeStatusTransportPayload = {
-        "statuses": parsed_payload.get("statuses"),
+        "statuses": normalized_statuses,
     }
     return result
 
 
-def _normalize_runtime_mode_status_entry(
-    mode_name: str,
+def _normalize_runtime_mode_status_data_payload(
+    nested_data_payload: object,
+) -> RuntimeModeStatusDataPayload:
+    """Normalize one nested runtime mode-status data payload into the stable subset."""
+    if not isinstance(nested_data_payload, dict):
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-object nested data payload"
+        )
+
+    current_phase_value: object | None = nested_data_payload.get("current_phase")
+    normalized_data_payload: RuntimeModeStatusDataPayload = {}
+    if isinstance(current_phase_value, str):
+        normalized_data_payload["current_phase"] = current_phase_value
+
+    return normalized_data_payload
+
+
+def _normalize_runtime_mode_status_entry_payload(
     status_payload: object,
-) -> RuntimeModeStatusSnapshot:
-    """Normalizes one requested runtime mode-status entry."""
+) -> RuntimeModeStatusEntryPayload:
+    """Normalize one raw runtime mode-status entry transport payload."""
     if not isinstance(status_payload, dict):
         raise RuntimeSurfaceError(
             "omx state get-status returned a non-object mode-status payload"
         )
 
+    active_value: object | None = status_payload.get("active")
+    if not isinstance(active_value, bool):
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-boolean active payload"
+        )
+
     normalized_transport_payload: RuntimeModeStatusEntryPayload = {
-        "active": status_payload.get("active"),
-        "phase": status_payload.get("phase"),
-        "path": status_payload.get("path"),
-        "data": status_payload.get("data"),
+        "active": active_value,
     }
 
-    phase_value: object | None = normalized_transport_payload.get("phase")
+    phase_value: object | None = status_payload.get("phase")
+    if phase_value is None or isinstance(phase_value, str):
+        normalized_transport_payload["phase"] = phase_value
+
+    path_value: object | None = status_payload.get("path")
+    if path_value is None or isinstance(path_value, str):
+        normalized_transport_payload["path"] = path_value
+
+    data_value: object | None = status_payload.get("data")
+    if data_value is None:
+        normalized_transport_payload["data"] = None
+    elif isinstance(data_value, dict):
+        normalized_transport_payload["data"] = _normalize_runtime_mode_status_data_payload(
+            data_value
+        )
+
+    return normalized_transport_payload
+
+
+def _normalize_runtime_mode_status_entry(
+    mode_name: str,
+    status_payload: RuntimeModeStatusEntryPayload,
+) -> RuntimeModeStatusSnapshot:
+    """Normalizes one requested runtime mode-status entry."""
+    phase_value: str | None = status_payload.get("phase")
     if phase_value == "":
         phase_value = None
-    nested_data_payload: object | None = normalized_transport_payload.get("data")
-    if phase_value is None and isinstance(nested_data_payload, dict):
-        normalized_data_payload: RuntimeModeStatusDataPayload = {
-            "current_phase": nested_data_payload.get("current_phase"),
-        }
-        phase_value = normalized_data_payload.get("current_phase")
 
-    state_path_value: object | None = normalized_transport_payload.get("path")
+    nested_data_payload: RuntimeModeStatusDataPayload | None = status_payload.get("data")
+    if phase_value is None and isinstance(nested_data_payload, dict):
+        phase_value = nested_data_payload.get("current_phase")
+
+    state_path_value: str | None = status_payload.get("path")
     if state_path_value == "":
         state_path_value = None
 
     normalized_payload: RuntimeModeStatusNormalizedPayload = {
         "name": mode_name,
-        "is_active": normalized_transport_payload.get("active"),
+        "is_active": status_payload["active"],
         "phase": phase_value,
         "state_path": state_path_value,
     }
@@ -116,11 +175,7 @@ def _normalize_runtime_mode_status(
     parsed_payload: RuntimeModeStatusTransportPayload = _load_runtime_mode_status_payload(
         stdout
     )
-    raw_statuses: object = parsed_payload.get("statuses")
-    if not isinstance(raw_statuses, dict):
-        raise RuntimeSurfaceError(
-            "omx state get-status returned a non-object statuses payload"
-        )
+    raw_statuses: dict[str, RuntimeModeStatusEntryPayload] = parsed_payload["statuses"]
 
     if requested_mode not in raw_statuses:
         missing_result_payload: RuntimeModeStatusResultNormalizedPayload = {
@@ -133,7 +188,7 @@ def _normalize_runtime_mode_status(
         )
         return missing_result
 
-    raw_mode_payload: object = raw_statuses[requested_mode]
+    raw_mode_payload: RuntimeModeStatusEntryPayload = raw_statuses[requested_mode]
     mode_snapshot: RuntimeModeStatusSnapshot = _normalize_runtime_mode_status_entry(
         requested_mode,
         raw_mode_payload,
@@ -141,7 +196,12 @@ def _normalize_runtime_mode_status(
     normalized_payload: RuntimeModeStatusResultNormalizedPayload = {
         "requested_mode": requested_mode,
         "found": True,
-        "mode_snapshot": mode_snapshot,
+        "mode_snapshot": {
+            "name": mode_snapshot.name,
+            "is_active": mode_snapshot.is_active,
+            "phase": mode_snapshot.phase,
+            "state_path": mode_snapshot.state_path,
+        },
     }
     result: RuntimeModeStatusResult = RuntimeModeStatusResult.model_validate(
         normalized_payload

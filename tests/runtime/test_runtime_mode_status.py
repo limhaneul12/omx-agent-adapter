@@ -165,7 +165,7 @@ def test_read_runtime_mode_status_rejects_non_mapping_transport(monkeypatch) -> 
         )
 
 
-def test_read_runtime_mode_status_preserves_required_contract_validation(
+def test_read_runtime_mode_status_rejects_missing_active_field_in_status_entry(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -174,7 +174,7 @@ def test_read_runtime_mode_status_preserves_required_contract_validation(
         lambda arguments: DummyResult(stdout='{"statuses":{"ralph":{}}}\n'),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(RuntimeSurfaceError):
         asyncio.run(
             runtime_mode_status.read_runtime_mode_status(
                 RuntimeModeStatusRequest(mode="ralph")

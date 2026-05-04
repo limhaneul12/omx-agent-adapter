@@ -85,6 +85,6 @@ def test_load_active_runtime_modes_payload_rejects_non_object_transport() -> Non
         active_runtime_modes._load_active_runtime_modes_payload("[]")
 
 
-def test_load_active_runtime_modes_payload_preserves_required_contract_validation() -> None:
-    with pytest.raises(ValidationError):
+def test_load_active_runtime_modes_payload_rejects_missing_active_modes_payload() -> None:
+    with pytest.raises(RuntimeSurfaceError):
         active_runtime_modes._normalize_active_runtime_modes("{}")
