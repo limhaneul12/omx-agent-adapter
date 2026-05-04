@@ -91,18 +91,27 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
             f"{operation_name} returned a non-object data payload"
         )
 
-    result: TeamApiTransportPayload = {
-        "count": data_payload.get("count"),
-        "tasks": data_payload.get("tasks"),
-        "cursor": data_payload.get("cursor"),
-        "events": data_payload.get("events"),
-        "worker": data_payload.get("worker"),
-        "messages": data_payload.get("messages"),
-        "snapshot": data_payload.get("snapshot"),
-        "status": data_payload.get("status"),
-        "config": data_payload.get("config"),
-        "manifest": data_payload.get("manifest"),
-    }
+    result: TeamApiTransportPayload = {}
+
+    count_value: object | None = data_payload.get("count")
+    if isinstance(count_value, int):
+        result["count"] = count_value
+
+    cursor_value: object | None = data_payload.get("cursor")
+    if isinstance(cursor_value, str):
+        result["cursor"] = cursor_value
+
+    worker_value: object | None = data_payload.get("worker")
+    if isinstance(worker_value, str):
+        result["worker"] = worker_value
+
+    result["tasks"] = data_payload.get("tasks")
+    result["events"] = data_payload.get("events")
+    result["messages"] = data_payload.get("messages")
+    result["snapshot"] = data_payload.get("snapshot")
+    result["status"] = data_payload.get("status")
+    result["config"] = data_payload.get("config")
+    result["manifest"] = data_payload.get("manifest")
     return result
 
 
@@ -144,9 +153,21 @@ def _load_team_api_error_payload(stdout: str, operation_name: str) -> TeamApiErr
             f"{operation_name} returned a non-object error payload"
         )
 
+    code_value: object | None = error_payload.get("code")
+    if not isinstance(code_value, str):
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a non-string error code"
+        )
+
+    message_value: object | None = error_payload.get("message")
+    if not isinstance(message_value, str):
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a non-string error message"
+        )
+
     result: TeamApiErrorTransportPayload = {
-        "code": error_payload.get("code"),
-        "message": error_payload.get("message"),
+        "code": code_value,
+        "message": message_value,
     }
     return result
 
@@ -159,12 +180,24 @@ def _normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTa
             "omx team api list-tasks returned a non-object task payload"
         )
 
-    normalized_payload: TeamApiTransportTaskPayload = {
-        "id": task_payload.get("id"),
-        "subject": task_payload.get("subject", task_payload.get("title")),
-        "status": task_payload.get("status"),
-        "owner": task_payload.get("owner", task_payload.get("assignee")),
-    }
+    normalized_payload: TeamApiTransportTaskPayload = {}
+
+    id_value: object | None = task_payload.get("id")
+    if isinstance(id_value, str):
+        normalized_payload["id"] = id_value
+
+    subject_value: object | None = task_payload.get("subject", task_payload.get("title"))
+    if isinstance(subject_value, str):
+        normalized_payload["subject"] = subject_value
+
+    status_value: object | None = task_payload.get("status")
+    if isinstance(status_value, str):
+        normalized_payload["status"] = status_value
+
+    owner_value: object | None = task_payload.get("owner", task_payload.get("assignee"))
+    if isinstance(owner_value, str):
+        normalized_payload["owner"] = owner_value
+
     return normalized_payload
 
 
@@ -176,12 +209,24 @@ def _normalize_team_api_event_payload(event_payload: object) -> TeamApiTransport
             "omx team api read-events returned a non-object event payload"
         )
 
-    normalized_payload: TeamApiTransportEventPayload = {
-        "type": event_payload.get("type"),
-        "worker": event_payload.get("worker"),
-        "task_id": event_payload.get("task_id"),
-        "message_id": event_payload.get("message_id"),
-    }
+    normalized_payload: TeamApiTransportEventPayload = {}
+
+    type_value: object | None = event_payload.get("type")
+    if isinstance(type_value, str):
+        normalized_payload["type"] = type_value
+
+    worker_value: object | None = event_payload.get("worker")
+    if isinstance(worker_value, str):
+        normalized_payload["worker"] = worker_value
+
+    task_id_value: object | None = event_payload.get("task_id")
+    if isinstance(task_id_value, str):
+        normalized_payload["task_id"] = task_id_value
+
+    message_id_value: object | None = event_payload.get("message_id")
+    if message_id_value is None or isinstance(message_id_value, str):
+        normalized_payload["message_id"] = message_id_value
+
     return normalized_payload
 
 
@@ -195,12 +240,24 @@ def _normalize_team_api_mailbox_message_payload(
             "omx team api mailbox-list returned a non-object message payload"
         )
 
-    normalized_payload: TeamApiTransportMailboxMessagePayload = {
-        "id": message_payload.get("id"),
-        "subject": message_payload.get("subject"),
-        "body": message_payload.get("body"),
-        "delivered": message_payload.get("delivered"),
-    }
+    normalized_payload: TeamApiTransportMailboxMessagePayload = {}
+
+    id_value: object | None = message_payload.get("id")
+    if isinstance(id_value, str):
+        normalized_payload["id"] = id_value
+
+    subject_value: object | None = message_payload.get("subject")
+    if isinstance(subject_value, str):
+        normalized_payload["subject"] = subject_value
+
+    body_value: object | None = message_payload.get("body")
+    if isinstance(body_value, str):
+        normalized_payload["body"] = body_value
+
+    delivered_value: object | None = message_payload.get("delivered")
+    if isinstance(delivered_value, bool):
+        normalized_payload["delivered"] = delivered_value
+
     return normalized_payload
 
 
@@ -215,10 +272,16 @@ def _normalize_team_api_worker_status_payload(
             "omx team api read-worker-status returned a non-object status payload"
         )
 
-    normalized_status_payload: TeamApiTransportWorkerStatusPayload = {
-        "state": status_payload.get("state"),
-        "updated_at": status_payload.get("updated_at"),
-    }
+    normalized_status_payload: TeamApiTransportWorkerStatusPayload = {}
+
+    state_value: object | None = status_payload.get("state")
+    if isinstance(state_value, str):
+        normalized_status_payload["state"] = state_value
+
+    updated_at_value: object | None = status_payload.get("updated_at")
+    if isinstance(updated_at_value, str):
+        normalized_status_payload["updated_at"] = updated_at_value
+
     return TeamApiWorkerStatusSnapshot.model_validate(
         {
             "worker": worker_name,
@@ -256,8 +319,9 @@ async def read_team_api_list_tasks(
         "omx team api list-tasks",
     )
     raw_tasks: object = data_payload.get("tasks")
+    count_value: int | None = data_payload.get("count")
     normalized_payload: TeamApiListTasksNormalizedPayload = {
-        "count": data_payload.get("count"),
+        "count": 0 if count_value is None else count_value,
         "tasks": raw_tasks,
     }
     if isinstance(raw_tasks, list):
@@ -305,9 +369,11 @@ async def read_team_api_read_events(
         "omx team api read-events",
     )
     raw_events: object = data_payload.get("events")
+    count_value: int | None = data_payload.get("count")
+    cursor_value: str | None = data_payload.get("cursor")
     normalized_payload: TeamApiReadEventsNormalizedPayload = {
-        "count": data_payload.get("count"),
-        "cursor": data_payload.get("cursor"),
+        "count": 0 if count_value is None else count_value,
+        "cursor": "" if cursor_value is None else cursor_value,
         "events": raw_events,
     }
     if isinstance(raw_events, list):
@@ -357,9 +423,11 @@ async def read_team_api_mailbox_list(
         "omx team api mailbox-list",
     )
     raw_messages: object = data_payload.get("messages")
+    worker_value: str | None = data_payload.get("worker")
+    count_value: int | None = data_payload.get("count")
     normalized_payload: TeamApiMailboxListNormalizedPayload = {
-        "worker": data_payload.get("worker"),
-        "count": data_payload.get("count"),
+        "worker": "" if worker_value is None else worker_value,
+        "count": 0 if count_value is None else count_value,
         "messages": raw_messages,
     }
     if isinstance(raw_messages, list):
@@ -542,14 +610,22 @@ async def read_team_api_read_worker_status(
             "omx team api read-worker-status returned a non-object status payload"
         )
 
-    status_payload: TeamApiTransportWorkerStatusPayload = {
-        "state": raw_status_payload.get("state"),
-        "updated_at": raw_status_payload.get("updated_at"),
-    }
+    status_payload: TeamApiTransportWorkerStatusPayload = {}
+
+    state_value: object | None = raw_status_payload.get("state")
+    if isinstance(state_value, str):
+        status_payload["state"] = state_value
+
+    updated_at_value: object | None = raw_status_payload.get("updated_at")
+    if isinstance(updated_at_value, str):
+        status_payload["updated_at"] = updated_at_value
+
+    worker_value: str | None = data_payload.get("worker")
+
     normalized_payload: TeamApiWorkerStatusNormalizedPayload = {
-        "worker": data_payload.get("worker"),
-        "state": status_payload.get("state"),
-        "updated_at": status_payload.get("updated_at"),
+        "worker": "" if worker_value is None else worker_value,
+        "state": "" if status_payload.get("state") is None else status_payload["state"],
+        "updated_at": "" if status_payload.get("updated_at") is None else status_payload["updated_at"],
     }
     result: TeamApiWorkerStatusSnapshot = TeamApiWorkerStatusSnapshot.model_validate(
         normalized_payload

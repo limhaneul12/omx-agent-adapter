@@ -114,14 +114,14 @@ def test_read_team_status_rejects_unparseable_json_transport(monkeypatch) -> Non
         )
 
 
-def test_read_team_status_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_team_status_rejects_missing_status_field(monkeypatch) -> None:
     monkeypatch.setattr(
         team_snapshot,
         "run_omx_command",
         lambda arguments: DummyResult(stdout='{"team_name":"alpha"}\n'),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TeamworkSurfaceError):
         asyncio.run(
             team_snapshot.read_team_status(TeamStatusRequest(team_name="alpha"))
         )

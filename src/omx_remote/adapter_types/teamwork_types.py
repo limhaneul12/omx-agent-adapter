@@ -7,16 +7,16 @@ class TeamApiEnvelopePayload(TypedDict):
 
 
 class TeamApiErrorTransportPayload(TypedDict):
-    code: Required[object]
-    message: Required[object]
+    code: Required[str]
+    message: Required[str]
 
 
 class TeamApiTransportPayload(TypedDict):
-    count: NotRequired[object]
+    count: NotRequired[int]
     tasks: NotRequired[object]
-    cursor: NotRequired[object]
+    cursor: NotRequired[str]
     events: NotRequired[object]
-    worker: NotRequired[object]
+    worker: NotRequired[str]
     messages: NotRequired[object]
     snapshot: NotRequired[object]
     status: NotRequired[object]
@@ -25,90 +25,90 @@ class TeamApiTransportPayload(TypedDict):
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):
-    count: Required[object]
+    count: Required[int]
     tasks: Required[object]
 
 
 class TeamApiReadEventsNormalizedPayload(TypedDict):
-    count: Required[object]
-    cursor: Required[object]
+    count: Required[int]
+    cursor: Required[str]
     events: Required[object]
 
 
 class TeamApiMailboxListNormalizedPayload(TypedDict):
-    worker: Required[object]
-    count: Required[object]
+    worker: Required[str]
+    count: Required[int]
     messages: Required[object]
 
 
 class TeamApiWorkerStatusNormalizedPayload(TypedDict):
-    worker: Required[object]
-    state: Required[object]
-    updated_at: Required[object]
+    worker: Required[str]
+    state: Required[str]
+    updated_at: Required[str]
 
 
 class TeamApiTransportTaskPayload(TypedDict, total=False):
-    id: object
-    subject: object
-    title: object
-    status: object
-    owner: object
-    assignee: object
+    id: str
+    subject: str
+    title: str
+    status: str
+    owner: str
+    assignee: str
 
 
 class TeamApiTransportEventPayload(TypedDict, total=False):
-    type: object
-    worker: object
-    task_id: object
-    message_id: object
+    type: str
+    worker: str
+    task_id: str
+    message_id: str | None
 
 
 class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
-    id: object
-    subject: object
-    body: object
-    delivered: object
+    id: str
+    subject: str
+    body: str
+    delivered: bool
 
 
 class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
-    state: object
-    updated_at: object
+    state: str
+    updated_at: str
 
 
 class TeamStatusTransportPayload(TypedDict):
-    team_name: Required[object]
-    status: Required[object]
-    phase: NotRequired[object]
-    current_phase: NotRequired[object]
-    dead_workers: NotRequired[object]
-    non_reporting_workers: NotRequired[object]
+    team_name: Required[str]
+    status: Required[str]
+    phase: NotRequired[str | None]
+    current_phase: NotRequired[str | None]
+    dead_workers: NotRequired[list[str]]
+    non_reporting_workers: NotRequired[list[str]]
 
 
 class TeamStatusNormalizedPayload(TypedDict):
-    team_name: Required[object]
-    status: Required[object]
-    phase: Required[object]
-    dead_workers: Required[object]
-    non_reporting_workers: Required[object]
+    team_name: Required[str]
+    status: Required[str]
+    phase: Required[str | None]
+    dead_workers: Required[list[str]]
+    non_reporting_workers: Required[list[str]]
 
 
 class TeamAwaitTransportEventPayload(TypedDict, total=False):
-    type: object
-    worker: object
-    task_id: object
+    type: str
+    worker: str
+    task_id: str
 
 
 class TeamAwaitTransportPayload(TypedDict):
-    team_name: Required[object]
-    status: Required[object]
-    cursor: NotRequired[object]
-    event: NotRequired[object]
+    team_name: Required[str]
+    status: Required[str]
+    cursor: NotRequired[str]
+    event: NotRequired[TeamAwaitTransportEventPayload | None]
 
 
 class TeamAwaitNormalizedPayload(TypedDict):
-    team_name: Required[object]
-    status: Required[object]
-    cursor: Required[object]
-    event_type: Required[object]
-    event_worker: Required[object]
-    event_task_id: Required[object]
+    team_name: Required[str]
+    status: Required[str]
+    cursor: Required[str | None]
+    event_type: Required[str | None]
+    event_worker: Required[str | None]
+    event_task_id: Required[str | None]
