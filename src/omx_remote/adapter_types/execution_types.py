@@ -1,6 +1,19 @@
 from typing import Required, TypedDict
 
 
+class ExecutionUsageTransportPayload(TypedDict, total=False):
+    input_tokens: int
+    cached_input_tokens: int
+    output_tokens: int
+    reasoning_output_tokens: int
+
+
+class ExecutionItemTransportPayload(TypedDict, total=False):
+    id: str
+    type: str
+    text: str
+
+
 class ExecutionTransportPayload(TypedDict, total=False):
     type: object
     text: object
@@ -11,6 +24,8 @@ class ExecutionTransportPayload(TypedDict, total=False):
     id: object
     extra: object
     kind: object
+    thread_id: str
+    usage: ExecutionUsageTransportPayload
 
 
 class ExecMessageNormalizedPayload(TypedDict):

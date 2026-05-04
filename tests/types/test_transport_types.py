@@ -11,7 +11,9 @@ from omx_remote.adapter_types.execution_types import (
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
+    ExecutionItemTransportPayload,
     ExecutionTransportPayload,
+    ExecutionUsageTransportPayload,
 )
 from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
@@ -113,11 +115,25 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     runtime_transport: ActiveRuntimeModesTransportPayload = {
         "active_modes": ["ralph"],
     }
+    item_transport: ExecutionItemTransportPayload = {
+        "id": "item_0",
+        "type": "agent_message",
+        "text": "OK",
+    }
+    usage_transport: ExecutionUsageTransportPayload = {
+        "input_tokens": 21848,
+        "cached_input_tokens": 7552,
+        "output_tokens": 5,
+        "reasoning_output_tokens": 0,
+    }
     execution_transport: ExecutionTransportPayload = {
         "type": "tool_result",
         "tool_name": "grep",
         "call_id": "call-1",
         "text": "match",
+        "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2",
+        "usage": usage_transport,
+        "item": item_transport,
     }
     message_normalized: ExecMessageNormalizedPayload = {
         "kind": "message",
@@ -142,6 +158,9 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
 
     assert runtime_transport["active_modes"] == ["ralph"]
     assert execution_transport["tool_name"] == tool_call_normalized["tool_name"]
+    assert execution_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+    assert execution_transport["usage"]["cached_input_tokens"] == 7552
+    assert execution_transport["item"]["type"] == "agent_message"
     assert message_normalized["kind"] == "message"
     assert output_normalized["kind"] == "output_text"
     assert tool_result_normalized["call_id"] == "call-1"
