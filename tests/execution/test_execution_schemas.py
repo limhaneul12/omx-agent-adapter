@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.schemas.execution_schemas import (
+    ExecCommandExecution,
     ExecMessage,
     ExecRequest,
     ExecToolCall,
@@ -59,6 +60,24 @@ def test_exec_message_uses_named_execution_payload_kind() -> None:
     result = ExecMessage.model_validate({"kind": "message", "text": "done"})
 
     assert result.kind is ExecutionPayloadKind.MESSAGE
+
+
+def test_exec_command_execution_uses_named_execution_payload_kind() -> None:
+    result = ExecCommandExecution.model_validate(
+        {
+            "kind": "command_execution",
+            "command": "/bin/zsh -lc pwd",
+            "aggregated_output": "/tmp\n",
+            "exit_code": 0,
+            "status": "completed",
+        }
+    )
+
+    assert result.kind is ExecutionPayloadKind.COMMAND_EXECUTION
+    assert result.command == "/bin/zsh -lc pwd"
+    assert result.aggregated_output == "/tmp\n"
+    assert result.exit_code == 0
+    assert result.status == "completed"
 
 
 def test_exec_tool_call_rejects_non_tool_call_kind() -> None:

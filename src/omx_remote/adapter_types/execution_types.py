@@ -58,6 +58,10 @@ class ExecutionTransportPayload(TypedDict, total=False):
     tool_name: object
     call_id: object
     arguments: object
+    command: object
+    aggregated_output: object
+    exit_code: object
+    status: object
     id: object
     extra: object
     kind: object
@@ -73,6 +77,14 @@ class ExecMessageNormalizedPayload(TypedDict):
 class ExecOutputNormalizedPayload(TypedDict):
     kind: Required[object]
     text: Required[object]
+
+
+class ExecCommandExecutionNormalizedPayload(TypedDict):
+    kind: Required[object]
+    command: Required[object]
+    aggregated_output: Required[object]
+    exit_code: Required[object]
+    status: Required[object]
 
 
 class ExecToolCallNormalizedPayload(TypedDict):

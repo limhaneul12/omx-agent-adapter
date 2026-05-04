@@ -1,4 +1,5 @@
 from omx_remote.adapter_types.execution_types import (
+    ExecCommandExecutionNormalizedPayload,
     ExecMessageNormalizedPayload,
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
@@ -11,6 +12,7 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionUsageTransportPayload,
 )
 from omx_remote.schemas.execution_schemas import (
+    ExecCommandExecution,
     ExecMessage,
     ExecOutput,
     ExecToolCall,
@@ -27,10 +29,16 @@ from omx_remote.shared.exceptions.execution_exceptions import (
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
 ExecutionPayload = ExecutionTransportPayload
-ExecutionContract = ExecMessage | ExecOutput | ExecToolCall | ExecToolResult
+ExecutionContract = (
+    ExecMessage
+    | ExecOutput
+    | ExecCommandExecution
+    | ExecToolCall
+    | ExecToolResult
+)
 RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
-    {"message", "output_text", "tool_call", "tool_result"}
+    {"message", "output_text", "command_execution", "tool_call", "tool_result"}
 )
 KNOWN_EXECUTION_EVENT_TYPES: frozenset[str] = frozenset(
     {"thread.started", "turn.started", "item.completed", "turn.completed"}
@@ -209,6 +217,10 @@ def _normalize_execution_event_payload(
         "tool_name": payload.get("tool_name"),
         "call_id": payload.get("call_id"),
         "arguments": payload.get("arguments"),
+        "command": payload.get("command"),
+        "aggregated_output": payload.get("aggregated_output"),
+        "exit_code": payload.get("exit_code"),
+        "status": payload.get("status"),
         "id": payload.get("id"),
         "extra": payload.get("extra"),
     }
@@ -251,6 +263,10 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
         "tool_name": payload.get("tool_name"),
         "call_id": payload.get("call_id"),
         "arguments": payload.get("arguments"),
+        "command": payload.get("command"),
+        "aggregated_output": payload.get("aggregated_output"),
+        "exit_code": payload.get("exit_code"),
+        "status": payload.get("status"),
         "id": payload.get("id"),
         "extra": payload.get("extra"),
     }
@@ -349,6 +365,30 @@ def route_execution_payload(payload: ExecutionPayload) -> RoutedExecutionPayload
 
     contract: ExecutionContract = promote_execution_contract(payload)
     return contract
+
+
+def promote_exec_command_execution(
+    payload: ExecutionPayload,
+) -> ExecCommandExecution:
+    """Promotes a raw command-execution payload into a stable execution contract.
+
+    Args:
+        payload [ExecutionPayload]: Raw execution payload whose fields should become a command-execution contract.
+
+    Returns:
+        ExecCommandExecution: Stable command-execution contract built from the normalized raw payload.
+    """
+    normalized_payload: ExecCommandExecutionNormalizedPayload = {
+        "kind": payload["type"],
+        "command": payload["command"],
+        "aggregated_output": payload["aggregated_output"],
+        "exit_code": payload["exit_code"],
+        "status": payload["status"],
+    }
+    result: ExecCommandExecution = ExecCommandExecution.model_validate(
+        normalized_payload
+    )
+    return result
 
 
 def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
@@ -603,6 +643,9 @@ def promote_execution_contract(payload: ExecutionPayload) -> ExecutionContract:
         return result
     if payload_type == "output_text":
         result = promote_exec_output(payload)
+        return result
+    if payload_type == "command_execution":
+        result = promote_exec_command_execution(payload)
         return result
     if payload_type == "tool_call":
         result = promote_exec_tool_call(payload)

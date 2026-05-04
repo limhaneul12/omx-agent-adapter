@@ -50,6 +50,18 @@ class ExecOutput(BaseModel):
     text: str
 
 
+class ExecCommandExecution(BaseModel):
+    """Represents a promoted command-execution event."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal[ExecutionPayloadKind.COMMAND_EXECUTION]
+    command: NonEmptyString
+    aggregated_output: str
+    exit_code: int
+    status: NonEmptyString
+
+
 class ExecToolCall(BaseModel):
     """Represents a promoted tool-call event."""
 
