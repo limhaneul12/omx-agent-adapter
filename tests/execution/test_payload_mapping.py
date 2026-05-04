@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from omx_remote.execution.payload_mapping import (
     _load_execution_transport_payload,
@@ -490,6 +491,13 @@ def test_promote_exec_message_builds_contract_from_payload() -> None:
     assert result.text == "done"
 
 
+def test_promote_exec_message_rejects_non_string_text() -> None:
+    payload = {"type": "message", "text": ["not", "a", "string"]}
+
+    with pytest.raises(ValidationError):
+        promote_exec_message(payload)
+
+
 def test_promote_exec_output_builds_contract_from_payload() -> None:
     payload = {"type": "output_text", "text": "stream line"}
 
@@ -529,6 +537,18 @@ def test_promote_exec_tool_call_builds_contract_from_payload() -> None:
     assert result.tool_name == "grep"
     assert result.call_id == "call-123"
     assert result.arguments == '{"pattern":"TODO"}'
+
+
+def test_promote_exec_tool_call_rejects_non_string_arguments() -> None:
+    payload = {
+        "type": "tool_call",
+        "tool_name": "grep",
+        "call_id": "call-123",
+        "arguments": ["not", "a", "string"],
+    }
+
+    with pytest.raises(ValidationError):
+        promote_exec_tool_call(payload)
 
 
 def test_promote_execution_contract_selects_command_execution_contract() -> None:

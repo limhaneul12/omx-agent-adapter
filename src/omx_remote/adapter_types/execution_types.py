@@ -1,4 +1,4 @@
-from typing import NotRequired, Required, TypedDict
+from typing import Literal, NotRequired, Required, TypedDict
 
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 
@@ -72,32 +72,32 @@ class ExecutionTransportPayload(TypedDict, total=False):
 
 
 class ExecMessageNormalizedPayload(TypedDict):
-    kind: Required[object]
-    text: Required[object]
+    kind: Required[Literal["message"]]
+    text: Required[str]
 
 
 class ExecOutputNormalizedPayload(TypedDict):
-    kind: Required[object]
-    text: Required[object]
+    kind: Required[Literal["output_text"]]
+    text: Required[str]
 
 
 class ExecCommandExecutionNormalizedPayload(TypedDict):
-    kind: Required[object]
-    command: Required[object]
-    aggregated_output: Required[object]
-    exit_code: Required[object]
-    status: Required[object]
+    kind: Required[Literal["command_execution"]]
+    command: Required[str]
+    aggregated_output: Required[str]
+    exit_code: Required[int]
+    status: Required[str]
 
 
 class ExecToolCallNormalizedPayload(TypedDict):
-    kind: Required[object]
-    tool_name: Required[object]
-    call_id: Required[object]
-    arguments: Required[object]
+    kind: Required[Literal["tool_call"]]
+    tool_name: Required[str]
+    call_id: Required[str]
+    arguments: Required[str]
 
 
 class ExecToolResultNormalizedPayload(TypedDict):
-    kind: Required[object]
-    tool_name: Required[object]
-    call_id: Required[object]
-    text: Required[object]
+    kind: Required[Literal["tool_result"]]
+    tool_name: Required[str]
+    call_id: Required[str]
+    text: Required[str]

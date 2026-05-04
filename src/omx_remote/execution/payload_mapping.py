@@ -450,7 +450,7 @@ def promote_exec_command_execution(
         ExecCommandExecution: Stable command-execution contract built from the normalized raw payload.
     """
     normalized_payload: ExecCommandExecutionNormalizedPayload = {
-        "kind": payload["type"],
+        "kind": "command_execution",
         "command": payload["command"],
         "aggregated_output": payload["aggregated_output"],
         "exit_code": payload["exit_code"],
@@ -472,7 +472,7 @@ def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
         ExecMessage: Stable execution message contract built from the normalized raw payload.
     """
     normalized_payload: ExecMessageNormalizedPayload = {
-        "kind": payload["type"],
+        "kind": "message",
         "text": payload["text"],
     }
     result: ExecMessage = ExecMessage.model_validate(normalized_payload)
@@ -489,7 +489,7 @@ def promote_exec_output(payload: ExecutionPayload) -> ExecOutput:
         ExecOutput: Stable execution output contract built from the normalized raw payload.
     """
     normalized_payload: ExecOutputNormalizedPayload = {
-        "kind": payload["type"],
+        "kind": "output_text",
         "text": payload["text"],
     }
     result: ExecOutput = ExecOutput.model_validate(normalized_payload)
@@ -506,7 +506,7 @@ def promote_exec_tool_call(payload: ExecutionPayload) -> ExecToolCall:
         ExecToolCall: Stable execution tool-call contract built from the normalized raw payload.
     """
     normalized_payload: ExecToolCallNormalizedPayload = {
-        "kind": payload["type"],
+        "kind": "tool_call",
         "tool_name": payload["tool_name"],
         "call_id": payload["call_id"],
         "arguments": payload["arguments"],
@@ -525,7 +525,7 @@ def promote_exec_tool_result(payload: ExecutionPayload) -> ExecToolResult:
         ExecToolResult: Stable execution tool-result contract built from the normalized raw payload.
     """
     normalized_payload: ExecToolResultNormalizedPayload = {
-        "kind": payload["type"],
+        "kind": "tool_result",
         "tool_name": payload["tool_name"],
         "call_id": payload["call_id"],
         "text": payload["text"],
