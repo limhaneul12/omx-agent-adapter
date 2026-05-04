@@ -213,20 +213,52 @@ def _normalize_execution_event_payload(
     payload: ExecutionTransportPayload,
 ) -> ExecutionTransportPayload:
     """Normalizes event-kind-specific execution payload fields into the observed stable subset."""
-    normalized_payload: ExecutionTransportPayload = {
-        "type": event_type,
-        "text": payload.get("text"),
-        "item": payload.get("item"),
-        "tool_name": payload.get("tool_name"),
-        "call_id": payload.get("call_id"),
-        "arguments": payload.get("arguments"),
-        "command": payload.get("command"),
-        "aggregated_output": payload.get("aggregated_output"),
-        "exit_code": payload.get("exit_code"),
-        "status": payload.get("status"),
-        "id": payload.get("id"),
-        "extra": payload.get("extra"),
-    }
+    normalized_payload: ExecutionTransportPayload = {}
+    normalized_payload["type"] = event_type
+
+    text_value: str | None = payload.get("text")
+    if isinstance(text_value, str):
+        normalized_payload["text"] = text_value
+
+    item_value: ExecutionItemTransportPayload | None = payload.get("item")
+    if isinstance(item_value, dict):
+        normalized_payload["item"] = item_value
+
+    tool_name_value: str | None = payload.get("tool_name")
+    if isinstance(tool_name_value, str):
+        normalized_payload["tool_name"] = tool_name_value
+
+    call_id_value: str | None = payload.get("call_id")
+    if isinstance(call_id_value, str):
+        normalized_payload["call_id"] = call_id_value
+
+    arguments_value: str | None = payload.get("arguments")
+    if isinstance(arguments_value, str):
+        normalized_payload["arguments"] = arguments_value
+
+    command_value: str | None = payload.get("command")
+    if isinstance(command_value, str):
+        normalized_payload["command"] = command_value
+
+    aggregated_output_value: str | None = payload.get("aggregated_output")
+    if isinstance(aggregated_output_value, str):
+        normalized_payload["aggregated_output"] = aggregated_output_value
+
+    exit_code_value: int | None = payload.get("exit_code")
+    if isinstance(exit_code_value, int):
+        normalized_payload["exit_code"] = exit_code_value
+
+    status_value: str | None = payload.get("status")
+    if isinstance(status_value, str):
+        normalized_payload["status"] = status_value
+
+    id_value: str | None = payload.get("id")
+    if isinstance(id_value, str):
+        normalized_payload["id"] = id_value
+
+    extra_value: object | None = payload.get("extra")
+    if extra_value is not None:
+        normalized_payload["extra"] = extra_value
 
     if event_type == "thread.started":
         thread_started_payload: ExecutionThreadStartedTransportPayload = (
@@ -259,20 +291,56 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
             "execution payload must be a JSON object payload"
         )
 
-    transport_payload: ExecutionTransportPayload = {
-        "type": payload.get("type"),
-        "text": payload.get("text"),
-        "item": payload.get("item"),
-        "tool_name": payload.get("tool_name"),
-        "call_id": payload.get("call_id"),
-        "arguments": payload.get("arguments"),
-        "command": payload.get("command"),
-        "aggregated_output": payload.get("aggregated_output"),
-        "exit_code": payload.get("exit_code"),
-        "status": payload.get("status"),
-        "id": payload.get("id"),
-        "extra": payload.get("extra"),
-    }
+    normalized_event_type: str | None = _normalize_execution_event_type(payload.get("type"))
+    transport_payload: ExecutionTransportPayload = {}
+    transport_payload["type"] = normalized_event_type
+
+    text_value: object | None = payload.get("text")
+    if isinstance(text_value, str):
+        transport_payload["text"] = text_value
+
+    item_value: object | None = payload.get("item")
+    if isinstance(item_value, dict):
+        transport_item_payload: ExecutionItemTransportPayload = (
+            _normalize_execution_item_payload(item_value)
+        )
+        transport_payload["item"] = transport_item_payload
+
+    tool_name_value: object | None = payload.get("tool_name")
+    if isinstance(tool_name_value, str):
+        transport_payload["tool_name"] = tool_name_value
+
+    call_id_value: object | None = payload.get("call_id")
+    if isinstance(call_id_value, str):
+        transport_payload["call_id"] = call_id_value
+
+    arguments_value: object | None = payload.get("arguments")
+    if isinstance(arguments_value, str):
+        transport_payload["arguments"] = arguments_value
+
+    command_value: object | None = payload.get("command")
+    if isinstance(command_value, str):
+        transport_payload["command"] = command_value
+
+    aggregated_output_value: object | None = payload.get("aggregated_output")
+    if isinstance(aggregated_output_value, str):
+        transport_payload["aggregated_output"] = aggregated_output_value
+
+    exit_code_value: object | None = payload.get("exit_code")
+    if isinstance(exit_code_value, int):
+        transport_payload["exit_code"] = exit_code_value
+
+    status_value: object | None = payload.get("status")
+    if isinstance(status_value, str):
+        transport_payload["status"] = status_value
+
+    id_value: object | None = payload.get("id")
+    if isinstance(id_value, str):
+        transport_payload["id"] = id_value
+
+    extra_value: object | None = payload.get("extra")
+    if extra_value is not None:
+        transport_payload["extra"] = extra_value
 
     thread_id_value: object | None = payload.get("thread_id")
     if isinstance(thread_id_value, str):

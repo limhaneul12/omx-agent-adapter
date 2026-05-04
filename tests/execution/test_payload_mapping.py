@@ -279,6 +279,48 @@ def test_load_execution_payload_preserves_live_command_execution_item_shape() ->
     assert result["item"]["exit_code"] == 0
 
 
+def test_load_execution_transport_payload_preserves_top_level_message_text_as_string_only() -> (
+    None
+):
+    result = _load_execution_transport_payload(
+        {"type": "message", "text": "done", "extra": {"ignored": True}}
+    )
+
+    assert result["type"] == "message"
+    assert result["text"] == "done"
+    assert "extra" in result
+    assert result["extra"] == {"ignored": True}
+
+
+def test_load_execution_transport_payload_drops_non_string_top_level_text() -> None:
+    result = _load_execution_transport_payload(
+        {"type": "message", "text": ["not", "a", "string"]}
+    )
+
+    assert result["type"] == "message"
+    assert "text" not in result
+
+
+def test_load_execution_transport_payload_preserves_top_level_command_execution_fields() -> (
+    None
+):
+    result = _load_execution_transport_payload(
+        {
+            "type": "command_execution",
+            "command": "/bin/zsh -lc pwd",
+            "aggregated_output": "/tmp\\n",
+            "exit_code": 0,
+            "status": "completed",
+        }
+    )
+
+    assert result["type"] == "command_execution"
+    assert result["command"] == "/bin/zsh -lc pwd"
+    assert result["aggregated_output"] == "/tmp\\n"
+    assert result["exit_code"] == 0
+    assert result["status"] == "completed"
+
+
 def test_split_event_payloads_extracts_item_completed_item_payload() -> None:
     payload = {
         "type": "item.completed",
