@@ -13,8 +13,11 @@ from omx_remote.adapter_types.execution_types import (
     ExecToolResultNormalizedPayload,
     ExecutionAgentMessageItemTransportPayload,
     ExecutionCommandExecutionItemTransportPayload,
+    ExecutionItemCompletedTransportPayload,
     ExecutionItemTransportPayload,
+    ExecutionThreadStartedTransportPayload,
     ExecutionTransportPayload,
+    ExecutionTurnCompletedTransportPayload,
     ExecutionUsageTransportPayload,
 )
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
@@ -118,6 +121,10 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     runtime_transport: ActiveRuntimeModesTransportPayload = {
         "active_modes": ["ralph"],
     }
+    thread_started_transport: ExecutionThreadStartedTransportPayload = {
+        "type": ExecutionEventKind.THREAD_STARTED,
+        "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2",
+    }
     agent_message_item_transport: ExecutionAgentMessageItemTransportPayload = {
         "id": "item_0",
         "type": "agent_message",
@@ -137,6 +144,14 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
         "cached_input_tokens": 7552,
         "output_tokens": 5,
         "reasoning_output_tokens": 0,
+    }
+    turn_completed_transport: ExecutionTurnCompletedTransportPayload = {
+        "type": ExecutionEventKind.TURN_COMPLETED,
+        "usage": usage_transport,
+    }
+    item_completed_transport: ExecutionItemCompletedTransportPayload = {
+        "type": ExecutionEventKind.ITEM_COMPLETED,
+        "item": item_transport,
     }
     execution_transport: ExecutionTransportPayload = {
         "type": ExecutionEventKind.TURN_COMPLETED,
@@ -169,6 +184,10 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     }
 
     assert runtime_transport["active_modes"] == ["ralph"]
+    assert thread_started_transport["type"] == ExecutionEventKind.THREAD_STARTED
+    assert thread_started_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+    assert turn_completed_transport["usage"]["cached_input_tokens"] == 7552
+    assert item_completed_transport["item"]["type"] == "agent_message"
     assert execution_transport["tool_name"] == tool_call_normalized["tool_name"]
     assert execution_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
     assert execution_transport["usage"]["cached_input_tokens"] == 7552

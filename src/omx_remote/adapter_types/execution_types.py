@@ -1,4 +1,4 @@
-from typing import Required, TypedDict
+from typing import Literal, Required, TypedDict
 
 
 class ExecutionUsageTransportPayload(TypedDict, total=False):
@@ -6,6 +6,11 @@ class ExecutionUsageTransportPayload(TypedDict, total=False):
     cached_input_tokens: int
     output_tokens: int
     reasoning_output_tokens: int
+
+
+class ExecutionThreadStartedTransportPayload(TypedDict):
+    type: Required[Literal["thread.started"]]
+    thread_id: Required[str]
 
 
 class ExecutionAgentMessageItemTransportPayload(TypedDict):
@@ -34,6 +39,16 @@ class ExecutionItemTransportPayload(TypedDict, total=False):
     aggregated_output: str
     exit_code: int
     status: str
+
+
+class ExecutionTurnCompletedTransportPayload(TypedDict):
+    type: Required[Literal["turn.completed"]]
+    usage: Required[ExecutionUsageTransportPayload]
+
+
+class ExecutionItemCompletedTransportPayload(TypedDict):
+    type: Required[Literal["item.completed"]]
+    item: Required[ExecutionItemTransportPayload]
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
