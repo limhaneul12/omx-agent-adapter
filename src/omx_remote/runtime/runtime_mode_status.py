@@ -76,9 +76,9 @@ def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransport
             raw_status_payload
         )
 
-    result: RuntimeModeStatusTransportPayload = {
-        "statuses": normalized_statuses,
-    }
+    result = RuntimeModeStatusTransportPayload(
+        statuses=normalized_statuses,
+    )
     return result
 
 
@@ -114,9 +114,9 @@ def _normalize_runtime_mode_status_entry_payload(
             "omx state get-status returned a non-boolean active payload"
         )
 
-    normalized_transport_payload: RuntimeModeStatusEntryPayload = {
-        "active": active_value,
-    }
+    normalized_transport_payload = RuntimeModeStatusEntryPayload(
+        active=active_value,
+    )
 
     phase_value: object | None = status_payload.get("phase")
     if phase_value is None or isinstance(phase_value, str):
@@ -154,12 +154,12 @@ def _normalize_runtime_mode_status_entry(
     if state_path_value == "":
         state_path_value = None
 
-    normalized_payload: RuntimeModeStatusNormalizedPayload = {
-        "name": mode_name,
-        "is_active": status_payload["active"],
-        "phase": phase_value,
-        "state_path": state_path_value,
-    }
+    normalized_payload = RuntimeModeStatusNormalizedPayload(
+        name=mode_name,
+        is_active=status_payload["active"],
+        phase=phase_value,
+        state_path=state_path_value,
+    )
     result: RuntimeModeStatusSnapshot = RuntimeModeStatusSnapshot.model_validate(
         normalized_payload
     )
@@ -178,11 +178,11 @@ def _normalize_runtime_mode_status(
     raw_statuses: dict[str, RuntimeModeStatusEntryPayload] = parsed_payload["statuses"]
 
     if requested_mode not in raw_statuses:
-        missing_result_payload: RuntimeModeStatusResultNormalizedPayload = {
-            "requested_mode": requested_mode,
-            "found": False,
-            "mode_snapshot": None,
-        }
+        missing_result_payload = RuntimeModeStatusResultNormalizedPayload(
+            requested_mode=requested_mode,
+            found=False,
+            mode_snapshot=None,
+        )
         missing_result: RuntimeModeStatusResult = RuntimeModeStatusResult.model_validate(
             missing_result_payload
         )
@@ -193,16 +193,16 @@ def _normalize_runtime_mode_status(
         requested_mode,
         raw_mode_payload,
     )
-    normalized_payload: RuntimeModeStatusResultNormalizedPayload = {
-        "requested_mode": requested_mode,
-        "found": True,
-        "mode_snapshot": {
-            "name": mode_snapshot.name,
-            "is_active": mode_snapshot.is_active,
-            "phase": mode_snapshot.phase,
-            "state_path": mode_snapshot.state_path,
-        },
-    }
+    normalized_payload = RuntimeModeStatusResultNormalizedPayload(
+        requested_mode=requested_mode,
+        found=True,
+        mode_snapshot=RuntimeModeStatusNormalizedPayload(
+            name=mode_snapshot.name,
+            is_active=mode_snapshot.is_active,
+            phase=mode_snapshot.phase,
+            state_path=mode_snapshot.state_path,
+        ),
+    )
     result: RuntimeModeStatusResult = RuntimeModeStatusResult.model_validate(
         normalized_payload
     )

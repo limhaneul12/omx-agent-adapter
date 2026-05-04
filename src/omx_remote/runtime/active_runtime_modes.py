@@ -55,11 +55,10 @@ def _load_active_runtime_modes_payload(stdout: str) -> ActiveRuntimeModesTranspo
             )
         normalized_active_modes.append(active_mode)
 
-    result: ActiveRuntimeModesTransportPayload = {
-        "active_modes": normalized_active_modes,
-    }
+    result = ActiveRuntimeModesTransportPayload(
+        active_modes=normalized_active_modes,
+    )
     return result
-
 
 def _normalize_active_runtime_modes(stdout: str) -> ActiveRuntimeModes:
     """Normalizes `omx state list-active --json` stdout into a stable contract.

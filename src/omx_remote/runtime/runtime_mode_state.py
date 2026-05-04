@@ -61,11 +61,12 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
     if state_value is not None and not isinstance(state_value, dict):
         raise RuntimeSurfaceError("omx state read returned a non-object state payload")
 
-    result: RuntimeModeStateTransportPayload = {
-        "exists": exists_value,
-        "mode": mode_value,
-        "state": state_value,
-    }
+    result = RuntimeModeStateTransportPayload(
+        exists=exists_value,
+        mode=mode_value,
+        state=state_value,
+    )
+
     return result
 
 
@@ -74,11 +75,11 @@ def _normalize_runtime_mode_state(stdout: str) -> RuntimeModeStateSnapshot:
     payload: RuntimeModeStateTransportPayload = _load_runtime_mode_state_payload(stdout)
     raw_state_payload: dict[str, object] | None = payload.get("state")
 
-    normalized_payload: RuntimeModeStateNormalizedPayload = {
-        "mode": payload["mode"],
-        "exists": payload["exists"],
-        "state": raw_state_payload,
-    }
+    normalized_payload = RuntimeModeStateNormalizedPayload(
+        mode=payload["mode"],
+        exists=payload["exists"],
+        state=raw_state_payload,
+    )
     result: RuntimeModeStateSnapshot = RuntimeModeStateSnapshot.model_validate(
         normalized_payload
     )

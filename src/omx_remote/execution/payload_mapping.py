@@ -161,16 +161,16 @@ def _normalize_execution_thread_started_payload(
     thread_id_value: object | None = payload.get("thread_id")
     if not isinstance(thread_id_value, str):
         missing_thread_id: str = ""
-        normalized_payload: ExecutionThreadStartedTransportPayload = {
-            "type": ExecutionEventKind.THREAD_STARTED,
-            "thread_id": missing_thread_id,
-        }
+        normalized_payload = ExecutionThreadStartedTransportPayload(
+            type=ExecutionEventKind.THREAD_STARTED,
+            thread_id=missing_thread_id,
+        )
         return normalized_payload
 
-    normalized_payload: ExecutionThreadStartedTransportPayload = {
-        "type": ExecutionEventKind.THREAD_STARTED,
-        "thread_id": thread_id_value,
-    }
+    normalized_payload = ExecutionThreadStartedTransportPayload(
+        type=ExecutionEventKind.THREAD_STARTED,
+        thread_id=thread_id_value,
+    )
     return normalized_payload
 
 
@@ -184,10 +184,10 @@ def _normalize_execution_turn_completed_payload(
     if isinstance(usage_value, dict):
         normalized_usage_payload = _normalize_execution_usage_payload(usage_value)
 
-    normalized_payload: ExecutionTurnCompletedTransportPayload = {
-        "type": ExecutionEventKind.TURN_COMPLETED,
-        "usage": normalized_usage_payload,
-    }
+    normalized_payload = ExecutionTurnCompletedTransportPayload(
+        type=ExecutionEventKind.TURN_COMPLETED,
+        usage=normalized_usage_payload,
+    )
     return normalized_payload
 
 
@@ -201,10 +201,10 @@ def _normalize_execution_item_completed_payload(
     if isinstance(item_value, dict):
         normalized_item_payload = _normalize_execution_item_payload(item_value)
 
-    normalized_payload: ExecutionItemCompletedTransportPayload = {
-        "type": ExecutionEventKind.ITEM_COMPLETED,
-        "item": normalized_item_payload,
-    }
+    normalized_payload = ExecutionItemCompletedTransportPayload(
+        type=ExecutionEventKind.ITEM_COMPLETED,
+        item=normalized_item_payload,
+    )
     return normalized_payload
 
 
@@ -449,13 +449,13 @@ def promote_exec_command_execution(
     Returns:
         ExecCommandExecution: Stable command-execution contract built from the normalized raw payload.
     """
-    normalized_payload: ExecCommandExecutionNormalizedPayload = {
-        "kind": "command_execution",
-        "command": payload["command"],
-        "aggregated_output": payload["aggregated_output"],
-        "exit_code": payload["exit_code"],
-        "status": payload["status"],
-    }
+    normalized_payload = ExecCommandExecutionNormalizedPayload(
+        kind="command_execution",
+        command=payload["command"],
+        aggregated_output=payload["aggregated_output"],
+        exit_code=payload["exit_code"],
+        status=payload["status"],
+    )
     result: ExecCommandExecution = ExecCommandExecution.model_validate(
         normalized_payload
     )
@@ -471,10 +471,10 @@ def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
     Returns:
         ExecMessage: Stable execution message contract built from the normalized raw payload.
     """
-    normalized_payload: ExecMessageNormalizedPayload = {
-        "kind": "message",
-        "text": payload["text"],
-    }
+    normalized_payload = ExecMessageNormalizedPayload(
+        kind="message",
+        text=payload["text"],
+    )
     result: ExecMessage = ExecMessage.model_validate(normalized_payload)
     return result
 
@@ -488,10 +488,10 @@ def promote_exec_output(payload: ExecutionPayload) -> ExecOutput:
     Returns:
         ExecOutput: Stable execution output contract built from the normalized raw payload.
     """
-    normalized_payload: ExecOutputNormalizedPayload = {
-        "kind": "output_text",
-        "text": payload["text"],
-    }
+    normalized_payload = ExecOutputNormalizedPayload(
+        kind="output_text",
+        text=payload["text"],
+    )
     result: ExecOutput = ExecOutput.model_validate(normalized_payload)
     return result
 
@@ -505,12 +505,12 @@ def promote_exec_tool_call(payload: ExecutionPayload) -> ExecToolCall:
     Returns:
         ExecToolCall: Stable execution tool-call contract built from the normalized raw payload.
     """
-    normalized_payload: ExecToolCallNormalizedPayload = {
-        "kind": "tool_call",
-        "tool_name": payload["tool_name"],
-        "call_id": payload["call_id"],
-        "arguments": payload["arguments"],
-    }
+    normalized_payload = ExecToolCallNormalizedPayload(
+        kind="tool_call",
+        tool_name=payload["tool_name"],
+        call_id=payload["call_id"],
+        arguments=payload["arguments"],
+    )
     result: ExecToolCall = ExecToolCall.model_validate(normalized_payload)
     return result
 
@@ -524,12 +524,12 @@ def promote_exec_tool_result(payload: ExecutionPayload) -> ExecToolResult:
     Returns:
         ExecToolResult: Stable execution tool-result contract built from the normalized raw payload.
     """
-    normalized_payload: ExecToolResultNormalizedPayload = {
-        "kind": "tool_result",
-        "tool_name": payload["tool_name"],
-        "call_id": payload["call_id"],
-        "text": payload["text"],
-    }
+    normalized_payload = ExecToolResultNormalizedPayload(
+        kind="tool_result",
+        tool_name=payload["tool_name"],
+        call_id=payload["call_id"],
+        text=payload["text"],
+    )
     result: ExecToolResult = ExecToolResult.model_validate(normalized_payload)
     return result
 

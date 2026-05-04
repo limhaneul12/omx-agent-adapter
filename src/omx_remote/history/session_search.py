@@ -69,14 +69,13 @@ def _load_session_search_transport_payload(stdout: str) -> SessionSearchTranspor
     if not isinstance(results_value, list):
         raise HistorySurfaceError("omx session search returned a non-list results payload")
 
-    result: SessionSearchTransportPayload = {
-        "query": query_value,
-        "searched_files": searched_files_value,
-        "matched_sessions": matched_sessions_value,
-        "results": results_value,
-    }
+    result = SessionSearchTransportPayload(
+        query=query_value,
+        searched_files=searched_files_value,
+        matched_sessions=matched_sessions_value,
+        results=results_value,
+    )
     return result
-
 
 def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
     """Normalizes one `omx session search ... --json` payload."""
@@ -91,12 +90,12 @@ def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
         _normalize_session_search_results(raw_results)
     )
 
-    normalized_payload: SessionSearchNormalizedPayload = {
-        "query": parsed_payload["query"],
-        "searched_files": parsed_payload["searched_files"],
-        "matched_sessions": parsed_payload["matched_sessions"],
-        "results": normalized_results,
-    }
+    normalized_payload = SessionSearchNormalizedPayload(
+        query=parsed_payload["query"],
+        searched_files=parsed_payload["searched_files"],
+        matched_sessions=parsed_payload["matched_sessions"],
+        results=normalized_results,
+    )
     result: SessionSearchSnapshot = SessionSearchSnapshot.model_validate(
         normalized_payload
     )

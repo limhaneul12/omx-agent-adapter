@@ -56,10 +56,10 @@ def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPaylo
     if not isinstance(status_value, str):
         raise TeamworkSurfaceError("omx team status returned a non-string status")
 
-    result: TeamStatusTransportPayload = {
-        "team_name": team_name_value,
-        "status": status_value,
-    }
+    result = TeamStatusTransportPayload(
+        team_name=team_name_value,
+        status=status_value,
+    )
 
     phase_value: object | None = parsed_payload.get("phase")
     if phase_value is None or isinstance(phase_value, str):
@@ -112,13 +112,13 @@ def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
     else:
         normalized_non_reporting_workers = non_reporting_workers_payload
 
-    normalized_payload: TeamStatusNormalizedPayload = {
-        "team_name": parsed_payload["team_name"],
-        "status": parsed_payload["status"],
-        "phase": phase_value,
-        "dead_workers": normalized_dead_workers,
-        "non_reporting_workers": normalized_non_reporting_workers,
-    }
+    normalized_payload = TeamStatusNormalizedPayload(
+        team_name=parsed_payload["team_name"],
+        status=parsed_payload["status"],
+        phase=phase_value,
+        dead_workers=normalized_dead_workers,
+        non_reporting_workers=normalized_non_reporting_workers,
+    )
     result: TeamStatusSnapshot = TeamStatusSnapshot.model_validate(
         normalized_payload
     )
@@ -169,10 +169,10 @@ def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload
     if not isinstance(status_value, str):
         raise TeamworkSurfaceError("omx team await returned a non-string status")
 
-    result: TeamAwaitTransportPayload = {
-        "team_name": team_name_value,
-        "status": status_value,
-    }
+    result = TeamAwaitTransportPayload(
+        team_name=team_name_value,
+        status=status_value,
+    )
 
     cursor_value: object | None = parsed_payload.get("cursor")
     if isinstance(cursor_value, str):
@@ -182,7 +182,7 @@ def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload
     if event_value is None:
         result["event"] = None
     elif isinstance(event_value, dict):
-        normalized_event_payload: TeamAwaitTransportEventPayload = {}
+        normalized_event_payload = TeamAwaitTransportEventPayload()
 
         event_type_value: object | None = event_value.get("type")
         if isinstance(event_type_value, str):
@@ -221,14 +221,14 @@ def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
         event_worker = event_payload.get("worker")
         event_task_id = event_payload.get("task_id")
 
-    normalized_payload: TeamAwaitNormalizedPayload = {
-        "team_name": parsed_payload["team_name"],
-        "status": parsed_payload["status"],
-        "cursor": normalized_cursor,
-        "event_type": event_type,
-        "event_worker": event_worker,
-        "event_task_id": event_task_id,
-    }
+    normalized_payload = TeamAwaitNormalizedPayload(
+        team_name=parsed_payload["team_name"],
+        status=parsed_payload["status"],
+        cursor=normalized_cursor,
+        event_type=event_type,
+        event_worker=event_worker,
+        event_task_id=event_task_id,
+    )
     result: TeamAwaitSnapshot = TeamAwaitSnapshot.model_validate(
         normalized_payload
     )
