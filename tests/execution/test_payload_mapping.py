@@ -1,6 +1,7 @@
 import pytest
 
 from omx_remote.execution.payload_mapping import (
+    _normalize_execution_event_type,
     _normalize_execution_item_payload,
     build_tool_interaction,
     build_tool_interaction_report,
@@ -66,6 +67,18 @@ def test_normalize_execution_item_payload_preserves_command_execution_shape() ->
     assert result["command"] == "/bin/zsh -lc pwd"
     assert result["exit_code"] == 0
     assert result["status"] == "completed"
+
+
+def test_normalize_execution_event_type_preserves_known_thread_started_event() -> None:
+    result = _normalize_execution_event_type("thread.started")
+
+    assert result == "thread.started"
+
+
+def test_normalize_execution_event_type_preserves_unknown_event_text() -> None:
+    result = _normalize_execution_event_type("raw_event")
+
+    assert result == "raw_event"
 
 
 def test_load_execution_payload_preserves_live_thread_started_shape() -> None:

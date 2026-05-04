@@ -37,6 +37,15 @@ ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
 }
 
 
+def _normalize_execution_event_type(event_type: object) -> object:
+    """Normalizes one raw execution event type while preserving current passthrough behavior."""
+    if isinstance(event_type, str):
+        normalized_event_type: str = event_type
+        return normalized_event_type
+
+    return event_type
+
+
 def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTransportPayload:
     """Normalizes one raw execution item payload into the observed stable subset."""
     if not isinstance(item_payload, dict):
@@ -106,8 +115,10 @@ def load_execution_payload(
     else:
         normalized_item_value = item_value
 
+    event_type_value: object = _normalize_execution_event_type(payload.get("type"))
+
     result: ExecutionPayload = {
-        "type": payload.get("type"),
+        "type": event_type_value,
         "text": payload.get("text"),
         "item": normalized_item_value,
         "tool_name": payload.get("tool_name"),
