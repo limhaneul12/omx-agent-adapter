@@ -16,7 +16,7 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamStatusRequest,
     TeamStatusSnapshot,
 )
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 
 
 async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:

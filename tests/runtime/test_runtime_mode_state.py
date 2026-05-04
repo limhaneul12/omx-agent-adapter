@@ -5,7 +5,7 @@ import pytest
 
 from omx_remote.runtime import runtime_mode_state
 from omx_remote.schemas.runtime_schemas import RuntimeModeStateRequest
-from omx_remote.shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 
 class DummyResult:

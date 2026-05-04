@@ -18,7 +18,7 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadWorkerStatusRequest,
     TeamApiWorkerStatusSnapshot,
 )
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_api_snapshot
 
 
@@ -30,6 +30,10 @@ class DummyResult:
 
 def test_read_team_api_list_tasks_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_list_tasks)
+
+
+def test_team_api_snapshot_loader_class_is_available() -> None:
+    assert hasattr(team_api_snapshot, "TeamApiSnapshotLoader")
 
 
 def test_read_team_api_list_tasks_accepts_typed_request() -> None:

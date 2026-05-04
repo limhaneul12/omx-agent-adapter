@@ -7,7 +7,7 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiReadEventsRequest,
 )
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork.team_api_snapshot import (
     read_team_api_list_tasks,
     read_team_api_read_events,

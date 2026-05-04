@@ -3,7 +3,7 @@ import asyncio
 import pytest
 
 from omx_remote.schemas.teamwork_schemas import TeamApiReadEventsRequest
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_api_snapshot
 
 

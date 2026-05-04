@@ -33,7 +33,49 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadWorkerStatusRequest,
     TeamApiWorkerStatusSnapshot,
 )
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
+
+
+class TeamApiSnapshotLoader:
+    """Loads and normalizes team-api transport payloads into stable subsets."""
+
+    @staticmethod
+    def load_payload(stdout: str, operation_name: str) -> TeamApiTransportPayload:
+        """Loads one successful team-api nested data payload."""
+        return _load_team_api_payload(stdout, operation_name)
+
+    @staticmethod
+    def load_error_payload(
+        stdout: str,
+        operation_name: str,
+    ) -> TeamApiErrorTransportPayload:
+        """Loads one unsuccessful team-api nested error payload."""
+        return _load_team_api_error_payload(stdout, operation_name)
+
+    @staticmethod
+    def normalize_task_payload(task_payload: object) -> TeamApiTransportTaskPayload:
+        """Normalizes one team-api task payload into the typed subset."""
+        return _normalize_team_api_task_payload(task_payload)
+
+    @staticmethod
+    def normalize_event_payload(event_payload: object) -> TeamApiTransportEventPayload:
+        """Normalizes one team-api event payload into the typed subset."""
+        return _normalize_team_api_event_payload(event_payload)
+
+    @staticmethod
+    def normalize_mailbox_message_payload(
+        message_payload: object,
+    ) -> TeamApiTransportMailboxMessagePayload:
+        """Normalizes one team-api mailbox message payload into the typed subset."""
+        return _normalize_team_api_mailbox_message_payload(message_payload)
+
+    @staticmethod
+    def normalize_worker_status_payload(
+        worker_name: object,
+        status_payload: object,
+    ) -> TeamApiWorkerStatusSnapshot:
+        """Normalizes one team-api worker-status payload into the typed subset."""
+        return _normalize_team_api_worker_status_payload(worker_name, status_payload)
 
 
 def _validate_count_matches_length(
@@ -80,10 +122,10 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
     if ok_value is not True:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
 
-    envelope_payload: TeamApiEnvelopePayload = {
-        "ok": True,
-        "data": parsed_payload.get("data"),
-    }
+    envelope_payload = TeamApiEnvelopePayload(
+        ok=True,
+        data=parsed_payload.get("data"),
+    )
 
     data_payload: object | None = envelope_payload.get("data")
     if not isinstance(data_payload, dict):
@@ -91,7 +133,7 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
             f"{operation_name} returned a non-object data payload"
         )
 
-    result: TeamApiTransportPayload = {}
+    result = TeamApiTransportPayload()
 
     count_value: object | None = data_payload.get("count")
     if isinstance(count_value, int):
@@ -165,10 +207,10 @@ def _load_team_api_error_payload(stdout: str, operation_name: str) -> TeamApiErr
             f"{operation_name} returned a non-string error message"
         )
 
-    result: TeamApiErrorTransportPayload = {
-        "code": code_value,
-        "message": message_value,
-    }
+    result = TeamApiErrorTransportPayload(
+        code=code_value,
+        message=message_value,
+    )
     return result
 
 
@@ -180,7 +222,7 @@ def _normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTa
             "omx team api list-tasks returned a non-object task payload"
         )
 
-    normalized_payload: TeamApiTransportTaskPayload = {}
+    normalized_payload = TeamApiTransportTaskPayload()
 
     id_value: object | None = task_payload.get("id")
     if isinstance(id_value, str):
@@ -209,7 +251,7 @@ def _normalize_team_api_event_payload(event_payload: object) -> TeamApiTransport
             "omx team api read-events returned a non-object event payload"
         )
 
-    normalized_payload: TeamApiTransportEventPayload = {}
+    normalized_payload = TeamApiTransportEventPayload()
 
     type_value: object | None = event_payload.get("type")
     if isinstance(type_value, str):
@@ -240,7 +282,7 @@ def _normalize_team_api_mailbox_message_payload(
             "omx team api mailbox-list returned a non-object message payload"
         )
 
-    normalized_payload: TeamApiTransportMailboxMessagePayload = {}
+    normalized_payload = TeamApiTransportMailboxMessagePayload()
 
     id_value: object | None = message_payload.get("id")
     if isinstance(id_value, str):
@@ -272,7 +314,7 @@ def _normalize_team_api_worker_status_payload(
             "omx team api read-worker-status returned a non-object status payload"
         )
 
-    normalized_status_payload: TeamApiTransportWorkerStatusPayload = {}
+    normalized_status_payload = TeamApiTransportWorkerStatusPayload()
 
     state_value: object | None = status_payload.get("state")
     if isinstance(state_value, str):

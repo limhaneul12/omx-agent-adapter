@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from omx_remote.history import session_search
 from omx_remote.schemas.history_schemas import SessionSearchRequest
-from omx_remote.shared.exceptions.history_exceptions import HistorySurfaceError
+from omx_remote.shared.exceptions import HistorySurfaceError
 
 
 class DummyResult:

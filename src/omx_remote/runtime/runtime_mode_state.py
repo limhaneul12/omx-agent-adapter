@@ -11,7 +11,7 @@ from omx_remote.schemas.runtime_schemas import (
     RuntimeModeStateRequest,
     RuntimeModeStateSnapshot,
 )
-from omx_remote.shared.exceptions.runtime_exceptions import RuntimeSurfaceError
+from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 
 async def read_runtime_mode_state(

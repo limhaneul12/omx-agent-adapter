@@ -9,7 +9,7 @@ from omx_remote.adapter_types.bridge_types import (
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge_schemas import AdapterProbeRequest, AdapterProbeSnapshot
-from omx_remote.shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
 async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
@@ -43,13 +43,13 @@ def _load_adapter_probe_transport_payload(stdout: str) -> AdapterProbeTransportP
     if not isinstance(parsed_payload, dict):
         raise BridgeSurfaceError("omx adapt probe returned a non-object JSON payload")
 
-    result: AdapterProbeTransportPayload = {
-        "target": parsed_payload.get("target"),
-        "phase": parsed_payload.get("phase"),
-        "summary": parsed_payload.get("summary"),
-        "capabilities": parsed_payload.get("capabilities"),
-        "targetRuntime": parsed_payload.get("targetRuntime"),
-    }
+    result = AdapterProbeTransportPayload(
+        target=parsed_payload.get("target"),
+        phase=parsed_payload.get("phase"),
+        summary=parsed_payload.get("summary"),
+        capabilities=parsed_payload.get("capabilities"),
+        targetRuntime=parsed_payload.get("targetRuntime"),
+    )
     return result
 
 
@@ -73,10 +73,10 @@ def _normalize_adapter_probe(stdout: str) -> AdapterProbeSnapshot:
     target_runtime_state: str | None = None
     target_runtime_detail: str | None = None
     if isinstance(target_runtime_payload, dict):
-        normalized_target_runtime_payload: AdapterProbeRuntimePayload = {
-            "state": target_runtime_payload.get("state"),
-            "detail": target_runtime_payload.get("detail"),
-        }
+        normalized_target_runtime_payload = AdapterProbeRuntimePayload(
+            state=target_runtime_payload.get("state"),
+            detail=target_runtime_payload.get("detail"),
+        )
         target_runtime_state = normalized_target_runtime_payload["state"]
         target_runtime_detail = normalized_target_runtime_payload["detail"]
 
@@ -85,14 +85,14 @@ def _normalize_adapter_probe(stdout: str) -> AdapterProbeSnapshot:
     if capabilities_payload is None:
         normalized_capabilities = []
 
-    normalized_payload: AdapterProbeNormalizedPayload = {
-        "target": parsed_payload.get("target"),
-        "phase": parsed_payload.get("phase"),
-        "summary": parsed_payload.get("summary"),
-        "capabilities": normalized_capabilities,
-        "target_runtime_state": target_runtime_state,
-        "target_runtime_detail": target_runtime_detail,
-    }
+    normalized_payload = AdapterProbeNormalizedPayload(
+        target=parsed_payload.get("target"),
+        phase=parsed_payload.get("phase"),
+        summary=parsed_payload.get("summary"),
+        capabilities=normalized_capabilities,
+        target_runtime_state=target_runtime_state,
+        target_runtime_detail=target_runtime_detail,
+    )
     result: AdapterProbeSnapshot = AdapterProbeSnapshot.model_validate(
         normalized_payload
     )

@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.schemas.teamwork_schemas import TeamAwaitRequest, TeamStatusRequest
-from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_snapshot
 
 

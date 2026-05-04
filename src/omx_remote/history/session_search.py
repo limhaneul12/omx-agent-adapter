@@ -12,7 +12,7 @@ from omx_remote.schemas.history_schemas import (
     SessionSearchRequest,
     SessionSearchSnapshot,
 )
-from omx_remote.shared.exceptions.history_exceptions import HistorySurfaceError
+from omx_remote.shared.exceptions import HistorySurfaceError
 
 
 async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapshot:

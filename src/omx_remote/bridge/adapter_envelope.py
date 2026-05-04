@@ -12,7 +12,7 @@ from omx_remote.schemas.bridge_schemas import (
     AdapterEnvelopeSnapshot,
     AdapterProbeRequest,
 )
-from omx_remote.shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
 async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelopeSnapshot:
@@ -48,13 +48,13 @@ def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTran
     if not isinstance(parsed_payload, dict):
         raise BridgeSurfaceError("omx adapt envelope returned a non-object JSON payload")
 
-    result: AdapterEnvelopeTransportPayload = {
-        "target": parsed_payload.get("target"),
-        "displayName": parsed_payload.get("displayName"),
-        "summary": parsed_payload.get("summary"),
-        "capabilities": parsed_payload.get("capabilities"),
-        "targetRuntime": parsed_payload.get("targetRuntime"),
-    }
+    result = AdapterEnvelopeTransportPayload(
+        target=parsed_payload.get("target"),
+        displayName=parsed_payload.get("displayName"),
+        summary=parsed_payload.get("summary"),
+        capabilities=parsed_payload.get("capabilities"),
+        targetRuntime=parsed_payload.get("targetRuntime"),
+    )
     return result
 
 
@@ -68,10 +68,10 @@ def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     target_runtime_state: str | None = None
     target_runtime_detail: str | None = None
     if isinstance(target_runtime_payload, dict):
-        normalized_target_runtime_payload: AdapterEnvelopeRuntimePayload = {
-            "state": target_runtime_payload.get("state"),
-            "detail": target_runtime_payload.get("detail"),
-        }
+        normalized_target_runtime_payload = AdapterEnvelopeRuntimePayload(
+            state=target_runtime_payload.get("state"),
+            detail=target_runtime_payload.get("detail"),
+        )
         target_runtime_state = normalized_target_runtime_payload["state"]
         target_runtime_detail = normalized_target_runtime_payload["detail"]
 
@@ -80,14 +80,14 @@ def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     if capabilities_payload is None:
         normalized_capabilities = []
 
-    normalized_payload: AdapterEnvelopeNormalizedPayload = {
-        "target": parsed_payload.get("target"),
-        "display_name": parsed_payload.get("displayName"),
-        "summary": parsed_payload.get("summary"),
-        "capabilities": normalized_capabilities,
-        "target_runtime_state": target_runtime_state,
-        "target_runtime_detail": target_runtime_detail,
-    }
+    normalized_payload = AdapterEnvelopeNormalizedPayload(
+        target=parsed_payload.get("target"),
+        display_name=parsed_payload.get("displayName"),
+        summary=parsed_payload.get("summary"),
+        capabilities=normalized_capabilities,
+        target_runtime_state=target_runtime_state,
+        target_runtime_detail=target_runtime_detail,
+    )
     result: AdapterEnvelopeSnapshot = AdapterEnvelopeSnapshot.model_validate(
         normalized_payload
     )

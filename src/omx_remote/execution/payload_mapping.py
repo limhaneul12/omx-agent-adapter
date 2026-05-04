@@ -21,7 +21,7 @@ from omx_remote.schemas.execution_schemas import (
     ToolInteractionAnomaly,
     ToolInteractionReport,
 )
-from omx_remote.shared.exceptions.execution_exceptions import (
+from omx_remote.shared.exceptions import (
     UnsupportedExecutionPayloadError,
 )
 from omx_remote.shared.omx_enums.execution_enums import (

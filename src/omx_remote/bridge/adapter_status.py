@@ -9,7 +9,7 @@ from omx_remote.adapter_types.bridge_types import (
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge_schemas import AdapterProbeRequest, AdapterStatusSnapshot
-from omx_remote.shared.exceptions.bridge_exceptions import BridgeSurfaceError
+from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
 async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnapshot:
@@ -45,14 +45,14 @@ def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTranspor
     if not isinstance(parsed_payload, dict):
         raise BridgeSurfaceError("omx adapt status returned a non-object JSON payload")
 
-    result: AdapterStatusTransportPayload = {
-        "target": parsed_payload.get("target"),
-        "phase": parsed_payload.get("phase"),
-        "summary": parsed_payload.get("summary"),
-        "capabilities": parsed_payload.get("capabilities"),
-        "adapter": parsed_payload.get("adapter"),
-        "targetRuntime": parsed_payload.get("targetRuntime"),
-    }
+    result = AdapterStatusTransportPayload(
+        target=parsed_payload.get("target"),
+        phase=parsed_payload.get("phase"),
+        summary=parsed_payload.get("summary"),
+        capabilities=parsed_payload.get("capabilities"),
+        adapter=parsed_payload.get("adapter"),
+        targetRuntime=parsed_payload.get("targetRuntime"),
+    )
     return result
 
 
@@ -66,10 +66,10 @@ def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     adapter_state: str | None = None
     adapter_detail: str | None = None
     if isinstance(adapter_payload, dict):
-        normalized_adapter_payload: AdapterStatusRuntimePayload = {
-            "state": adapter_payload.get("state"),
-            "detail": adapter_payload.get("detail"),
-        }
+        normalized_adapter_payload = AdapterStatusRuntimePayload(
+            state=adapter_payload.get("state"),
+            detail=adapter_payload.get("detail"),
+        )
         adapter_state = normalized_adapter_payload["state"]
         adapter_detail = normalized_adapter_payload["detail"]
 
@@ -77,10 +77,10 @@ def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     target_runtime_state: str | None = None
     target_runtime_detail: str | None = None
     if isinstance(target_runtime_payload, dict):
-        normalized_target_runtime_payload: AdapterStatusRuntimePayload = {
-            "state": target_runtime_payload.get("state"),
-            "detail": target_runtime_payload.get("detail"),
-        }
+        normalized_target_runtime_payload = AdapterStatusRuntimePayload(
+            state=target_runtime_payload.get("state"),
+            detail=target_runtime_payload.get("detail"),
+        )
         target_runtime_state = normalized_target_runtime_payload["state"]
         target_runtime_detail = normalized_target_runtime_payload["detail"]
 
@@ -89,16 +89,16 @@ def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     if capabilities_payload is None:
         normalized_capabilities = []
 
-    normalized_payload: AdapterStatusNormalizedPayload = {
-        "target": parsed_payload.get("target"),
-        "phase": parsed_payload.get("phase"),
-        "summary": parsed_payload.get("summary"),
-        "adapter_state": adapter_state,
-        "adapter_detail": adapter_detail,
-        "target_runtime_state": target_runtime_state,
-        "target_runtime_detail": target_runtime_detail,
-        "capabilities": normalized_capabilities,
-    }
+    normalized_payload = AdapterStatusNormalizedPayload(
+        target=parsed_payload.get("target"),
+        phase=parsed_payload.get("phase"),
+        summary=parsed_payload.get("summary"),
+        adapter_state=adapter_state,
+        adapter_detail=adapter_detail,
+        target_runtime_state=target_runtime_state,
+        target_runtime_detail=target_runtime_detail,
+        capabilities=normalized_capabilities,
+    )
     result: AdapterStatusSnapshot = AdapterStatusSnapshot.model_validate(
         normalized_payload
     )

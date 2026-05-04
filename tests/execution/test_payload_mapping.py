@@ -23,7 +23,7 @@ from omx_remote.execution.payload_mapping import (
     route_execution_payload,
     split_event_payloads,
 )
-from omx_remote.shared.exceptions.execution_exceptions import (
+from omx_remote.shared.exceptions import (
     UnsupportedExecutionPayloadError,
 )
 
