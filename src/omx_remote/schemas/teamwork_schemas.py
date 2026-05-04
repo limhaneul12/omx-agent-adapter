@@ -151,6 +151,14 @@ class TeamApiReadConfigError(BaseModel):
     message: NonEmptyString
 
 
+class TeamApiReadConfigSnapshot(BaseModel):
+    """Represents the normalized result for team-api config reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    config: object | None = None
+
+
 class TeamApiReadManifestError(BaseModel):
     """Represents a typed error envelope for team-api manifest reads."""
 
@@ -158,6 +166,14 @@ class TeamApiReadManifestError(BaseModel):
 
     code: NonEmptyString
     message: NonEmptyString
+
+
+class TeamApiReadManifestSnapshot(BaseModel):
+    """Represents the normalized result for team-api manifest reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    manifest: object | None = None
 
 
 class TeamApiMailboxMessageSnapshot(BaseModel):

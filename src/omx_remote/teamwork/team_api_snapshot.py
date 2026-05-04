@@ -21,10 +21,12 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiMailboxListSnapshot,
     TeamApiReadConfigError,
     TeamApiReadConfigRequest,
+    TeamApiReadConfigSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadEventsSnapshot,
     TeamApiReadManifestError,
     TeamApiReadManifestRequest,
+    TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshot,
     TeamApiReadMonitorSnapshotRequest,
 )
@@ -94,6 +96,8 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "worker": data_payload.get("worker"),
         "messages": data_payload.get("messages"),
         "snapshot": data_payload.get("snapshot"),
+        "config": data_payload.get("config"),
+        "manifest": data_payload.get("manifest"),
     }
     return result
 
@@ -416,6 +420,32 @@ async def read_team_api_read_config_error(
     return result
 
 
+async def read_team_api_read_config(
+    request: TeamApiReadConfigRequest,
+) -> TeamApiReadConfigSnapshot:
+    """Reads typed team-api config snapshots."""
+
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        [
+            "team",
+            "api",
+            "read-config",
+            "--input",
+            orjson.dumps({"team_name": request.team_name}).decode(),
+            "--json",
+        ],
+    )
+    stdout: str = command_result.stdout.strip()
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
+        stdout,
+        "omx team api read-config",
+    )
+    return TeamApiReadConfigSnapshot.model_validate(
+        {"config": data_payload.get("config")}
+    )
+
+
 async def read_team_api_read_manifest_error(
     request: TeamApiReadManifestRequest,
 ) -> TeamApiReadManifestError:
@@ -447,3 +477,29 @@ async def read_team_api_read_manifest_error(
         normalized_payload
     )
     return result
+
+
+async def read_team_api_read_manifest(
+    request: TeamApiReadManifestRequest,
+) -> TeamApiReadManifestSnapshot:
+    """Reads typed team-api manifest snapshots."""
+
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        [
+            "team",
+            "api",
+            "read-manifest",
+            "--input",
+            orjson.dumps({"team_name": request.team_name}).decode(),
+            "--json",
+        ],
+    )
+    stdout: str = command_result.stdout.strip()
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
+        stdout,
+        "omx team api read-manifest",
+    )
+    return TeamApiReadManifestSnapshot.model_validate(
+        {"manifest": data_payload.get("manifest")}
+    )

@@ -9,9 +9,11 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiReadConfigError,
     TeamApiReadConfigRequest,
+    TeamApiReadConfigSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadManifestError,
     TeamApiReadManifestRequest,
+    TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshotRequest,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
@@ -483,6 +485,29 @@ def test_read_team_api_read_config_error_returns_typed_error_payload(monkeypatch
     assert result.message == "team_not_found"
 
 
+def test_read_team_api_read_config_returns_typed_snapshot(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"operation":"read-config","data":{"config":{"name":"alpha","worker_count":2,"workers":[{"name":"worker-1"}]}}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_config(
+            TeamApiReadConfigRequest(team_name="alpha")
+        )
+    )
+
+    assert isinstance(result, TeamApiReadConfigSnapshot)
+    assert result.config == {
+        "name": "alpha",
+        "worker_count": 2,
+        "workers": [{"name": "worker-1"}],
+    }
+
+
 def test_read_team_api_read_manifest_error_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_manifest_error)
 
@@ -514,3 +539,26 @@ def test_read_team_api_read_manifest_error_returns_typed_error_payload(monkeypat
     assert isinstance(result, TeamApiReadManifestError)
     assert result.code == "manifest_not_found"
     assert result.message == "manifest_not_found"
+
+
+def test_read_team_api_read_manifest_returns_typed_snapshot(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"operation":"read-manifest","data":{"manifest":{"schema_version":2,"name":"alpha","workers":[{"name":"worker-1"}]}}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_manifest(
+            TeamApiReadManifestRequest(team_name="alpha")
+        )
+    )
+
+    assert isinstance(result, TeamApiReadManifestSnapshot)
+    assert result.manifest == {
+        "schema_version": 2,
+        "name": "alpha",
+        "workers": [{"name": "worker-1"}],
+    }
