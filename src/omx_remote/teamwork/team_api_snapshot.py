@@ -5,8 +5,10 @@ import orjson
 from omx_remote.adapter_types.teamwork_types import (
     TeamApiEnvelopePayload,
     TeamApiListTasksNormalizedPayload,
+    TeamApiMailboxListNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiTransportEventPayload,
+    TeamApiTransportMailboxMessagePayload,
     TeamApiTransportPayload,
     TeamApiTransportTaskPayload,
 )
@@ -14,6 +16,8 @@ from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksRequest,
     TeamApiListTasksSnapshot,
+    TeamApiMailboxListRequest,
+    TeamApiMailboxListSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadEventsSnapshot,
 )
@@ -79,6 +83,8 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "tasks": data_payload.get("tasks"),
         "cursor": data_payload.get("cursor"),
         "events": data_payload.get("events"),
+        "worker": data_payload.get("worker"),
+        "messages": data_payload.get("messages"),
     }
     return result
 
@@ -113,6 +119,25 @@ def _normalize_team_api_event_payload(event_payload: object) -> TeamApiTransport
         "worker": event_payload.get("worker"),
         "task_id": event_payload.get("task_id"),
         "message_id": event_payload.get("message_id"),
+    }
+    return normalized_payload
+
+
+def _normalize_team_api_mailbox_message_payload(
+    message_payload: object,
+) -> TeamApiTransportMailboxMessagePayload:
+    """Normalizes one raw team-api mailbox message into the typed read-only subset."""
+
+    if not isinstance(message_payload, dict):
+        raise TeamworkSurfaceError(
+            "omx team api mailbox-list returned a non-object message payload"
+        )
+
+    normalized_payload: TeamApiTransportMailboxMessagePayload = {
+        "id": message_payload.get("id"),
+        "subject": message_payload.get("subject"),
+        "body": message_payload.get("body"),
+        "delivered": message_payload.get("delivered"),
     }
     return normalized_payload
 
@@ -212,5 +237,57 @@ async def read_team_api_read_events(
         result.count,
         len(result.events),
         "events",
+    )
+    return result
+
+
+async def read_team_api_mailbox_list(
+    request: TeamApiMailboxListRequest,
+) -> TeamApiMailboxListSnapshot:
+    """Reads typed team-api mailbox listings.
+
+    Args:
+        request [TeamApiMailboxListRequest]: Typed request boundary for `omx team api mailbox-list`.
+
+    Returns:
+        TeamApiMailboxListSnapshot: Normalized mailbox-list snapshot built from the nested successful `data` payload.
+    """
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        [
+            "team",
+            "api",
+            "mailbox-list",
+            "--input",
+            orjson.dumps(
+                {"team_name": request.team_name, "worker": request.worker}
+            ).decode(),
+            "--json",
+        ],
+    )
+    stdout: str = command_result.stdout.strip()
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
+        stdout,
+        "omx team api mailbox-list",
+    )
+    raw_messages: object = data_payload.get("messages")
+    normalized_payload: TeamApiMailboxListNormalizedPayload = {
+        "worker": data_payload.get("worker"),
+        "count": data_payload.get("count"),
+        "messages": raw_messages,
+    }
+    if isinstance(raw_messages, list):
+        normalized_payload["messages"] = [
+            _normalize_team_api_mailbox_message_payload(message_payload)
+            for message_payload in raw_messages
+        ]
+    result: TeamApiMailboxListSnapshot = TeamApiMailboxListSnapshot.model_validate(
+        normalized_payload
+    )
+    _validate_count_matches_length(
+        "omx team api mailbox-list",
+        result.count,
+        len(result.messages),
+        "messages",
     )
     return result

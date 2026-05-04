@@ -131,6 +131,8 @@ class ToolInteractionReport(BaseModel):
     missing_result_count: int
     duplicate_result_count: int
     unmatched_result_count: int
+    has_anomalies: bool
+    anomaly_count: int
 
     @model_validator(mode="after")
     def _validate_summary_counts(self) -> ToolInteractionReport:
@@ -175,6 +177,15 @@ class ToolInteractionReport(BaseModel):
         if len(self.anomalies) != expected_anomaly_count:
             raise ValueError(
                 "ToolInteractionReport.anomalies must include one entry per derived anomaly"
+            )
+        if self.anomaly_count != expected_anomaly_count:
+            raise ValueError(
+                "ToolInteractionReport.anomaly_count must match anomalies"
+            )
+        expected_has_anomalies = expected_anomaly_count > 0
+        if self.has_anomalies != expected_has_anomalies:
+            raise ValueError(
+                "ToolInteractionReport.has_anomalies must match anomaly_count"
             )
 
         validated_report: ToolInteractionReport = self

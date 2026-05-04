@@ -80,6 +80,15 @@ class TeamApiReadEventsRequest(BaseModel):
     team_name: NonEmptyString
 
 
+class TeamApiMailboxListRequest(BaseModel):
+    """Represents the typed request boundary for team-api mailbox listing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    team_name: NonEmptyString
+    worker: NonEmptyString
+
+
 class TeamApiEventSnapshot(BaseModel):
     """Represents a normalized team-api event summary."""
 
@@ -99,3 +108,24 @@ class TeamApiReadEventsSnapshot(BaseModel):
     count: int
     cursor: str
     events: list[TeamApiEventSnapshot]
+
+
+class TeamApiMailboxMessageSnapshot(BaseModel):
+    """Represents a normalized team-api mailbox message summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: NonEmptyString
+    subject: NonEmptyString
+    body: str
+    delivered: bool
+
+
+class TeamApiMailboxListSnapshot(BaseModel):
+    """Represents the normalized result for team-api mailbox listing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    worker: NonEmptyString
+    count: int
+    messages: list[TeamApiMailboxMessageSnapshot]

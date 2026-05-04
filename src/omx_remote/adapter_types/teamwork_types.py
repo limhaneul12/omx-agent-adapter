@@ -11,6 +11,8 @@ class TeamApiTransportPayload(TypedDict):
     tasks: NotRequired[object]
     cursor: NotRequired[object]
     events: NotRequired[object]
+    worker: NotRequired[object]
+    messages: NotRequired[object]
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):
@@ -22,6 +24,12 @@ class TeamApiReadEventsNormalizedPayload(TypedDict):
     count: Required[object]
     cursor: Required[object]
     events: Required[object]
+
+
+class TeamApiMailboxListNormalizedPayload(TypedDict):
+    worker: Required[object]
+    count: Required[object]
+    messages: Required[object]
 
 
 class TeamApiTransportTaskPayload(TypedDict, total=False):
@@ -38,6 +46,13 @@ class TeamApiTransportEventPayload(TypedDict, total=False):
     worker: object
     task_id: object
     message_id: object
+
+
+class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
+    id: object
+    subject: object
+    body: object
+    delivered: object
 
 
 class TeamStatusTransportPayload(TypedDict):

@@ -2,6 +2,8 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.schemas.teamwork_schemas import (
+    TeamApiMailboxListRequest,
+    TeamApiMailboxListSnapshot,
     TeamApiListTasksRequest,
     TeamApiListTasksSnapshot,
     TeamApiReadEventsRequest,
@@ -64,6 +66,64 @@ def test_team_api_read_events_request_accepts_required_team_name() -> None:
 def test_team_api_read_events_request_rejects_empty_team_name() -> None:
     with pytest.raises(ValidationError):
         TeamApiReadEventsRequest.model_validate({"team_name": ""})
+
+
+def test_team_api_mailbox_list_request_accepts_required_fields() -> None:
+    result = TeamApiMailboxListRequest.model_validate(
+        {"team_name": "alpha", "worker": "worker-1"}
+    )
+
+    assert result.team_name == "alpha"
+    assert result.worker == "worker-1"
+
+
+def test_team_api_mailbox_list_request_rejects_empty_worker() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiMailboxListRequest.model_validate(
+            {"team_name": "alpha", "worker": ""}
+        )
+
+
+def test_team_api_mailbox_list_snapshot_accepts_empty_message_list() -> None:
+    result = TeamApiMailboxListSnapshot.model_validate(
+        {"worker": "worker-1", "count": 0, "messages": []}
+    )
+
+    assert result.worker == "worker-1"
+    assert result.count == 0
+    assert result.messages == []
+
+
+def test_team_api_mailbox_list_snapshot_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiMailboxListSnapshot.model_validate(
+            {
+                "worker": "worker-1",
+                "count": 0,
+                "messages": [],
+                "unexpected": True,
+            }
+        )
+
+
+def test_team_api_mailbox_list_snapshot_accepts_normalized_live_message_shape() -> None:
+    result = TeamApiMailboxListSnapshot.model_validate(
+        {
+            "worker": "worker-1",
+            "count": 1,
+            "messages": [
+                {
+                    "id": "message-1",
+                    "subject": "follow-up",
+                    "body": "please re-run tests",
+                    "delivered": False,
+                }
+            ],
+        }
+    )
+
+    assert result.messages[0].id == "message-1"
+    assert result.messages[0].delivered is False
 
 
 def test_team_api_read_events_snapshot_accepts_empty_event_list() -> None:
