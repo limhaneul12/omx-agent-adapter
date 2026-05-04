@@ -185,15 +185,6 @@ class TeamApiReadManifestSnapshot(BaseModel):
     manifest: object | None = None
 
 
-class TeamApiReadWorkerStatusRequest(BaseModel):
-    """Represents the typed request boundary for team-api worker-status reads."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    team_name: NonEmptyString
-    worker: NonEmptyString
-
-
 class TeamApiMailboxMessageSnapshot(BaseModel):
     """Represents a normalized team-api mailbox message summary."""
 

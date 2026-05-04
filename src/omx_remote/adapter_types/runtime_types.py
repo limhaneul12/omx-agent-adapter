@@ -43,9 +43,3 @@ class RuntimeModeStatusResultNormalizedPayload(TypedDict):
     requested_mode: Required[object]
     found: Required[object]
     mode_snapshot: Required[object]
-
-
-class RuntimeModeStateTransportPayload(TypedDict):
-    exists: Required[object]
-    mode: Required[object]
-    state: NotRequired[object]

@@ -20,6 +20,8 @@ class TeamApiTransportPayload(TypedDict):
     messages: NotRequired[object]
     snapshot: NotRequired[object]
     status: NotRequired[object]
+    config: NotRequired[object]
+    manifest: NotRequired[object]
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):

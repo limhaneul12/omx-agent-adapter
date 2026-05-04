@@ -28,7 +28,6 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadEventsSnapshot,
     TeamApiReadManifestError,
     TeamApiReadManifestRequest,
-    TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshot,
     TeamApiReadMonitorSnapshotRequest,
     TeamApiReadWorkerStatusRequest,
@@ -101,6 +100,8 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "messages": data_payload.get("messages"),
         "snapshot": data_payload.get("snapshot"),
         "status": data_payload.get("status"),
+        "config": data_payload.get("config"),
+        "manifest": data_payload.get("manifest"),
     }
     return result
 
@@ -468,9 +469,15 @@ async def read_team_api_read_config(
         stdout,
         "omx team api read-config",
     )
-    return TeamApiReadConfigSnapshot.model_validate(
-        {"config": data_payload.get("config")}
+    raw_config_payload: object = data_payload.get("config")
+    if not isinstance(raw_config_payload, dict):
+        raw_config_payload = None
+
+    normalized_payload = {"config": raw_config_payload}
+    result: TeamApiReadConfigSnapshot = TeamApiReadConfigSnapshot.model_validate(
+        normalized_payload
     )
+    return result
 
 
 async def read_team_api_read_manifest_error(
