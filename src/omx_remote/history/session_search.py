@@ -49,11 +49,31 @@ def _load_session_search_transport_payload(stdout: str) -> SessionSearchTranspor
     if not isinstance(parsed_payload, dict):
         raise HistorySurfaceError("omx session search returned a non-object JSON payload")
 
+    query_value: object | None = parsed_payload.get("query")
+    if not isinstance(query_value, str):
+        raise HistorySurfaceError("omx session search returned a non-string query")
+
+    searched_files_value: object | None = parsed_payload.get("searched_files")
+    if not isinstance(searched_files_value, int):
+        raise HistorySurfaceError(
+            "omx session search returned a non-integer searched_files"
+        )
+
+    matched_sessions_value: object | None = parsed_payload.get("matched_sessions")
+    if not isinstance(matched_sessions_value, int):
+        raise HistorySurfaceError(
+            "omx session search returned a non-integer matched_sessions"
+        )
+
+    results_value: object | None = parsed_payload.get("results")
+    if not isinstance(results_value, list):
+        raise HistorySurfaceError("omx session search returned a non-list results payload")
+
     result: SessionSearchTransportPayload = {
-        "query": parsed_payload.get("query"),
-        "searched_files": parsed_payload.get("searched_files"),
-        "matched_sessions": parsed_payload.get("matched_sessions"),
-        "results": parsed_payload.get("results"),
+        "query": query_value,
+        "searched_files": searched_files_value,
+        "matched_sessions": matched_sessions_value,
+        "results": results_value,
     }
     return result
 
@@ -64,13 +84,17 @@ def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
         stdout
     )
 
-    raw_results: object | None = parsed_payload.get("results")
-    normalized_results: object = _normalize_session_search_results(raw_results)
+    raw_results: list[SessionSearchTransportResultPayload] | list[object] = parsed_payload[
+        "results"
+    ]
+    normalized_results: list[SessionSearchTransportResultPayload] | list[object] = (
+        _normalize_session_search_results(raw_results)
+    )
 
     normalized_payload: SessionSearchNormalizedPayload = {
-        "query": parsed_payload.get("query"),
-        "searched_files": parsed_payload.get("searched_files"),
-        "matched_sessions": parsed_payload.get("matched_sessions"),
+        "query": parsed_payload["query"],
+        "searched_files": parsed_payload["searched_files"],
+        "matched_sessions": parsed_payload["matched_sessions"],
         "results": normalized_results,
     }
     result: SessionSearchSnapshot = SessionSearchSnapshot.model_validate(
@@ -79,7 +103,9 @@ def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
     return result
 
 
-def _normalize_session_search_results(raw_results: object) -> object:
+def _normalize_session_search_results(
+    raw_results: list[SessionSearchTransportResultPayload] | list[object],
+) -> list[SessionSearchTransportResultPayload] | list[object]:
     """Preserves result-item validation rather than silently dropping malformed data."""
     if not isinstance(raw_results, list):
         return raw_results
@@ -90,13 +116,32 @@ def _normalize_session_search_results(raw_results: object) -> object:
         if not isinstance(result_item, dict):
             normalized_results.append(result_item)
             continue
-        normalized_result_item: SessionSearchTransportResultPayload = {
-            "session_id": result_item.get("session_id"),
-            "timestamp": result_item.get("timestamp"),
-            "cwd": result_item.get("cwd"),
-            "record_type": result_item.get("record_type"),
-            "line_number": result_item.get("line_number"),
-            "snippet": result_item.get("snippet"),
-        }
-        normalized_results.append(normalized_result_item)
+        session_id_value: object | None = result_item.get("session_id")
+        timestamp_value: object | None = result_item.get("timestamp")
+        cwd_value: object | None = result_item.get("cwd")
+        record_type_value: object | None = result_item.get("record_type")
+        line_number_value: object | None = result_item.get("line_number")
+        snippet_value: object | None = result_item.get("snippet")
+
+        normalized_result_item: SessionSearchTransportResultPayload
+        if (
+            isinstance(session_id_value, str)
+            and isinstance(timestamp_value, str)
+            and isinstance(cwd_value, str)
+            and isinstance(record_type_value, str)
+            and isinstance(line_number_value, int)
+            and isinstance(snippet_value, str)
+        ):
+            normalized_result_item = {
+                "session_id": session_id_value,
+                "timestamp": timestamp_value,
+                "cwd": cwd_value,
+                "record_type": record_type_value,
+                "line_number": line_number_value,
+                "snippet": snippet_value,
+            }
+            normalized_results.append(normalized_result_item)
+            continue
+
+        normalized_results.append(result_item)
     return normalized_results

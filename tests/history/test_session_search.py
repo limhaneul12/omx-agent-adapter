@@ -69,14 +69,14 @@ def test_search_sessions_rejects_unparseable_json_transport(monkeypatch) -> None
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
 
 
-def test_search_sessions_preserves_required_contract_validation(monkeypatch) -> None:
+def test_search_sessions_rejects_missing_searched_files_field(monkeypatch) -> None:
     monkeypatch.setattr(
         session_search,
         "run_omx_command",
         lambda arguments: DummyResult(stdout='{"query":"hermes"}\n'),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(HistorySurfaceError):
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
 
 
