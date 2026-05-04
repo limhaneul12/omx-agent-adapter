@@ -1,77 +1,94 @@
-# Worker 3 Task 3 Review: runtime-readiness documentation drift
+# Worker 3 Task 3 Review: verified transport/documentation findings
 
 ## Scope
 
-This review captures verified documentation drift and adjacent low-risk maintenance findings without editing shared hot files directly.
+This review records verified findings from worker-3's documentation-and-quality lane without editing shared runtime/team implementation files.
 
-## Verified documentation drift
+## Verified findings
 
-The current `docs/future-runtime-readiness.md` document references pre-rename source paths, while the repository code now lives under `src/omx_remote/...`.
+### 1. `docs/future-runtime-readiness.md` is current in this worktree
 
-### Verified stale path mappings
+The earlier drift suspicion did **not** reproduce in the current branch. The document already references the renamed `src/omx_remote/...` paths, including:
 
-| Document reference | Verified current path |
-| --- | --- |
-| `src/execution/event_feed.py` | `src/omx_remote/execution/event_feed.py` |
-| `src/execution/payload_mapping.py` | `src/omx_remote/execution/payload_mapping.py` |
-| `src/runtime/runtime_snapshot.py` | `src/omx_remote/runtime/runtime_snapshot.py` |
-| `src/execution/invoke.py` | `src/omx_remote/execution/invoke.py` |
-| `src/schemas/execution_schemas.py` | `src/omx_remote/schemas/execution_schemas.py` |
-| `src/schemas/runtime_schemas.py` | `src/omx_remote/schemas/runtime_schemas.py` |
+- `src/omx_remote/execution/event_feed.py`
+- `src/omx_remote/execution/payload_mapping.py`
+- `src/omx_remote/runtime/runtime_snapshot.py`
+- `src/omx_remote/execution/invoke.py`
+- `src/omx_remote/schemas/execution_schemas.py`
+- `src/omx_remote/schemas/runtime_schemas.py`
 
-### Source evidence
+### 2. Live `omx session search --json` returns extra transport-only fields
 
-- `docs/future-runtime-readiness.md:15`
-- `docs/future-runtime-readiness.md:18`
-- `docs/future-runtime-readiness.md:21`
-- `docs/future-runtime-readiness.md:25`
-- `docs/future-runtime-readiness.md:30`
-- `docs/future-runtime-readiness.md:33`
-- `docs/future-runtime-readiness.md:36`
+Verified on 2026-05-04 with:
 
-## Adjacent review findings
+- `omx session search hermes --json --limit 1`
+- `omx session search hermes --json --limit 0`
 
-### 1. Version drift risk
+Observed live result items include these fields beyond the public normalized snapshot:
 
-The package version is duplicated across multiple places:
+- `transcript_path`
+- `transcript_path_relative`
 
-- `pyproject.toml:3`
-- `src/omx_remote/cli.py:29`
-- `tests/test_cli_entrypoint.py:29`
+Current `src/omx_remote/history/session_search.py` intentionally strips those fields before validation, preserving the narrower public `SessionSearchSnapshot` contract.
 
-This is not a documentation-only fix, but it is a clear maintenance risk because future releases can drift between package metadata, CLI output, and test expectations.
+### 3. Team API live task payloads include `description`, but the normalized read-only task snapshot does not
 
-### 2. Stale internal path in fixture text
+Verified on 2026-05-04 with:
 
-`tests/teamwork/test_team_api_snapshot.py:92` includes fixture text referring to `src/teamwork/team_snapshot.py`, while the real module path is `src/omx_remote/teamwork/team_snapshot.py`.
+- `omx team api list-tasks --input '{"team_name":"in-repo-documents-sky-c52d0521"}' --json`
 
-This looks like stale internal documentation embedded in test data.
+Observed live task items include:
 
-### 3. Repeated stdout-to-contract normalization pattern
+- `subject`
+- `description`
+- `status`
+- `owner`
+- `depends_on`
+- `role`
+- `delegation`
+- `id`
+- `version`
+- `created_at`
+- `claim`
 
-The following modules appear to repeat a similar flow of executing OMX commands, parsing stdout, and normalizing the result into validated models:
+Current normalized `TeamApiTaskSnapshot` exposes only:
 
-- `src/omx_remote/bridge/adapter_probe.py`
-- `src/omx_remote/bridge/adapter_status.py`
-- `src/omx_remote/bridge/adapter_envelope.py`
-- `src/omx_remote/runtime/active_runtime_modes.py`
-- `src/omx_remote/runtime/runtime_mode_status.py`
-- `src/omx_remote/history/session_search.py`
+- `id`
+- `subject`
+- `status`
+- `owner`
+
+This is a real transport-vs-public-contract gap, but it touches the shared teamwork surface and was not changed in this review lane.
+
+### 4. One stale internal source path remains in a live-like teamwork fixture
+
+`tests/teamwork/test_team_api_snapshot.py` still uses fixture text containing:
+
+- `Own src/teamwork/team_snapshot.py`
+
+The real module path in this repository is:
+
 - `src/omx_remote/teamwork/team_snapshot.py`
 
-This is a code-quality observation only. It may justify a future refactor if behavior changes need to stay consistent across adapters.
+This is low-risk cleanup, but it also sits in the teamwork lane and was left unchanged here to avoid overlap.
 
-## Recommended low-risk follow-up
+## Recommended low-risk follow-up order
 
-If the leader wants a direct docs correction later, the safest targeted change is to update the stale paths in `docs/future-runtime-readiness.md` only, with no behavior changes.
+1. **Teamwork fixture cleanup**
+   - Refresh the stale fixture text in `tests/teamwork/test_team_api_snapshot.py` to the current module path.
+2. **Decide whether `description` belongs in the public task snapshot**
+   - If yes, add a failing test first using live-like `list-tasks` payloads, then widen `TeamApiTaskSnapshot` and its normalization path.
+   - If no, document that `description` is intentionally transport-only.
+3. **Keep history result transport fields transport-only unless product needs change**
+   - Live evidence supports the current conservative normalization boundary.
 
 ## Files deliberately avoided
 
-To stay file-ownership-safe in the current team lane, this task did not directly edit:
+To stay file-ownership-safe in the current team lane, this task did not edit:
 
-- `README.md`
-- `docs/future-runtime-readiness.md`
-- `docs/rules/*.md`
-- `src/**`
-- `tests/**`
+- `src/omx_remote/teamwork/*`
+- `src/omx_remote/history/*`
+- `tests/teamwork/*`
+- `tests/history/*`
 - `.omx/**`
+- `docs/jobs/**`
