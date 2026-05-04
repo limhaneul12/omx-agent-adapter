@@ -3,8 +3,11 @@ from omx_remote.adapter_types.execution_types import (
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
+    ExecutionItemCompletedTransportPayload,
     ExecutionItemTransportPayload,
+    ExecutionThreadStartedTransportPayload,
     ExecutionTransportPayload,
+    ExecutionTurnCompletedTransportPayload,
     ExecutionUsageTransportPayload,
 )
 from omx_remote.schemas.execution_schemas import (
@@ -140,6 +143,60 @@ def _normalize_execution_usage_payload(
     return normalized_usage_payload
 
 
+def _normalize_execution_thread_started_payload(
+    payload: ExecutionTransportPayload,
+) -> ExecutionThreadStartedTransportPayload:
+    """Normalizes one thread-started execution payload into its stable subset."""
+    thread_id_value: object | None = payload.get("thread_id")
+    if not isinstance(thread_id_value, str):
+        missing_thread_id: str = ""
+        normalized_payload: ExecutionThreadStartedTransportPayload = {
+            "type": "thread.started",
+            "thread_id": missing_thread_id,
+        }
+        return normalized_payload
+
+    normalized_payload: ExecutionThreadStartedTransportPayload = {
+        "type": "thread.started",
+        "thread_id": thread_id_value,
+    }
+    return normalized_payload
+
+
+def _normalize_execution_turn_completed_payload(
+    payload: ExecutionTransportPayload,
+) -> ExecutionTurnCompletedTransportPayload:
+    """Normalizes one turn-completed execution payload into its stable subset."""
+    normalized_usage_payload: ExecutionUsageTransportPayload = {}
+
+    usage_value: object | None = payload.get("usage")
+    if isinstance(usage_value, dict):
+        normalized_usage_payload = _normalize_execution_usage_payload(usage_value)
+
+    normalized_payload: ExecutionTurnCompletedTransportPayload = {
+        "type": "turn.completed",
+        "usage": normalized_usage_payload,
+    }
+    return normalized_payload
+
+
+def _normalize_execution_item_completed_payload(
+    payload: ExecutionTransportPayload,
+) -> ExecutionItemCompletedTransportPayload:
+    """Normalizes one item-completed execution payload into its stable subset."""
+    normalized_item_payload: ExecutionItemTransportPayload = {}
+
+    item_value: object | None = payload.get("item")
+    if isinstance(item_value, dict):
+        normalized_item_payload = _normalize_execution_item_payload(item_value)
+
+    normalized_payload: ExecutionItemCompletedTransportPayload = {
+        "type": "item.completed",
+        "item": normalized_item_payload,
+    }
+    return normalized_payload
+
+
 def _normalize_execution_event_payload(
     event_type: str | None,
     payload: ExecutionTransportPayload,
@@ -157,27 +214,24 @@ def _normalize_execution_event_payload(
     }
 
     if event_type == "thread.started":
-        thread_id_value: object | None = payload.get("thread_id")
-        if isinstance(thread_id_value, str):
-            normalized_payload["thread_id"] = thread_id_value
+        thread_started_payload: ExecutionThreadStartedTransportPayload = (
+            _normalize_execution_thread_started_payload(payload)
+        )
+        normalized_payload["thread_id"] = thread_started_payload["thread_id"]
         return normalized_payload
 
     if event_type == "turn.completed":
-        usage_value: object | None = payload.get("usage")
-        if isinstance(usage_value, dict):
-            normalized_usage_payload: ExecutionUsageTransportPayload = (
-                _normalize_execution_usage_payload(usage_value)
-            )
-            normalized_payload["usage"] = normalized_usage_payload
+        turn_completed_payload: ExecutionTurnCompletedTransportPayload = (
+            _normalize_execution_turn_completed_payload(payload)
+        )
+        normalized_payload["usage"] = turn_completed_payload["usage"]
         return normalized_payload
 
     if event_type == "item.completed":
-        item_value: object | None = payload.get("item")
-        if isinstance(item_value, dict):
-            normalized_item_payload: ExecutionItemTransportPayload = (
-                _normalize_execution_item_payload(item_value)
-            )
-            normalized_payload["item"] = normalized_item_payload
+        item_completed_payload: ExecutionItemCompletedTransportPayload = (
+            _normalize_execution_item_completed_payload(payload)
+        )
+        normalized_payload["item"] = item_completed_payload["item"]
         return normalized_payload
 
     return normalized_payload

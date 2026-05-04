@@ -1,9 +1,13 @@
 import pytest
 
 from omx_remote.execution.payload_mapping import (
+    _load_execution_transport_payload,
     _normalize_execution_event_payload,
     _normalize_execution_event_type,
+    _normalize_execution_item_completed_payload,
     _normalize_execution_item_payload,
+    _normalize_execution_thread_started_payload,
+    _normalize_execution_turn_completed_payload,
     build_tool_interaction,
     build_tool_interaction_report,
     build_tool_interactions,
@@ -106,10 +110,34 @@ def test_normalize_execution_event_type_preserves_known_turn_completed_event() -
     assert result == "turn.completed"
 
 
+def test_normalize_execution_thread_started_payload_preserves_thread_id() -> None:
+    transport_payload = _load_execution_transport_payload(
+        {"type": "thread.started", "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2"}
+    )
+
+    result = _normalize_execution_thread_started_payload(transport_payload)
+
+    assert result["type"] == "thread.started"
+    assert result["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+
+
+def test_load_execution_transport_payload_preserves_thread_started_shape() -> None:
+    result = _load_execution_transport_payload(
+        {"type": "thread.started", "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2"}
+    )
+
+    assert result["type"] == "thread.started"
+    assert result["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+
+
 def test_normalize_execution_event_payload_preserves_thread_started_shape() -> None:
+    transport_payload = _load_execution_transport_payload(
+        {"type": "thread.started", "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2"}
+    )
+
     result = _normalize_execution_event_payload(
         "thread.started",
-        {"type": "thread.started", "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2"},
+        transport_payload,
     )
 
     assert result["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
@@ -125,9 +153,8 @@ def test_load_execution_payload_preserves_live_thread_started_shape() -> None:
     assert result["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
 
 
-def test_normalize_execution_event_payload_preserves_turn_completed_usage_shape() -> None:
-    result = _normalize_execution_event_payload(
-        "turn.completed",
+def test_normalize_execution_turn_completed_payload_preserves_usage() -> None:
+    transport_payload = _load_execution_transport_payload(
         {
             "type": "turn.completed",
             "usage": {
@@ -136,7 +163,31 @@ def test_normalize_execution_event_payload_preserves_turn_completed_usage_shape(
                 "output_tokens": 5,
                 "reasoning_output_tokens": 0,
             },
-        },
+        }
+    )
+
+    result = _normalize_execution_turn_completed_payload(transport_payload)
+
+    assert result["type"] == "turn.completed"
+    assert result["usage"]["cached_input_tokens"] == 7552
+
+
+def test_normalize_execution_event_payload_preserves_turn_completed_usage_shape() -> None:
+    transport_payload = _load_execution_transport_payload(
+        {
+            "type": "turn.completed",
+            "usage": {
+                "input_tokens": 21848,
+                "cached_input_tokens": 7552,
+                "output_tokens": 5,
+                "reasoning_output_tokens": 0,
+            },
+        }
+    )
+
+    result = _normalize_execution_event_payload(
+        "turn.completed",
+        transport_payload,
     )
 
     assert result["usage"]["cached_input_tokens"] == 7552
@@ -160,9 +211,8 @@ def test_load_execution_payload_preserves_live_turn_completed_usage_shape() -> N
     assert result["usage"]["cached_input_tokens"] == 7552
 
 
-def test_normalize_execution_event_payload_preserves_item_completed_item_shape() -> None:
-    result = _normalize_execution_event_payload(
-        "item.completed",
+def test_normalize_execution_item_completed_payload_preserves_item() -> None:
+    transport_payload = _load_execution_transport_payload(
         {
             "type": "item.completed",
             "item": {
@@ -173,7 +223,34 @@ def test_normalize_execution_event_payload_preserves_item_completed_item_shape()
                 "exit_code": 0,
                 "status": "completed",
             },
-        },
+        }
+    )
+
+    result = _normalize_execution_item_completed_payload(transport_payload)
+
+    assert result["type"] == "item.completed"
+    assert result["item"]["type"] == "command_execution"
+    assert result["item"]["exit_code"] == 0
+
+
+def test_normalize_execution_event_payload_preserves_item_completed_item_shape() -> None:
+    transport_payload = _load_execution_transport_payload(
+        {
+            "type": "item.completed",
+            "item": {
+                "id": "item_1",
+                "type": "command_execution",
+                "command": "/bin/zsh -lc \"printf 'READY\\n'\"",
+                "aggregated_output": "READY\n",
+                "exit_code": 0,
+                "status": "completed",
+            },
+        }
+    )
+
+    result = _normalize_execution_event_payload(
+        "item.completed",
+        transport_payload,
     )
 
     assert result["item"]["type"] == "command_execution"
