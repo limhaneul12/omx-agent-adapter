@@ -4,6 +4,7 @@ import orjson
 
 from omx_remote.adapter_types.teamwork_types import (
     TeamApiEnvelopePayload,
+    TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
     TeamApiMailboxListNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
@@ -70,13 +71,14 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
             f"{operation_name} returned a non-object JSON payload"
         )
 
-    envelope_payload: TeamApiEnvelopePayload = {
-        "ok": parsed_payload.get("ok"),
-        "data": parsed_payload.get("data"),
-    }
-    ok_value: object | None = envelope_payload.get("ok")
+    ok_value: object | None = parsed_payload.get("ok")
     if ok_value is not True:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
+
+    envelope_payload: TeamApiEnvelopePayload = {
+        "ok": True,
+        "data": parsed_payload.get("data"),
+    }
 
     data_payload: object | None = envelope_payload.get("data")
     if not isinstance(data_payload, dict):
@@ -96,7 +98,7 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
     return result
 
 
-def _load_team_api_error_payload(stdout: str, operation_name: str) -> dict[str, object]:
+def _load_team_api_error_payload(stdout: str, operation_name: str) -> TeamApiErrorTransportPayload:
     """Loads one team-api transport payload into the nested error object.
 
     Args:
@@ -104,7 +106,7 @@ def _load_team_api_error_payload(stdout: str, operation_name: str) -> dict[str, 
         operation_name [str]: Human-readable team-api operation name used in error messages.
 
     Returns:
-        dict[str, object]: Narrow error payload containing only the stable `code` and `message` fields.
+        TeamApiErrorTransportPayload: Narrow error payload containing only the stable `code` and `message` fields.
 
     Raises:
         TeamworkSurfaceError: Raised when the payload is empty, invalid JSON, not a JSON object, reports `ok=true`, or omits the nested error object.
@@ -134,7 +136,7 @@ def _load_team_api_error_payload(stdout: str, operation_name: str) -> dict[str, 
             f"{operation_name} returned a non-object error payload"
         )
 
-    result: dict[str, object] = {
+    result: TeamApiErrorTransportPayload = {
         "code": error_payload.get("code"),
         "message": error_payload.get("message"),
     }
@@ -404,7 +406,7 @@ async def read_team_api_read_config_error(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    normalized_payload: dict[str, object] = _load_team_api_error_payload(
+    normalized_payload: TeamApiErrorTransportPayload = _load_team_api_error_payload(
         stdout,
         "omx team api read-config",
     )
@@ -437,7 +439,7 @@ async def read_team_api_read_manifest_error(
         ],
     )
     stdout: str = command_result.stdout.strip()
-    normalized_payload: dict[str, object] = _load_team_api_error_payload(
+    normalized_payload: TeamApiErrorTransportPayload = _load_team_api_error_payload(
         stdout,
         "omx team api read-manifest",
     )

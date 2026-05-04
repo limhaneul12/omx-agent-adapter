@@ -2,12 +2,17 @@ from typing import NotRequired, Required, TypedDict
 
 
 class TeamApiEnvelopePayload(TypedDict):
-    ok: Required[object]
+    ok: Required[bool]
     data: Required[object]
 
 
+class TeamApiErrorTransportPayload(TypedDict):
+    code: Required[object]
+    message: Required[object]
+
+
 class TeamApiTransportPayload(TypedDict):
-    count: Required[object]
+    count: NotRequired[object]
     tasks: NotRequired[object]
     cursor: NotRequired[object]
     events: NotRequired[object]

@@ -19,6 +19,8 @@ from omx_remote.adapter_types.history_types import (
 )
 from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
 from omx_remote.adapter_types.teamwork_types import (
+    TeamApiEnvelopePayload,
+    TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiTransportPayload,
@@ -47,10 +49,18 @@ def test_session_search_transport_and_normalized_payload_shapes() -> None:
 
 
 def test_team_api_transport_and_normalized_payload_shapes() -> None:
+    envelope_payload: TeamApiEnvelopePayload = {
+        "ok": True,
+        "data": {"count": 1, "cursor": "cursor-1", "events": []},
+    }
     transport_payload: TeamApiTransportPayload = {
         "count": 1,
         "cursor": "cursor-1",
         "events": [],
+    }
+    error_payload: TeamApiErrorTransportPayload = {
+        "code": "team_not_found",
+        "message": "team_not_found",
     }
     list_tasks_payload: TeamApiListTasksNormalizedPayload = {
         "count": 1,
@@ -62,8 +72,10 @@ def test_team_api_transport_and_normalized_payload_shapes() -> None:
         "events": [],
     }
 
+    assert envelope_payload["ok"] is True
     assert transport_payload["count"] == list_tasks_payload["count"]
     assert read_events_payload["cursor"] == "cursor-1"
+    assert error_payload["code"] == "team_not_found"
 
 
 def test_team_status_and_await_payload_shapes() -> None:
