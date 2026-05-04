@@ -25,13 +25,19 @@ from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchTransportPayload,
 )
-from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
+from omx_remote.adapter_types.runtime_types import (
+    ActiveRuntimeModesTransportPayload,
+    RuntimeModeStateNormalizedPayload,
+    RuntimeModeStateTransportPayload,
+)
 from omx_remote.adapter_types.teamwork_types import (
     TeamApiEnvelopePayload,
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
+    TeamApiMailboxListNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiTransportPayload,
+    TeamApiWorkerStatusNormalizedPayload,
     TeamAwaitNormalizedPayload,
     TeamAwaitTransportPayload,
     TeamStatusNormalizedPayload,
@@ -79,11 +85,23 @@ def test_team_api_transport_and_normalized_payload_shapes() -> None:
         "cursor": "cursor-1",
         "events": [],
     }
+    mailbox_list_payload: TeamApiMailboxListNormalizedPayload = {
+        "worker": "worker-1",
+        "count": 0,
+        "messages": [],
+    }
+    worker_status_payload: TeamApiWorkerStatusNormalizedPayload = {
+        "worker": "worker-1",
+        "state": "unknown",
+        "updated_at": "1970-01-01T00:00:00.000Z",
+    }
 
     assert envelope_payload["ok"] is True
     assert transport_payload["count"] == list_tasks_payload["count"]
     assert read_events_payload["cursor"] == "cursor-1"
+    assert mailbox_list_payload["worker"] == "worker-1"
     assert error_payload["code"] == "team_not_found"
+    assert worker_status_payload["state"] == "unknown"
 
 
 def test_team_status_and_await_payload_shapes() -> None:
@@ -120,6 +138,15 @@ def test_team_status_and_await_payload_shapes() -> None:
 def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     runtime_transport: ActiveRuntimeModesTransportPayload = {
         "active_modes": ["ralph"],
+    }
+    runtime_state_transport: RuntimeModeStateTransportPayload = {
+        "mode": "team",
+        "exists": False,
+    }
+    runtime_state_normalized: RuntimeModeStateNormalizedPayload = {
+        "mode": "team",
+        "exists": False,
+        "state": None,
     }
     thread_started_transport: ExecutionThreadStartedTransportPayload = {
         "type": ExecutionEventKind.THREAD_STARTED,
@@ -184,6 +211,7 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     }
 
     assert runtime_transport["active_modes"] == ["ralph"]
+    assert runtime_state_transport["mode"] == runtime_state_normalized["mode"]
     assert thread_started_transport["type"] == ExecutionEventKind.THREAD_STARTED
     assert thread_started_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
     assert turn_completed_transport["usage"]["cached_input_tokens"] == 7552

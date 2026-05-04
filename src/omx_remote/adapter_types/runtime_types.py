@@ -5,6 +5,18 @@ class ActiveRuntimeModesTransportPayload(TypedDict):
     active_modes: Required[object]
 
 
+class RuntimeModeStateTransportPayload(TypedDict):
+    exists: Required[object]
+    mode: Required[object]
+    state: NotRequired[object]
+
+
+class RuntimeModeStateNormalizedPayload(TypedDict):
+    mode: Required[object]
+    exists: Required[object]
+    state: Required[object]
+
+
 class RuntimeModeStatusTransportPayload(TypedDict):
     statuses: Required[object]
 

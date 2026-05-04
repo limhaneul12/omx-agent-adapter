@@ -43,6 +43,16 @@ class ActiveRuntimeModes(BaseModel):
     active_modes: list[NonEmptyString] = Field(default_factory=list)
 
 
+class RuntimeModeStateSnapshot(BaseModel):
+    """Represents one normalized runtime mode-state lookup result."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: NonEmptyString
+    exists: bool
+    state: dict[str, object] | None = None
+
+
 class RuntimeModeSnapshot(BaseModel):
     """Represents one normalized runtime mode status."""
 

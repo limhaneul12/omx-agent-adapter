@@ -3,6 +3,8 @@ from pydantic import ValidationError
 
 from omx_remote.schemas.runtime_schemas import (
     ActiveRuntimeModes,
+    RuntimeModeStateRequest,
+    RuntimeModeStateSnapshot,
     RuntimeModeSnapshot,
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
@@ -33,6 +35,22 @@ def test_runtime_mode_status_request_requires_mode() -> None:
 def test_runtime_mode_status_request_rejects_unexpected_extra_fields() -> None:
     with pytest.raises(ValidationError):
         RuntimeModeStatusRequest.model_validate({"mode": "ralph", "unexpected": True})
+
+
+def test_runtime_mode_state_request_requires_mode() -> None:
+    result = RuntimeModeStateRequest.model_validate({"mode": "team"})
+
+    assert result.mode == "team"
+
+
+def test_runtime_mode_state_snapshot_accepts_missing_state() -> None:
+    result = RuntimeModeStateSnapshot.model_validate(
+        {"mode": "team", "exists": False, "state": None}
+    )
+
+    assert result.mode == "team"
+    assert result.exists is False
+    assert result.state is None
 
 
 def test_runtime_mode_snapshot_rejects_empty_name() -> None:
