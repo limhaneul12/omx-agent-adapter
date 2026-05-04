@@ -8,6 +8,21 @@ class ExecutionUsageTransportPayload(TypedDict, total=False):
     reasoning_output_tokens: int
 
 
+class ExecutionAgentMessageItemTransportPayload(TypedDict):
+    id: str
+    type: str
+    text: str
+
+
+class ExecutionCommandExecutionItemTransportPayload(TypedDict):
+    id: str
+    type: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
+
+
 class ExecutionItemTransportPayload(TypedDict, total=False):
     id: str
     type: str

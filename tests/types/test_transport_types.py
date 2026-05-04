@@ -11,6 +11,8 @@ from omx_remote.adapter_types.execution_types import (
     ExecOutputNormalizedPayload,
     ExecToolCallNormalizedPayload,
     ExecToolResultNormalizedPayload,
+    ExecutionAgentMessageItemTransportPayload,
+    ExecutionCommandExecutionItemTransportPayload,
     ExecutionItemTransportPayload,
     ExecutionTransportPayload,
     ExecutionUsageTransportPayload,
@@ -116,12 +118,13 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     runtime_transport: ActiveRuntimeModesTransportPayload = {
         "active_modes": ["ralph"],
     }
-    item_transport: ExecutionItemTransportPayload = {
+    agent_message_item_transport: ExecutionAgentMessageItemTransportPayload = {
         "id": "item_0",
         "type": "agent_message",
         "text": "OK",
     }
-    command_item_transport: ExecutionItemTransportPayload = {
+    item_transport: ExecutionItemTransportPayload = agent_message_item_transport
+    command_item_transport: ExecutionCommandExecutionItemTransportPayload = {
         "id": "item_1",
         "type": "command_execution",
         "command": "/bin/zsh -lc pwd",
