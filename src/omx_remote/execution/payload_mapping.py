@@ -17,14 +17,17 @@ from omx_remote.schemas.execution_schemas import (
     ExecOutput,
     ExecToolCall,
     ExecToolResult,
-    ExecutionAnomalyCategory,
     ToolInteraction,
     ToolInteractionAnomaly,
     ToolInteractionReport,
-    ToolInteractionState,
 )
 from omx_remote.shared.exceptions.execution_exceptions import (
     UnsupportedExecutionPayloadError,
+)
+from omx_remote.shared.omx_enums.execution_enums import (
+    ExecutionAnomalyCategory,
+    ExecutionEventKind,
+    ToolInteractionState,
 )
 
 # Raw transport payload stays dynamic here until routing/promotion selects a stable contract.
@@ -159,13 +162,13 @@ def _normalize_execution_thread_started_payload(
     if not isinstance(thread_id_value, str):
         missing_thread_id: str = ""
         normalized_payload: ExecutionThreadStartedTransportPayload = {
-            "type": "thread.started",
+            "type": ExecutionEventKind.THREAD_STARTED,
             "thread_id": missing_thread_id,
         }
         return normalized_payload
 
     normalized_payload: ExecutionThreadStartedTransportPayload = {
-        "type": "thread.started",
+        "type": ExecutionEventKind.THREAD_STARTED,
         "thread_id": thread_id_value,
     }
     return normalized_payload
@@ -182,7 +185,7 @@ def _normalize_execution_turn_completed_payload(
         normalized_usage_payload = _normalize_execution_usage_payload(usage_value)
 
     normalized_payload: ExecutionTurnCompletedTransportPayload = {
-        "type": "turn.completed",
+        "type": ExecutionEventKind.TURN_COMPLETED,
         "usage": normalized_usage_payload,
     }
     return normalized_payload
@@ -199,7 +202,7 @@ def _normalize_execution_item_completed_payload(
         normalized_item_payload = _normalize_execution_item_payload(item_value)
 
     normalized_payload: ExecutionItemCompletedTransportPayload = {
-        "type": "item.completed",
+        "type": ExecutionEventKind.ITEM_COMPLETED,
         "item": normalized_item_payload,
     }
     return normalized_payload

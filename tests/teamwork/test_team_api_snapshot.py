@@ -155,6 +155,36 @@ def test_read_team_api_list_tasks_rejects_non_object_task_payload_item(
         )
 
 
+def test_read_team_api_list_tasks_drops_unstable_task_transport_fields(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":1,"tasks":[{"subject":"Team surface closure: status/await and team-api regressions","description":"Own src/teamwork/team_snapshot.py","status":"in_progress","owner":"worker-1","depends_on":[],"role":"executor","id":"1","version":3,"created_at":"2026-05-03T04:17:53.343Z","claim":{"owner":"worker-1"},"requires_code_change":true}]}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_list_tasks(
+            TeamApiListTasksRequest(team_name="roadmap-closure-burnd-0cc0315d")
+        )
+    )
+
+    assert result.model_dump() == {
+        "count": 1,
+        "tasks": [
+            {
+                "id": "1",
+                "subject": "Team surface closure: status/await and team-api regressions",
+                "status": "in_progress",
+                "owner": "worker-1",
+            }
+        ],
+    }
+
+
 def test_read_team_api_read_events_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_events)
 
@@ -248,6 +278,37 @@ def test_read_team_api_read_events_rejects_count_mismatch(monkeypatch) -> None:
                 TeamApiReadEventsRequest(team_name="alpha")
             )
         )
+
+
+def test_read_team_api_read_events_drops_unstable_event_transport_fields(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":1,"cursor":"cursor-1","events":[{"type":"message_received","worker":"leader-fixed","message_id":"message-1","event_id":"event-1","team":"roadmap-closure-burnd-0cc0315d","created_at":"2026-05-03T04:18:19.286Z"}]}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_events(
+            TeamApiReadEventsRequest(team_name="roadmap-closure-burnd-0cc0315d")
+        )
+    )
+
+    assert result.model_dump() == {
+        "count": 1,
+        "cursor": "cursor-1",
+        "events": [
+            {
+                "type": "message_received",
+                "worker": "leader-fixed",
+                "task_id": None,
+                "message_id": "message-1",
+            }
+        ],
+    }
 
 
 def test_load_team_api_payload_rejects_null_transport_payload() -> None:

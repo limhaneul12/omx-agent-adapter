@@ -1,8 +1,11 @@
 from omx_remote.adapter_types.bridge_types import (
+    AdapterEnvelopeRuntimePayload,
     AdapterEnvelopeNormalizedPayload,
     AdapterEnvelopeTransportPayload,
+    AdapterProbeRuntimePayload,
     AdapterProbeNormalizedPayload,
     AdapterProbeTransportPayload,
+    AdapterStatusRuntimePayload,
     AdapterStatusNormalizedPayload,
     AdapterStatusTransportPayload,
 )
@@ -229,11 +232,17 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
 
 
 def test_adapter_transport_and_normalized_payload_shapes() -> None:
+    probe_runtime: AdapterProbeRuntimePayload = {
+        "state": "unavailable",
+        "detail": "missing",
+        "evidence": {},
+    }
     probe_transport: AdapterProbeTransportPayload = {
         "target": "hermes",
         "phase": "ready",
         "summary": "ok",
         "capabilities": [],
+        "targetRuntime": probe_runtime,
     }
     probe_normalized: AdapterProbeNormalizedPayload = {
         "target": "hermes",
@@ -243,11 +252,19 @@ def test_adapter_transport_and_normalized_payload_shapes() -> None:
         "target_runtime_state": None,
         "target_runtime_detail": None,
     }
+    status_runtime: AdapterStatusRuntimePayload = {
+        "state": "not-initialized",
+        "detail": "write init",
+        "configPath": "/tmp/adapter.json",
+        "envelopePath": "/tmp/envelope.json",
+    }
     status_transport: AdapterStatusTransportPayload = {
         "target": "hermes",
         "phase": "ready",
         "summary": "ok",
         "capabilities": [],
+        "adapter": status_runtime,
+        "targetRuntime": probe_runtime,
     }
     status_normalized: AdapterStatusNormalizedPayload = {
         "target": "hermes",
@@ -259,11 +276,17 @@ def test_adapter_transport_and_normalized_payload_shapes() -> None:
         "target_runtime_state": None,
         "target_runtime_detail": None,
     }
+    envelope_runtime: AdapterEnvelopeRuntimePayload = {
+        "state": "unavailable",
+        "detail": "missing",
+        "evidence": {},
+    }
     envelope_transport: AdapterEnvelopeTransportPayload = {
         "target": "hermes",
         "displayName": "Hermes",
         "summary": "ok",
         "capabilities": [],
+        "targetRuntime": envelope_runtime,
     }
     envelope_normalized: AdapterEnvelopeNormalizedPayload = {
         "target": "hermes",
@@ -275,5 +298,8 @@ def test_adapter_transport_and_normalized_payload_shapes() -> None:
     }
 
     assert probe_transport["target"] == probe_normalized["target"]
+    assert probe_transport["targetRuntime"]["evidence"] == {}
     assert status_transport["phase"] == status_normalized["phase"]
+    assert status_transport["adapter"]["configPath"] == "/tmp/adapter.json"
     assert envelope_transport["displayName"] == envelope_normalized["display_name"]
+    assert envelope_transport["targetRuntime"]["detail"] == "missing"

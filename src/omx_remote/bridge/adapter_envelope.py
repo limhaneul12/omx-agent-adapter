@@ -65,15 +65,15 @@ def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     )
 
     target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
-    target_runtime_state: object | None = None
-    target_runtime_detail: object | None = None
+    target_runtime_state: str | None = None
+    target_runtime_detail: str | None = None
     if isinstance(target_runtime_payload, dict):
         normalized_target_runtime_payload: AdapterEnvelopeRuntimePayload = {
             "state": target_runtime_payload.get("state"),
             "detail": target_runtime_payload.get("detail"),
         }
-        target_runtime_state = normalized_target_runtime_payload.get("state")
-        target_runtime_detail = normalized_target_runtime_payload.get("detail")
+        target_runtime_state = normalized_target_runtime_payload["state"]
+        target_runtime_detail = normalized_target_runtime_payload["detail"]
 
     capabilities_payload: object | None = parsed_payload.get("capabilities")
     normalized_capabilities: object = capabilities_payload

@@ -73,3 +73,21 @@ def test_read_adapter_envelope_preserves_required_contract_validation(monkeypatc
 def test_load_adapter_envelope_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_envelope._load_adapter_envelope_transport_payload("[]")
+
+
+def test_load_adapter_envelope_transport_payload_preserves_live_required_bridge_fields() -> None:
+    result = adapter_envelope._load_adapter_envelope_transport_payload(
+        '{"target":"hermes","displayName":"Hermes","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing","evidence":{}},"schemaVersion":"1.0","generatedAt":"2026-05-04T08:02:34.585Z"}'
+    )
+
+    assert result == {
+        "target": "hermes",
+        "displayName": "Hermes",
+        "summary": "ok",
+        "capabilities": [],
+        "targetRuntime": {
+            "state": "unavailable",
+            "detail": "missing",
+            "evidence": {},
+        },
+    }

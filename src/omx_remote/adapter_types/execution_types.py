@@ -1,4 +1,6 @@
-from typing import Literal, Required, TypedDict
+from typing import Required, TypedDict
+
+from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 
 
 class ExecutionUsageTransportPayload(TypedDict, total=False):
@@ -9,7 +11,7 @@ class ExecutionUsageTransportPayload(TypedDict, total=False):
 
 
 class ExecutionThreadStartedTransportPayload(TypedDict):
-    type: Required[Literal["thread.started"]]
+    type: Required[ExecutionEventKind]
     thread_id: Required[str]
 
 
@@ -42,12 +44,12 @@ class ExecutionItemTransportPayload(TypedDict, total=False):
 
 
 class ExecutionTurnCompletedTransportPayload(TypedDict):
-    type: Required[Literal["turn.completed"]]
+    type: Required[ExecutionEventKind]
     usage: Required[ExecutionUsageTransportPayload]
 
 
 class ExecutionItemCompletedTransportPayload(TypedDict):
-    type: Required[Literal["item.completed"]]
+    type: Required[ExecutionEventKind]
     item: Required[ExecutionItemTransportPayload]
 
 

@@ -7,6 +7,10 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStatusResultNormalizedPayload,
     RuntimeModeStatusTransportPayload,
 )
+from omx_remote.adapter_types.execution_types import (
+    ExecutionThreadStartedTransportPayload,
+    ExecutionTurnCompletedTransportPayload,
+)
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionAnomalyCategory,
     ExecutionEventKind,
@@ -76,3 +80,22 @@ def test_runtime_transport_payload_types_accept_narrowed_stable_shapes() -> None
     assert mode_status_entry["path"] == ".omx/state/ralph-state.json"
     assert mode_status_data["current_phase"] == "starting"
     assert mode_status_result["requested_mode"] == "ralph"
+
+
+def test_execution_transport_payload_types_accept_enum_narrowing() -> None:
+    thread_started_transport: ExecutionThreadStartedTransportPayload = {
+        "type": ExecutionEventKind.THREAD_STARTED,
+        "thread_id": "019df138-200f-7792-a307-5996bdf7b9d2",
+    }
+    turn_completed_transport: ExecutionTurnCompletedTransportPayload = {
+        "type": ExecutionEventKind.TURN_COMPLETED,
+        "usage": {
+            "input_tokens": 21848,
+            "cached_input_tokens": 7552,
+            "output_tokens": 5,
+            "reasoning_output_tokens": 0,
+        },
+    }
+
+    assert thread_started_transport["type"] == ExecutionEventKind.THREAD_STARTED
+    assert turn_completed_transport["type"] == ExecutionEventKind.TURN_COMPLETED

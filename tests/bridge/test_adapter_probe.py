@@ -68,3 +68,21 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
 def test_load_adapter_probe_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_probe._load_adapter_probe_transport_payload("[]")
+
+
+def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> None:
+    result = adapter_probe._load_adapter_probe_transport_payload(
+        '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing","evidence":{}},"schemaVersion":"1.0","timestamp":"2026-05-04T08:02:34.260Z"}'
+    )
+
+    assert result == {
+        "target": "hermes",
+        "phase": "foundation",
+        "summary": "ok",
+        "capabilities": [],
+        "targetRuntime": {
+            "state": "unavailable",
+            "detail": "missing",
+            "evidence": {},
+        },
+    }

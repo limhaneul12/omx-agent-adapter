@@ -63,26 +63,26 @@ def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     )
 
     adapter_payload: object | None = parsed_payload.get("adapter")
-    adapter_state: object | None = None
-    adapter_detail: object | None = None
+    adapter_state: str | None = None
+    adapter_detail: str | None = None
     if isinstance(adapter_payload, dict):
         normalized_adapter_payload: AdapterStatusRuntimePayload = {
             "state": adapter_payload.get("state"),
             "detail": adapter_payload.get("detail"),
         }
-        adapter_state = normalized_adapter_payload.get("state")
-        adapter_detail = normalized_adapter_payload.get("detail")
+        adapter_state = normalized_adapter_payload["state"]
+        adapter_detail = normalized_adapter_payload["detail"]
 
     target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
-    target_runtime_state: object | None = None
-    target_runtime_detail: object | None = None
+    target_runtime_state: str | None = None
+    target_runtime_detail: str | None = None
     if isinstance(target_runtime_payload, dict):
         normalized_target_runtime_payload: AdapterStatusRuntimePayload = {
             "state": target_runtime_payload.get("state"),
             "detail": target_runtime_payload.get("detail"),
         }
-        target_runtime_state = normalized_target_runtime_payload.get("state")
-        target_runtime_detail = normalized_target_runtime_payload.get("detail")
+        target_runtime_state = normalized_target_runtime_payload["state"]
+        target_runtime_detail = normalized_target_runtime_payload["detail"]
 
     capabilities_payload: object | None = parsed_payload.get("capabilities")
     normalized_capabilities: object = capabilities_payload
