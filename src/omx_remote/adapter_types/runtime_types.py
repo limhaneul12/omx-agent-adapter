@@ -2,7 +2,7 @@ from typing import NotRequired, Required, TypedDict
 
 
 class RuntimeModeStatusDataPayload(TypedDict, total=False):
-    current_phase: str
+    current_phase: NotRequired[str]
 
 
 class RuntimeModeStatusEntryPayload(TypedDict):

@@ -48,31 +48,31 @@ class TeamApiWorkerStatusNormalizedPayload(TypedDict):
 
 
 class TeamApiTransportTaskPayload(TypedDict, total=False):
-    id: str
-    subject: str
-    title: str
-    status: str
-    owner: str
-    assignee: str
+    id: NotRequired[str]
+    subject: NotRequired[str]
+    title: NotRequired[str]
+    status: NotRequired[str]
+    owner: NotRequired[str]
+    assignee: NotRequired[str]
 
 
 class TeamApiTransportEventPayload(TypedDict, total=False):
-    type: str
-    worker: str
-    task_id: str
-    message_id: str | None
+    type: NotRequired[str]
+    worker: NotRequired[str]
+    task_id: NotRequired[str]
+    message_id: NotRequired[str | None]
 
 
 class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
-    id: str
-    subject: str
-    body: str
-    delivered: bool
+    id: NotRequired[str]
+    subject: NotRequired[str]
+    body: NotRequired[str]
+    delivered: NotRequired[bool]
 
 
 class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
-    state: str
-    updated_at: str
+    state: NotRequired[str]
+    updated_at: NotRequired[str]
 
 
 class TeamStatusTransportPayload(TypedDict):
@@ -93,9 +93,9 @@ class TeamStatusNormalizedPayload(TypedDict):
 
 
 class TeamAwaitTransportEventPayload(TypedDict, total=False):
-    type: str
-    worker: str
-    task_id: str
+    type: NotRequired[str]
+    worker: NotRequired[str]
+    task_id: NotRequired[str]
 
 
 class TeamAwaitTransportPayload(TypedDict):

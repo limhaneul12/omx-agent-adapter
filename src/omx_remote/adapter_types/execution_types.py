@@ -1,13 +1,13 @@
-from typing import Required, TypedDict
+from typing import NotRequired, Required, TypedDict
 
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 
 
 class ExecutionUsageTransportPayload(TypedDict, total=False):
-    input_tokens: int
-    cached_input_tokens: int
-    output_tokens: int
-    reasoning_output_tokens: int
+    input_tokens: NotRequired[int]
+    cached_input_tokens: NotRequired[int]
+    output_tokens: NotRequired[int]
+    reasoning_output_tokens: NotRequired[int]
 
 
 class ExecutionThreadStartedTransportPayload(TypedDict):
@@ -31,16 +31,16 @@ class ExecutionCommandExecutionItemTransportPayload(TypedDict):
 
 
 class ExecutionItemTransportPayload(TypedDict, total=False):
-    id: str
-    type: str
-    text: str
-    tool_name: str
-    call_id: str
-    arguments: str
-    command: str
-    aggregated_output: str
-    exit_code: int
-    status: str
+    id: NotRequired[str]
+    type: NotRequired[str]
+    text: NotRequired[str]
+    tool_name: NotRequired[str]
+    call_id: NotRequired[str]
+    arguments: NotRequired[str]
+    command: NotRequired[str]
+    aggregated_output: NotRequired[str]
+    exit_code: NotRequired[int]
+    status: NotRequired[str]
 
 
 class ExecutionTurnCompletedTransportPayload(TypedDict):
@@ -54,21 +54,21 @@ class ExecutionItemCompletedTransportPayload(TypedDict):
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
-    type: str | None
-    text: object
-    item: object
-    tool_name: object
-    call_id: object
-    arguments: object
-    command: object
-    aggregated_output: object
-    exit_code: object
-    status: object
-    id: object
-    extra: object
-    kind: object
-    thread_id: str
-    usage: ExecutionUsageTransportPayload
+    type: NotRequired[str | None]
+    text: NotRequired[object]
+    item: NotRequired[object]
+    tool_name: NotRequired[object]
+    call_id: NotRequired[object]
+    arguments: NotRequired[object]
+    command: NotRequired[object]
+    aggregated_output: NotRequired[object]
+    exit_code: NotRequired[object]
+    status: NotRequired[object]
+    id: NotRequired[object]
+    extra: NotRequired[object]
+    kind: NotRequired[object]
+    thread_id: NotRequired[str]
+    usage: NotRequired[ExecutionUsageTransportPayload]
 
 
 class ExecMessageNormalizedPayload(TypedDict):
