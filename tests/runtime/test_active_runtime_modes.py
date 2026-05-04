@@ -65,6 +65,21 @@ def test_read_active_runtime_modes_preserves_contract_validation_boundary(
     assert result.active_modes == ["ralph"]
 
 
+def test_read_active_runtime_modes_invokes_expected_state_command(monkeypatch) -> None:
+    seen_arguments: list[list[str]] = []
+
+    def fake_run(arguments: list[str]) -> DummyResult:
+        seen_arguments.append(arguments)
+        return DummyResult(stdout='{"active_modes":["run","team"]}\n')
+
+    monkeypatch.setattr(active_runtime_modes, "run_omx_command", fake_run)
+
+    result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
+
+    assert result.active_modes == ["run", "team"]
+    assert seen_arguments == [["state", "list-active", "--json"]]
+
+
 def test_load_active_runtime_modes_payload_rejects_non_object_transport() -> None:
     with pytest.raises(RuntimeSurfaceError):
         active_runtime_modes._load_active_runtime_modes_payload("[]")

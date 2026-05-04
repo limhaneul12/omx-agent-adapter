@@ -84,6 +84,55 @@ def test_read_runtime_mode_status_uses_nested_current_phase_fallback(
     assert result.mode_snapshot.phase == "executing"
 
 
+def test_read_runtime_mode_status_treats_empty_phase_as_missing_for_nested_fallback(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_mode_status,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"statuses":{"team":{"active":true,"phase":"","path":"","data":{"current_phase":"team-exec"}}}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        runtime_mode_status.read_runtime_mode_status(
+            RuntimeModeStatusRequest(mode="team")
+        )
+    )
+
+    assert result.mode_snapshot is not None
+    assert result.mode_snapshot.phase == "team-exec"
+    assert result.mode_snapshot.state_path is None
+
+
+def test_read_runtime_mode_status_invokes_expected_state_command(monkeypatch) -> None:
+    seen_arguments: list[list[str]] = []
+
+    def fake_run(arguments: list[str]) -> DummyResult:
+        seen_arguments.append(arguments)
+        return DummyResult(stdout='{"statuses":{"team":{"active":true,"phase":"team-exec","path":"/tmp/team-state.json"}}}\n')
+
+    monkeypatch.setattr(runtime_mode_status, "run_omx_command", fake_run)
+
+    result = asyncio.run(
+        runtime_mode_status.read_runtime_mode_status(
+            RuntimeModeStatusRequest(mode="team")
+        )
+    )
+
+    assert result.found is True
+    assert seen_arguments == [
+        [
+            "state",
+            "get-status",
+            "--input",
+            '{"mode":"team"}',
+            "--json",
+        ]
+    ]
+
+
 def test_read_runtime_mode_status_rejects_unparseable_json_transport(
     monkeypatch,
 ) -> None:

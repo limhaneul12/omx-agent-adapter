@@ -82,14 +82,14 @@ def _normalize_runtime_mode_status_entry(
     }
 
     phase_value: object | None = normalized_transport_payload.get("phase")
+    if phase_value == "":
+        phase_value = None
     nested_data_payload: object | None = normalized_transport_payload.get("data")
     if phase_value is None and isinstance(nested_data_payload, dict):
         normalized_data_payload: RuntimeModeStatusDataPayload = {
             "current_phase": nested_data_payload.get("current_phase"),
         }
         phase_value = normalized_data_payload.get("current_phase")
-    if phase_value == "":
-        phase_value = None
 
     state_path_value: object | None = normalized_transport_payload.get("path")
     if state_path_value == "":
