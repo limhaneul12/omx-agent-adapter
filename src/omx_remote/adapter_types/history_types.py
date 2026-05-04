@@ -2,6 +2,8 @@ from typing import Required, TypedDict
 
 
 class SessionSearchTransportResultPayload(TypedDict):
+    """Represents the stable observed subset for one session-search result item."""
+
     session_id: Required[str]
     timestamp: Required[str]
     cwd: Required[str]
@@ -11,6 +13,8 @@ class SessionSearchTransportResultPayload(TypedDict):
 
 
 class SessionSearchTransportPayload(TypedDict):
+    """Represents the stable top-level transport subset for session search."""
+
     query: Required[str]
     searched_files: Required[int]
     matched_sessions: Required[int]
@@ -18,6 +22,8 @@ class SessionSearchTransportPayload(TypedDict):
 
 
 class SessionSearchNormalizedPayload(TypedDict):
+    """Represents the normalized adapter-owned payload for session search."""
+
     query: Required[str]
     searched_files: Required[int]
     matched_sessions: Required[int]
