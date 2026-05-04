@@ -13,6 +13,7 @@ class TeamApiTransportPayload(TypedDict):
     events: NotRequired[object]
     worker: NotRequired[object]
     messages: NotRequired[object]
+    snapshot: NotRequired[object]
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):

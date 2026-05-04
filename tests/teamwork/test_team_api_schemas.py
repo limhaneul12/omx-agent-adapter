@@ -8,6 +8,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiListTasksSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadEventsSnapshot,
+    TeamApiReadMonitorSnapshotRequest,
+    TeamApiReadMonitorSnapshot,
 )
 
 
@@ -61,6 +63,30 @@ def test_team_api_read_events_request_accepts_required_team_name() -> None:
     result = TeamApiReadEventsRequest.model_validate({"team_name": "alpha"})
 
     assert result.team_name == "alpha"
+
+
+def test_team_api_read_monitor_snapshot_request_accepts_required_team_name() -> None:
+    result = TeamApiReadMonitorSnapshotRequest.model_validate({"team_name": "alpha"})
+
+    assert result.team_name == "alpha"
+
+
+def test_team_api_read_monitor_snapshot_request_rejects_empty_team_name() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiReadMonitorSnapshotRequest.model_validate({"team_name": ""})
+
+
+def test_team_api_read_monitor_snapshot_accepts_null_snapshot() -> None:
+    result = TeamApiReadMonitorSnapshot.model_validate({"snapshot": None})
+
+    assert result.snapshot is None
+
+
+def test_team_api_read_monitor_snapshot_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TeamApiReadMonitorSnapshot.model_validate(
+            {"snapshot": None, "unexpected": True}
+        )
 
 
 def test_team_api_read_events_request_rejects_empty_team_name() -> None:

@@ -20,6 +20,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiMailboxListSnapshot,
     TeamApiReadEventsRequest,
     TeamApiReadEventsSnapshot,
+    TeamApiReadMonitorSnapshot,
+    TeamApiReadMonitorSnapshotRequest,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 
@@ -85,6 +87,7 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "events": data_payload.get("events"),
         "worker": data_payload.get("worker"),
         "messages": data_payload.get("messages"),
+        "snapshot": data_payload.get("snapshot"),
     }
     return result
 
@@ -289,5 +292,41 @@ async def read_team_api_mailbox_list(
         result.count,
         len(result.messages),
         "messages",
+    )
+    return result
+
+
+async def read_team_api_read_monitor_snapshot(
+    request: TeamApiReadMonitorSnapshotRequest,
+) -> TeamApiReadMonitorSnapshot:
+    """Reads typed team-api monitor snapshots.
+
+    Args:
+        request [TeamApiReadMonitorSnapshotRequest]: Typed request boundary for `omx team api read-monitor-snapshot`.
+
+    Returns:
+        TeamApiReadMonitorSnapshot: Normalized read-monitor-snapshot result built from the nested successful `data` payload.
+    """
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        [
+            "team",
+            "api",
+            "read-monitor-snapshot",
+            "--input",
+            orjson.dumps({"team_name": request.team_name}).decode(),
+            "--json",
+        ],
+    )
+    stdout: str = command_result.stdout.strip()
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
+        stdout,
+        "omx team api read-monitor-snapshot",
+    )
+    normalized_payload: dict[str, object | None] = {
+        "snapshot": data_payload.get("snapshot"),
+    }
+    result: TeamApiReadMonitorSnapshot = TeamApiReadMonitorSnapshot.model_validate(
+        normalized_payload
     )
     return result

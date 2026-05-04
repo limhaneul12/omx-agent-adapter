@@ -8,6 +8,7 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiMailboxListRequest,
     TeamApiListTasksRequest,
     TeamApiReadEventsRequest,
+    TeamApiReadMonitorSnapshotRequest,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_api_snapshot
@@ -379,3 +380,67 @@ def test_read_team_api_mailbox_list_rejects_non_object_message_payload_item(
                 TeamApiMailboxListRequest(team_name="alpha", worker="worker-1")
             )
         )
+
+
+def test_read_team_api_read_monitor_snapshot_is_async() -> None:
+    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_monitor_snapshot)
+
+
+def test_read_team_api_read_monitor_snapshot_accepts_typed_request() -> None:
+    coroutine = team_api_snapshot.read_team_api_read_monitor_snapshot(
+        TeamApiReadMonitorSnapshotRequest(team_name="alpha")
+    )
+
+    assert inspect.isawaitable(coroutine)
+    asyncio.run(coroutine)
+
+
+def test_read_team_api_read_monitor_snapshot_returns_null_snapshot(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"operation":"read-monitor-snapshot","data":{"snapshot":null}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_monitor_snapshot(
+            TeamApiReadMonitorSnapshotRequest(team_name="missing-team")
+        )
+    )
+
+    assert result.snapshot is None
+
+
+def test_read_team_api_read_monitor_snapshot_rejects_unparseable_json_transport(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout="not-json\n"),
+    )
+
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_read_monitor_snapshot(
+                TeamApiReadMonitorSnapshotRequest(team_name="alpha")
+            )
+        )
+
+
+def test_read_team_api_read_monitor_snapshot_preserves_missing_snapshot_as_none(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(stdout='{"schema_version":"1.0","ok":true,"data":{}}\n'),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_monitor_snapshot(
+            TeamApiReadMonitorSnapshotRequest(team_name="alpha")
+        )
+    )
+
+    assert result.snapshot is None
