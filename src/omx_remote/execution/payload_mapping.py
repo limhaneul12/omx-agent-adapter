@@ -29,6 +29,9 @@ RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
     {"message", "output_text", "tool_call", "tool_result"}
 )
+KNOWN_EXECUTION_EVENT_TYPES: frozenset[str] = frozenset(
+    {"thread.started", "turn.started", "item.completed", "turn.completed"}
+)
 
 ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
     "duplicate_result": "additional tool result observed after first matched result",
@@ -37,13 +40,18 @@ ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
 }
 
 
-def _normalize_execution_event_type(event_type: object) -> object:
-    """Normalizes one raw execution event type while preserving current passthrough behavior."""
-    if isinstance(event_type, str):
-        normalized_event_type: str = event_type
-        return normalized_event_type
+def _normalize_execution_event_type(event_type: object) -> str | None:
+    """Normalizes one raw execution event type into a known or passthrough string."""
+    if not isinstance(event_type, str):
+        missing_event_type: None = None
+        return missing_event_type
 
-    return event_type
+    if event_type in KNOWN_EXECUTION_EVENT_TYPES:
+        known_event_type: str = event_type
+        return known_event_type
+
+    passthrough_event_type: str = event_type
+    return passthrough_event_type
 
 
 def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTransportPayload:
@@ -115,7 +123,7 @@ def load_execution_payload(
     else:
         normalized_item_value = item_value
 
-    event_type_value: object = _normalize_execution_event_type(payload.get("type"))
+    event_type_value: str | None = _normalize_execution_event_type(payload.get("type"))
 
     result: ExecutionPayload = {
         "type": event_type_value,

@@ -81,6 +81,30 @@ def test_normalize_execution_event_type_preserves_unknown_event_text() -> None:
     assert result == "raw_event"
 
 
+def test_normalize_execution_event_type_rejects_non_string_event_value() -> None:
+    result = _normalize_execution_event_type(["thread.started"])
+
+    assert result is None
+
+
+def test_normalize_execution_event_type_preserves_known_turn_started_event() -> None:
+    result = _normalize_execution_event_type("turn.started")
+
+    assert result == "turn.started"
+
+
+def test_normalize_execution_event_type_preserves_known_item_completed_event() -> None:
+    result = _normalize_execution_event_type("item.completed")
+
+    assert result == "item.completed"
+
+
+def test_normalize_execution_event_type_preserves_known_turn_completed_event() -> None:
+    result = _normalize_execution_event_type("turn.completed")
+
+    assert result == "turn.completed"
+
+
 def test_load_execution_payload_preserves_live_thread_started_shape() -> None:
     result = load_execution_payload(
         "event payload",
