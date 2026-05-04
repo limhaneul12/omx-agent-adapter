@@ -104,6 +104,28 @@ def test_decode_event_lines_skips_non_dict_json_payloads_without_dropping_valid_
     assert events[1]["id"] == "after"
 
 
+def test_decode_event_lines_splits_item_completed_command_execution_payloads() -> None:
+    payload = (
+        "\n".join(
+            [
+                "{\"type\":\"item.completed\",\"item\":{\"type\":\"command_execution\",\"command\":\"/bin/zsh -lc pwd\",\"aggregated_output\":\"/tmp\\n\",\"exit_code\":0,\"status\":\"completed\"}}",
+                "{\"type\":\"turn.completed\",\"id\":\"after\"}",
+            ]
+        )
+        + "\n"
+    )
+
+    events = asyncio.run(decode_event_lines(payload))
+
+    assert len(events) == 2
+    assert events[0]["type"] == "command_execution"
+    assert events[0]["command"] == "/bin/zsh -lc pwd"
+    assert events[0]["aggregated_output"] == "/tmp\n"
+    assert events[0]["exit_code"] == 0
+    assert events[0]["status"] == "completed"
+    assert events[1]["type"] == "turn.completed"
+
+
 def test_decode_event_lines_splits_item_completed_tool_call_payloads() -> None:
     payload = json.dumps(
         {

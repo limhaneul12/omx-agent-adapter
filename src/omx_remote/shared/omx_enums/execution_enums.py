@@ -13,3 +13,4 @@ class ExecutionPayloadKind(StrEnum):
     OUTPUT_TEXT = "output_text"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    COMMAND_EXECUTION = "command_execution"

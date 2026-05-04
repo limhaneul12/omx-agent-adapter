@@ -13,6 +13,7 @@ from omx_remote.execution.payload_mapping import (
     build_tool_interactions,
     is_promotable_execution_payload,
     load_execution_payload,
+    promote_exec_command_execution,
     promote_exec_message,
     promote_exec_output,
     promote_exec_tool_call,
@@ -304,6 +305,28 @@ def test_split_event_payloads_extracts_item_completed_output_item_payload() -> N
     assert result[0]["text"] == "stream line"
 
 
+def test_split_event_payloads_extracts_item_completed_command_execution_payload() -> None:
+    payload = {
+        "type": "item.completed",
+        "item": {
+            "type": "command_execution",
+            "command": "/bin/zsh -lc \"printf 'READY\\n'\"",
+            "aggregated_output": "READY\n",
+            "exit_code": 0,
+            "status": "completed",
+        },
+    }
+
+    result = split_event_payloads(payload)
+
+    assert len(result) == 1
+    assert result[0]["type"] == "command_execution"
+    assert result[0]["command"] == "/bin/zsh -lc \"printf 'READY\\n'\""
+    assert result[0]["aggregated_output"] == "READY\n"
+    assert result[0]["exit_code"] == 0
+    assert result[0]["status"] == "completed"
+
+
 def test_split_event_payloads_extracts_item_completed_tool_result_payload() -> None:
     payload = {
         "type": "item.completed",
@@ -371,12 +394,49 @@ def test_route_execution_payload_promotes_supported_payload_type() -> None:
     assert result.text == "done"
 
 
+def test_route_execution_payload_promotes_command_execution_payload_type() -> None:
+    payload = {
+        "type": "command_execution",
+        "command": "/bin/zsh -lc pwd",
+        "aggregated_output": "/tmp\n",
+        "exit_code": 0,
+        "status": "completed",
+    }
+
+    result = route_execution_payload(payload)
+
+    assert result.__class__.__name__ == "ExecCommandExecution"
+    assert result.kind == "command_execution"
+    assert result.command == "/bin/zsh -lc pwd"
+    assert result.aggregated_output == "/tmp\n"
+    assert result.exit_code == 0
+    assert result.status == "completed"
+
+
 def test_route_execution_payload_keeps_raw_passthrough_for_unsupported_type() -> None:
     payload = {"type": "turn.started", "id": "t1"}
 
     result = route_execution_payload(payload)
 
     assert result == payload
+
+
+def test_promote_exec_command_execution_builds_contract_from_payload() -> None:
+    payload = {
+        "type": "command_execution",
+        "command": "/bin/zsh -lc pwd",
+        "aggregated_output": "/tmp\n",
+        "exit_code": 0,
+        "status": "completed",
+    }
+
+    result = promote_exec_command_execution(payload)
+
+    assert result.kind == "command_execution"
+    assert result.command == "/bin/zsh -lc pwd"
+    assert result.aggregated_output == "/tmp\n"
+    assert result.exit_code == 0
+    assert result.status == "completed"
 
 
 def test_promote_exec_message_builds_contract_from_payload() -> None:
@@ -427,6 +487,25 @@ def test_promote_exec_tool_call_builds_contract_from_payload() -> None:
     assert result.tool_name == "grep"
     assert result.call_id == "call-123"
     assert result.arguments == '{"pattern":"TODO"}'
+
+
+def test_promote_execution_contract_selects_command_execution_contract() -> None:
+    payload = {
+        "type": "command_execution",
+        "command": "/bin/zsh -lc pwd",
+        "aggregated_output": "/tmp\n",
+        "exit_code": 0,
+        "status": "completed",
+    }
+
+    result = promote_execution_contract(payload)
+
+    assert result.kind == "command_execution"
+    assert result.command == "/bin/zsh -lc pwd"
+    assert result.aggregated_output == "/tmp\n"
+    assert result.exit_code == 0
+    assert result.status == "completed"
+    assert result.__class__.__name__ == "ExecCommandExecution"
 
 
 def test_promote_execution_contract_selects_message_contract() -> None:
@@ -509,6 +588,29 @@ def test_promote_execution_contract_selects_message_contract_for_item_completed_
     assert result.kind == "message"
     assert result.text == "done"
     assert result.__class__.__name__ == "ExecMessage"
+
+
+def test_promote_execution_contract_selects_command_execution_contract_for_item_completed_command_execution() -> None:
+    event_payload = {
+        "type": "item.completed",
+        "item": {
+            "type": "command_execution",
+            "command": "/bin/zsh -lc pwd",
+            "aggregated_output": "/tmp\n",
+            "exit_code": 0,
+            "status": "completed",
+        },
+    }
+
+    split_payloads = split_event_payloads(event_payload)
+    result = promote_execution_contract(split_payloads[0])
+
+    assert result.kind == "command_execution"
+    assert result.command == "/bin/zsh -lc pwd"
+    assert result.aggregated_output == "/tmp\n"
+    assert result.exit_code == 0
+    assert result.status == "completed"
+    assert result.__class__.__name__ == "ExecCommandExecution"
 
 
 def test_promote_execution_contract_selects_tool_result_contract_for_item_completed_tool_result() -> None:
