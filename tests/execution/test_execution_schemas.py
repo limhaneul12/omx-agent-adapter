@@ -10,6 +10,7 @@ from omx_remote.schemas.execution_schemas import (
     ToolInteraction,
     ToolInteractionAnomaly,
     ToolInteractionReport,
+    TurnUsage,
 )
 from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
 
@@ -192,6 +193,8 @@ def test_tool_interaction_report_rejects_unexpected_extra_fields() -> None:
                 "missing_result_count": 0,
                 "duplicate_result_count": 0,
                 "unmatched_result_count": 0,
+                "has_anomalies": False,
+                "anomaly_count": 0,
                 "unexpected": True,
             }
         )
@@ -238,10 +241,53 @@ def test_tool_interaction_report_rejects_inconsistent_summary_counts() -> None:
                 "duplicate_results": [],
                 "missing_result_calls": [],
                 "anomalies": [anomaly.model_dump()],
-                "interaction_count": 0,
-                "completed_count": 0,
+                "interaction_count": 1,
+                "completed_count": 1,
                 "missing_result_count": 0,
                 "duplicate_result_count": 0,
                 "unmatched_result_count": 0,
+                "has_anomalies": False,
+                "anomaly_count": 1,
+            }
+        )
+
+
+def test_turn_usage_accepts_stable_token_counters() -> None:
+    result = TurnUsage.model_validate(
+        {
+            "input_tokens": 21847,
+            "cached_input_tokens": 7552,
+            "output_tokens": 16,
+            "reasoning_output_tokens": 9,
+        }
+    )
+
+    assert result.input_tokens == 21847
+    assert result.cached_input_tokens == 7552
+    assert result.output_tokens == 16
+    assert result.reasoning_output_tokens == 9
+
+
+def test_turn_usage_rejects_negative_token_counters() -> None:
+    with pytest.raises(ValidationError):
+        TurnUsage.model_validate(
+            {
+                "input_tokens": -1,
+                "cached_input_tokens": 0,
+                "output_tokens": 16,
+                "reasoning_output_tokens": 9,
+            }
+        )
+
+
+def test_turn_usage_rejects_unexpected_extra_fields() -> None:
+    with pytest.raises(ValidationError):
+        TurnUsage.model_validate(
+            {
+                "input_tokens": 1,
+                "cached_input_tokens": 0,
+                "output_tokens": 1,
+                "reasoning_output_tokens": 0,
+                "unexpected": True,
             }
         )

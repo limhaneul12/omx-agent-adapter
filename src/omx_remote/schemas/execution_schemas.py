@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, NonNegativeInt, model_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString
 from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
@@ -70,6 +70,17 @@ class ExecToolResult(BaseModel):
     tool_name: NonEmptyString
     call_id: NonEmptyString
     text: str
+
+
+class TurnUsage(BaseModel):
+    """Represents stable token-usage metadata reported on turn completion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    input_tokens: NonNegativeInt
+    cached_input_tokens: NonNegativeInt
+    output_tokens: NonNegativeInt
+    reasoning_output_tokens: NonNegativeInt
 
 
 class ToolInteractionAnomaly(BaseModel):
