@@ -88,6 +88,22 @@ class TeamApiReadMonitorSnapshotRequest(BaseModel):
     team_name: NonEmptyString
 
 
+class TeamApiReadConfigRequest(BaseModel):
+    """Represents the typed request boundary for team-api config error reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    team_name: NonEmptyString
+
+
+class TeamApiReadManifestRequest(BaseModel):
+    """Represents the typed request boundary for team-api manifest error reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    team_name: NonEmptyString
+
+
 class TeamApiMailboxListRequest(BaseModel):
     """Represents the typed request boundary for team-api mailbox listing."""
 
@@ -124,6 +140,24 @@ class TeamApiReadMonitorSnapshot(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     snapshot: object | None = None
+
+
+class TeamApiReadConfigError(BaseModel):
+    """Represents a typed error envelope for team-api config reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: NonEmptyString
+    message: NonEmptyString
+
+
+class TeamApiReadManifestError(BaseModel):
+    """Represents a typed error envelope for team-api manifest reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: NonEmptyString
+    message: NonEmptyString
 
 
 class TeamApiMailboxMessageSnapshot(BaseModel):

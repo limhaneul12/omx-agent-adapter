@@ -7,7 +7,11 @@ from pydantic import ValidationError
 from omx_remote.schemas.teamwork_schemas import (
     TeamApiMailboxListRequest,
     TeamApiListTasksRequest,
+    TeamApiReadConfigError,
+    TeamApiReadConfigRequest,
     TeamApiReadEventsRequest,
+    TeamApiReadManifestError,
+    TeamApiReadManifestRequest,
     TeamApiReadMonitorSnapshotRequest,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
@@ -444,3 +448,69 @@ def test_read_team_api_read_monitor_snapshot_preserves_missing_snapshot_as_none(
     )
 
     assert result.snapshot is None
+
+
+def test_read_team_api_read_config_error_is_async() -> None:
+    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_config_error)
+
+
+def test_read_team_api_read_config_error_accepts_typed_request() -> None:
+    coroutine = team_api_snapshot.read_team_api_read_config_error(
+        TeamApiReadConfigRequest(team_name="alpha")
+    )
+
+    assert inspect.isawaitable(coroutine)
+    asyncio.run(coroutine)
+
+
+def test_read_team_api_read_config_error_returns_typed_error_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":false,"operation":"read-config","error":{"code":"team_not_found","message":"team_not_found"}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_config_error(
+            TeamApiReadConfigRequest(team_name="missing-team")
+        )
+    )
+
+    assert isinstance(result, TeamApiReadConfigError)
+    assert result.code == "team_not_found"
+    assert result.message == "team_not_found"
+
+
+def test_read_team_api_read_manifest_error_is_async() -> None:
+    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_manifest_error)
+
+
+def test_read_team_api_read_manifest_error_accepts_typed_request() -> None:
+    coroutine = team_api_snapshot.read_team_api_read_manifest_error(
+        TeamApiReadManifestRequest(team_name="alpha")
+    )
+
+    assert inspect.isawaitable(coroutine)
+    asyncio.run(coroutine)
+
+
+def test_read_team_api_read_manifest_error_returns_typed_error_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":false,"operation":"read-manifest","error":{"code":"manifest_not_found","message":"manifest_not_found"}}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        team_api_snapshot.read_team_api_read_manifest_error(
+            TeamApiReadManifestRequest(team_name="missing-team")
+        )
+    )
+
+    assert isinstance(result, TeamApiReadManifestError)
+    assert result.code == "manifest_not_found"
+    assert result.message == "manifest_not_found"
