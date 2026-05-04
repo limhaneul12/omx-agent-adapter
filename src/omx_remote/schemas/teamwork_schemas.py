@@ -176,6 +176,15 @@ class TeamApiReadManifestSnapshot(BaseModel):
     manifest: object | None = None
 
 
+class TeamApiReadWorkerStatusRequest(BaseModel):
+    """Represents the typed request boundary for team-api worker-status reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    team_name: NonEmptyString
+    worker: NonEmptyString
+
+
 class TeamApiMailboxMessageSnapshot(BaseModel):
     """Represents a normalized team-api mailbox message summary."""
 
@@ -195,3 +204,13 @@ class TeamApiMailboxListSnapshot(BaseModel):
     worker: NonEmptyString
     count: int
     messages: list[TeamApiMailboxMessageSnapshot]
+
+
+class TeamApiWorkerStatusSnapshot(BaseModel):
+    """Represents the normalized result for team-api worker-status reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    worker: NonEmptyString
+    state: NonEmptyString
+    updated_at: NonEmptyString

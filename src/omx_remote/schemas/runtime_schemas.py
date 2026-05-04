@@ -27,6 +27,14 @@ class RuntimeModeStatusRequest(BaseModel):
     mode: NonEmptyString
 
 
+class RuntimeModeStateRequest(BaseModel):
+    """Represents the typed request boundary for runtime mode-state reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: NonEmptyString
+
+
 class ActiveRuntimeModes(BaseModel):
     """Represents the normalized active-runtime mode list."""
 
@@ -79,6 +87,29 @@ class RuntimeModeStatusResult(BaseModel):
             )
         validated_result: RuntimeModeStatusResult = self
         return validated_result
+
+
+class RuntimeModeStateResult(BaseModel):
+    """Represents the normalized public result for one runtime mode-state read."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: NonEmptyString
+    exists: bool
+    state: dict[str, object] | None = None
+
+    @model_validator(mode="after")
+    def _validate_state_presence(self) -> "RuntimeModeStateResult":
+        """Validates that exists-state and payload presence stay aligned."""
+        if self.exists and self.state is None:
+            raise ValueError(
+                "RuntimeModeStateResult.state is required when exists is true"
+            )
+        if not self.exists and self.state is not None:
+            raise ValueError(
+                "RuntimeModeStateResult.state must be absent when exists is false"
+            )
+        return self
 
 
 class RuntimeStatusAnomaly(BaseModel):

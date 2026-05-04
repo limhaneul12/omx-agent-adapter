@@ -21,6 +21,7 @@ class TeamApiTransportPayload(TypedDict):
     snapshot: NotRequired[object]
     config: NotRequired[object]
     manifest: NotRequired[object]
+    status: NotRequired[object]
 
 
 class TeamApiListTasksNormalizedPayload(TypedDict):
@@ -61,6 +62,11 @@ class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
     subject: object
     body: object
     delivered: object
+
+
+class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
+    state: object
+    updated_at: object
 
 
 class TeamStatusTransportPayload(TypedDict):

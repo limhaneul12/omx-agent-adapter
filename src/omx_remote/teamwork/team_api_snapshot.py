@@ -12,6 +12,7 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiTransportMailboxMessagePayload,
     TeamApiTransportPayload,
     TeamApiTransportTaskPayload,
+    TeamApiTransportWorkerStatusPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork_schemas import (
@@ -29,6 +30,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshot,
     TeamApiReadMonitorSnapshotRequest,
+    TeamApiReadWorkerStatusRequest,
+    TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions.teamwork_exceptions import TeamworkSurfaceError
 
@@ -98,6 +101,7 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "snapshot": data_payload.get("snapshot"),
         "config": data_payload.get("config"),
         "manifest": data_payload.get("manifest"),
+        "status": data_payload.get("status"),
     }
     return result
 
@@ -198,6 +202,30 @@ def _normalize_team_api_mailbox_message_payload(
         "delivered": message_payload.get("delivered"),
     }
     return normalized_payload
+
+
+def _normalize_team_api_worker_status_payload(
+    worker_name: object,
+    status_payload: object,
+) -> TeamApiWorkerStatusSnapshot:
+    """Normalizes one raw team-api worker-status payload into the typed subset."""
+
+    if not isinstance(status_payload, dict):
+        raise TeamworkSurfaceError(
+            "omx team api read-worker-status returned a non-object status payload"
+        )
+
+    normalized_status_payload: TeamApiTransportWorkerStatusPayload = {
+        "state": status_payload.get("state"),
+        "updated_at": status_payload.get("updated_at"),
+    }
+    return TeamApiWorkerStatusSnapshot.model_validate(
+        {
+            "worker": worker_name,
+            "state": normalized_status_payload.get("state"),
+            "updated_at": normalized_status_payload.get("updated_at"),
+        }
+    )
 
 
 async def read_team_api_list_tasks(
@@ -502,4 +530,33 @@ async def read_team_api_read_manifest(
     )
     return TeamApiReadManifestSnapshot.model_validate(
         {"manifest": data_payload.get("manifest")}
+    )
+
+
+async def read_team_api_read_worker_status(
+    request: TeamApiReadWorkerStatusRequest,
+) -> TeamApiWorkerStatusSnapshot:
+    """Reads typed team-api worker-status snapshots."""
+
+    command_result = await asyncio.to_thread(
+        run_omx_command,
+        [
+            "team",
+            "api",
+            "read-worker-status",
+            "--input",
+            orjson.dumps(
+                {"team_name": request.team_name, "worker": request.worker}
+            ).decode(),
+            "--json",
+        ],
+    )
+    stdout: str = command_result.stdout.strip()
+    data_payload: TeamApiTransportPayload = _load_team_api_payload(
+        stdout,
+        "omx team api read-worker-status",
+    )
+    return _normalize_team_api_worker_status_payload(
+        data_payload.get("worker"),
+        data_payload.get("status"),
     )
