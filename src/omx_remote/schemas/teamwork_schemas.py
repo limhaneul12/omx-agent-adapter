@@ -113,6 +113,15 @@ class TeamApiMailboxListRequest(BaseModel):
     worker: NonEmptyString
 
 
+class TeamApiReadWorkerStatusRequest(BaseModel):
+    """Represents the typed request boundary for team-api worker-status reads."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    team_name: NonEmptyString
+    worker: NonEmptyString
+
+
 class TeamApiEventSnapshot(BaseModel):
     """Represents a normalized team-api event summary."""
 

@@ -13,6 +13,7 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiTransportPayload,
     TeamApiTransportTaskPayload,
     TeamApiTransportWorkerStatusPayload,
+    TeamApiWorkerStatusNormalizedPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork_schemas import (
@@ -99,8 +100,6 @@ def _load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransport
         "worker": data_payload.get("worker"),
         "messages": data_payload.get("messages"),
         "snapshot": data_payload.get("snapshot"),
-        "config": data_payload.get("config"),
-        "manifest": data_payload.get("manifest"),
         "status": data_payload.get("status"),
     }
     return result
@@ -507,32 +506,6 @@ async def read_team_api_read_manifest_error(
     return result
 
 
-async def read_team_api_read_manifest(
-    request: TeamApiReadManifestRequest,
-) -> TeamApiReadManifestSnapshot:
-    """Reads typed team-api manifest snapshots."""
-
-    command_result = await asyncio.to_thread(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-manifest",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
-    )
-    stdout: str = command_result.stdout.strip()
-    data_payload: TeamApiTransportPayload = _load_team_api_payload(
-        stdout,
-        "omx team api read-manifest",
-    )
-    return TeamApiReadManifestSnapshot.model_validate(
-        {"manifest": data_payload.get("manifest")}
-    )
-
-
 async def read_team_api_read_worker_status(
     request: TeamApiReadWorkerStatusRequest,
 ) -> TeamApiWorkerStatusSnapshot:
@@ -556,7 +529,22 @@ async def read_team_api_read_worker_status(
         stdout,
         "omx team api read-worker-status",
     )
-    return _normalize_team_api_worker_status_payload(
-        data_payload.get("worker"),
-        data_payload.get("status"),
+    raw_status_payload: object = data_payload.get("status")
+    if not isinstance(raw_status_payload, dict):
+        raise TeamworkSurfaceError(
+            "omx team api read-worker-status returned a non-object status payload"
+        )
+
+    status_payload: TeamApiTransportWorkerStatusPayload = {
+        "state": raw_status_payload.get("state"),
+        "updated_at": raw_status_payload.get("updated_at"),
+    }
+    normalized_payload: TeamApiWorkerStatusNormalizedPayload = {
+        "worker": data_payload.get("worker"),
+        "state": status_payload.get("state"),
+        "updated_at": status_payload.get("updated_at"),
+    }
+    result: TeamApiWorkerStatusSnapshot = TeamApiWorkerStatusSnapshot.model_validate(
+        normalized_payload
     )
+    return result

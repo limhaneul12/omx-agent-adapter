@@ -10,6 +10,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadEventsSnapshot,
     TeamApiReadMonitorSnapshotRequest,
     TeamApiReadMonitorSnapshot,
+    TeamApiReadWorkerStatusRequest,
+    TeamApiWorkerStatusSnapshot,
 )
 
 
@@ -108,6 +110,28 @@ def test_team_api_mailbox_list_request_rejects_empty_worker() -> None:
         TeamApiMailboxListRequest.model_validate(
             {"team_name": "alpha", "worker": ""}
         )
+
+
+def test_team_api_read_worker_status_request_accepts_required_fields() -> None:
+    result = TeamApiReadWorkerStatusRequest.model_validate(
+        {"team_name": "alpha", "worker": "worker-1"}
+    )
+
+    assert result.team_name == "alpha"
+    assert result.worker == "worker-1"
+
+
+def test_team_api_worker_status_snapshot_accepts_live_shape() -> None:
+    result = TeamApiWorkerStatusSnapshot.model_validate(
+        {
+            "worker": "worker-1",
+            "state": "unknown",
+            "updated_at": "1970-01-01T00:00:00.000Z",
+        }
+    )
+
+    assert result.worker == "worker-1"
+    assert result.state == "unknown"
 
 
 def test_team_api_mailbox_list_snapshot_accepts_empty_message_list() -> None:
