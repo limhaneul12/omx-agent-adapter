@@ -34,7 +34,7 @@ UI, dashboard, and frontend concerns remain out of scope.
 - `src/omx_remote/execution/payload_mapping.py`
   - The split between transport parsing, promotion, interaction grouping, and anomaly reporting.
   - Interaction state semantics (`completed`, `missing_result`) are downstream-control concepts, not OMX-only UI concerns.
-- `src/omx_remote/schemas/runtime_schemas.py`
+- `src/omx_remote/schemas/runtime/status_schemas.py`
   - `RuntimeStatus` is already a normalized runtime-facing contract rather than a raw CLI dump.
   - `RuntimeModeSnapshot` and `RuntimeStatusAnomaly` provide stable typed runtime sub-surfaces.
 - `docs/rules/schema-boundary-rules.md`

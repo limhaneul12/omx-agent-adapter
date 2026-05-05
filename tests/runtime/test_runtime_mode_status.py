@@ -4,7 +4,7 @@ import inspect
 import pytest
 
 from omx_remote.runtime import runtime_mode_status
-from omx_remote.schemas.runtime_schemas import RuntimeModeStatusRequest
+from omx_remote.schemas.runtime import RuntimeModeStatusRequest
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 

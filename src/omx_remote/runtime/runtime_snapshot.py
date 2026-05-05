@@ -3,7 +3,7 @@
 import asyncio
 
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime_schemas import (
+from omx_remote.schemas.runtime import (
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatus,
@@ -12,18 +12,18 @@ from omx_remote.schemas.runtime_schemas import (
 )
 
 IDLE_RUNTIME_SUMMARY = "No active modes."
-ACTIVE_MODE_MARKER = "active"
+ACTIVE_MODE_MARKER = RuntimeModeStatus.ACTIVE
 KNOWN_MODE_STATUS_MARKERS: tuple[RuntimeModeStatus, ...] = (
-    "active",
-    "paused",
-    "idle",
-    "unknown",
+    RuntimeModeStatus.ACTIVE,
+    RuntimeModeStatus.PAUSED,
+    RuntimeModeStatus.IDLE,
+    RuntimeModeStatus.UNKNOWN,
 )
 RUNTIME_STATUS_PREFIXES: tuple[tuple[str, RuntimeModeStatus], ...] = (
-    ("active", "active"),
-    ("paused", "paused"),
-    ("idle", "idle"),
-    ("inactive", "idle"),
+    ("active", RuntimeModeStatus.ACTIVE),
+    ("paused", RuntimeModeStatus.PAUSED),
+    ("idle", RuntimeModeStatus.IDLE),
+    ("inactive", RuntimeModeStatus.IDLE),
 )
 
 
@@ -108,7 +108,7 @@ def _extract_active_mode_names(stdout: str) -> list[str]:
     active_mode_names: list[str] = [
         mode_name
         for mode_name, status_text in mode_statuses.items()
-        if status_text == ACTIVE_MODE_MARKER
+        if status_text is ACTIVE_MODE_MARKER
     ]
     return active_mode_names
 
@@ -177,7 +177,7 @@ def _build_mode_snapshots(
             name=mode_name,
             status=status_text,
             raw_status_text=raw_status_text,
-            has_uncertainty=status_text == "unknown",
+            has_uncertainty=status_text == RuntimeModeStatus.UNKNOWN,
         )
         for mode_name, status_text, raw_status_text in mode_status_entries
     ]
@@ -239,7 +239,7 @@ def _build_runtime_status_anomalies(
         mode_name: str
         status_text: RuntimeModeStatus
         mode_name, status_text = parsed_mode_status
-        if status_text != "unknown":
+        if status_text != RuntimeModeStatus.UNKNOWN:
             continue
 
         raw_status_text: str = line.split(":", maxsplit=1)[1].strip()
@@ -264,7 +264,8 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
         tuple[str, RuntimeModeStatus, str] | None: Parsed mode name, normalized status token, and raw status text when the line matches the expected shape.
     """
     if ":" not in line:
-        return None
+        missing_entry: tuple[str, RuntimeModeStatus, str] | None = None
+        return missing_entry
 
     mode_name: str
     status_text: str
@@ -274,7 +275,8 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
     raw_status_text: str = status_text.strip()
 
     if not normalized_mode_name:
-        return None
+        missing_entry = None
+        return missing_entry
 
     status_prefix: str
     normalized_status: RuntimeModeStatus
@@ -294,7 +296,11 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
             )
             return parsed_mode_status_entry
 
-    parsed_mode_status_entry = (normalized_mode_name, "unknown", raw_status_text)
+    parsed_mode_status_entry = (
+        normalized_mode_name,
+        RuntimeModeStatus.UNKNOWN,
+        raw_status_text,
+    )
     return parsed_mode_status_entry
 
 
@@ -304,7 +310,8 @@ def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
         _parse_mode_status_entry(line)
     )
     if parsed_mode_status_entry is None:
-        return None
+        missing_mode_status: tuple[str, RuntimeModeStatus] | None = None
+        return missing_mode_status
 
     mode_name: str
     status_text: RuntimeModeStatus
@@ -321,13 +328,15 @@ def _parse_active_mode_name(line: str) -> str | None:
         _parse_mode_status_entry(line)
     )
     if parsed_mode_status_entry is None:
-        return None
+        missing_mode_name: str | None = None
+        return missing_mode_name
 
     mode_name: str
     status_text: RuntimeModeStatus
     raw_status_text: str
     mode_name, status_text, raw_status_text = parsed_mode_status_entry
     _ = raw_status_text
-    if status_text != "active":
-        return None
+    if status_text != RuntimeModeStatus.ACTIVE:
+        inactive_mode_name: str | None = None
+        return inactive_mode_name
     return mode_name

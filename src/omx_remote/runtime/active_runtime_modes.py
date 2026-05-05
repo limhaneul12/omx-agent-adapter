@@ -4,7 +4,7 @@ import orjson
 
 from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime_schemas import ActiveRuntimeModes
+from omx_remote.schemas.runtime import ActiveRuntimeModes
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 

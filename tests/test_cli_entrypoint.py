@@ -30,6 +30,7 @@ def test_package_entrypoint_runs_help() -> None:
     assert "team" in completed_process.stdout
     assert "history" in completed_process.stdout
     assert "adapt" in completed_process.stdout
+    assert "goal" in completed_process.stdout
     assert "ralph" in completed_process.stdout
     assert "ultrawork" in completed_process.stdout
     assert "version" in completed_process.stdout
@@ -54,6 +55,23 @@ def test_package_entrypoint_runs_team_help() -> None:
     assert "tasks" in completed_process.stdout
     assert "events" in completed_process.stdout
     assert "worker-status" in completed_process.stdout
+    assert "send-message" in completed_process.stdout
+    assert "write-inbox" in completed_process.stdout
+    assert "broadcast" in completed_process.stdout
+    assert "create-task" in completed_process.stdout
+    assert "read-task" in completed_process.stdout
+    assert "transition-task-status" in completed_process.stdout
+    assert "update-task" in completed_process.stdout
+    assert "claim-task" in completed_process.stdout
+    assert "release-task-claim" in completed_process.stdout
+    assert "read-task-approval" in completed_process.stdout
+    assert "write-task-approval" in completed_process.stdout
+    assert "mailbox-mark-delivered" in completed_process.stdout
+    assert "mailbox-mark-notified" in completed_process.stdout
+    assert "write-shutdown-request" in completed_process.stdout
+    assert "read-shutdown-ack" in completed_process.stdout
+    assert "cleanup" in completed_process.stdout
+    assert "orphan-cleanup" in completed_process.stdout
 
 
 def test_package_entrypoint_runs_history_help() -> None:
@@ -70,6 +88,36 @@ def test_package_entrypoint_runs_adapt_help() -> None:
     assert "probe" in completed_process.stdout
     assert "status" in completed_process.stdout
     assert "envelope" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "start" in completed_process.stdout
+    assert "status" in completed_process.stdout
+    assert "prepare-ralph" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "prepare-ralph", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--source-path" in completed_process.stdout
+    assert "--requested-slice" in completed_process.stdout
+    assert "--constraint" in completed_process.stdout
+    assert "--verification-expectation" in completed_process.stdout
+    assert "--cwd" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_start_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "start", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--objective" in completed_process.stdout
+    assert "--execution-shape" in completed_process.stdout
+    assert "--review-policy" in completed_process.stdout
+    assert "--team-worker-count" in completed_process.stdout
 
 
 def test_package_entrypoint_runs_ralph_help() -> None:

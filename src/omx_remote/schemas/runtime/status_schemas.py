@@ -1,19 +1,10 @@
-from typing import Literal
-
 from pydantic import Field, model_validator
 
-from omx_remote.schemas.common_schemas import (
-    NonEmptyString,
-    StrictSchemaModel,
+from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.shared.omx_enums.runtime_enums import (
+    RuntimeModeStatus,
+    RuntimeStatusAnomalyCategory,
 )
-
-RuntimeModeStatus = Literal["active", "paused", "idle", "unknown"]
-RuntimeStatusAnomalyCategory = Literal[
-    "stderr_fallback",
-    "unknown_mode_status",
-    "empty_transport_output",
-    "unparseable_stdout",
-]
 
 
 class RuntimeStatusRequest(StrictSchemaModel):
@@ -104,7 +95,8 @@ class RuntimeModeStateResult(StrictSchemaModel):
             raise ValueError(
                 "RuntimeModeStateResult.state must be absent when exists is false"
             )
-        return self
+        validated_result: RuntimeModeStateResult = self
+        return validated_result
 
 
 class RuntimeStatusAnomaly(StrictSchemaModel):

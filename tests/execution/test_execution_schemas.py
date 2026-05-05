@@ -1,6 +1,10 @@
 import pytest
 from pydantic import ValidationError
 
+from omx_remote.execution.payload_mapping import (
+    KNOWN_EXECUTION_EVENT_TYPES,
+    PROMOTABLE_EXECUTION_PAYLOAD_TYPES,
+)
 from omx_remote.schemas.execution_schemas import (
     ExecCommandExecution,
     ExecMessage,
@@ -13,7 +17,41 @@ from omx_remote.schemas.execution_schemas import (
     ToolInteractionReport,
     TurnUsage,
 )
-from omx_remote.shared.omx_enums.execution_enums import ExecutionPayloadKind
+from omx_remote.shared.omx_enums.execution_enums import (
+    ExecutionPayloadKind,
+    KnownExecutionEventType,
+    PromotableExecutionPayloadType,
+)
+
+
+def test_known_execution_event_type_enum_values_and_docstring() -> None:
+    assert KnownExecutionEventType.__doc__
+    assert KnownExecutionEventType.THREAD_STARTED == "thread.started"
+    assert KnownExecutionEventType.TURN_STARTED == "turn.started"
+    assert KnownExecutionEventType.ITEM_COMPLETED == "item.completed"
+    assert KnownExecutionEventType.TURN_COMPLETED == "turn.completed"
+
+
+def test_promotable_execution_payload_type_enum_values_and_docstring() -> None:
+    assert PromotableExecutionPayloadType.__doc__
+    assert PromotableExecutionPayloadType.MESSAGE == "message"
+    assert PromotableExecutionPayloadType.OUTPUT_TEXT == "output_text"
+    assert PromotableExecutionPayloadType.COMMAND_EXECUTION == "command_execution"
+    assert PromotableExecutionPayloadType.TOOL_CALL == "tool_call"
+    assert PromotableExecutionPayloadType.TOOL_RESULT == "tool_result"
+
+
+def test_execution_marker_sets_are_enum_backed() -> None:
+    assert frozenset(KnownExecutionEventType) == KNOWN_EXECUTION_EVENT_TYPES
+    assert frozenset(PromotableExecutionPayloadType) == PROMOTABLE_EXECUTION_PAYLOAD_TYPES
+    assert all(
+        isinstance(event_type, KnownExecutionEventType)
+        for event_type in KNOWN_EXECUTION_EVENT_TYPES
+    )
+    assert all(
+        isinstance(payload_type, PromotableExecutionPayloadType)
+        for payload_type in PROMOTABLE_EXECUTION_PAYLOAD_TYPES
+    )
 
 
 def test_exec_request_accepts_prompt_and_optional_cwd() -> None:
@@ -59,7 +97,7 @@ def test_execution_event_decode_request_rejects_unexpected_extra_fields() -> Non
 def test_exec_message_uses_named_execution_payload_kind() -> None:
     result = ExecMessage.model_validate({"kind": "message", "text": "done"})
 
-    assert result.kind is ExecutionPayloadKind.MESSAGE
+    assert result.kind == ExecutionPayloadKind.MESSAGE.value
 
 
 def test_exec_command_execution_uses_named_execution_payload_kind() -> None:
@@ -73,7 +111,7 @@ def test_exec_command_execution_uses_named_execution_payload_kind() -> None:
         }
     )
 
-    assert result.kind is ExecutionPayloadKind.COMMAND_EXECUTION
+    assert result.kind == ExecutionPayloadKind.COMMAND_EXECUTION.value
     assert result.command == "/bin/zsh -lc pwd"
     assert result.aggregated_output == "/tmp\n"
     assert result.exit_code == 0

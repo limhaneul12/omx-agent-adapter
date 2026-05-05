@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -7,9 +8,33 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
+from omx_remote.runtime.ralph_control import build_ralph_team_launch_plan
 from omx_remote.schemas.invoke_schemas import OmxCommandResult
 
 runner = CliRunner()
+
+
+def _write_valid_prd_artifact(
+    tmp_path: Path,
+    *,
+    objective: str = "Ship feature",
+    requires_team_fanout: bool = False,
+    team_worker_count: int | None = None,
+) -> None:
+    prd_dir = tmp_path / ".omx"
+    prd_dir.mkdir(exist_ok=True)
+    prd_path = prd_dir / "prd.json"
+    prd_payload = {
+        "objective": objective,
+        "scope": ["keep the slice narrow"],
+        "constraints": ["keep Ralph independently operable"],
+        "execution_plan": ["validate the PRD contract before launch"],
+        "verification_expectations": ["ralph launch rejects malformed artifacts"],
+        "requires_team_fanout": requires_team_fanout,
+        "team_worker_count": team_worker_count,
+        "continuation_policy": "review_required",
+    }
+    prd_path.write_text(json.dumps(prd_payload), encoding="utf-8")
 
 
 def test_ralph_launch_rejects_blank_task() -> None:
@@ -37,6 +62,91 @@ def test_ralph_launch_rejects_missing_prd_file(monkeypatch: pytest.MonkeyPatch, 
     assert "Missing required PRD.json" in result.stdout
 
 
+def test_ralph_launch_rejects_invalid_structured_prd_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    prd_dir = tmp_path / ".omx"
+    prd_dir.mkdir()
+    (prd_dir / "prd.json").write_text("{}", encoding="utf-8")
+
+    result = runner.invoke(app, ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"])
+
+    assert result.exit_code != 0
+    assert "Invalid .omx/prd.json" in result.stdout
+    assert "execution_plan" in result.stdout
+
+
+def test_ralph_launch_rejects_task_text_that_mismatches_prd_objective(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(tmp_path, objective="Ship a different feature")
+
+    result = runner.invoke(
+        app,
+        ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"],
+    )
+
+    assert result.exit_code != 0
+    assert "must match the typed Ralph PRD objective" in result.stdout
+
+
+def test_ralph_launch_uses_canonical_prd_objective_when_task_matches_after_normalization(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(tmp_path, objective="Ship feature")
+
+    observed_commands: list[list[str]] = []
+
+    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+        observed_commands.append(command)
+        return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+
+    result = runner.invoke(
+        app,
+        ["ralph", "launch", "--task", "  ship feature  ", "--allow-non-tty"],
+    )
+
+    assert result.exit_code == 0
+    assert observed_commands == [["ralph", "--prd", "Ship feature"]]
+
+
+def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_count(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(
+        tmp_path,
+        objective="Ship feature",
+        requires_team_fanout=True,
+        team_worker_count=3,
+    )
+
+    command, warnings = build_ralph_team_launch_plan(allow_non_tty=True)
+
+    assert command == ["team", "3:executor", "Ship feature"]
+    assert "allow-non-tty is enabled" in "\n".join(warnings)
+
+
+def test_build_ralph_team_launch_plan_rejects_prd_without_team_fanout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(tmp_path, objective="Ship feature")
+
+    with pytest.raises(ValueError, match="does not request Team fanout"):
+        build_ralph_team_launch_plan(allow_non_tty=True)
+
+
 def test_ralph_launch_rejects_existing_state_without_force(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -46,8 +156,7 @@ def test_ralph_launch_rejects_existing_state_without_force(
     state_dir.mkdir(parents=True)
     (state_dir / "ralph-state.json").write_text('{"active": true}')
 
-    prd_path = tmp_path / ".omx" / "prd.json"
-    prd_path.write_text("{}")
+    _write_valid_prd_artifact(tmp_path)
 
     result = runner.invoke(
         app,
@@ -73,7 +182,7 @@ def test_ralph_launch_reports_warning_for_terminal_stale_state(
     state_dir = tmp_path / ".omx" / "state"
     state_dir.mkdir(parents=True)
     (state_dir / "ralph-state.json").write_text('{"active": false, "current_phase": "cancelled"}')
-    (tmp_path / ".omx" / "prd.json").write_text("{}")
+    _write_valid_prd_artifact(tmp_path)
 
     observed_commands: list[list[str]] = []
 
@@ -107,7 +216,7 @@ def test_ralph_launch_runs_preflight_and_command_when_forced(
     state_dir = tmp_path / ".omx" / "state"
     state_dir.mkdir(parents=True)
     (state_dir / "ralph-state.json").write_text('{"active": false, "current_phase": "cancelled"}')
-    (tmp_path / ".omx" / "prd.json").write_text("{}")
+    _write_valid_prd_artifact(tmp_path)
 
     observed_commands: list[list[str]] = []
 
@@ -188,7 +297,7 @@ def test_ralph_launch_warns_when_tmux_missing(
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr("omx_remote.runtime.ralph_control.which", lambda _: None)
     (tmp_path / ".omx").mkdir()
-    (tmp_path / ".omx" / "prd.json").write_text("{}")
+    _write_valid_prd_artifact(tmp_path)
     observed_commands: list[list[str]] = []
 
     def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
@@ -239,9 +348,9 @@ def test_ralph_cleanup_stale_removes_only_known_files(
     stale_state = state_dir / "ralph-state.json"
     stale_progress = state_dir / "ralph-progress.json"
     keep_file = state_dir / "other.json"
-    stale_state.write_text("{}")
-    stale_progress.write_text("{}")
-    keep_file.write_text("{}")
+    stale_state.write_text("{}", encoding="utf-8")
+    stale_progress.write_text("{}", encoding="utf-8")
+    keep_file.write_text("{}", encoding="utf-8")
 
     result = runner.invoke(app, ["ralph", "cleanup-stale"])
 

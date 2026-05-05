@@ -1,49 +1,25 @@
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from shutil import which
-from typing import Any
+from typing import ClassVar
+
+from pydantic import ValidationError
 
 from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.ralph import RalphPrdArtifact
+from omx_remote.shared.omx_enums.ralph_enums import (
+    RalphRunOutcome,
+    RalphRuntimePhase,
+    RalphStateClassification,
+)
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 _RALPH_STATE_FILENAMES: tuple[str, ...] = (
     "ralph-state.json",
     "ralph-progress.json",
     "run-state.json",
-)
-_TERMINAL_PHASES: frozenset[str] = frozenset(
-    {"complete", "completed", "failed", "cancelled"}
-)
-_NON_TERMINAL_PHASES: frozenset[str] = frozenset(
-    {
-        "starting",
-        "running",
-        "executing",
-        "planning",
-        "active",
-        "paused",
-        "idle",
-        "userinterlude",
-        "blocked_on_user",
-        "waiting",
-    }
-)
-_TERMINAL_OUTCOMES: frozenset[str] = frozenset(
-    {
-        "finish",
-        "blocked_on_user",
-        "failed",
-        "cancelled",
-        "complete",
-        "completed",
-        "done",
-        "userinterlude",
-    }
-)
-_NON_TERMINAL_OUTCOMES: frozenset[str] = frozenset(
-    {"continue", "progress", "running", "active"}
 )
 
 
@@ -56,159 +32,358 @@ def _normalize_token(value: object) -> str | None:
     return token or None
 
 
-def _read_json_object(path: Path) -> dict[str, Any] | None:
+def _read_json_object(path: Path) -> dict[str, object] | None:
+    state_store = json_file_stores.for_path(path)
+    object_payload: dict[str, object] | None = state_store.read_object()
+    return object_payload
+
+
+def _summarize_prd_validation_error(validation_error: ValidationError) -> str:
+    field_paths: list[str] = []
+
+    for error_payload in validation_error.errors():
+        raw_location: object = error_payload.get("loc")
+        if not isinstance(raw_location, tuple):
+            continue
+
+        location_parts: list[str] = [str(location_token) for location_token in raw_location]
+        if not location_parts:
+            continue
+
+        field_paths.append(".".join(location_parts))
+
+    if not field_paths:
+        invalid_field_summary: str = "typed Ralph PRD fields"
+        return invalid_field_summary
+
+    invalid_field_summary = ", ".join(field_paths)
+    return invalid_field_summary
+
+
+def read_ralph_prd_artifact(prd_path: Path) -> RalphPrdArtifact:
+    prd_payload: dict[str, object] | None = _read_json_object(prd_path)
+    if prd_payload is None:
+        raise ValueError("Invalid or unreadable .omx/prd.json: expected JSON object.")
+
     try:
-        raw_payload: str = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
+        artifact: RalphPrdArtifact = RalphPrdArtifact.model_validate(prd_payload)
+    except ValidationError as validation_error:
+        invalid_fields: str = _summarize_prd_validation_error(validation_error)
+        raise ValueError(
+            "Invalid .omx/prd.json: expected a typed Ralph PRD artifact with fields "
+            f"{invalid_fields}."
+        ) from validation_error
 
-    parsed_payload: object
-    try:
-        parsed_payload = json.loads(raw_payload)
-    except json.JSONDecodeError:
-        return None
-
-    if isinstance(parsed_payload, dict):
-        return parsed_payload
-
-    return None
+    return artifact
 
 
-def _is_terminal_ralph_phase(phase_value: object) -> bool:
-    phase: str | None = _normalize_token(phase_value)
-    return bool(phase and phase in _TERMINAL_PHASES)
+
+def _normalize_objective_text(objective_text: str) -> str:
+    normalized_objective_text: str = objective_text.strip().lower()
+    return normalized_objective_text
 
 
-def _is_terminal_ralph_outcome(outcome_value: object) -> bool:
-    outcome: str | None = _normalize_token(outcome_value)
-    return bool(outcome and outcome in _TERMINAL_OUTCOMES)
+
+def _resolve_ralph_launch_task_from_prd(
+    *,
+    task: str,
+    ralph_prd_artifact: RalphPrdArtifact,
+) -> str:
+    normalized_task_text: str = _normalize_objective_text(task)
+    normalized_prd_objective_text: str = _normalize_objective_text(
+        ralph_prd_artifact.objective
+    )
+    if normalized_task_text != normalized_prd_objective_text:
+        raise ValueError(
+            "Launch task text must match the typed Ralph PRD objective in .omx/prd.json before execution proceeds."
+        )
+
+    canonical_launch_task: str = ralph_prd_artifact.objective.strip()
+    return canonical_launch_task
 
 
-def _is_active_ralph_phase(phase_value: object) -> bool:
-    phase: str | None = _normalize_token(phase_value)
-    return bool(phase and phase in _NON_TERMINAL_PHASES)
+
+def _resolve_ralph_team_launch_task_from_prd(
+    *,
+    ralph_prd_artifact: RalphPrdArtifact,
+) -> tuple[str, int]:
+    if not ralph_prd_artifact.requires_team_fanout:
+        raise ValueError(
+            "The typed Ralph PRD artifact does not request Team fanout, so Team launch cannot proceed."
+        )
+
+    team_worker_count: int | None = ralph_prd_artifact.team_worker_count
+    if team_worker_count is None:
+        raise ValueError(
+            "The typed Ralph PRD artifact requires Team fanout but does not declare team_worker_count."
+        )
+
+    canonical_launch_task: str = ralph_prd_artifact.objective.strip()
+    return canonical_launch_task, team_worker_count
 
 
-def _is_active_ralph_outcome(outcome_value: object) -> bool:
-    outcome: str | None = _normalize_token(outcome_value)
-    return bool(outcome and outcome in _NON_TERMINAL_OUTCOMES)
 
+class RalphStateClassifier:
+    """Classifies adapter-visible Ralph runtime state markers."""
 
-def _classify_ralph_state_snapshot(state_payload: dict[str, Any]) -> str:
-    """Classify Ralph state as resumable / terminal / stale."""
-    active_value: object | None = state_payload.get("active")
+    TERMINAL_PHASES: ClassVar[frozenset[RalphRuntimePhase]] = frozenset(
+        {
+            RalphRuntimePhase.COMPLETE,
+            RalphRuntimePhase.COMPLETED,
+            RalphRuntimePhase.FAILED,
+            RalphRuntimePhase.CANCELLED,
+        }
+    )
+    NON_TERMINAL_PHASES: ClassVar[frozenset[RalphRuntimePhase]] = frozenset(
+        {
+            RalphRuntimePhase.STARTING,
+            RalphRuntimePhase.RUNNING,
+            RalphRuntimePhase.EXECUTING,
+            RalphRuntimePhase.PLANNING,
+            RalphRuntimePhase.ACTIVE,
+            RalphRuntimePhase.PAUSED,
+            RalphRuntimePhase.IDLE,
+            RalphRuntimePhase.USER_INTERLUDE,
+            RalphRuntimePhase.BLOCKED_ON_USER,
+            RalphRuntimePhase.WAITING,
+        }
+    )
+    TERMINAL_OUTCOMES: ClassVar[frozenset[RalphRunOutcome]] = frozenset(
+        {
+            RalphRunOutcome.FINISH,
+            RalphRunOutcome.BLOCKED_ON_USER,
+            RalphRunOutcome.FAILED,
+            RalphRunOutcome.CANCELLED,
+            RalphRunOutcome.COMPLETE,
+            RalphRunOutcome.COMPLETED,
+            RalphRunOutcome.DONE,
+            RalphRunOutcome.USER_INTERLUDE,
+        }
+    )
+    NON_TERMINAL_OUTCOMES: ClassVar[frozenset[RalphRunOutcome]] = frozenset(
+        {
+            RalphRunOutcome.CONTINUE,
+            RalphRunOutcome.PROGRESS,
+            RalphRunOutcome.RUNNING,
+            RalphRunOutcome.ACTIVE,
+        }
+    )
 
-    if active_value is True:
-        return "resumable"
+    @staticmethod
+    def normalize_phase(phase_value: object) -> RalphRuntimePhase | None:
+        normalized_phase: str | None = _normalize_token(phase_value)
+        if normalized_phase is None:
+            missing_phase: RalphRuntimePhase | None = None
+            return missing_phase
 
-    if active_value is False:
+        try:
+            parsed_phase: RalphRuntimePhase = RalphRuntimePhase(normalized_phase)
+        except ValueError:
+            unknown_phase: RalphRuntimePhase | None = None
+            return unknown_phase
+
+        return parsed_phase
+
+    @staticmethod
+    def normalize_outcome(outcome_value: object) -> RalphRunOutcome | None:
+        normalized_outcome: str | None = _normalize_token(outcome_value)
+        if normalized_outcome is None:
+            missing_outcome: RalphRunOutcome | None = None
+            return missing_outcome
+
+        try:
+            parsed_outcome: RalphRunOutcome = RalphRunOutcome(normalized_outcome)
+        except ValueError:
+            unknown_outcome: RalphRunOutcome | None = None
+            return unknown_outcome
+
+        return parsed_outcome
+
+    @classmethod
+    def is_terminal_phase(cls, phase_value: object) -> bool:
+        phase: RalphRuntimePhase | None = cls.normalize_phase(phase_value)
+        terminal_phase: bool = phase in cls.TERMINAL_PHASES
+        return terminal_phase
+
+    @classmethod
+    def is_terminal_outcome(cls, outcome_value: object) -> bool:
+        outcome: RalphRunOutcome | None = cls.normalize_outcome(outcome_value)
+        terminal_outcome: bool = outcome in cls.TERMINAL_OUTCOMES
+        return terminal_outcome
+
+    @classmethod
+    def is_active_phase(cls, phase_value: object) -> bool:
+        phase: RalphRuntimePhase | None = cls.normalize_phase(phase_value)
+        active_phase: bool = phase in cls.NON_TERMINAL_PHASES
+        return active_phase
+
+    @classmethod
+    def is_active_outcome(cls, outcome_value: object) -> bool:
+        outcome: RalphRunOutcome | None = cls.normalize_outcome(outcome_value)
+        active_outcome: bool = outcome in cls.NON_TERMINAL_OUTCOMES
+        return active_outcome
+
+    @classmethod
+    def classify_state_snapshot(
+        cls,
+        state_payload: dict[str, object],
+    ) -> RalphStateClassification:
+        """Classifies a Ralph state artifact as resumable, terminal, or stale."""
+        active_value: object | None = state_payload.get("active")
+
+        if active_value is True:
+            resumable_state: RalphStateClassification = RalphStateClassification.RESUMABLE
+            return resumable_state
+
+        if active_value is False:
+            false_active_state: RalphStateClassification = cls._classify_inactive_state(
+                state_payload
+            )
+            return false_active_state
+
+        if active_value is not None and not isinstance(active_value, bool):
+            stale_state: RalphStateClassification = RalphStateClassification.STALE
+            return stale_state
+
+        unknown_active_state: RalphStateClassification = cls._classify_marker_state(
+            state_payload
+        )
+        return unknown_active_state
+
+    @classmethod
+    def _classify_inactive_state(
+        cls,
+        state_payload: dict[str, object],
+    ) -> RalphStateClassification:
+        outcome_value: object | None = cls._read_outcome_value(state_payload)
+        if cls.is_terminal_outcome(outcome_value):
+            terminal_state: RalphStateClassification = RalphStateClassification.TERMINAL
+            return terminal_state
+
+        phase_value: object | None = state_payload.get("current_phase")
+        if cls.is_terminal_phase(phase_value):
+            terminal_state = RalphStateClassification.TERMINAL
+            return terminal_state
+
+        if cls.is_active_outcome(outcome_value) or cls.is_active_phase(phase_value):
+            resumable_state: RalphStateClassification = RalphStateClassification.RESUMABLE
+            return resumable_state
+
+        stale_state: RalphStateClassification = RalphStateClassification.STALE
+        return stale_state
+
+    @classmethod
+    def _classify_marker_state(
+        cls,
+        state_payload: dict[str, object],
+    ) -> RalphStateClassification:
+        outcome_value: object | None = cls._read_outcome_value(state_payload)
+        phase_value: object | None = state_payload.get("current_phase")
+
+        if cls.is_terminal_outcome(outcome_value):
+            terminal_state: RalphStateClassification = RalphStateClassification.TERMINAL
+            return terminal_state
+
+        if cls.is_active_outcome(outcome_value) or cls.is_active_phase(phase_value):
+            resumable_state: RalphStateClassification = RalphStateClassification.RESUMABLE
+            return resumable_state
+
+        if cls.is_terminal_phase(phase_value):
+            terminal_state = RalphStateClassification.TERMINAL
+            return terminal_state
+
+        stale_state: RalphStateClassification = RalphStateClassification.STALE
+        return stale_state
+
+    @staticmethod
+    def _read_outcome_value(state_payload: dict[str, object]) -> object | None:
         outcome_value: object | None = state_payload.get("run_outcome")
         if outcome_value is None:
             outcome_value = state_payload.get("outcome")
 
-        if _is_terminal_ralph_outcome(outcome_value):
-            return "terminal"
-
-        phase_value: object | None = state_payload.get("current_phase")
-        if _is_terminal_ralph_phase(phase_value):
-            return "terminal"
-
-        if _is_active_ralph_outcome(outcome_value) or _is_active_ralph_phase(phase_value):
-            return "resumable"
-
-        return "stale"
-
-    if active_value is not None and not isinstance(active_value, bool):
-        return "stale"
-
-    outcome_value: object | None = state_payload.get("run_outcome")
-    if outcome_value is None:
-        outcome_value = state_payload.get("outcome")
-
-    phase_value: object | None = state_payload.get("current_phase")
-
-    if _is_terminal_ralph_outcome(outcome_value):
-        return "terminal"
-
-    if _is_active_ralph_outcome(outcome_value) or _is_active_ralph_phase(phase_value):
-        return "resumable"
-
-    if _is_terminal_ralph_phase(phase_value):
-        return "terminal"
-
-    return "stale"
+        return outcome_value
 
 
-def _assess_ralph_launch_preflight_state() -> tuple[str, list[str]]:
+def _classify_ralph_state_snapshot(
+    state_payload: dict[str, object],
+) -> RalphStateClassification:
+    """Classify Ralph state as resumable / terminal / stale."""
+    state_classification: RalphStateClassification = (
+        RalphStateClassifier.classify_state_snapshot(state_payload)
+    )
+    return state_classification
+
+
+def _assess_ralph_launch_preflight_state() -> tuple[RalphStateClassification, list[str]]:
     existing_state_paths: list[Path] = list_ralph_state_paths()
     if not existing_state_paths:
-        return "clean", []
+        return RalphStateClassification.CLEAN, []
 
     ralph_state_path: Path = get_ralph_state_root() / "ralph-state.json"
     if ralph_state_path not in existing_state_paths:
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "stale", [
+        return RalphStateClassification.STALE, [
             "Existing Ralph state files were found, but no ralph-state.json was present.",
             f"Known stale files: {joined_paths}",
             "If these are stale, run `agent-remote ralph cleanup-stale` before re-launching.",
         ]
 
-    ralph_state_payload: dict[str, Any] | None = _read_json_object(ralph_state_path)
+    ralph_state_payload: dict[str, object] | None = _read_json_object(ralph_state_path)
     if ralph_state_payload is None:
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "terminal", [
+        return RalphStateClassification.TERMINAL, [
             "Ralph state artifact is present but unreadable.",
             f"Paths: {joined_paths}",
             "Clean stale Ralph artifacts and retry with `agent-remote ralph cleanup-stale`.",
         ]
 
-    state_class: str = _classify_ralph_state_snapshot(ralph_state_payload)
+    state_class: RalphStateClassification = _classify_ralph_state_snapshot(ralph_state_payload)
     joined_paths = ", ".join(str(path) for path in existing_state_paths)
 
-    if state_class == "resumable":
-        return "resumable", [
+    if state_class == RalphStateClassification.RESUMABLE:
+        return RalphStateClassification.RESUMABLE, [
             "Ralph appears resumable from existing state.",
             f"Paths: {joined_paths}",
             "If you intend to start a new session, run `agent-remote ralph cleanup-stale` or use --force-cleanup.",
         ]
 
-    if state_class == "terminal":
-        return "terminal", [
+    if state_class == RalphStateClassification.TERMINAL:
+        return RalphStateClassification.TERMINAL, [
             "Ralph state exists and is terminal/non-runnable.",
             f"Paths: {joined_paths}",
             "Proceeding is treated as a stale-state recovery path.",
         ]
 
-    return "stale", [
+    return RalphStateClassification.STALE, [
         "Ralph state exists but lacks explicit resumability markers.",
         f"Paths: {joined_paths}",
         "Proceeding may overwrite stale artifacts unless you run cleanup first.",
     ]
 
 
-def _assess_ralph_resume_preflight_state() -> tuple[str, list[str]]:
+def _assess_ralph_resume_preflight_state() -> tuple[RalphStateClassification, list[str]]:
     existing_state_paths: list[Path] = list_ralph_state_paths()
     if not existing_state_paths:
-        return "missing", ["No Ralph state files found."]
+        return RalphStateClassification.MISSING, ["No Ralph state files found."]
 
     ralph_state_path = get_ralph_state_root() / "ralph-state.json"
     if not ralph_state_path.exists():
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "invalid", [
+        return RalphStateClassification.INVALID, [
             "Ralph state exists without a canonical ralph-state.json.",
             f"Known Ralph files: {joined_paths}",
             "Run cleanup-stale and re-run launch if this is stale recovery.",
         ]
 
-    state_payload: dict[str, Any] | None = _read_json_object(ralph_state_path)
+    state_payload: dict[str, object] | None = _read_json_object(ralph_state_path)
     if state_payload is None:
-        return "invalid", [
+        return RalphStateClassification.INVALID, [
             "Ralph state file is present but unreadable.",
             f"Path: {ralph_state_path}",
         ]
 
-    state_class: str = _classify_ralph_state_snapshot(state_payload)
-    if state_class != "resumable":
+    state_class: RalphStateClassification = _classify_ralph_state_snapshot(state_payload)
+    if state_class != RalphStateClassification.RESUMABLE:
         return state_class, [
             f"Ralph state file class is '{state_class}'.",
             "Resume requires an active or non-terminal Ralph state.",
@@ -219,21 +394,18 @@ def _assess_ralph_resume_preflight_state() -> tuple[str, list[str]]:
     if not ralph_progress_path.exists():
         warnings.append("Ralph progress artifact is missing; resume may lose progress history.")
 
-    return "resumable", warnings
+    return RalphStateClassification.RESUMABLE, warnings
 
 
-def _validate_ralph_prd_gate() -> None:
+def _validate_ralph_prd_gate() -> RalphPrdArtifact:
     prd_path: Path = Path.cwd() / ".omx" / "prd.json"
     if not prd_path.exists():
         raise ValueError(
             "Missing required PRD.json at .omx/prd.json. Create the file before running `agent-remote ralph launch`."
         )
 
-    prd_payload: dict[str, Any] | None = _read_json_object(prd_path)
-    if prd_payload is None:
-        raise ValueError("Invalid or unreadable .omx/prd.json: expected JSON object.")
-
-    _ = prd_payload
+    artifact: RalphPrdArtifact = read_ralph_prd_artifact(prd_path)
+    return artifact
 
 
 def _detect_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
@@ -250,6 +422,24 @@ def _detect_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
         )
 
     return warnings
+
+
+
+def _detect_team_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
+    warnings: list[str] = []
+    if which("tmux") is None:
+        warnings.append(
+            "tmux was not detected. Team runs in direct mode without detached tmux HUD. "
+            "Install tmux for the normal launch UX."
+        )
+
+    if allow_non_tty:
+        warnings.append(
+            "allow-non-tty is enabled; launch behavior may differ from interactive-tty mode."
+        )
+
+    return warnings
+
 
 
 def get_ralph_state_root(workspace_root: Path | None = None) -> Path:
@@ -380,19 +570,49 @@ def build_ralph_launch_plan(
 
     warnings: list[str] = []
     warnings.extend(_detect_tty_tmux_gate(allow_non_tty=allow_non_tty))
-    _validate_ralph_prd_gate()
+    ralph_prd_artifact: RalphPrdArtifact = _validate_ralph_prd_gate()
+    canonical_launch_task: str = _resolve_ralph_launch_task_from_prd(
+        task=normalized_task,
+        ralph_prd_artifact=ralph_prd_artifact,
+    )
 
     state_class, state_warnings = _assess_ralph_launch_preflight_state()
     warnings.extend(state_warnings)
 
-    if state_class == "resumable" and not force_cleanup:
+    if state_class == RalphStateClassification.RESUMABLE and not force_cleanup:
         raise ValueError(
             "Existing resumable Ralph state detected. Run `agent-remote ralph cleanup-stale` "
             "or retry with --force-cleanup."
         )
 
-    launch_command: list[str] = ["ralph", "--prd", normalized_task]
+    launch_command: list[str] = ["ralph", "--prd", canonical_launch_task]
     return launch_command, warnings
+
+
+
+def build_ralph_team_launch_plan(
+    *,
+    allow_non_tty: bool,
+) -> tuple[list[str], list[str]]:
+    """Build Team launch command from the typed Ralph PRD artifact."""
+    require_ralph_launch_tty(allow_non_tty=allow_non_tty)
+
+    warnings: list[str] = []
+    warnings.extend(_detect_team_tty_tmux_gate(allow_non_tty=allow_non_tty))
+    ralph_prd_artifact: RalphPrdArtifact = _validate_ralph_prd_gate()
+    canonical_launch_task: str
+    team_worker_count: int
+    canonical_launch_task, team_worker_count = _resolve_ralph_team_launch_task_from_prd(
+        ralph_prd_artifact=ralph_prd_artifact,
+    )
+
+    launch_command: list[str] = [
+        "team",
+        f"{team_worker_count}:executor",
+        canonical_launch_task,
+    ]
+    return launch_command, warnings
+
 
 
 def resume_ralph_command() -> list[str]:
@@ -405,8 +625,8 @@ def resume_ralph_command() -> list[str]:
         ValueError: If no Ralph state exists to resume from.
     """
     state_class, _warnings = _assess_ralph_resume_preflight_state()
-    if state_class != "resumable":
-        if state_class == "missing":
+    if state_class != RalphStateClassification.RESUMABLE:
+        if state_class == RalphStateClassification.MISSING:
             raise ValueError(
                 "No Ralph state found. Launch Ralph first or restore a resumable Ralph state."
             )
@@ -426,8 +646,8 @@ def build_ralph_resume_plan() -> tuple[list[str], list[str]]:
         ValueError: If resume preflight fails.
     """
     state_class, warnings = _assess_ralph_resume_preflight_state()
-    if state_class != "resumable":
-        if state_class == "missing":
+    if state_class != RalphStateClassification.RESUMABLE:
+        if state_class == RalphStateClassification.MISSING:
             raise ValueError(
                 "No Ralph state found. Launch Ralph first or restore a resumable Ralph state."
             )

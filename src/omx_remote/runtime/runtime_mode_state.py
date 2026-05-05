@@ -7,7 +7,7 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStateTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime_schemas import (
+from omx_remote.schemas.runtime import (
     RuntimeModeStateRequest,
     RuntimeModeStateSnapshot,
 )

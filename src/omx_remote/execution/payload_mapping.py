@@ -10,6 +10,8 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionTransportPayload,
     ExecutionTurnCompletedTransportPayload,
     ExecutionUsageTransportPayload,
+    KnownExecutionEventTypeSet,
+    PromotableExecutionPayloadTypeSet,
 )
 from omx_remote.schemas.execution_schemas import (
     ExecCommandExecution,
@@ -27,6 +29,8 @@ from omx_remote.shared.exceptions import (
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionAnomalyCategory,
     ExecutionEventKind,
+    KnownExecutionEventType,
+    PromotableExecutionPayloadType,
     ToolInteractionState,
 )
 
@@ -40,12 +44,10 @@ ExecutionContract = (
     | ExecToolResult
 )
 RoutedExecutionPayload = ExecutionContract | ExecutionPayload
-PROMOTABLE_EXECUTION_PAYLOAD_TYPES: frozenset[str] = frozenset(
-    {"message", "output_text", "command_execution", "tool_call", "tool_result"}
+PROMOTABLE_EXECUTION_PAYLOAD_TYPES: PromotableExecutionPayloadTypeSet = frozenset(
+    PromotableExecutionPayloadType
 )
-KNOWN_EXECUTION_EVENT_TYPES: frozenset[str] = frozenset(
-    {"thread.started", "turn.started", "item.completed", "turn.completed"}
-)
+KNOWN_EXECUTION_EVENT_TYPES: KnownExecutionEventTypeSet = frozenset(KnownExecutionEventType)
 
 ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
     ExecutionAnomalyCategory.DUPLICATE_RESULT: "additional tool result observed after first matched result",

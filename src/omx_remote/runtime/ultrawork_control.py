@@ -1,54 +1,22 @@
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 from shutil import which
-from typing import Any
+from typing import ClassVar
 
 from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.shared.omx_enums.ultrawork_enums import (
+    UltraworkRunOutcome,
+    UltraworkRuntimePhase,
+    UltraworkStateClassification,
+)
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 _ULTRAWORK_STATE_FILENAMES: tuple[str, ...] = (
     "ultrawork-state.json",
     "ultrawork-progress.json",
     "run-state.json",
-)
-_TERMINAL_PHASES: frozenset[str] = frozenset(
-    {
-        "complete",
-        "completed",
-        "failed",
-        "cancelled",
-    }
-)
-_NON_TERMINAL_PHASES: frozenset[str] = frozenset(
-    {
-        "starting",
-        "running",
-        "executing",
-        "planning",
-        "active",
-        "paused",
-        "idle",
-        "userinterlude",
-        "blocked_on_user",
-        "waiting",
-    }
-)
-_TERMINAL_OUTCOMES: frozenset[str] = frozenset(
-    {
-        "finish",
-        "blocked_on_user",
-        "failed",
-        "cancelled",
-        "complete",
-        "completed",
-        "done",
-        "userinterlude",
-    }
-)
-_NON_TERMINAL_OUTCOMES: frozenset[str] = frozenset(
-    {"continue", "progress", "running", "active"}
 )
 
 
@@ -58,114 +26,277 @@ def _normalize_token(value: object) -> str | None:
         return None
 
     token = value.strip().lower()
-    return token or None
+    normalized_token: str | None = token or None
+    return normalized_token
 
 
-def _read_json_object(path: Path) -> dict[str, Any] | None:
-    try:
-        raw_payload: str = path.read_text(encoding="utf-8")
-    except OSError:
-        return None
+class UltraworkStateClassifier:
+    """Classifies adapter-visible Ultrawork runtime state markers."""
 
-    parsed_payload: object
-    try:
-        parsed_payload = json.loads(raw_payload)
-    except json.JSONDecodeError:
-        return None
+    TERMINAL_PHASES: ClassVar[frozenset[UltraworkRuntimePhase]] = frozenset(
+        {
+            UltraworkRuntimePhase.COMPLETE,
+            UltraworkRuntimePhase.COMPLETED,
+            UltraworkRuntimePhase.FAILED,
+            UltraworkRuntimePhase.CANCELLED,
+        }
+    )
+    NON_TERMINAL_PHASES: ClassVar[frozenset[UltraworkRuntimePhase]] = frozenset(
+        {
+            UltraworkRuntimePhase.STARTING,
+            UltraworkRuntimePhase.RUNNING,
+            UltraworkRuntimePhase.EXECUTING,
+            UltraworkRuntimePhase.PLANNING,
+            UltraworkRuntimePhase.ACTIVE,
+            UltraworkRuntimePhase.PAUSED,
+            UltraworkRuntimePhase.IDLE,
+            UltraworkRuntimePhase.USER_INTERLUDE,
+            UltraworkRuntimePhase.BLOCKED_ON_USER,
+            UltraworkRuntimePhase.WAITING,
+        }
+    )
+    TERMINAL_OUTCOMES: ClassVar[frozenset[UltraworkRunOutcome]] = frozenset(
+        {
+            UltraworkRunOutcome.FINISH,
+            UltraworkRunOutcome.BLOCKED_ON_USER,
+            UltraworkRunOutcome.FAILED,
+            UltraworkRunOutcome.CANCELLED,
+            UltraworkRunOutcome.COMPLETE,
+            UltraworkRunOutcome.COMPLETED,
+            UltraworkRunOutcome.DONE,
+            UltraworkRunOutcome.USER_INTERLUDE,
+        }
+    )
+    NON_TERMINAL_OUTCOMES: ClassVar[frozenset[UltraworkRunOutcome]] = frozenset(
+        {
+            UltraworkRunOutcome.CONTINUE,
+            UltraworkRunOutcome.PROGRESS,
+            UltraworkRunOutcome.RUNNING,
+            UltraworkRunOutcome.ACTIVE,
+        }
+    )
 
-    if isinstance(parsed_payload, dict):
-        return parsed_payload
+    @staticmethod
+    def normalize_phase(phase_value: object) -> UltraworkRuntimePhase | None:
+        """Normalize a raw phase marker into an Ultrawork phase enum.
 
-    return None
+        Args:
+            phase_value: Raw phase value read from an Ultrawork state artifact.
 
+        Returns:
+            Matching Ultrawork phase enum, or ``None`` when unknown.
+        """
+        token: str | None = _normalize_token(phase_value)
+        if token is None:
+            return None
 
-def _is_terminal_ultrawork_phase(phase_value: object) -> bool:
-    phase: str | None = _normalize_token(phase_value)
-    return bool(phase and phase in _TERMINAL_PHASES)
+        try:
+            phase = UltraworkRuntimePhase(token)
+        except ValueError:
+            return None
 
+        return phase
 
-def _is_terminal_ultrawork_outcome(outcome_value: object) -> bool:
-    outcome: str | None = _normalize_token(outcome_value)
-    return bool(outcome and outcome in _TERMINAL_OUTCOMES)
+    @staticmethod
+    def normalize_outcome(outcome_value: object) -> UltraworkRunOutcome | None:
+        """Normalize a raw outcome marker into an Ultrawork outcome enum.
 
+        Args:
+            outcome_value: Raw outcome value read from an Ultrawork state artifact.
 
-def _is_active_ultrawork_phase(phase_value: object) -> bool:
-    phase: str | None = _normalize_token(phase_value)
-    return bool(phase and phase in _NON_TERMINAL_PHASES)
+        Returns:
+            Matching Ultrawork outcome enum, or ``None`` when unknown.
+        """
+        token: str | None = _normalize_token(outcome_value)
+        if token is None:
+            return None
 
+        try:
+            outcome = UltraworkRunOutcome(token)
+        except ValueError:
+            return None
 
-def _is_active_ultrawork_outcome(outcome_value: object) -> bool:
-    outcome: str | None = _normalize_token(outcome_value)
-    return bool(outcome and outcome in _NON_TERMINAL_OUTCOMES)
+        return outcome
 
+    @staticmethod
+    def is_terminal_phase(phase_value: object) -> bool:
+        """Return whether a raw phase value is terminal.
 
-def _classify_ultrawork_state_snapshot(state_payload: dict[str, Any]) -> str:
-    """Classify Ultrawork state as resumable / terminal / stale."""
-    active_value: object | None = state_payload.get("active")
+        Args:
+            phase_value: Raw phase value read from state.
 
-    if active_value is True:
-        return "resumable"
+        Returns:
+            ``True`` when the phase maps to a terminal Ultrawork phase.
+        """
+        phase: UltraworkRuntimePhase | None = UltraworkStateClassifier.normalize_phase(
+            phase_value
+        )
+        is_terminal_phase = bool(
+            phase and phase in UltraworkStateClassifier.TERMINAL_PHASES
+        )
+        return is_terminal_phase
 
-    if active_value is False:
+    @staticmethod
+    def is_terminal_outcome(outcome_value: object) -> bool:
+        """Return whether a raw outcome value is terminal.
+
+        Args:
+            outcome_value: Raw outcome value read from state.
+
+        Returns:
+            ``True`` when the outcome maps to a terminal Ultrawork outcome.
+        """
+        outcome: UltraworkRunOutcome | None = UltraworkStateClassifier.normalize_outcome(
+            outcome_value
+        )
+        is_terminal_outcome = bool(
+            outcome and outcome in UltraworkStateClassifier.TERMINAL_OUTCOMES
+        )
+        return is_terminal_outcome
+
+    @staticmethod
+    def is_active_phase(phase_value: object) -> bool:
+        """Return whether a raw phase value is resumable/non-terminal.
+
+        Args:
+            phase_value: Raw phase value read from state.
+
+        Returns:
+            ``True`` when the phase maps to a non-terminal Ultrawork phase.
+        """
+        phase: UltraworkRuntimePhase | None = UltraworkStateClassifier.normalize_phase(
+            phase_value
+        )
+        is_active_phase = bool(phase and phase in UltraworkStateClassifier.NON_TERMINAL_PHASES)
+        return is_active_phase
+
+    @staticmethod
+    def is_active_outcome(outcome_value: object) -> bool:
+        """Return whether a raw outcome value is resumable/non-terminal.
+
+        Args:
+            outcome_value: Raw outcome value read from state.
+
+        Returns:
+            ``True`` when the outcome maps to a non-terminal Ultrawork outcome.
+        """
+        outcome: UltraworkRunOutcome | None = UltraworkStateClassifier.normalize_outcome(
+            outcome_value
+        )
+        is_active_outcome = bool(
+            outcome and outcome in UltraworkStateClassifier.NON_TERMINAL_OUTCOMES
+        )
+        return is_active_outcome
+
+    @staticmethod
+    def classify_state_snapshot(
+        state_payload: dict[str, object],
+    ) -> UltraworkStateClassification:
+        """Classify one Ultrawork state payload for launch/resume preflight.
+
+        Args:
+            state_payload: Parsed Ultrawork state object.
+
+        Returns:
+            Adapter-owned Ultrawork state classification.
+        """
+        active_value: object | None = state_payload.get("active")
+
+        if active_value is True:
+            return UltraworkStateClassification.RESUMABLE
+
+        if active_value is False:
+            classification = UltraworkStateClassifier._classify_inactive_state(
+                state_payload
+            )
+            return classification
+
+        if active_value is not None and not isinstance(active_value, bool):
+            return UltraworkStateClassification.STALE
+
+        classification = UltraworkStateClassifier._classify_marker_state(state_payload)
+        return classification
+
+    @staticmethod
+    def _classify_inactive_state(
+        state_payload: dict[str, object],
+    ) -> UltraworkStateClassification:
+        outcome_value: object | None = UltraworkStateClassifier._read_outcome_value(
+            state_payload
+        )
+        phase_value: object | None = state_payload.get("current_phase")
+
+        if UltraworkStateClassifier.is_terminal_outcome(
+            outcome_value
+        ) or UltraworkStateClassifier.is_terminal_phase(phase_value):
+            return UltraworkStateClassification.TERMINAL
+
+        if UltraworkStateClassifier.is_active_outcome(
+            outcome_value
+        ) or UltraworkStateClassifier.is_active_phase(phase_value):
+            return UltraworkStateClassification.RESUMABLE
+
+        return UltraworkStateClassification.STALE
+
+    @staticmethod
+    def _classify_marker_state(
+        state_payload: dict[str, object],
+    ) -> UltraworkStateClassification:
+        outcome_value: object | None = UltraworkStateClassifier._read_outcome_value(
+            state_payload
+        )
+        phase_value: object | None = state_payload.get("current_phase")
+
+        if UltraworkStateClassifier.is_terminal_outcome(outcome_value):
+            return UltraworkStateClassification.TERMINAL
+
+        if UltraworkStateClassifier.is_active_outcome(
+            outcome_value
+        ) or UltraworkStateClassifier.is_active_phase(phase_value):
+            return UltraworkStateClassification.RESUMABLE
+
+        if UltraworkStateClassifier.is_terminal_phase(phase_value):
+            return UltraworkStateClassification.TERMINAL
+
+        return UltraworkStateClassification.STALE
+
+    @staticmethod
+    def _read_outcome_value(state_payload: dict[str, object]) -> object | None:
         outcome_value: object | None = state_payload.get("run_outcome")
         if outcome_value is None:
             outcome_value = state_payload.get("outcome")
 
-        if _is_terminal_ultrawork_outcome(outcome_value):
-            return "terminal"
-
-        phase_value: object | None = state_payload.get("current_phase")
-        if _is_terminal_ultrawork_phase(phase_value):
-            return "terminal"
-
-        if _is_active_ultrawork_outcome(outcome_value) or _is_active_ultrawork_phase(
-            phase_value
-        ):
-            return "resumable"
-
-        return "stale"
-
-    if active_value is not None and not isinstance(active_value, bool):
-        return "stale"
-
-    outcome_value: object | None = state_payload.get("run_outcome")
-    if outcome_value is None:
-        outcome_value = state_payload.get("outcome")
-
-    phase_value: object | None = state_payload.get("current_phase")
-
-    if _is_terminal_ultrawork_outcome(outcome_value):
-        return "terminal"
-
-    if _is_active_ultrawork_outcome(outcome_value) or _is_active_ultrawork_phase(phase_value):
-        return "resumable"
-
-    if _is_terminal_ultrawork_phase(phase_value):
-        return "terminal"
-
-    return "stale"
+        return outcome_value
 
 
-def _assess_ultrawork_launch_preflight_state() -> tuple[str, list[str]]:
+def _classify_ultrawork_state_snapshot(
+    state_payload: dict[str, object],
+) -> UltraworkStateClassification:
+    classification: UltraworkStateClassification = (
+        UltraworkStateClassifier.classify_state_snapshot(state_payload)
+    )
+    return classification
+
+
+def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
     existing_state_paths: list[Path] = list_ultrawork_state_paths()
     if not existing_state_paths:
-        return "clean", []
+        return UltraworkStateClassification.CLEAN, []
 
     ultrawork_state_path: Path = get_ultrawork_state_root() / "ultrawork-state.json"
     if ultrawork_state_path not in existing_state_paths:
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "stale", [
+        return UltraworkStateClassification.STALE, [
             "Existing Ultrawork state files were found, but no ultrawork-state.json was present.",
             f"Known stale files: {joined_paths}",
             "If these are stale, run `agent-remote ultrawork cleanup-stale` before re-launching.",
         ]
 
-    ultrawork_state_payload: dict[str, Any] | None = _read_json_object(
-        ultrawork_state_path
-    )
+    ultrawork_state_store = json_file_stores.for_path(ultrawork_state_path)
+    ultrawork_state_payload: dict[str, object] | None = ultrawork_state_store.read_object()
     if ultrawork_state_payload is None:
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "terminal", [
+        return UltraworkStateClassification.TERMINAL, [
             "Ultrawork state artifact is present but unreadable.",
             f"Paths: {joined_paths}",
             "Clean stale Ultrawork artifacts and retry with `agent-remote ultrawork cleanup-stale`.",
@@ -174,50 +305,51 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[str, list[str]]:
     state_class: str = _classify_ultrawork_state_snapshot(ultrawork_state_payload)
     joined_paths = ", ".join(str(path) for path in existing_state_paths)
 
-    if state_class == "resumable":
-        return "resumable", [
+    if state_class == UltraworkStateClassification.RESUMABLE:
+        return UltraworkStateClassification.RESUMABLE, [
             "Ultrawork appears resumable from existing state.",
             f"Paths: {joined_paths}",
             "If you intend to start a new session, run `agent-remote ultrawork cleanup-stale` or use --force-cleanup.",
         ]
 
-    if state_class == "terminal":
-        return "terminal", [
+    if state_class == UltraworkStateClassification.TERMINAL:
+        return UltraworkStateClassification.TERMINAL, [
             "Ultrawork state exists and is terminal/non-runnable.",
             f"Paths: {joined_paths}",
             "Proceeding is treated as a stale-state recovery path.",
         ]
 
-    return "stale", [
+    return UltraworkStateClassification.STALE, [
         "Ultrawork state exists but lacks explicit resumability markers.",
         f"Paths: {joined_paths}",
         "Proceeding may overwrite stale artifacts unless you run cleanup first.",
     ]
 
 
-def _assess_ultrawork_resume_preflight_state() -> tuple[str, list[str]]:
+def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
     existing_state_paths: list[Path] = list_ultrawork_state_paths()
     if not existing_state_paths:
-        return "missing", ["No Ultrawork state files found."]
+        return UltraworkStateClassification.MISSING, ["No Ultrawork state files found."]
 
     ultrawork_state_path = get_ultrawork_state_root() / "ultrawork-state.json"
     if not ultrawork_state_path.exists():
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
-        return "invalid", [
+        return UltraworkStateClassification.INVALID, [
             "Ultrawork state exists without a canonical ultrawork-state.json.",
             f"Known Ultrawork files: {joined_paths}",
             "Run cleanup-stale and re-run launch if this is stale recovery.",
         ]
 
-    state_payload: dict[str, Any] | None = _read_json_object(ultrawork_state_path)
+    state_store = json_file_stores.for_path(ultrawork_state_path)
+    state_payload: dict[str, object] | None = state_store.read_object()
     if state_payload is None:
-        return "invalid", [
+        return UltraworkStateClassification.INVALID, [
             "Ultrawork state file is present but unreadable.",
             f"Path: {ultrawork_state_path}",
         ]
 
-    state_class: str = _classify_ultrawork_state_snapshot(state_payload)
-    if state_class != "resumable":
+    state_class: UltraworkStateClassification = _classify_ultrawork_state_snapshot(state_payload)
+    if state_class != UltraworkStateClassification.RESUMABLE:
         return state_class, [
             f"Ultrawork state file class is '{state_class}'.",
             "Resume requires an active or non-terminal Ultrawork state.",
@@ -230,7 +362,7 @@ def _assess_ultrawork_resume_preflight_state() -> tuple[str, list[str]]:
             "Ultrawork progress artifact is missing; resume may lose progress history."
         )
 
-    return "resumable", warnings
+    return UltraworkStateClassification.RESUMABLE, warnings
 
 
 def _detect_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
@@ -345,8 +477,8 @@ def build_ultrawork_resume_plan(team_name: str) -> tuple[list[str], list[str]]:
         raise ValueError("Team name must not be blank.")
 
     state_class, warnings = _assess_ultrawork_resume_preflight_state()
-    if state_class != "resumable":
-        if state_class == "missing":
+    if state_class != UltraworkStateClassification.RESUMABLE:
+        if state_class == UltraworkStateClassification.MISSING:
             raise ValueError(
                 "No Ultrawork state found. Launch Ultrawork first or restore a resumable Ultrawork state."
             )

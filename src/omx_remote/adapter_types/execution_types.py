@@ -1,6 +1,14 @@
 from typing import Literal, TypedDict
 
-from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
+from omx_remote.shared.omx_enums.execution_enums import (
+    ExecutionEventKind,
+    KnownExecutionEventType,
+    PromotableExecutionPayloadType,
+)
+
+type KnownExecutionEventTypeSet = frozenset[KnownExecutionEventType]
+type PromotableExecutionPayloadTypeSet = frozenset[PromotableExecutionPayloadType]
+type ExecutionTransportPayloads = tuple[ExecutionTransportPayload, ...]
 
 
 class ExecutionUsageTransportPayload(TypedDict, total=False):

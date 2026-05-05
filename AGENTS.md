@@ -103,7 +103,9 @@ Short version:
 - treat Pydantic v2 as the primary schema/contract system for this repository,
 - use `type-development-rules.md` for repository-wide typing policy and `docs/rules/pydantic/` for schema-specific rules,
 - do not treat Pydantic as the default raw transport parser in runtime/event-stream paths when a transport seam still needs routing or normalization,
-- if a schema only needs `ConfigDict(extra="forbid")`, prefer a shared strict schema base in `schemas/common_schemas.py` rather than repeating identical per-class `model_config` declarations,
+- if a named-field schema only needs the shared strict config, inherit from `StrictSchemaModel` in `schemas/common_schemas.py` rather than repeating identical per-class `model_config` declarations,
+- the shared named-field strict config is `extra="forbid"`, `frozen=True`, `use_enum_values=True`, and `validate_default=True`,
+- use a separate `StrictRootSchemaModel` for root-value contracts; the root base should omit `extra="forbid"`,
 - only keep per-schema `ConfigDict(...)` when that schema genuinely needs settings different from the shared strict default.
 
 ## Type Strictness Policy

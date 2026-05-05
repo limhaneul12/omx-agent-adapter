@@ -50,8 +50,15 @@ Do not use default values casually.
 - Defaults should be introduced only when they are truly unavoidable or when the contract explicitly requires a real default.
 - Required fields should stay required unless there is a concrete contract reason to relax them.
 - Do not let defaults become a convenience escape hatch for incomplete schema design.
+- `validate_default=True` on the shared schema base exists to validate unavoidable defaults, not to encourage new defaults.
 
 If a default exists, it should be explainable as part of the contract, not merely as a coding convenience.
+
+### Collection default caution
+
+Avoid `default_factory=list` on stable schema-boundary collections unless an empty collection is genuinely the protocol default.
+
+If a collection has domain meaning, prefer an explicit required field plus a root schema that validates the collection contract. Empty collections should be passed deliberately by the caller when they are meaningful.
 
 ## Nullability Rule
 

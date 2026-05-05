@@ -92,6 +92,7 @@ Every important schema should answer:
 - what fields are required?
 - what fields are optional for real contract reasons?
 - what coercion or validation rules apply?
+- if it is a collection, whether the collection itself owns invariants such as duplicate rejection, membership consistency, or helper behavior.
 
 If those answers are unclear, the schema boundary is not designed clearly enough.
 
@@ -181,6 +182,24 @@ schemas/
 Only do this when file size or conceptual density justifies it.
 
 Do not over-fragment too early.
+
+## Domain Collection Boundary Rule
+
+Avoid raw `list[...]` at stable schema boundaries when the collection has domain meaning.
+
+Use:
+
+- `tuple[T, ...]` for immutable ordered sequences when duplicates are allowed and no collection-level behavior is needed;
+- a `StrictRootSchemaModel` collection when the collection owns validation, helper methods, duplicate rules, membership checks, or status buckets.
+
+Examples that should usually be root schemas rather than raw lists:
+
+- repo/flow collections in multi-operator snapshots;
+- active/launchable/resumable/cleanup/terminal flow ID collections;
+- worker assignment collections derived from a Ralph PRD;
+- repeated `NonEmptyString` collections that represent named domain tokens.
+
+Root collection validators should enforce collection-level invariants instead of scattering those checks across runtime helpers.
 
 ## TypedDict Key-Presence Rule
 

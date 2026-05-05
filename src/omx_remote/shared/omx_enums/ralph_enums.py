@@ -1,0 +1,55 @@
+from enum import StrEnum
+
+
+class RalphRuntimePhase(StrEnum):
+    """Ralph runtime phase markers read from Ralph-owned state artifacts."""
+
+    STARTING = "starting"
+    RUNNING = "running"
+    EXECUTING = "executing"
+    PLANNING = "planning"
+    ACTIVE = "active"
+    PAUSED = "paused"
+    IDLE = "idle"
+    USER_INTERLUDE = "userinterlude"
+    BLOCKED_ON_USER = "blocked_on_user"
+    WAITING = "waiting"
+    COMPLETE = "complete"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class RalphRunOutcome(StrEnum):
+    """Ralph run outcome markers used to classify resumable and terminal state."""
+
+    FINISH = "finish"
+    BLOCKED_ON_USER = "blocked_on_user"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    COMPLETE = "complete"
+    COMPLETED = "completed"
+    DONE = "done"
+    USER_INTERLUDE = "userinterlude"
+    CONTINUE = "continue"
+    PROGRESS = "progress"
+    RUNNING = "running"
+    ACTIVE = "active"
+
+
+class RalphPrdContinuationPolicy(StrEnum):
+    """Ralph PRD follow-up policies after a PRD artifact is produced."""
+
+    REVIEW_REQUIRED = "review_required"
+    CONTINUE_AUTOMATICALLY = "continue_automatically"
+
+
+class RalphStateClassification(StrEnum):
+    """Adapter classifications for Ralph state preflight decisions."""
+
+    CLEAN = "clean"
+    RESUMABLE = "resumable"
+    TERMINAL = "terminal"
+    STALE = "stale"
+    MISSING = "missing"
+    INVALID = "invalid"
