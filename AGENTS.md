@@ -102,7 +102,9 @@ Short version:
 - keep schemas concept-split with `{concept}_schemas.py`,
 - treat Pydantic v2 as the primary schema/contract system for this repository,
 - use `type-development-rules.md` for repository-wide typing policy and `docs/rules/pydantic/` for schema-specific rules,
-- do not treat Pydantic as the default raw transport parser in runtime/event-stream paths when a transport seam still needs routing or normalization.
+- do not treat Pydantic as the default raw transport parser in runtime/event-stream paths when a transport seam still needs routing or normalization,
+- if a schema only needs `ConfigDict(extra="forbid")`, prefer a shared strict schema base in `schemas/common_schemas.py` rather than repeating identical per-class `model_config` declarations,
+- only keep per-schema `ConfigDict(...)` when that schema genuinely needs settings different from the shared strict default.
 
 ## Type Strictness Policy
 
@@ -117,15 +119,8 @@ Short version:
 
 ## Exception Organization
 
-- Manage cross-cutting exceptions under `shared/exceptions/`.
-- Group exception files by concept/domain using the pattern:
-  - `{concept}_exceptions.py`
-- Examples:
-  - `execution_exceptions.py`
-  - `runtime_exceptions.py`
-  - `teamwork_exceptions.py`
-  - `history_exceptions.py`
-  - `bridge_exceptions.py`
+- Manage cross-cutting exceptions under `shared/exceptions.py` when the total exception surface is still small and the names remain clear.
+- Only split exceptions back into concept-specific modules if the single shared module becomes noisy enough to harm discoverability.
 
 ## Shared Enums and Shared Types
 
@@ -171,12 +166,12 @@ shared/
 
 ## Typed Transport Contract Rule
 
-- In concept-owned transport or normalized `TypedDict` definitions, do not leave required-vs-optional key presence implicit.
-- Use `Required[...]` for keys the seam contract truly guarantees.
-- Use `NotRequired[...]` only for keys that may genuinely be absent at that seam.
+- In concept-owned transport or normalized `TypedDict` definitions, keep key-presence semantics honest, but do not overuse `Required[...]` / `NotRequired[...]` when modern `TypedDict` defaults already express the same thing.
+- Use plain fields for all-required `TypedDict` classes.
+- Use plain fields inside `TypedDict(..., total=False)` when every field is optional.
+- Keep `Required[...]` / `NotRequired[...]` only when mixed requiredness is genuinely needed in the same `TypedDict`.
 - Do not force `Required[...]` onto raw nested payload shapes whose upstream variability is still intentional or not yet split into honest discriminated transport types.
-- Required key presence and nullable value semantics are separate concerns. A key may be `Required[...]` even when its value is still normalized to `None` before schema validation.
-- Top-level stable subset payloads should prefer explicit `Required[...]` / `NotRequired[...]` annotations because they make agent-facing contract intent obvious.
+- Required key presence and nullable value semantics are separate concerns. A key may still be required even when its value normalizes to `None` before schema validation.
 
 ## General Principle
 

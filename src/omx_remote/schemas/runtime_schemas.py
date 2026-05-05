@@ -1,8 +1,11 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import Field, model_validator
 
-from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    StrictSchemaModel,
+)
 
 RuntimeModeStatus = Literal["active", "paused", "idle", "unknown"]
 RuntimeStatusAnomalyCategory = Literal[
@@ -13,50 +16,38 @@ RuntimeStatusAnomalyCategory = Literal[
 ]
 
 
-class RuntimeStatusRequest(BaseModel):
+class RuntimeStatusRequest(StrictSchemaModel):
     """Represents the typed request boundary for runtime status reads."""
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class RuntimeModeStatusRequest(BaseModel):
+class RuntimeModeStatusRequest(StrictSchemaModel):
     """Represents the typed request boundary for runtime mode-status reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     mode: NonEmptyString
 
 
-class RuntimeModeStateRequest(BaseModel):
+class RuntimeModeStateRequest(StrictSchemaModel):
     """Represents the typed request boundary for runtime mode-state reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     mode: NonEmptyString
 
 
-class ActiveRuntimeModes(BaseModel):
+class ActiveRuntimeModes(StrictSchemaModel):
     """Represents the normalized active-runtime mode list."""
-
-    model_config = ConfigDict(extra="forbid")
 
     active_modes: list[NonEmptyString] = Field(default_factory=list)
 
 
-class RuntimeModeStateSnapshot(BaseModel):
+class RuntimeModeStateSnapshot(StrictSchemaModel):
     """Represents one normalized runtime mode-state lookup result."""
-
-    model_config = ConfigDict(extra="forbid")
 
     mode: NonEmptyString
     exists: bool
     state: dict[str, object] | None = None
 
 
-class RuntimeModeSnapshot(BaseModel):
+class RuntimeModeSnapshot(StrictSchemaModel):
     """Represents one normalized runtime mode status."""
-
-    model_config = ConfigDict(extra="forbid")
 
     name: NonEmptyString
     status: RuntimeModeStatus
@@ -64,10 +55,8 @@ class RuntimeModeSnapshot(BaseModel):
     has_uncertainty: bool = False
 
 
-class RuntimeModeStatusSnapshot(BaseModel):
+class RuntimeModeStatusSnapshot(StrictSchemaModel):
     """Represents one normalized runtime mode-status lookup result."""
-
-    model_config = ConfigDict(extra="forbid")
 
     name: NonEmptyString
     is_active: bool
@@ -75,10 +64,8 @@ class RuntimeModeStatusSnapshot(BaseModel):
     state_path: NonEmptyString | None = None
 
 
-class RuntimeModeStatusResult(BaseModel):
+class RuntimeModeStatusResult(StrictSchemaModel):
     """Represents the normalized public result for one runtime mode-status read."""
-
-    model_config = ConfigDict(extra="forbid")
 
     requested_mode: NonEmptyString
     found: bool
@@ -99,10 +86,8 @@ class RuntimeModeStatusResult(BaseModel):
         return validated_result
 
 
-class RuntimeModeStateResult(BaseModel):
+class RuntimeModeStateResult(StrictSchemaModel):
     """Represents the normalized public result for one runtime mode-state read."""
-
-    model_config = ConfigDict(extra="forbid")
 
     mode: NonEmptyString
     exists: bool
@@ -122,20 +107,16 @@ class RuntimeModeStateResult(BaseModel):
         return self
 
 
-class RuntimeStatusAnomaly(BaseModel):
+class RuntimeStatusAnomaly(StrictSchemaModel):
     """Represents a normalized runtime-status anomaly."""
-
-    model_config = ConfigDict(extra="forbid")
 
     category: RuntimeStatusAnomalyCategory
     message: str
     mode_name: NonEmptyString | None = None
 
 
-class RuntimeStatus(BaseModel):
+class RuntimeStatus(StrictSchemaModel):
     """Represents normalized OMX runtime status output."""
-
-    model_config = ConfigDict(extra="forbid")
 
     summary: str
     has_active_modes: bool | None = None

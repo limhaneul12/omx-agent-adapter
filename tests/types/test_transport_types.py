@@ -1,12 +1,12 @@
 from omx_remote.adapter_types.bridge_types import (
-    AdapterEnvelopeRuntimePayload,
     AdapterEnvelopeNormalizedPayload,
+    AdapterEnvelopeRuntimePayload,
     AdapterEnvelopeTransportPayload,
-    AdapterProbeRuntimePayload,
     AdapterProbeNormalizedPayload,
+    AdapterProbeRuntimePayload,
     AdapterProbeTransportPayload,
-    AdapterStatusRuntimePayload,
     AdapterStatusNormalizedPayload,
+    AdapterStatusRuntimePayload,
     AdapterStatusTransportPayload,
 )
 from omx_remote.adapter_types.execution_types import (
@@ -23,7 +23,6 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionTurnCompletedTransportPayload,
     ExecutionUsageTransportPayload,
 )
-from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchTransportPayload,
@@ -46,6 +45,7 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamStatusNormalizedPayload,
     TeamStatusTransportPayload,
 )
+from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 
 
 def test_session_search_transport_and_normalized_payload_shapes() -> None:

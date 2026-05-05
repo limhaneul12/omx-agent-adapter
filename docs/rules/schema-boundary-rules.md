@@ -185,13 +185,15 @@ Do not over-fragment too early.
 ## TypedDict Key-Presence Rule
 
 For transport-owned or normalization-owned `TypedDict` contracts:
-- use `Required[...]` when a key is truly part of the seam guarantee,
-- use `NotRequired[...]` when a key may genuinely be absent,
-- do not rely on implicit `total=True` to communicate required-ness,
-- do not over-tighten still-dynamic nested raw payloads just for style consistency.
-- keep key presence separate from value nullability; a field may be `Required[...]` and still carry a normalized `None` value when the stable contract guarantees presence but not population.
+- keep key-presence semantics honest,
+- use plain fields for all-required `TypedDict` classes,
+- use plain fields inside `TypedDict(..., total=False)` when every field is optional,
+- keep `Required[...]` / `NotRequired[...]` only when mixed requiredness is genuinely needed in the same `TypedDict`,
+- do not force explicit key-presence wrappers when modern `TypedDict` defaults already communicate the contract clearly,
+- do not over-tighten still-dynamic nested raw payloads just for style consistency,
+- keep key presence separate from value nullability; a field may still be required even when its value normalizes to `None` before schema validation.
 
-This repository prefers explicit key-presence annotations on stable top-level subsets because they document the contract directly where agents and maintainers read it.
+This repository prefers explicit key-presence annotations where they add real meaning, especially on stable mixed-requiredness subsets. It does not use `Required[...]` / `NotRequired[...]` as blanket style on every transport shape.
 
 ## Dynamic Boundary Rule
 

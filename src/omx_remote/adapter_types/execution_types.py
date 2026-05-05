@@ -1,4 +1,4 @@
-from typing import Literal, NotRequired, Required, TypedDict
+from typing import Literal, TypedDict
 
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 
@@ -6,17 +6,17 @@ from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
 class ExecutionUsageTransportPayload(TypedDict, total=False):
     """Represents the stable observed token-usage subset on turn completion."""
 
-    input_tokens: NotRequired[int]
-    cached_input_tokens: NotRequired[int]
-    output_tokens: NotRequired[int]
-    reasoning_output_tokens: NotRequired[int]
+    input_tokens: int
+    cached_input_tokens: int
+    output_tokens: int
+    reasoning_output_tokens: int
 
 
 class ExecutionThreadStartedTransportPayload(TypedDict):
     """Represents the stable transport subset for `thread.started` events."""
 
-    type: Required[ExecutionEventKind]
-    thread_id: Required[str]
+    type: ExecutionEventKind
+    thread_id: str
 
 
 class ExecutionAgentMessageItemTransportPayload(TypedDict):
@@ -41,89 +41,89 @@ class ExecutionCommandExecutionItemTransportPayload(TypedDict):
 class ExecutionItemTransportPayload(TypedDict, total=False):
     """Represents the stable mixed execution-item transport subset across known item kinds."""
 
-    id: NotRequired[str]
-    type: NotRequired[str]
-    text: NotRequired[str]
-    tool_name: NotRequired[str]
-    call_id: NotRequired[str]
-    arguments: NotRequired[str]
-    command: NotRequired[str]
-    aggregated_output: NotRequired[str]
-    exit_code: NotRequired[int]
-    status: NotRequired[str]
+    id: str
+    type: str
+    text: str
+    tool_name: str
+    call_id: str
+    arguments: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
 
 
 class ExecutionTurnCompletedTransportPayload(TypedDict):
     """Represents the stable transport subset for `turn.completed` events."""
 
-    type: Required[ExecutionEventKind]
-    usage: Required[ExecutionUsageTransportPayload]
+    type: ExecutionEventKind
+    usage: ExecutionUsageTransportPayload
 
 
 class ExecutionItemCompletedTransportPayload(TypedDict):
     """Represents the stable transport subset for `item.completed` events."""
 
-    type: Required[ExecutionEventKind]
-    item: Required[ExecutionItemTransportPayload]
+    type: ExecutionEventKind
+    item: ExecutionItemTransportPayload
 
 
 class ExecutionTransportPayload(TypedDict, total=False):
     """Represents the owned top-level execution transport subset before promotion."""
 
-    type: NotRequired[str | None]
-    text: NotRequired[str]
-    item: NotRequired[ExecutionItemTransportPayload]
-    tool_name: NotRequired[str]
-    call_id: NotRequired[str]
-    arguments: NotRequired[str]
-    command: NotRequired[str]
-    aggregated_output: NotRequired[str]
-    exit_code: NotRequired[int]
-    status: NotRequired[str]
-    id: NotRequired[str]
-    extra: NotRequired[object]
-    kind: NotRequired[object]
-    thread_id: NotRequired[str]
-    usage: NotRequired[ExecutionUsageTransportPayload]
+    type: str | None
+    text: str
+    item: ExecutionItemTransportPayload
+    tool_name: str
+    call_id: str
+    arguments: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
+    id: str
+    extra: object
+    kind: object
+    thread_id: str
+    usage: ExecutionUsageTransportPayload
 
 
 class ExecMessageNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for message promotion."""
 
-    kind: Required[Literal["message"]]
-    text: Required[str]
+    kind: Literal["message"]
+    text: str
 
 
 class ExecOutputNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for output-text promotion."""
 
-    kind: Required[Literal["output_text"]]
-    text: Required[str]
+    kind: Literal["output_text"]
+    text: str
 
 
 class ExecCommandExecutionNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for command-execution promotion."""
 
-    kind: Required[Literal["command_execution"]]
-    command: Required[str]
-    aggregated_output: Required[str]
-    exit_code: Required[int]
-    status: Required[str]
+    kind: Literal["command_execution"]
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
 
 
 class ExecToolCallNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for tool-call promotion."""
 
-    kind: Required[Literal["tool_call"]]
-    tool_name: Required[str]
-    call_id: Required[str]
-    arguments: Required[str]
+    kind: Literal["tool_call"]
+    tool_name: str
+    call_id: str
+    arguments: str
 
 
 class ExecToolResultNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for tool-result promotion."""
 
-    kind: Required[Literal["tool_result"]]
-    tool_name: Required[str]
-    call_id: Required[str]
-    text: Required[str]
+    kind: Literal["tool_result"]
+    tool_name: str
+    call_id: str
+    text: str

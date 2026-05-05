@@ -1,10 +1,8 @@
-from pydantic import BaseModel, ConfigDict
+from omx_remote.schemas.common_schemas import StrictSchemaModel
 
 
-class OmxCommandResult(BaseModel):
+class OmxCommandResult(StrictSchemaModel):
     """Represents the shared OMX command-result boundary."""
-
-    model_config = ConfigDict(extra="forbid")
 
     exit_code: int
     stdout: str

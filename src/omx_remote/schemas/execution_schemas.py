@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, NonNegativeInt, model_validator
+from pydantic import NonNegativeInt, model_validator
 
-from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    StrictSchemaModel,
+)
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionAnomalyCategory,
     ExecutionPayloadKind,
@@ -12,45 +15,35 @@ from omx_remote.shared.omx_enums.execution_enums import (
 )
 
 
-class ExecRequest(BaseModel):
+class ExecRequest(StrictSchemaModel):
     """Represents a normalized execution request."""
-
-    model_config = ConfigDict(extra="forbid")
 
     prompt: NonEmptyString
     cwd: NonEmptyString | None = None
 
 
-class ExecutionEventDecodeRequest(BaseModel):
+class ExecutionEventDecodeRequest(StrictSchemaModel):
     """Represents the typed request boundary for execution event decoding."""
-
-    model_config = ConfigDict(extra="forbid")
 
     payload: NonEmptyString
 
 
-class ExecMessage(BaseModel):
+class ExecMessage(StrictSchemaModel):
     """Represents a promoted execution message event."""
-
-    model_config = ConfigDict(extra="forbid")
 
     kind: Literal[ExecutionPayloadKind.MESSAGE]
     text: str
 
 
-class ExecOutput(BaseModel):
+class ExecOutput(StrictSchemaModel):
     """Represents promoted plain-text execution output."""
-
-    model_config = ConfigDict(extra="forbid")
 
     kind: Literal[ExecutionPayloadKind.OUTPUT_TEXT]
     text: str
 
 
-class ExecCommandExecution(BaseModel):
+class ExecCommandExecution(StrictSchemaModel):
     """Represents a promoted command-execution event."""
-
-    model_config = ConfigDict(extra="forbid")
 
     kind: Literal[ExecutionPayloadKind.COMMAND_EXECUTION]
     command: NonEmptyString
@@ -59,10 +52,8 @@ class ExecCommandExecution(BaseModel):
     status: NonEmptyString
 
 
-class ExecToolCall(BaseModel):
+class ExecToolCall(StrictSchemaModel):
     """Represents a promoted tool-call event."""
-
-    model_config = ConfigDict(extra="forbid")
 
     kind: Literal[ExecutionPayloadKind.TOOL_CALL]
     tool_name: NonEmptyString
@@ -70,10 +61,8 @@ class ExecToolCall(BaseModel):
     arguments: str
 
 
-class ExecToolResult(BaseModel):
+class ExecToolResult(StrictSchemaModel):
     """Represents a promoted tool-result event."""
-
-    model_config = ConfigDict(extra="forbid")
 
     kind: Literal[ExecutionPayloadKind.TOOL_RESULT]
     tool_name: NonEmptyString
@@ -81,10 +70,8 @@ class ExecToolResult(BaseModel):
     text: str
 
 
-class TurnUsage(BaseModel):
+class TurnUsage(StrictSchemaModel):
     """Represents stable token-usage metadata reported on turn completion."""
-
-    model_config = ConfigDict(extra="forbid")
 
     input_tokens: NonNegativeInt
     cached_input_tokens: NonNegativeInt
@@ -92,10 +79,8 @@ class TurnUsage(BaseModel):
     reasoning_output_tokens: NonNegativeInt
 
 
-class ToolInteractionAnomaly(BaseModel):
+class ToolInteractionAnomaly(StrictSchemaModel):
     """Represents a normalized anomaly from tool interaction grouping."""
-
-    model_config = ConfigDict(extra="forbid")
 
     category: ExecutionAnomalyCategory
     related_call_id: NonEmptyString
@@ -103,10 +88,8 @@ class ToolInteractionAnomaly(BaseModel):
     summary: NonEmptyString
 
 
-class ToolInteraction(BaseModel):
+class ToolInteraction(StrictSchemaModel):
     """Represents one tool call paired with its first matching result."""
-
-    model_config = ConfigDict(extra="forbid")
 
     state: ToolInteractionState
     call: ExecToolCall
@@ -136,10 +119,8 @@ class ToolInteraction(BaseModel):
         return validated_interaction
 
 
-class ToolInteractionReport(BaseModel):
+class ToolInteractionReport(StrictSchemaModel):
     """Represents grouped tool interactions plus anomaly buckets."""
-
-    model_config = ConfigDict(extra="forbid")
 
     interactions: list[ToolInteraction]
     unmatched_results: list[ExecToolResult]
@@ -158,7 +139,7 @@ class ToolInteractionReport(BaseModel):
     def _validate_summary_counts(self) -> ToolInteractionReport:
         """Validates that derived summary counters match the underlying lists."""
         expected_interaction_count: int = len(self.interactions)
-        
+
         if self.interaction_count != expected_interaction_count:
             raise ValueError(
                 "ToolInteractionReport.interaction_count must match interactions"

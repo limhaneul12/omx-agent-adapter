@@ -1,21 +1,20 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    StrictSchemaModel,
+)
 
 
-class SessionSearchRequest(BaseModel):
+class SessionSearchRequest(StrictSchemaModel):
     """Represents the typed request boundary for session search."""
-
-    model_config = ConfigDict(extra="forbid")
 
     query: NonEmptyString
     limit: int | None = None
 
 
-class SessionSearchResultSnapshot(BaseModel):
+class SessionSearchResultSnapshot(StrictSchemaModel):
     """Represents one normalized session-search result."""
-
-    model_config = ConfigDict(extra="forbid")
 
     session_id: NonEmptyString
     timestamp: NonEmptyString
@@ -25,10 +24,8 @@ class SessionSearchResultSnapshot(BaseModel):
     snippet: NonEmptyString
 
 
-class SessionSearchSnapshot(BaseModel):
+class SessionSearchSnapshot(StrictSchemaModel):
     """Represents the normalized result for `omx session search ... --json`."""
-
-    model_config = ConfigDict(extra="forbid")
 
     query: NonEmptyString
     searched_files: int

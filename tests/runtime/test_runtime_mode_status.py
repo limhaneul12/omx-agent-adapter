@@ -2,7 +2,6 @@ import asyncio
 import inspect
 
 import pytest
-from pydantic import ValidationError
 
 from omx_remote.runtime import runtime_mode_status
 from omx_remote.schemas.runtime_schemas import RuntimeModeStatusRequest

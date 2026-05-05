@@ -1,28 +1,25 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    StrictSchemaModel,
+)
 
 
-class TeamStatusRequest(BaseModel):
+class TeamStatusRequest(StrictSchemaModel):
     """Represents the typed request boundary for team status reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamAwaitRequest(BaseModel):
+class TeamAwaitRequest(StrictSchemaModel):
     """Represents the typed request boundary for team await reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamStatusSnapshot(BaseModel):
+class TeamStatusSnapshot(StrictSchemaModel):
     """Represents the normalized team-status surface."""
-
-    model_config = ConfigDict(extra="forbid")
 
     team_name: NonEmptyString
     status: NonEmptyString
@@ -31,10 +28,8 @@ class TeamStatusSnapshot(BaseModel):
     non_reporting_workers: list[NonEmptyString] = Field(default_factory=list)
 
 
-class TeamAwaitSnapshot(BaseModel):
+class TeamAwaitSnapshot(StrictSchemaModel):
     """Represents the normalized team-await surface."""
-
-    model_config = ConfigDict(extra="forbid")
 
     team_name: NonEmptyString
     status: NonEmptyString
@@ -44,18 +39,14 @@ class TeamAwaitSnapshot(BaseModel):
     event_task_id: NonEmptyString | None = None
 
 
-class TeamApiListTasksRequest(BaseModel):
+class TeamApiListTasksRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api task listing."""
-
-    model_config = ConfigDict(extra="forbid")
 
     team_name: NonEmptyString
 
 
-class TeamApiTaskSnapshot(BaseModel):
+class TeamApiTaskSnapshot(StrictSchemaModel):
     """Represents a normalized team-api task summary."""
-
-    model_config = ConfigDict(extra="forbid")
 
     id: NonEmptyString
     subject: NonEmptyString
@@ -63,69 +54,53 @@ class TeamApiTaskSnapshot(BaseModel):
     owner: NonEmptyString | None = None
 
 
-class TeamApiListTasksSnapshot(BaseModel):
+class TeamApiListTasksSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api task listing."""
-
-    model_config = ConfigDict(extra="forbid")
 
     count: int
     tasks: list[TeamApiTaskSnapshot]
 
 
-class TeamApiReadEventsRequest(BaseModel):
+class TeamApiReadEventsRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api event reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamApiReadMonitorSnapshotRequest(BaseModel):
+class TeamApiReadMonitorSnapshotRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api monitor snapshot reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamApiReadConfigRequest(BaseModel):
+class TeamApiReadConfigRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api config error reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamApiReadManifestRequest(BaseModel):
+class TeamApiReadManifestRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api manifest error reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
 
 
-class TeamApiMailboxListRequest(BaseModel):
+class TeamApiMailboxListRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api mailbox listing."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
     worker: NonEmptyString
 
 
-class TeamApiReadWorkerStatusRequest(BaseModel):
+class TeamApiReadWorkerStatusRequest(StrictSchemaModel):
     """Represents the typed request boundary for team-api worker-status reads."""
 
-    model_config = ConfigDict(extra="forbid")
-
     team_name: NonEmptyString
     worker: NonEmptyString
 
 
-class TeamApiEventSnapshot(BaseModel):
+class TeamApiEventSnapshot(StrictSchemaModel):
     """Represents a normalized team-api event summary."""
-
-    model_config = ConfigDict(extra="forbid")
 
     type: NonEmptyString
     worker: NonEmptyString | None = None
@@ -133,62 +108,48 @@ class TeamApiEventSnapshot(BaseModel):
     message_id: NonEmptyString | None = None
 
 
-class TeamApiReadEventsSnapshot(BaseModel):
+class TeamApiReadEventsSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api event reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     count: int
     cursor: str
     events: list[TeamApiEventSnapshot]
 
 
-class TeamApiReadMonitorSnapshot(BaseModel):
+class TeamApiReadMonitorSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api monitor snapshot reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     snapshot: object | None = None
 
 
-class TeamApiReadConfigError(BaseModel):
+class TeamApiReadConfigError(StrictSchemaModel):
     """Represents a typed error envelope for team-api config reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     code: NonEmptyString
     message: NonEmptyString
 
 
-class TeamApiReadConfigSnapshot(BaseModel):
+class TeamApiReadConfigSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api config reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     config: object | None = None
 
 
-class TeamApiReadManifestError(BaseModel):
+class TeamApiReadManifestError(StrictSchemaModel):
     """Represents a typed error envelope for team-api manifest reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     code: NonEmptyString
     message: NonEmptyString
 
 
-class TeamApiReadManifestSnapshot(BaseModel):
+class TeamApiReadManifestSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api manifest reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     manifest: object | None = None
 
 
-class TeamApiMailboxMessageSnapshot(BaseModel):
+class TeamApiMailboxMessageSnapshot(StrictSchemaModel):
     """Represents a normalized team-api mailbox message summary."""
-
-    model_config = ConfigDict(extra="forbid")
 
     id: NonEmptyString
     subject: NonEmptyString
@@ -196,20 +157,16 @@ class TeamApiMailboxMessageSnapshot(BaseModel):
     delivered: bool
 
 
-class TeamApiMailboxListSnapshot(BaseModel):
+class TeamApiMailboxListSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api mailbox listing."""
-
-    model_config = ConfigDict(extra="forbid")
 
     worker: NonEmptyString
     count: int
     messages: list[TeamApiMailboxMessageSnapshot]
 
 
-class TeamApiWorkerStatusSnapshot(BaseModel):
+class TeamApiWorkerStatusSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api worker-status reads."""
-
-    model_config = ConfigDict(extra="forbid")
 
     worker: NonEmptyString
     state: NonEmptyString

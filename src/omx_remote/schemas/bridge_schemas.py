@@ -1,20 +1,19 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from omx_remote.schemas.common_schemas import NonEmptyString
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    StrictSchemaModel,
+)
 
 
-class AdapterProbeRequest(BaseModel):
+class AdapterProbeRequest(StrictSchemaModel):
     """Represents the typed request boundary for adapt read-only probes."""
-
-    model_config = ConfigDict(extra="forbid")
 
     target: NonEmptyString
 
 
-class AdapterCapabilitySnapshot(BaseModel):
+class AdapterCapabilitySnapshot(StrictSchemaModel):
     """Represents one normalized adapter capability summary."""
-
-    model_config = ConfigDict(extra="forbid")
 
     id: NonEmptyString
     label: NonEmptyString
@@ -23,10 +22,8 @@ class AdapterCapabilitySnapshot(BaseModel):
     ownership: NonEmptyString | None = None
 
 
-class AdapterProbeSnapshot(BaseModel):
+class AdapterProbeSnapshot(StrictSchemaModel):
     """Represents the normalized result for `omx adapt <target> probe --json`."""
-
-    model_config = ConfigDict(extra="forbid")
 
     target: NonEmptyString
     phase: NonEmptyString
@@ -36,10 +33,8 @@ class AdapterProbeSnapshot(BaseModel):
     target_runtime_detail: NonEmptyString
 
 
-class AdapterStatusSnapshot(BaseModel):
+class AdapterStatusSnapshot(StrictSchemaModel):
     """Represents the normalized result for `omx adapt <target> status --json`."""
-
-    model_config = ConfigDict(extra="forbid")
 
     target: NonEmptyString
     phase: NonEmptyString
@@ -51,10 +46,8 @@ class AdapterStatusSnapshot(BaseModel):
     capabilities: list[AdapterCapabilitySnapshot] = Field(default_factory=list)
 
 
-class AdapterEnvelopeSnapshot(BaseModel):
+class AdapterEnvelopeSnapshot(StrictSchemaModel):
     """Represents the normalized result for `omx adapt <target> envelope --json`."""
-
-    model_config = ConfigDict(extra="forbid")
 
     target: NonEmptyString
     display_name: NonEmptyString

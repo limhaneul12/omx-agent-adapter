@@ -1,3 +1,7 @@
+from omx_remote.adapter_types.execution_types import (
+    ExecutionThreadStartedTransportPayload,
+    ExecutionTurnCompletedTransportPayload,
+)
 from omx_remote.adapter_types.runtime_types import (
     ActiveRuntimeModesTransportPayload,
     RuntimeModeStateNormalizedPayload,
@@ -6,10 +10,6 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStatusEntryPayload,
     RuntimeModeStatusResultNormalizedPayload,
     RuntimeModeStatusTransportPayload,
-)
-from omx_remote.adapter_types.execution_types import (
-    ExecutionThreadStartedTransportPayload,
-    ExecutionTurnCompletedTransportPayload,
 )
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionAnomalyCategory,

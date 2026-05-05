@@ -2,14 +2,19 @@
 
 ## ConfigDict Rule
 
-Use `model_config = ConfigDict(...)` explicitly when a schema needs configuration.
+Use `model_config = ConfigDict(...)` explicitly when a schema needs configuration that differs from the shared strict default.
 
 Do not copy the same `ConfigDict` block into every schema by habit.
+
+If a schema only needs `extra="forbid"`, prefer inheriting from the shared strict base in `schemas/common_schemas.py` instead of repeating the same per-class config block.
+
+Keep a per-schema `ConfigDict(...)` only when that schema genuinely needs additional or different options.
 
 ### Preferred direction
 
 - Choose `ConfigDict` options intentionally.
 - Add only the options that match the contract.
+- Use the shared strict base for plain `extra="forbid"` contracts.
 - Avoid template-style config copy-paste.
 
 ### Common options to consider intentionally
