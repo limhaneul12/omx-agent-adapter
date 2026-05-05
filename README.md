@@ -12,15 +12,31 @@ Current practical strengths:
 - typed team status / await / team-api reads
 - typed adapter probe / status / envelope reads
 - execution transport normalization for OMX JSON and JSONL surfaces
+- guarded Ralph launch/resume/cleanup state control for OMX runtime workflows
+- scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 
 ## CLI quick help
 
 ```bash
 uv run agent-remote --help
 uv run agent-remote version
+uv run agent-remote runtime --help
+uv run agent-remote team --help
+uv run agent-remote adapt --help
+uv run agent-remote ralph --help
+uv run agent-remote ultrawork --help
 ```
 
-The current CLI is intentionally thin. The main value today lives in the importable Python surfaces under `src/`.
+The current CLI is still intentionally thin, but it now exposes concrete runtime/team/history/adapt/control subcommands instead of only descriptive top-level text. The main value still lives in the importable Python surfaces under `src/`.
+
+## Safe live verification examples
+
+```bash
+omx state list-active --json
+omx team status missing-team --json
+omx team api read-monitor-snapshot --input '{"team_name":"missing-team"}' --json
+omx adapt hermes probe --json
+```
 
 ## Development
 

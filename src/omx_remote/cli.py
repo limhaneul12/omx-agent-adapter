@@ -9,15 +9,22 @@ from omx_remote.execution.invoke import run_omx_command
 from omx_remote.history.session_search import search_sessions
 from omx_remote.runtime.active_runtime_modes import read_active_runtime_modes
 from omx_remote.runtime.ralph_control import (
+    build_ralph_launch_plan,
+    build_ralph_resume_plan,
     cleanup_ralph_state,
     format_preflight_failure,
     format_resume_outcome,
-    launch_ralph_command,
-    resume_ralph_command,
 )
 from omx_remote.runtime.runtime_mode_state import read_runtime_mode_state
 from omx_remote.runtime.runtime_mode_status import read_runtime_mode_status
 from omx_remote.runtime.runtime_snapshot import read_runtime_status
+from omx_remote.runtime.ultrawork_control import (
+    build_ultrawork_launch_plan,
+    build_ultrawork_resume_plan,
+    cleanup_ultrawork_state,
+    format_preflight_failure as format_ultrawork_preflight_failure,
+    format_resume_outcome as format_ultrawork_resume_outcome,
+)
 from omx_remote.schemas.bridge_schemas import AdapterProbeRequest
 from omx_remote.schemas.history_schemas import SessionSearchRequest
 from omx_remote.schemas.runtime_schemas import (
@@ -51,12 +58,14 @@ team_app = typer.Typer(help="Read OMX team runtime and team API state.", add_com
 history_app = typer.Typer(help="Read OMX session history search results.", add_completion=False)
 adapt_app = typer.Typer(help="Read OMX adapter probe, status, and envelope surfaces.", add_completion=False)
 ralph_app = typer.Typer(help="Read Ralph-related OMX runtime state.", add_completion=False)
+ultrawork_app = typer.Typer(help="Read/operate Ultrawork-related OMX runtime state.", add_completion=False)
 
 app.add_typer(runtime_app, name="runtime")
 app.add_typer(team_app, name="team")
 app.add_typer(history_app, name="history")
 app.add_typer(adapt_app, name="adapt")
 app.add_typer(ralph_app, name="ralph")
+app.add_typer(ultrawork_app, name="ultrawork")
 
 
 @app.callback(invoke_without_command=True)
@@ -213,7 +222,7 @@ def ralph_launch(
 ) -> None:
     """Launch Ralph through the OMX CLI PRD-gated startup path."""
     try:
-        command: list[str] = launch_ralph_command(
+        command, preflight_warnings = build_ralph_launch_plan(
             task,
             force_cleanup=force_cleanup,
             allow_non_tty=allow_non_tty,
@@ -223,6 +232,9 @@ def ralph_launch(
         typer.echo(command_result.model_dump_json(indent=2))
         raise typer.Exit(code=2) from error
 
+    for warning in preflight_warnings:
+        typer.echo(f"warning: {warning}")
+
     command_result = run_omx_command(command)
     typer.echo(command_result.model_dump_json(indent=2))
 
@@ -231,11 +243,14 @@ def ralph_launch(
 def ralph_resume() -> None:
     """Resume Ralph through the OMX CLI runtime surface."""
     try:
-        command: list[str] = resume_ralph_command()
+        command, preflight_warnings = build_ralph_resume_plan()
     except ValueError as error:
         command_result = format_preflight_failure(str(error))
         typer.echo(command_result.model_dump_json(indent=2))
         raise typer.Exit(code=2) from error
+
+    for warning in preflight_warnings:
+        typer.echo(f"warning: {warning}")
 
     command_result = run_omx_command(command)
     command_result = format_resume_outcome(command_result)
@@ -248,6 +263,80 @@ def ralph_resume() -> None:
 def ralph_cleanup_stale() -> None:
     """Remove common stale Ralph state files from the current OMX workspace."""
     removed_paths: list[str] = cleanup_ralph_state()
+    typer.echo({"removed": removed_paths})
+
+
+@ultrawork_app.command("launch")
+def ultrawork_launch(
+    task: str = typer.Option(..., "--task", help="Task text to pass to `omx team [N:role] \"<task>\"`."),
+    team_size: int = typer.Option(
+        1,
+        "--team-size",
+        help="Team size to allocate for the task (defaults to 1).",
+    ),
+    team_role: str = typer.Option(
+        "executor",
+        "--team-role",
+        help="Team worker role to use for the launch prefix (defaults to executor).",
+    ),
+    force_cleanup: bool = typer.Option(
+        False,
+        "--force-cleanup",
+        help="Allow launch to proceed even when known Ultrawork state files already exist.",
+    ),
+    allow_non_tty: bool = typer.Option(
+        False,
+        "--allow-non-tty",
+        help="Allow launch from a non-interactive stdin environment when you know upstream behavior is acceptable.",
+    ),
+) -> None:
+    """Launch Ultrawork through `omx team [N:role]` with state-aware guardrails."""
+    try:
+        command, preflight_warnings = build_ultrawork_launch_plan(
+            task,
+            force_cleanup=force_cleanup,
+            allow_non_tty=allow_non_tty,
+            team_size=team_size,
+            team_role=team_role,
+        )
+    except ValueError as error:
+        command_result = format_ultrawork_preflight_failure(str(error))
+        typer.echo(command_result.model_dump_json(indent=2))
+        raise typer.Exit(code=2) from error
+
+    for warning in preflight_warnings:
+        typer.echo(f"warning: {warning}")
+
+    command_result = run_omx_command(command)
+    typer.echo(command_result.model_dump_json(indent=2))
+
+
+@ultrawork_app.command("resume")
+def ultrawork_resume(
+    team_name: str = typer.Option(..., "--team-name", help="Team name to resume."),
+) -> None:
+    """Resume Ultrawork through `omx team resume <team-name>`."""
+    try:
+        command, preflight_warnings = build_ultrawork_resume_plan(team_name)
+    except ValueError as error:
+        command_result = format_ultrawork_preflight_failure(str(error))
+        typer.echo(command_result.model_dump_json(indent=2))
+        raise typer.Exit(code=2) from error
+
+    for warning in preflight_warnings:
+        typer.echo(f"warning: {warning}")
+
+    command_result = run_omx_command(command)
+    command_result = format_ultrawork_resume_outcome(command_result, team_name=team_name)
+    typer.echo(command_result.model_dump_json(indent=2))
+    if command_result.exit_code != 0:
+        raise typer.Exit(code=command_result.exit_code)
+
+
+@ultrawork_app.command("cleanup-stale")
+def ultrawork_cleanup_stale() -> None:
+    """Remove common stale Ultrawork state files from the current OMX workspace."""
+    removed_paths: list[str] = cleanup_ultrawork_state()
     typer.echo({"removed": removed_paths})
 
 
