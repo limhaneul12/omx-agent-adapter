@@ -36,6 +36,24 @@ def test_team_api_snapshot_loader_class_is_available() -> None:
     assert hasattr(team_api_snapshot, "TeamApiSnapshotLoader")
 
 
+def test_team_api_snapshot_loader_normalize_monitor_snapshot_result_preserves_missing_snapshot_as_none() -> None:
+    result = team_api_snapshot.TeamApiSnapshotLoader.normalize_monitor_snapshot_result(
+        team_api_snapshot.TeamApiTransportPayload()
+    )
+
+    assert result.snapshot is None
+
+
+def test_team_api_snapshot_loader_normalize_config_snapshot_result_drops_non_object_config_payload() -> None:
+    data_payload = team_api_snapshot.TeamApiTransportPayload(config=["not", "a", "config"])
+
+    result = team_api_snapshot.TeamApiSnapshotLoader.normalize_config_snapshot_result(
+        data_payload
+    )
+
+    assert result.config is None
+
+
 def test_read_team_api_list_tasks_accepts_typed_request() -> None:
     coroutine = team_api_snapshot.read_team_api_list_tasks(
         TeamApiListTasksRequest(team_name="alpha")
