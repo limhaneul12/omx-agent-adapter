@@ -15,6 +15,44 @@ Current practical strengths:
 - guarded Ralph launch/resume/cleanup state control for OMX runtime workflows
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 
+## Installation for other agents
+
+This package is **not published to PyPI yet**. Keep distribution private while the Goal/Ralph/Team operating loop is still being dogfooded.
+
+### Install from GitHub
+
+For another local agent or machine that has repository access:
+
+```bash
+uv tool install git+https://github.com/limhaneul12/omx-agent-adapter.git
+agent-remote --help
+agent-remote version
+```
+
+For one-off execution without a persistent tool install:
+
+```bash
+uvx --from git+https://github.com/limhaneul12/omx-agent-adapter.git agent-remote --help
+```
+
+During local development inside this repository, prefer source-first execution so the CLI sees the current working tree rather than an older installed wheel:
+
+```bash
+PYTHONPATH="$PWD/src:$PWD" uv run agent-remote --help
+```
+
+### Future PyPI package
+
+The likely public install command will be one of these after packaging, TestPyPI, and real dogfood are complete:
+
+```bash
+uv tool install agent-remote
+# or, if the package is renamed before public release:
+uv tool install omx-agent-adapter
+```
+
+Do not publish to PyPI until wheel build/install checks pass cleanly and the operating loop has been exercised by real agents.
+
 ## CLI quick help
 
 ```bash
@@ -25,6 +63,9 @@ uv run agent-remote team --help
 uv run agent-remote adapt --help
 uv run agent-remote ralph --help
 uv run agent-remote ultrawork --help
+uv run agent-remote goal --help
+uv run agent-remote goal restore-lifecycle --help
+uv run agent-remote goal operating-decision --help
 ```
 
 The current CLI is still intentionally thin, but it now exposes concrete runtime/team/history/adapt/control subcommands instead of only descriptive top-level text. The main value still lives in the importable Python surfaces under `src/`.

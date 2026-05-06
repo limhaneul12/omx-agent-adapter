@@ -36,7 +36,7 @@ include = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/omx_remote"]
-force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py", "src/omx_remote" = "omx_remote"}
+force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py"}
 
 [tool.ruff]
 target-version = "py313"
