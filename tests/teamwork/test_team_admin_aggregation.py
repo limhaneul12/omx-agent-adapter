@@ -1,4 +1,9 @@
+import asyncio
+
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReportRequest,
+)
 from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiEventSnapshot,
     TeamApiListTasksSnapshot,
@@ -6,7 +11,12 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiTaskSnapshot,
     TeamApiWorkerStatusSnapshot,
 )
-from omx_remote.teamwork.team_admin_aggregation import build_team_admin_aggregation_report
+from omx_remote.teamwork import team_admin_aggregation
+from omx_remote.teamwork.team_admin_aggregation import (
+    build_team_admin_aggregation_report,
+    read_team_admin_aggregation_report,
+    write_team_admin_aggregation_report_artifact,
+)
 
 
 def _assignment(worker_id: str, owned_file: str) -> dict[str, object]:
@@ -161,3 +171,114 @@ def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_work
     assert report.task_count == 2
     assert report.event_count == 2
     assert report.summary == "Team Admin found 1 completed, 1 blocked, and 1 missing worker result; human review required."
+
+
+
+def test_read_team_admin_aggregation_report_collects_worker_status_snapshots(monkeypatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    async def fake_read_tasks(request):
+        calls.append(("list_tasks", request.team_name))
+        return TeamApiListTasksSnapshot(
+            count=3,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="worker-1 handoff",
+                    status="completed",
+                    owner="worker-1",
+                ),
+                TeamApiTaskSnapshot(
+                    id="task-2",
+                    subject="worker-2 handoff",
+                    status="completed",
+                    owner="worker-2",
+                ),
+                TeamApiTaskSnapshot(
+                    id="task-3",
+                    subject="worker-3 handoff",
+                    status="completed",
+                    owner="worker-3",
+                ),
+            ),
+        )
+
+    async def fake_read_events(request):
+        calls.append(("read_events", request.team_name))
+        return TeamApiReadEventsSnapshot(count=0, cursor="0", events=())
+
+    async def fake_read_worker_status(request):
+        calls.append(("read_worker_status", f"{request.team_name}:{request.worker}"))
+        return TeamApiWorkerStatusSnapshot(
+            worker=request.worker,
+            state="idle",
+            updated_at="2026-05-06T00:00:00Z",
+        )
+
+    monkeypatch.setattr(
+        team_admin_aggregation,
+        "read_team_api_list_tasks",
+        fake_read_tasks,
+    )
+    monkeypatch.setattr(
+        team_admin_aggregation,
+        "read_team_api_read_events",
+        fake_read_events,
+    )
+    monkeypatch.setattr(
+        team_admin_aggregation,
+        "read_team_api_read_worker_status",
+        fake_read_worker_status,
+    )
+
+    report = asyncio.run(
+        read_team_admin_aggregation_report(
+            TeamAdminAggregationReportRequest(
+                team_name="alpha-team",
+                ralph_prd_artifact=_prd_artifact(),
+            )
+        )
+    )
+
+    assert report.aggregation_state == "ready_for_ralph_review"
+    assert report.merge_ready is True
+    assert calls == [
+        ("list_tasks", "alpha-team"),
+        ("read_events", "alpha-team"),
+        ("read_worker_status", "alpha-team:worker-1"),
+        ("read_worker_status", "alpha-team:worker-2"),
+        ("read_worker_status", "alpha-team:worker-3"),
+    ]
+
+
+
+def test_write_team_admin_aggregation_report_artifact_writes_json(tmp_path) -> None:
+    report = build_team_admin_aggregation_report(
+        ralph_prd_artifact=_prd_artifact(),
+        task_snapshot=TeamApiListTasksSnapshot(
+            count=1,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="worker-1 handoff",
+                    status="completed",
+                    owner="worker-1",
+                ),
+            ),
+        ),
+        event_snapshot=TeamApiReadEventsSnapshot(count=0, cursor="0", events=()),
+        worker_statuses=(
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-1",
+                state="idle",
+                updated_at="2026-05-06T00:00:00Z",
+            ),
+        ),
+    )
+    output_path = tmp_path / "reports" / "team-admin-report.json"
+
+    written_path = write_team_admin_aggregation_report_artifact(report, output_path)
+
+    assert written_path == output_path
+    assert '"admin_id": "team-admin"' in output_path.read_text()
+    assert '"aggregation_state": "human_review_required"' in output_path.read_text()

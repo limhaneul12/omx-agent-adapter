@@ -3,7 +3,15 @@ from omx_remote.schemas.common_schemas import (
     NonEmptyStrings,
     StrictSchemaModel,
 )
+from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.shared.omx_enums.team_admin_enums import TeamAdminAggregationState
+
+
+class TeamAdminAggregationReportRequest(StrictSchemaModel):
+    """Agent-facing request to collect a Team Admin aggregation report from OMX."""
+
+    team_name: NonEmptyString
+    ralph_prd_artifact: RalphPrdArtifact
 
 
 class TeamAdminAggregationReport(StrictSchemaModel):

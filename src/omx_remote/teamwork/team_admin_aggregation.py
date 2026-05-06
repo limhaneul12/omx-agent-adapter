@@ -1,6 +1,17 @@
+import asyncio
+from pathlib import Path
+
+import orjson
+
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
     TeamAdminAggregationReport,
+    TeamAdminAggregationReportRequest,
+)
+from omx_remote.schemas.teamwork.api_request_schemas import (
+    TeamApiListTasksRequest,
+    TeamApiReadEventsRequest,
+    TeamApiReadWorkerStatusRequest,
 )
 from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiListTasksSnapshot,
@@ -8,6 +19,11 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.omx_enums.team_admin_enums import TeamAdminAggregationState
+from omx_remote.teamwork.team_api_snapshot import (
+    read_team_api_list_tasks,
+    read_team_api_read_events,
+    read_team_api_read_worker_status,
+)
 
 COMPLETED_TASK_STATES: frozenset[str] = frozenset({"complete", "completed", "done", "success", "succeeded"})
 BLOCKED_TASK_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
@@ -236,3 +252,66 @@ def build_team_admin_aggregation_report(
         }
     )
     return report
+
+
+
+async def read_team_admin_aggregation_report(
+    request: TeamAdminAggregationReportRequest,
+) -> TeamAdminAggregationReport:
+    """Collects Team API snapshots and builds a Ralph-facing aggregation report.
+
+    Args:
+        request [TeamAdminAggregationReportRequest]: Typed Team Admin aggregation read request.
+
+    Returns:
+        TeamAdminAggregationReport: Aggregation report built from live Team API snapshots.
+    """
+    worker_ids: tuple[str, ...] = assigned_worker_ids(request.ralph_prd_artifact)
+    task_snapshot, event_snapshot = await asyncio.gather(
+        read_team_api_list_tasks(TeamApiListTasksRequest(team_name=request.team_name)),
+        read_team_api_read_events(TeamApiReadEventsRequest(team_name=request.team_name)),
+    )
+    worker_statuses: tuple[TeamApiWorkerStatusSnapshot, ...] = tuple(
+        await asyncio.gather(
+            *(
+                read_team_api_read_worker_status(
+                    TeamApiReadWorkerStatusRequest(
+                        team_name=request.team_name,
+                        worker=worker_id,
+                    )
+                )
+                for worker_id in worker_ids
+            )
+        )
+    )
+    report: TeamAdminAggregationReport = build_team_admin_aggregation_report(
+        request.ralph_prd_artifact,
+        task_snapshot,
+        event_snapshot,
+        worker_statuses,
+    )
+    return report
+
+
+
+def write_team_admin_aggregation_report_artifact(
+    report: TeamAdminAggregationReport,
+    output_path: Path,
+) -> Path:
+    """Writes a Team Admin aggregation report JSON artifact.
+
+    Args:
+        report [TeamAdminAggregationReport]: Typed aggregation report to persist.
+        output_path [Path]: Destination JSON artifact path.
+
+    Returns:
+        Path: Destination path that was written.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    serialized_report: bytes = orjson.dumps(
+        report.model_dump(mode="json"),
+        option=orjson.OPT_INDENT_2,
+    )
+    output_path.write_bytes(serialized_report + b"\n")
+    written_path: Path = output_path
+    return written_path
