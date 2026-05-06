@@ -22,7 +22,7 @@ def test_read_active_runtime_modes_returns_typed_contract(monkeypatch) -> None:
 
     result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
 
-    assert result.active_modes == ["ralph", "run"]
+    assert result.active_modes == ("ralph", "run")
 
 
 def test_read_active_runtime_modes_rejects_unparseable_json_transport(
@@ -62,7 +62,7 @@ def test_read_active_runtime_modes_preserves_contract_validation_boundary(
 
     result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
 
-    assert result.active_modes == ["ralph"]
+    assert result.active_modes == ("ralph",)
 
 
 def test_read_active_runtime_modes_invokes_expected_state_command(monkeypatch) -> None:
@@ -76,7 +76,7 @@ def test_read_active_runtime_modes_invokes_expected_state_command(monkeypatch) -
 
     result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
 
-    assert result.active_modes == ["run", "team"]
+    assert result.active_modes == ("run", "team")
     assert seen_arguments == [["state", "list-active", "--json"]]
 
 

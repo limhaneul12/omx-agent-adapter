@@ -26,7 +26,7 @@ class RuntimeModeStateRequest(StrictSchemaModel):
 class ActiveRuntimeModes(StrictSchemaModel):
     """Represents the normalized active-runtime mode list."""
 
-    active_modes: list[NonEmptyString] = Field(default_factory=list)
+    active_modes: tuple[NonEmptyString, ...]
 
 
 class RuntimeModeStateSnapshot(StrictSchemaModel):
@@ -112,9 +112,9 @@ class RuntimeStatus(StrictSchemaModel):
 
     summary: str
     has_active_modes: bool | None = None
-    active_mode_names: list[NonEmptyString] = Field(default_factory=list)
-    mode_snapshots: list[RuntimeModeSnapshot] = Field(default_factory=list)
+    active_mode_names: tuple[NonEmptyString, ...]
+    mode_snapshots: tuple[RuntimeModeSnapshot, ...]
     mode_statuses: dict[str, RuntimeModeStatus] = Field(default_factory=dict)
-    anomalies: list[RuntimeStatusAnomaly] = Field(default_factory=list)
+    anomalies: tuple[RuntimeStatusAnomaly, ...]
     has_anomalies: bool = False
     anomaly_count: int = 0

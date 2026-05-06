@@ -1,5 +1,3 @@
-from pydantic import Field
-
 from omx_remote.schemas.common_schemas import (
     NonEmptyString,
     StrictSchemaModel,
@@ -30,4 +28,4 @@ class SessionSearchSnapshot(StrictSchemaModel):
     query: NonEmptyString
     searched_files: int
     matched_sessions: int
-    results: list[SessionSearchResultSnapshot] = Field(default_factory=list)
+    results: tuple[SessionSearchResultSnapshot, ...]
