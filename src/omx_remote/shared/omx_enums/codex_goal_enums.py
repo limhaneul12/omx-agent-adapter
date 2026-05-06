@@ -87,3 +87,19 @@ class GoalDelegationDispatchAction(StrEnum):
     RALPH_LAUNCH = "ralph_launch"
     RALPH_RESUME = "ralph_resume"
     TEAM_LAUNCH = "team_launch"
+
+
+class CodexGoalLifecycleAction(StrEnum):
+    """Goal lifecycle actions selected after Ralph post-Team review."""
+
+    CLOSE_GOAL = "close_goal"
+    PREPARE_FOLLOW_UP_WAVE = "prepare_follow_up_wave"
+    WAIT_FOR_HUMAN_REVIEW = "wait_for_human_review"
+
+
+class CodexGoalLifecycleTarget(StrEnum):
+    """Next control-surface targets for Goal lifecycle decisions."""
+
+    GOAL_CLOSE = "goal_close"
+    RALPH_FOLLOW_UP = "ralph_follow_up"
+    HUMAN_REVIEW = "human_review"

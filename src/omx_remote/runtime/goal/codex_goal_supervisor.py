@@ -9,6 +9,9 @@ from omx_remote.runtime.goal.goal_delegation import (
     dispatch_goal_delegation,
     select_goal_delegation,
 )
+from omx_remote.runtime.goal.goal_lifecycle_decision import (
+    build_goal_lifecycle_decision,
+)
 from omx_remote.runtime.goal.ralph_handoff_prompt import (
     GoalToRalphHandoffPromptRenderer,
     build_goal_to_ralph_handoff_prompt,
@@ -40,6 +43,7 @@ __all__ = (
     "GoalToRalphHandoffPromptRenderer",
     "advance_tracked_codex_goal",
     "build_codex_goal_snapshot",
+    "build_goal_lifecycle_decision",
     "build_goal_to_ralph_handoff_prompt",
     "dispatch_goal_delegation",
     "prepare_tracked_codex_goal_ralph_handoff_prompt",
