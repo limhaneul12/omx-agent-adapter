@@ -65,9 +65,17 @@ class TeamAdminMergePolicy(StrEnum):
 
 
 class TeamAdminCompletionPolicy(StrEnum):
-    """Team Admin completion policies checked before Ralph post-Team review."""
+    """Ralph-owned Team Admin completion policy contract."""
 
     ALL_REQUIRED_TASKS_COMPLETED = "all_required_tasks_completed"
+
+
+class RalphPostTeamReviewDecision(StrEnum):
+    """Ralph post-Team review decisions for Goal lifecycle handoff."""
+
+    COMPLETE = "complete"
+    FOLLOW_UP_WAVE_REQUIRED = "follow_up_wave_required"
+    HUMAN_REVIEW_REQUIRED = "human_review_required"
 
 
 class RalphStateClassification(StrEnum):
