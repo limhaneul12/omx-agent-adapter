@@ -14,6 +14,7 @@ from omx_remote.runtime.goal.codex_goal_runtime import (
 )
 from omx_remote.runtime.goal.codex_goal_supervisor import (
     prepare_tracked_codex_goal_ralph_handoff_prompt,
+    restore_goal_lifecycle_state,
 )
 from omx_remote.runtime.ralph.ralph_control import (
     build_ralph_launch_plan,
@@ -317,6 +318,34 @@ def goal_prepare_ralph(
                 else verification_expectations
             ),
         )
+    except (ValidationError, ValueError) as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=2) from error
+
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@goal_app.command("restore-lifecycle")
+def goal_restore_lifecycle(
+    goal_id: str = typer.Option(
+        ...,
+        "--goal-id",
+        help="Goal identifier whose durable lifecycle artifact should be restored.",
+    ),
+    cwd: str | None = typer.Option(
+        None,
+        "--cwd",
+        help="Optional working directory whose lifecycle artifact store should be read.",
+    ),
+) -> None:
+    """Restore the durable Goal lifecycle artifact bundle and next resume target.
+
+    Args:
+        goal_id [str]: Function argument.
+        cwd [str | None]: Function argument.
+    """
+    try:
+        result = restore_goal_lifecycle_state(goal_id, working_directory=cwd)
     except (ValidationError, ValueError) as error:
         typer.echo(str(error))
         raise typer.Exit(code=2) from error
