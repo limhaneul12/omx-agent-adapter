@@ -80,7 +80,8 @@ Prefer file names that answer:
 Good direction:
 - `runtime_snapshot.py`
 - `event_feed.py`
-- `payload_mapping.py`
+- `payload_transport.py`
+- `contract_promotion.py`
 - `command_blueprint.py`
 - `session_lookup.py`
 - `target_probe.py`

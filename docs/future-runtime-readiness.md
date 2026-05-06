@@ -15,10 +15,10 @@ UI, dashboard, and frontend concerns remain out of scope.
 - `src/omx_remote/execution/event_feed.py`
   - Decodes OMX-flavored JSONL event streams line by line.
   - Understands `item.completed` wrapping and splits wrapped payloads before contract promotion.
-- `src/omx_remote/execution/payload_mapping.py`
+- `src/omx_remote/execution/contract_promotion.py`
   - Promotes OMX execution payload shapes such as `message`, `output_text`, `tool_call`, and `tool_result`.
   - Treats raw payload dictionaries as a transport seam until routing selects a stable contract.
-- `src/omx_remote/runtime/runtime_snapshot.py`
+- `src/omx_remote/runtime/status/runtime_snapshot.py`
   - Reads `omx status` output and derives runtime state from OMX stdout/stderr conventions.
   - Assumes OMX mode lines use `name: status` formatting and that `No active modes.` is the idle summary.
   - Exposes typed mode snapshots and normalized runtime anomalies above the raw CLI output.
@@ -27,11 +27,11 @@ UI, dashboard, and frontend concerns remain out of scope.
 
 ### Clearly cross-runtime concepts already present
 
-- `src/omx_remote/schemas/execution_schemas.py`
+- `src/omx_remote/schemas/execution/event_schemas.py` and `src/omx_remote/schemas/execution/interaction_schemas.py`
   - Stable execution contracts: `ExecMessage`, `ExecOutput`, `ExecToolCall`, `ExecToolResult`.
   - Interaction/report contracts: `ToolInteraction`, `ToolInteractionReport`, `ToolInteractionAnomaly`.
   - `ToolInteractionReport` now carries validated anomaly summary fields (`has_anomalies`, `anomaly_count`) alongside its explicit anomaly buckets.
-- `src/omx_remote/execution/payload_mapping.py`
+- `src/omx_remote/execution/payload_transport.py`, `src/omx_remote/execution/contract_promotion.py`, and `src/omx_remote/execution/tool_interactions.py`
   - The split between transport parsing, promotion, interaction grouping, and anomaly reporting.
   - Interaction state semantics (`completed`, `missing_result`) are downstream-control concepts, not OMX-only UI concerns.
 - `src/omx_remote/schemas/runtime/status_schemas.py`

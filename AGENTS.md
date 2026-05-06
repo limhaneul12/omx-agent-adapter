@@ -86,7 +86,8 @@ Rule ownership summary for agents:
 - Prefer filenames that describe role and intent, for example:
   - `runtime_snapshot.py`
   - `event_feed.py`
-  - `payload_mapping.py`
+  - `payload_transport.py`
+  - `contract_promotion.py`
   - `command_blueprint.py`
 - Avoid filenames that can collide with common library/module names or create ambiguity later.
   - Example anti-patterns: `pandas.py`, `enum.py`, `typing.py`

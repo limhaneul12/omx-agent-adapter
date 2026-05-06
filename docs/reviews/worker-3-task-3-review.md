@@ -11,11 +11,12 @@ This review records verified findings from worker-3's documentation-and-quality 
 The earlier drift suspicion did **not** reproduce in the current branch. The document already references the renamed `src/omx_remote/...` paths, including:
 
 - `src/omx_remote/execution/event_feed.py`
-- `src/omx_remote/execution/payload_mapping.py`
-- `src/omx_remote/runtime/runtime_snapshot.py`
+- `src/omx_remote/execution/payload_transport.py`
+- `src/omx_remote/execution/contract_promotion.py`
+- `src/omx_remote/runtime/status/runtime_snapshot.py`
 - `src/omx_remote/execution/invoke.py`
-- `src/omx_remote/schemas/execution_schemas.py`
-- `src/omx_remote/schemas/runtime_schemas.py`
+- `src/omx_remote/schemas/execution/event_schemas.py`
+- `src/omx_remote/schemas/runtime/status_schemas.py`
 
 ### 2. Live `omx session search --json` returns extra transport-only fields
 
