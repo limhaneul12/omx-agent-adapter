@@ -1,9 +1,12 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.bridge_schemas import AdapterCapabilitySnapshot
-from omx_remote.schemas.history_schemas import SessionSearchResultSnapshot
-from omx_remote.schemas.teamwork_schemas import TeamApiEventSnapshot, TeamApiTaskSnapshot
+from omx_remote.schemas.bridge.adapter_schemas import AdapterCapabilitySnapshot
+from omx_remote.schemas.history.session_schemas import SessionSearchResultSnapshot
+from omx_remote.schemas.teamwork.api_snapshot_schemas import (
+    TeamApiEventSnapshot,
+    TeamApiTaskSnapshot,
+)
 
 
 def test_adapter_capability_snapshot_rejects_empty_required_fields() -> None:

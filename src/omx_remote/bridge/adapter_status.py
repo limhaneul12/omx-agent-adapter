@@ -8,7 +8,10 @@ from omx_remote.adapter_types.bridge_types import (
     AdapterStatusTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge_schemas import AdapterProbeRequest, AdapterStatusSnapshot
+from omx_remote.schemas.bridge.adapter_schemas import (
+    AdapterProbeRequest,
+    AdapterStatusSnapshot,
+)
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
@@ -31,7 +34,14 @@ async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnap
 
 
 def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTransportPayload:
-    """Loads one adapter status transport payload from raw stdout."""
+    """Loads one adapter status transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        AdapterStatusTransportPayload: Function return value.
+    """
     if not stdout:
         raise BridgeSurfaceError("omx adapt status returned no stdout output")
 
@@ -57,7 +67,14 @@ def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTranspor
 
 
 def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
-    """Normalizes one `omx adapt <target> status --json` payload."""
+    """Normalizes one `omx adapt <target> status --json` payload.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        AdapterStatusSnapshot: Function return value.
+    """
     parsed_payload: AdapterStatusTransportPayload = _load_adapter_status_transport_payload(
         stdout
     )

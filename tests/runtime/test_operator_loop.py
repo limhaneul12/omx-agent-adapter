@@ -1,13 +1,13 @@
 import asyncio
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
     TeamOperatorDispatchOutcome,
     TeamOperatorWorkerFollowUpOutcome,
     TeamOperatorWorkerRecheckRequest,
 )
-from omx_remote.runtime import operator_loop
+from omx_remote.runtime.operators import operator_loop
 
 
 def test_operate_ralph_launch_maps_success_to_observe(monkeypatch) -> None:

@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 
 runner = CliRunner()
 
@@ -151,7 +151,7 @@ def test_ultrawork_launch_warns_when_tmux_missing(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr("omx_remote.runtime.ultrawork_control.which", lambda _: None)
+    monkeypatch.setattr("omx_remote.runtime.ultrawork.ultrawork_control.which", lambda _: None)
 
     observed_commands: list[list[str]] = []
 

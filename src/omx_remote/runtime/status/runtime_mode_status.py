@@ -10,7 +10,7 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStatusTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
@@ -21,7 +21,14 @@ from omx_remote.shared.exceptions import RuntimeSurfaceError
 async def read_runtime_mode_status(
     request: RuntimeModeStatusRequest,
 ) -> RuntimeModeStatusResult:
-    """Reads and normalizes one OMX runtime mode-status snapshot."""
+    """Reads and normalizes one OMX runtime mode-status snapshot.
+    
+    Args:
+        request [RuntimeModeStatusRequest]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusResult: Function return value.
+    """
 
     command_result = await asyncio.to_thread(
         run_omx_command,
@@ -42,7 +49,14 @@ async def read_runtime_mode_status(
 
 
 def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransportPayload:
-    """Loads one runtime mode-status transport payload from raw stdout."""
+    """Loads one runtime mode-status transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusTransportPayload: Function return value.
+    """
     if not stdout:
         raise RuntimeSurfaceError("omx state get-status returned no stdout output")
 
@@ -85,7 +99,14 @@ def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransport
 def _normalize_runtime_mode_status_data_payload(
     nested_data_payload: object,
 ) -> RuntimeModeStatusDataPayload:
-    """Normalize one nested runtime mode-status data payload into the stable subset."""
+    """Normalize one nested runtime mode-status data payload into the stable subset.
+    
+    Args:
+        nested_data_payload [object]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusDataPayload: Function return value.
+    """
     if not isinstance(nested_data_payload, dict):
         raise RuntimeSurfaceError(
             "omx state get-status returned a non-object nested data payload"
@@ -102,7 +123,14 @@ def _normalize_runtime_mode_status_data_payload(
 def _normalize_runtime_mode_status_entry_payload(
     status_payload: object,
 ) -> RuntimeModeStatusEntryPayload:
-    """Normalize one raw runtime mode-status entry transport payload."""
+    """Normalize one raw runtime mode-status entry transport payload.
+    
+    Args:
+        status_payload [object]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusEntryPayload: Function return value.
+    """
     if not isinstance(status_payload, dict):
         raise RuntimeSurfaceError(
             "omx state get-status returned a non-object mode-status payload"
@@ -141,7 +169,15 @@ def _normalize_runtime_mode_status_entry(
     mode_name: str,
     status_payload: RuntimeModeStatusEntryPayload,
 ) -> RuntimeModeStatusSnapshot:
-    """Normalizes one requested runtime mode-status entry."""
+    """Normalizes one requested runtime mode-status entry.
+    
+    Args:
+        mode_name [str]: Function argument.
+        status_payload [RuntimeModeStatusEntryPayload]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusSnapshot: Function return value.
+    """
     phase_value: str | None = status_payload.get("phase")
     if phase_value == "":
         phase_value = None
@@ -167,11 +203,18 @@ def _normalize_runtime_mode_status_entry(
 
 
 def _normalize_runtime_mode_status(
-    *,
     stdout: str,
     requested_mode: str,
 ) -> RuntimeModeStatusResult:
-    """Normalizes `omx state get-status --json` stdout into a stable contract."""
+    """Normalizes `omx state get-status --json` stdout into a stable contract.
+    
+    Args:
+        stdout [str]: Function argument.
+        requested_mode [str]: Function argument.
+    
+    Returns:
+        RuntimeModeStatusResult: Function return value.
+    """
     parsed_payload: RuntimeModeStatusTransportPayload = _load_runtime_mode_status_payload(
         stdout
     )

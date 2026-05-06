@@ -1,8 +1,8 @@
 import asyncio
 import inspect
 
-from omx_remote.runtime import runtime_snapshot
-from omx_remote.schemas.runtime import RuntimeStatusRequest
+from omx_remote.runtime.status import runtime_snapshot
+from omx_remote.schemas.runtime.status_schemas import RuntimeStatusRequest
 
 
 class DummyResult:

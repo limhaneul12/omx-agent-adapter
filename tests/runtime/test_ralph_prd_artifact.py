@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.ralph_control import read_ralph_prd_artifact
-from omx_remote.schemas.ralph import (
+from omx_remote.runtime.ralph.ralph_prd import read_ralph_prd_artifact
+from omx_remote.schemas.ralph.prd_schemas import (
     RalphPrdArtifact,
     TeamWorkerAuthorizationPolicy,
 )
@@ -117,9 +117,32 @@ def test_read_ralph_prd_artifact_returns_typed_contract_for_valid_file(tmp_path:
     result = read_ralph_prd_artifact(prd_path)
 
     assert result.objective == "ship the first typed prd artifact gate"
-    assert result.execution_plan == ["validate .omx/prd.json before launch"]
+    assert result.execution_plan == ("validate .omx/prd.json before launch",)
     assert result.team_worker_count == 4
     assert result.continuation_policy == "review_required"
+
+
+def test_ralph_prd_artifact_promotes_sequence_fields_to_tuple_contracts() -> None:
+    artifact = RalphPrdArtifact(
+        objective="audit Ralph PRD sequence contracts",
+        scope=["replace schema-bound raw lists"],
+        constraints=["preserve JSON wire arrays"],
+        execution_plan=["write failing tuple contract test"],
+        verification_expectations=["tuple fields dump as JSON arrays"],
+        requires_team_fanout=False,
+        continuation_policy="review_required",
+    )
+
+    dumped_artifact = artifact.model_dump(mode="json")
+
+    assert artifact.scope == ("replace schema-bound raw lists",)
+    assert artifact.constraints == ("preserve JSON wire arrays",)
+    assert artifact.execution_plan == ("write failing tuple contract test",)
+    assert artifact.verification_expectations == ("tuple fields dump as JSON arrays",)
+    assert dumped_artifact["scope"] == ["replace schema-bound raw lists"]
+    assert dumped_artifact["constraints"] == ["preserve JSON wire arrays"]
+    assert dumped_artifact["execution_plan"] == ["write failing tuple contract test"]
+    assert dumped_artifact["verification_expectations"] == ["tuple fields dump as JSON arrays"]
 
 
 def test_team_worker_assignment_authorization_policy_emits_stable_wire_value() -> None:

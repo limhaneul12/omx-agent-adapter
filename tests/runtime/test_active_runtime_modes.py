@@ -3,7 +3,7 @@ import asyncio
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime import active_runtime_modes
+from omx_remote.runtime.status import active_runtime_modes
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 

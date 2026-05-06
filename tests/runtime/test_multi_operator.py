@@ -1,14 +1,15 @@
 import asyncio
+import inspect
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.multi_operator import (
+from omx_remote.runtime.operators.multi_operator import (
     MultiOperatorRegistry,
     read_live_multi_operator_snapshot,
 )
-from omx_remote.schemas.multi_operator import (
+from omx_remote.schemas.multi_operator.snapshot_schemas import (
     FlowInterventionRequest,
     FlowSelector,
     ManagedFlowIdCollection,
@@ -19,12 +20,15 @@ from omx_remote.schemas.multi_operator import (
     MultiOperatorSnapshot,
     MultiOperatorSnapshotReadRequest,
 )
-from omx_remote.schemas.operator import OperatorActionResult, OperatorRecoveryHint
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.operator.action_schemas import (
+    OperatorActionResult,
+    OperatorRecoveryHint,
+)
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
 )
-from omx_remote.schemas.teamwork_schemas import TeamStatusSnapshot
+from omx_remote.schemas.teamwork.status_schemas import TeamStatusSnapshot
 
 
 
@@ -147,6 +151,17 @@ def test_multi_operator_registry_registers_repo_and_flow() -> None:
     assert len(snapshot.repos) == 1
     assert len(snapshot.flows) == 1
     assert snapshot.flows[0].flow_id == "repo-a:ralph"
+
+
+
+def test_multi_operator_registry_summarize_constructs_collection_contracts_explicitly() -> None:
+    summarize_source = inspect.getsource(MultiOperatorRegistry.summarize)
+
+    assert "ManagedOmxRepoCollection" in summarize_source
+    assert "ManagedOmxFlowCollection" in summarize_source
+    assert summarize_source.count("ManagedFlowIdCollection") >= 5
+    assert "repos=list(self._repos.values())" not in summarize_source
+    assert "flows=list(self._flows.values())" not in summarize_source
 
 
 
@@ -380,11 +395,11 @@ def test_read_live_multi_operator_snapshot_reads_ralph_and_team_statuses(
         )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.multi_operator.read_runtime_mode_status",
+        "omx_remote.runtime.operators.multi_operator.read_runtime_mode_status",
         fake_read_runtime_mode_status,
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.multi_operator.read_team_status",
+        "omx_remote.runtime.operators.multi_operator.read_team_status",
         fake_read_team_status,
     )
 
@@ -424,7 +439,7 @@ def test_read_live_multi_operator_snapshot_marks_inactive_ralph_launchable(
         )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.multi_operator.read_runtime_mode_status",
+        "omx_remote.runtime.operators.multi_operator.read_runtime_mode_status",
         fake_read_runtime_mode_status,
     )
 

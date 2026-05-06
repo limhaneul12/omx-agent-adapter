@@ -1,56 +1,55 @@
-from omx_remote.runtime.runtime_mode_status import read_runtime_mode_status
-from omx_remote.schemas.multi_operator import (
+from omx_remote.adapter_types.type_contract.operator_contract_type import (
+    ACTIONABLE_NEXT_ACTIONS,
+    ACTIVE_LOOP_STATES,
+)
+from omx_remote.runtime.status.runtime_mode_status import read_runtime_mode_status
+from omx_remote.schemas.multi_operator.snapshot_schemas import (
     FlowInterventionRequest,
     FlowSelector,
+    ManagedFlowIdCollection,
     ManagedFlowKind,
     ManagedInterventionAction,
     ManagedOmxFlow,
+    ManagedOmxFlowCollection,
     ManagedOmxRepo,
+    ManagedOmxRepoCollection,
     MultiOperatorSnapshot,
     MultiOperatorSnapshotReadRequest,
 )
-from omx_remote.schemas.operator import (
+from omx_remote.schemas.operator.action_schemas import (
     OperatorActionResult,
     OperatorLane,
     OperatorLoopState,
     OperatorNextAction,
     OperatorRecoveryHint,
 )
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
 )
-from omx_remote.schemas.teamwork_schemas import TeamStatusRequest, TeamStatusSnapshot
+from omx_remote.schemas.teamwork.status_schemas import (
+    TeamStatusRequest,
+    TeamStatusSnapshot,
+)
 from omx_remote.teamwork.team_snapshot import read_team_status
-
-_ACTIONABLE_NEXT_ACTIONS: frozenset[ManagedInterventionAction] = frozenset(
-    {
-        ManagedInterventionAction.LAUNCH,
-        ManagedInterventionAction.RESUME,
-        ManagedInterventionAction.RETRY,
-        ManagedInterventionAction.CLEANUP,
-        ManagedInterventionAction.CANCEL,
-        ManagedInterventionAction.ESCALATE,
-    }
-)
-_ACTIVE_LOOP_STATES: frozenset[OperatorLoopState] = frozenset(
-    {
-        OperatorLoopState.SUCCESS,
-        OperatorLoopState.RESUMABLE_LATER,
-        OperatorLoopState.BLOCKED_APPROVAL_NEEDED,
-        OperatorLoopState.RETRYABLE_AFTER_CLEANUP,
-    }
-)
-
 
 
 def _build_observable_status_result(
-    *,
     lane: OperatorLane,
     action: str,
     summary: str,
 ) -> OperatorActionResult:
+    """Handles build observable status result.
+    
+    Args:
+        lane [OperatorLane]: Function argument.
+        action [str]: Function argument.
+        summary [str]: Function argument.
+    
+    Returns:
+        OperatorActionResult: Function return value.
+    """
     result: OperatorActionResult = OperatorActionResult(
         lane=lane,
         action=action,
@@ -63,11 +62,20 @@ def _build_observable_status_result(
 
 
 def _build_launchable_status_result(
-    *,
     lane: OperatorLane,
     action: str,
     summary: str,
 ) -> OperatorActionResult:
+    """Handles build launchable status result.
+    
+    Args:
+        lane [OperatorLane]: Function argument.
+        action [str]: Function argument.
+        summary [str]: Function argument.
+    
+    Returns:
+        OperatorActionResult: Function return value.
+    """
     recovery_hint: OperatorRecoveryHint = OperatorRecoveryHint(
         next_action=OperatorNextAction.LAUNCH,
         reason="The live status surface did not report an active flow, so launch is the next safe action.",
@@ -87,6 +95,14 @@ def _build_launchable_status_result(
 def _build_ralph_status_result(
     status_result: RuntimeModeStatusResult,
 ) -> OperatorActionResult:
+    """Handles build ralph status result.
+    
+    Args:
+        status_result [RuntimeModeStatusResult]: Function argument.
+    
+    Returns:
+        OperatorActionResult: Function return value.
+    """
     mode_snapshot: RuntimeModeStatusSnapshot | None = status_result.mode_snapshot
     if status_result.found and mode_snapshot is not None and mode_snapshot.is_active:
         summary: str = "ralph status is active from the live OMX runtime status surface."
@@ -110,6 +126,14 @@ def _build_ralph_status_result(
 
 
 def _team_status_is_active(team_status: TeamStatusSnapshot) -> bool:
+    """Handles team status is active.
+    
+    Args:
+        team_status [TeamStatusSnapshot]: Function argument.
+    
+    Returns:
+        bool: Function return value.
+    """
     normalized_status_text: str = team_status.status.strip().lower()
     phase_text: str | None = team_status.phase
     normalized_phase_text: str | None = None
@@ -130,6 +154,14 @@ def _team_status_is_active(team_status: TeamStatusSnapshot) -> bool:
 
 
 def _build_team_status_result(team_status: TeamStatusSnapshot) -> OperatorActionResult:
+    """Handles build team status result.
+    
+    Args:
+        team_status [TeamStatusSnapshot]: Function argument.
+    
+    Returns:
+        OperatorActionResult: Function return value.
+    """
     if _team_status_is_active(team_status):
         summary: str = (
             f"team {team_status.team_name} status is active from the live OMX team status surface."
@@ -156,7 +188,14 @@ def _build_team_status_result(team_status: TeamStatusSnapshot) -> OperatorAction
 async def read_live_multi_operator_snapshot(
     request: MultiOperatorSnapshotReadRequest,
 ) -> MultiOperatorSnapshot:
-    """Read live Ralph/team status surfaces into one repo-scoped multi-operator snapshot."""
+    """Read live Ralph/team status surfaces into one repo-scoped multi-operator snapshot.
+    
+    Args:
+        request [MultiOperatorSnapshotReadRequest]: Function argument.
+    
+    Returns:
+        MultiOperatorSnapshot: Function return value.
+    """
     registry = MultiOperatorRegistry()
     registry.register_repo(
         ManagedOmxRepo(repo_id=request.repo_id, repo_root=request.repo_root)
@@ -207,6 +246,8 @@ class MultiOperatorRegistry:
     """Track repo-scoped OMX flows and summarize their current operator states."""
 
     def __init__(self) -> None:
+        """Initializes the object.
+        """
         self._repos: dict[str, ManagedOmxRepo] = {}
         self._flows: dict[str, ManagedOmxFlow] = {}
 
@@ -271,7 +312,7 @@ class MultiOperatorRegistry:
             if flow_result is None:
                 continue
 
-            if flow_result.loop_state in _ACTIVE_LOOP_STATES:
+            if flow_result.loop_state in ACTIVE_LOOP_STATES:
                 active_flow_ids.append(flow.flow_id)
 
             if flow_result.next_action == OperatorNextAction.LAUNCH:
@@ -283,14 +324,35 @@ class MultiOperatorRegistry:
             elif flow_result.loop_state == OperatorLoopState.TERMINAL_FAILURE:
                 terminal_flow_ids.append(flow.flow_id)
 
+        repo_collection: ManagedOmxRepoCollection = ManagedOmxRepoCollection(
+            root=tuple(self._repos.values())
+        )
+        flow_collection: ManagedOmxFlowCollection = ManagedOmxFlowCollection(
+            root=tuple(self._flows.values())
+        )
+        active_flow_collection: ManagedFlowIdCollection = ManagedFlowIdCollection(
+            root=tuple(active_flow_ids)
+        )
+        launchable_flow_collection: ManagedFlowIdCollection = ManagedFlowIdCollection(
+            root=tuple(launchable_flow_ids)
+        )
+        resumable_flow_collection: ManagedFlowIdCollection = ManagedFlowIdCollection(
+            root=tuple(resumable_flow_ids)
+        )
+        cleanup_flow_collection: ManagedFlowIdCollection = ManagedFlowIdCollection(
+            root=tuple(cleanup_flow_ids)
+        )
+        terminal_flow_collection: ManagedFlowIdCollection = ManagedFlowIdCollection(
+            root=tuple(terminal_flow_ids)
+        )
         snapshot: MultiOperatorSnapshot = MultiOperatorSnapshot(
-            repos=list(self._repos.values()),
-            flows=list(self._flows.values()),
-            active_flow_ids=active_flow_ids,
-            launchable_flow_ids=launchable_flow_ids,
-            resumable_flow_ids=resumable_flow_ids,
-            cleanup_flow_ids=cleanup_flow_ids,
-            terminal_flow_ids=terminal_flow_ids,
+            repos=repo_collection,
+            flows=flow_collection,
+            active_flow_ids=active_flow_collection,
+            launchable_flow_ids=launchable_flow_collection,
+            resumable_flow_ids=resumable_flow_collection,
+            cleanup_flow_ids=cleanup_flow_collection,
+            terminal_flow_ids=terminal_flow_collection,
         )
         return snapshot
 
@@ -318,7 +380,7 @@ class MultiOperatorRegistry:
             return None
 
         next_action: OperatorNextAction = flow_result.next_action
-        if next_action not in _ACTIONABLE_NEXT_ACTIONS:
+        if next_action not in ACTIONABLE_NEXT_ACTIONS:
             return None
 
         requested_action: ManagedInterventionAction

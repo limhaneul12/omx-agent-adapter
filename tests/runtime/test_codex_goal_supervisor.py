@@ -2,11 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
-
-import omx_remote.runtime.codex_goal_supervisor as codex_goal_supervisor
 from pydantic import ValidationError
 
-from omx_remote.runtime.codex_goal_supervisor import (
+import omx_remote.runtime.goal.codex_goal_supervisor as codex_goal_supervisor
+from omx_remote.runtime.goal.codex_goal_supervisor import (
+    GoalToRalphHandoffPromptRenderer,
     advance_tracked_codex_goal,
     build_codex_goal_snapshot,
     build_goal_to_ralph_handoff_prompt,
@@ -14,24 +14,26 @@ from omx_remote.runtime.codex_goal_supervisor import (
     prepare_tracked_codex_goal_ralph_handoff_prompt,
     select_goal_delegation,
 )
-from omx_remote.schemas.codex_goal import (
+from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
+from omx_remote.schemas.codex_goal.supervisor_schemas import (
     CodexGoalAdvanceRequest,
     CodexGoalCapabilitySnapshot,
-    CodexGoalMirrorState,
     CodexGoalSnapshot,
     GoalDelegationDecision,
     GoalDelegationDispatchResult,
     GoalExecutionPolicy,
     GoalToRalphHandoffPromptRequest,
 )
-from omx_remote.schemas.multi_operator import (
+from omx_remote.schemas.multi_operator.snapshot_schemas import (
     ManagedOmxFlow,
     ManagedOmxRepo,
     MultiOperatorSnapshot,
 )
-from omx_remote.schemas.operator import OperatorActionResult, OperatorRecoveryHint
-from omx_remote.schemas.ralph import RalphPrdArtifact
-
+from omx_remote.schemas.operator.action_schemas import (
+    OperatorActionResult,
+    OperatorRecoveryHint,
+)
+from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 
 
 def _build_operator_action_result(
@@ -221,6 +223,35 @@ def test_goal_delegation_decision_accepts_ralph_pipeline_target() -> None:
 
 
 
+def test_codex_goal_snapshot_promotes_flow_sequences_to_tuple_contracts() -> None:
+    capability = CodexGoalCapabilitySnapshot(
+        feature_flag_listed=True,
+        feature_flag_enabled=False,
+        goal_json_surface_verified=False,
+        capability_summary="goal feature exists but json surface is unverified",
+    )
+
+    result = CodexGoalSnapshot(
+        goal_id="goal-1",
+        objective_text="ship codex goal tuple contracts",
+        status="active",
+        source="adapter_supervisor",
+        capability=capability,
+        tracked_flow_ids=["repo-a:ralph"],
+        active_flow_ids=["repo-a:ralph"],
+        open_blockers=["repo-a:team-alpha: blocked"],
+    )
+
+    assert result.tracked_flow_ids == ("repo-a:ralph",)
+    assert result.active_flow_ids == ("repo-a:ralph",)
+    assert result.open_blockers == ("repo-a:team-alpha: blocked",)
+    json_payload = result.model_dump(mode="json")
+    assert json_payload["tracked_flow_ids"] == ["repo-a:ralph"]
+    assert json_payload["active_flow_ids"] == ["repo-a:ralph"]
+    assert json_payload["open_blockers"] == ["repo-a:team-alpha: blocked"]
+
+
+
 def test_goal_to_ralph_handoff_prompt_request_requires_source_paths() -> None:
     with pytest.raises(ValidationError):
         GoalToRalphHandoffPromptRequest(
@@ -272,6 +303,25 @@ def test_build_goal_to_ralph_handoff_prompt_renders_prd_contract() -> None:
     assert "Do not implement code" in prompt
     assert "Do not launch Team" in prompt
     assert "Stop after creating or validating the PRD artifact" in prompt
+
+
+def test_goal_to_ralph_handoff_prompt_renderer_matches_public_function() -> None:
+    request = GoalToRalphHandoffPromptRequest(
+        goal_id="goal-renderer",
+        goal_objective_text="Render through a cohesive prompt renderer.",
+        source_paths=("AGENTS.md",),
+        requested_slice="prompt renderer refactor",
+        constraints=("keep public prompt text compatible",),
+        verification_expectations=("runtime tests pass",),
+        review_policy="continue_automatically",
+        team_worker_count=None,
+    )
+
+    renderer = GoalToRalphHandoffPromptRenderer(request)
+    prompt: str = renderer.render()
+
+    assert prompt == build_goal_to_ralph_handoff_prompt(request)
+    assert "team_worker_count: not requested" in prompt
 
 
 
@@ -342,15 +392,15 @@ def test_build_codex_goal_snapshot_collects_tracked_active_and_blocked_flow_stat
         multi_operator_snapshot=snapshot,
     )
 
-    assert result.tracked_flow_ids == [
+    assert result.tracked_flow_ids == (
         "repo-a:ralph",
         "repo-a:team-alpha",
         "repo-a:team-beta",
-    ]
-    assert result.active_flow_ids == ["repo-a:ralph"]
-    assert result.open_blockers == [
-        "repo-a:team-beta: team beta failed without a recovery path"
-    ]
+    )
+    assert result.active_flow_ids == ("repo-a:ralph",)
+    assert result.open_blockers == (
+        "repo-a:team-beta: team beta failed without a recovery path",
+    )
 
 
 
@@ -685,7 +735,7 @@ def test_dispatch_goal_delegation_resumes_ralph_when_resumable_flow_exists(monke
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_supervisor.operate_ralph_resume",
+        "omx_remote.runtime.goal.goal_delegation.operate_ralph_resume",
         fake_operate_ralph_resume,
     )
 
@@ -727,7 +777,7 @@ def test_dispatch_goal_delegation_launches_team_when_pipeline_requires_fanout(
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_supervisor.operate_ralph_team_launch",
+        "omx_remote.runtime.goal.goal_delegation.operate_ralph_team_launch",
         fake_operate_ralph_team_launch,
     )
 
@@ -777,7 +827,7 @@ def test_dispatch_goal_delegation_launches_ralph_when_pipeline_is_executable(
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_supervisor.operate_ralph_launch",
+        "omx_remote.runtime.goal.goal_delegation.operate_ralph_launch",
         fake_operate_ralph_launch,
     )
 
@@ -849,7 +899,7 @@ def test_dispatch_goal_delegation_marks_goal_handoff_started_when_ralph_launches
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_supervisor.operate_ralph_launch",
+        "omx_remote.runtime.goal.goal_delegation.operate_ralph_launch",
         fake_operate_ralph_launch,
     )
 
@@ -904,7 +954,7 @@ def test_advance_tracked_codex_goal_returns_goal_only_when_mirror_state_is_goal_
     )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.is_codex_goal_session_active",
+        "omx_remote.runtime.goal.codex_goal_runtime.is_codex_goal_session_active",
         lambda session_locator: True,
     )
 
@@ -961,7 +1011,7 @@ def test_advance_tracked_codex_goal_promotes_review_required_from_mirror_state(
     )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.is_codex_goal_session_active",
+        "omx_remote.runtime.goal.codex_goal_runtime.is_codex_goal_session_active",
         lambda session_locator: True,
     )
 
@@ -1021,7 +1071,7 @@ def test_advance_tracked_codex_goal_dispatches_team_from_mirror_state(
     )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.is_codex_goal_session_active",
+        "omx_remote.runtime.goal.codex_goal_runtime.is_codex_goal_session_active",
         lambda session_locator: True,
     )
 
@@ -1037,7 +1087,7 @@ def test_advance_tracked_codex_goal_dispatches_team_from_mirror_state(
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_supervisor.operate_ralph_team_launch",
+        "omx_remote.runtime.goal.goal_delegation.operate_ralph_team_launch",
         fake_operate_ralph_team_launch,
     )
 

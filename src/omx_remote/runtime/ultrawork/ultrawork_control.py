@@ -3,9 +3,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 from shutil import which
-from typing import ClassVar
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.adapter_types.type_contract.ultrawork_contract_type import (
+    ULTRAWORK_NON_TERMINAL_OUTCOMES,
+    ULTRAWORK_NON_TERMINAL_PHASES,
+    ULTRAWORK_TERMINAL_OUTCOMES,
+    ULTRAWORK_TERMINAL_PHASES,
+)
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.shared.omx_enums.ultrawork_enums import (
     UltraworkRunOutcome,
     UltraworkRuntimePhase,
@@ -21,6 +26,14 @@ _ULTRAWORK_STATE_FILENAMES: tuple[str, ...] = (
 
 
 def _normalize_token(value: object) -> str | None:
+    """Handles normalize token.
+    
+    Args:
+        value [object]: Function argument.
+    
+    Returns:
+        str | None: Function return value.
+    """
     token: str
     if not isinstance(value, str):
         return None
@@ -32,49 +45,6 @@ def _normalize_token(value: object) -> str | None:
 
 class UltraworkStateClassifier:
     """Classifies adapter-visible Ultrawork runtime state markers."""
-
-    TERMINAL_PHASES: ClassVar[frozenset[UltraworkRuntimePhase]] = frozenset(
-        {
-            UltraworkRuntimePhase.COMPLETE,
-            UltraworkRuntimePhase.COMPLETED,
-            UltraworkRuntimePhase.FAILED,
-            UltraworkRuntimePhase.CANCELLED,
-        }
-    )
-    NON_TERMINAL_PHASES: ClassVar[frozenset[UltraworkRuntimePhase]] = frozenset(
-        {
-            UltraworkRuntimePhase.STARTING,
-            UltraworkRuntimePhase.RUNNING,
-            UltraworkRuntimePhase.EXECUTING,
-            UltraworkRuntimePhase.PLANNING,
-            UltraworkRuntimePhase.ACTIVE,
-            UltraworkRuntimePhase.PAUSED,
-            UltraworkRuntimePhase.IDLE,
-            UltraworkRuntimePhase.USER_INTERLUDE,
-            UltraworkRuntimePhase.BLOCKED_ON_USER,
-            UltraworkRuntimePhase.WAITING,
-        }
-    )
-    TERMINAL_OUTCOMES: ClassVar[frozenset[UltraworkRunOutcome]] = frozenset(
-        {
-            UltraworkRunOutcome.FINISH,
-            UltraworkRunOutcome.BLOCKED_ON_USER,
-            UltraworkRunOutcome.FAILED,
-            UltraworkRunOutcome.CANCELLED,
-            UltraworkRunOutcome.COMPLETE,
-            UltraworkRunOutcome.COMPLETED,
-            UltraworkRunOutcome.DONE,
-            UltraworkRunOutcome.USER_INTERLUDE,
-        }
-    )
-    NON_TERMINAL_OUTCOMES: ClassVar[frozenset[UltraworkRunOutcome]] = frozenset(
-        {
-            UltraworkRunOutcome.CONTINUE,
-            UltraworkRunOutcome.PROGRESS,
-            UltraworkRunOutcome.RUNNING,
-            UltraworkRunOutcome.ACTIVE,
-        }
-    )
 
     @staticmethod
     def normalize_phase(phase_value: object) -> UltraworkRuntimePhase | None:
@@ -132,7 +102,7 @@ class UltraworkStateClassifier:
             phase_value
         )
         is_terminal_phase = bool(
-            phase and phase in UltraworkStateClassifier.TERMINAL_PHASES
+            phase and phase in ULTRAWORK_TERMINAL_PHASES
         )
         return is_terminal_phase
 
@@ -150,7 +120,7 @@ class UltraworkStateClassifier:
             outcome_value
         )
         is_terminal_outcome = bool(
-            outcome and outcome in UltraworkStateClassifier.TERMINAL_OUTCOMES
+            outcome and outcome in ULTRAWORK_TERMINAL_OUTCOMES
         )
         return is_terminal_outcome
 
@@ -167,7 +137,7 @@ class UltraworkStateClassifier:
         phase: UltraworkRuntimePhase | None = UltraworkStateClassifier.normalize_phase(
             phase_value
         )
-        is_active_phase = bool(phase and phase in UltraworkStateClassifier.NON_TERMINAL_PHASES)
+        is_active_phase = bool(phase and phase in ULTRAWORK_NON_TERMINAL_PHASES)
         return is_active_phase
 
     @staticmethod
@@ -184,7 +154,7 @@ class UltraworkStateClassifier:
             outcome_value
         )
         is_active_outcome = bool(
-            outcome and outcome in UltraworkStateClassifier.NON_TERMINAL_OUTCOMES
+            outcome and outcome in ULTRAWORK_NON_TERMINAL_OUTCOMES
         )
         return is_active_outcome
 
@@ -221,6 +191,14 @@ class UltraworkStateClassifier:
     def _classify_inactive_state(
         state_payload: dict[str, object],
     ) -> UltraworkStateClassification:
+        """Handles classify inactive state.
+        
+        Args:
+            state_payload [dict[str, object]]: Function argument.
+        
+        Returns:
+            UltraworkStateClassification: Function return value.
+        """
         outcome_value: object | None = UltraworkStateClassifier._read_outcome_value(
             state_payload
         )
@@ -242,6 +220,14 @@ class UltraworkStateClassifier:
     def _classify_marker_state(
         state_payload: dict[str, object],
     ) -> UltraworkStateClassification:
+        """Handles classify marker state.
+        
+        Args:
+            state_payload [dict[str, object]]: Function argument.
+        
+        Returns:
+            UltraworkStateClassification: Function return value.
+        """
         outcome_value: object | None = UltraworkStateClassifier._read_outcome_value(
             state_payload
         )
@@ -262,6 +248,14 @@ class UltraworkStateClassifier:
 
     @staticmethod
     def _read_outcome_value(state_payload: dict[str, object]) -> object | None:
+        """Handles read outcome value.
+        
+        Args:
+            state_payload [dict[str, object]]: Function argument.
+        
+        Returns:
+            object | None: Function return value.
+        """
         outcome_value: object | None = state_payload.get("run_outcome")
         if outcome_value is None:
             outcome_value = state_payload.get("outcome")
@@ -272,6 +266,14 @@ class UltraworkStateClassifier:
 def _classify_ultrawork_state_snapshot(
     state_payload: dict[str, object],
 ) -> UltraworkStateClassification:
+    """Handles classify ultrawork state snapshot.
+    
+    Args:
+        state_payload [dict[str, object]]: Function argument.
+    
+    Returns:
+        UltraworkStateClassification: Function return value.
+    """
     classification: UltraworkStateClassification = (
         UltraworkStateClassifier.classify_state_snapshot(state_payload)
     )
@@ -279,6 +281,11 @@ def _classify_ultrawork_state_snapshot(
 
 
 def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
+    """Handles assess ultrawork launch preflight state.
+    
+    Returns:
+        tuple[UltraworkStateClassification, list[str]]: Function return value.
+    """
     existing_state_paths: list[Path] = list_ultrawork_state_paths()
     if not existing_state_paths:
         return UltraworkStateClassification.CLEAN, []
@@ -327,6 +334,11 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
 
 
 def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
+    """Handles assess ultrawork resume preflight state.
+    
+    Returns:
+        tuple[UltraworkStateClassification, list[str]]: Function return value.
+    """
     existing_state_paths: list[Path] = list_ultrawork_state_paths()
     if not existing_state_paths:
         return UltraworkStateClassification.MISSING, ["No Ultrawork state files found."]
@@ -365,7 +377,15 @@ def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassifica
     return UltraworkStateClassification.RESUMABLE, warnings
 
 
-def _detect_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
+def _detect_tty_tmux_gate(allow_non_tty: bool) -> list[str]:
+    """Handles detect tty tmux gate.
+    
+    Args:
+        allow_non_tty [bool]: Function argument.
+    
+    Returns:
+        list[str]: Function return value.
+    """
     warnings: list[str] = []
     if which("tmux") is None:
         warnings.append(
@@ -382,7 +402,14 @@ def _detect_tty_tmux_gate(*, allow_non_tty: bool) -> list[str]:
 
 
 def get_ultrawork_state_root(workspace_root: Path | None = None) -> Path:
-    """Return the OMX state directory for the current workspace."""
+    """Return the OMX state directory for the current workspace.
+    
+    Args:
+        workspace_root [Path | None]: Function argument.
+    
+    Returns:
+        Path: Function return value.
+    """
     resolved_workspace_root: Path
     if workspace_root is None:
         resolved_workspace_root = Path.cwd()
@@ -394,7 +421,14 @@ def get_ultrawork_state_root(workspace_root: Path | None = None) -> Path:
 
 
 def list_ultrawork_state_paths(workspace_root: Path | None = None) -> list[Path]:
-    """List known Ultrawork state paths that currently exist."""
+    """List known Ultrawork state paths that currently exist.
+    
+    Args:
+        workspace_root [Path | None]: Function argument.
+    
+    Returns:
+        list[Path]: Function return value.
+    """
     state_root: Path = get_ultrawork_state_root(workspace_root=workspace_root)
     existing_state_paths: list[Path] = []
 
@@ -407,8 +441,12 @@ def list_ultrawork_state_paths(workspace_root: Path | None = None) -> list[Path]
     return existing_state_paths
 
 
-def require_ultrawork_launch_tty(*, allow_non_tty: bool) -> None:
-    """Validate whether Ultrawork launch may proceed in the current stdin mode."""
+def require_ultrawork_launch_tty(allow_non_tty: bool) -> None:
+    """Validate whether Ultrawork launch may proceed in the current stdin mode.
+    
+    Args:
+        allow_non_tty [bool]: Function argument.
+    """
     if allow_non_tty:
         return
 
@@ -420,7 +458,14 @@ def require_ultrawork_launch_tty(*, allow_non_tty: bool) -> None:
 
 
 def validate_ultrawork_launch_task(task: str) -> str:
-    """Normalize and validate task text for Ultrawork launch."""
+    """Normalize and validate task text for Ultrawork launch.
+    
+    Args:
+        task [str]: Function argument.
+    
+    Returns:
+        str: Function return value.
+    """
     normalized_task: str = task.strip()
     if normalized_task == "":
         raise ValueError("Task text must not be blank.")
@@ -429,7 +474,15 @@ def validate_ultrawork_launch_task(task: str) -> str:
 
 
 def validate_ultrawork_team_prefix(team_size: int, team_role: str) -> str:
-    """Normalize and validate one ultrawork `N:role` prefix."""
+    """Normalize and validate one ultrawork `N:role` prefix.
+    
+    Args:
+        team_size [int]: Function argument.
+        team_role [str]: Function argument.
+    
+    Returns:
+        str: Function return value.
+    """
     if team_size < 1:
         raise ValueError("Team size must be at least 1.")
 
@@ -443,13 +496,23 @@ def validate_ultrawork_team_prefix(team_size: int, team_role: str) -> str:
 
 def build_ultrawork_launch_plan(
     task: str,
-    *,
     force_cleanup: bool,
     allow_non_tty: bool,
     team_size: int,
     team_role: str,
 ) -> tuple[list[str], list[str]]:
-    """Build launch command and preflight warnings for Ultrawork."""
+    """Build launch command and preflight warnings for Ultrawork.
+    
+    Args:
+        task [str]: Function argument.
+        force_cleanup [bool]: Function argument.
+        allow_non_tty [bool]: Function argument.
+        team_size [int]: Function argument.
+        team_role [str]: Function argument.
+    
+    Returns:
+        tuple[list[str], list[str]]: Function return value.
+    """
     normalized_task: str = validate_ultrawork_launch_task(task)
     require_ultrawork_launch_tty(allow_non_tty=allow_non_tty)
 
@@ -471,7 +534,14 @@ def build_ultrawork_launch_plan(
 
 
 def build_ultrawork_resume_plan(team_name: str) -> tuple[list[str], list[str]]:
-    """Build resume command and preflight warnings for Ultrawork."""
+    """Build resume command and preflight warnings for Ultrawork.
+    
+    Args:
+        team_name [str]: Function argument.
+    
+    Returns:
+        tuple[list[str], list[str]]: Function return value.
+    """
     normalized_team_name: str = team_name.strip()
     if normalized_team_name == "":
         raise ValueError("Team name must not be blank.")
@@ -489,7 +559,14 @@ def build_ultrawork_resume_plan(team_name: str) -> tuple[list[str], list[str]]:
 
 
 def cleanup_ultrawork_state(workspace_root: Path | None = None) -> list[str]:
-    """Remove known Ultrawork stale-state files."""
+    """Remove known Ultrawork stale-state files.
+    
+    Args:
+        workspace_root [Path | None]: Function argument.
+    
+    Returns:
+        list[str]: Function return value.
+    """
     existing_state_paths: list[Path] = list_ultrawork_state_paths(workspace_root=workspace_root)
     removed_paths: list[str] = []
 
@@ -503,10 +580,17 @@ def cleanup_ultrawork_state(workspace_root: Path | None = None) -> list[str]:
 
 def format_resume_outcome(
     command_result: OmxCommandResult,
-    *,
     team_name: str,
 ) -> OmxCommandResult:
-    """Normalize known Ultrawork resume non-resumable responses into a failure envelope."""
+    """Normalize known Ultrawork resume non-resumable responses into a failure envelope.
+    
+    Args:
+        command_result [OmxCommandResult]: Function argument.
+        team_name [str]: Function argument.
+    
+    Returns:
+        OmxCommandResult: Function return value.
+    """
     normalized_stdout: str = command_result.stdout.strip().lower()
     no_resumable_message: str = (
         f"no resumable team found for {team_name.strip().lower()}"
@@ -521,6 +605,13 @@ def format_resume_outcome(
 
 
 def format_preflight_failure(message: str) -> OmxCommandResult:
-    """Return a typed command result for Ultrawork preflight failures."""
+    """Return a typed command result for Ultrawork preflight failures.
+    
+    Args:
+        message [str]: Function argument.
+    
+    Returns:
+        OmxCommandResult: Function return value.
+    """
     failure_result = OmxCommandResult(exit_code=2, stdout="", stderr=message)
     return failure_result

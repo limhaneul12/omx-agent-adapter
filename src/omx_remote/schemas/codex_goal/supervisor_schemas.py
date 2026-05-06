@@ -6,8 +6,12 @@ from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalMirrorState,
     CodexGoalReviewPolicy,
 )
-from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-from omx_remote.schemas.multi_operator import MultiOperatorSnapshot
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    NonEmptyStrings,
+    StrictSchemaModel,
+)
+from omx_remote.schemas.multi_operator.snapshot_schemas import MultiOperatorSnapshot
 from omx_remote.schemas.operator.action_schemas import OperatorActionResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.shared.omx_enums.codex_goal_enums import (
@@ -36,9 +40,9 @@ class CodexGoalSnapshot(StrictSchemaModel):
     status: CodexGoalStatus
     source: CodexGoalSource
     capability: CodexGoalCapabilitySnapshot
-    tracked_flow_ids: list[NonEmptyString] = Field(default_factory=list)
-    active_flow_ids: list[NonEmptyString] = Field(default_factory=list)
-    open_blockers: list[NonEmptyString] = Field(default_factory=list)
+    tracked_flow_ids: NonEmptyStrings = ()
+    active_flow_ids: NonEmptyStrings = ()
+    open_blockers: NonEmptyStrings = ()
 
 
 class GoalExecutionPolicy(StrictSchemaModel):
@@ -66,6 +70,11 @@ class GoalDelegationDecision(StrictSchemaModel):
 
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> Self:
+        """Handles validate team worker count.
+        
+        Returns:
+            Self: Function return value.
+        """
         if self.requires_team_fanout and self.team_worker_count is None:
             raise ValueError(
                 "team_worker_count is required when requires_team_fanout is true."

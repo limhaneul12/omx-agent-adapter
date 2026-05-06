@@ -64,7 +64,11 @@ class RuntimeModeStatusResult(StrictSchemaModel):
 
     @model_validator(mode="after")
     def _validate_mode_snapshot_presence(self) -> "RuntimeModeStatusResult":
-        """Validates that found-state and snapshot presence stay aligned."""
+        """Validates that found-state and snapshot presence stay aligned.
+        
+        Returns:
+            'RuntimeModeStatusResult': Function return value.
+        """
         if self.found and self.mode_snapshot is None:
             raise ValueError(
                 "RuntimeModeStatusResult.mode_snapshot is required when found is true"
@@ -86,7 +90,11 @@ class RuntimeModeStateResult(StrictSchemaModel):
 
     @model_validator(mode="after")
     def _validate_state_presence(self) -> "RuntimeModeStateResult":
-        """Validates that exists-state and payload presence stay aligned."""
+        """Validates that exists-state and payload presence stay aligned.
+        
+        Returns:
+            'RuntimeModeStateResult': Function return value.
+        """
         if self.exists and self.state is None:
             raise ValueError(
                 "RuntimeModeStateResult.state is required when exists is true"

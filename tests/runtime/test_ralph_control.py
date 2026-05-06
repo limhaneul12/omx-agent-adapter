@@ -7,9 +7,14 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from omx_remote.adapter_types.ralph_types import (
+    RalphTeamDagNodePayload,
+    RalphTeamDagPayload,
+    RalphWorkerAuthorizationPayload,
+)
 from omx_remote.cli import app
-from omx_remote.runtime.ralph_control import build_ralph_team_launch_plan
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.runtime.ralph.ralph_control import build_ralph_team_launch_plan
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 
 runner = CliRunner()
 
@@ -64,6 +69,40 @@ def _team_assignment(
             "requires_llm_review_for": ["local checkpoint commit"],
         },
     }
+
+
+def test_ralph_team_dag_payload_types_expose_stable_contract_keys() -> None:
+    assert RalphWorkerAuthorizationPayload.__required_keys__ == frozenset(
+        {
+            "policy",
+            "allowed_commands",
+            "forbidden_commands",
+            "requires_human_for",
+            "requires_llm_review_for",
+        }
+    )
+    assert RalphTeamDagNodePayload.__required_keys__ == frozenset(
+        {
+            "id",
+            "subject",
+            "description",
+            "role",
+            "lane",
+            "filePaths",
+            "depends_on",
+            "authorization",
+            "acceptance",
+        }
+    )
+    assert RalphTeamDagPayload.__required_keys__ == frozenset(
+        {
+            "schema_version",
+            "plan_slug",
+            "source_prd",
+            "worker_policy",
+            "nodes",
+        }
+    )
 
 
 def test_ralph_launch_rejects_blank_task() -> None:
@@ -394,7 +433,7 @@ def test_ralph_launch_warns_when_tmux_missing(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr("omx_remote.runtime.ralph_control.which", lambda _: None)
+    monkeypatch.setattr("omx_remote.runtime.ralph.ralph_state.which", lambda _: None)
     (tmp_path / ".omx").mkdir()
     _write_valid_prd_artifact(tmp_path)
     observed_commands: list[list[str]] = []

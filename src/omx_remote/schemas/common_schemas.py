@@ -3,6 +3,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, RootModel, StringConstraints
 
 NonEmptyString = Annotated[str, StringConstraints(min_length=1)]
+type NonEmptyStrings = tuple[NonEmptyString, ...]
 
 
 class StrictSchemaModel(BaseModel):

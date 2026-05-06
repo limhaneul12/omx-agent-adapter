@@ -8,45 +8,45 @@ from omx_remote.bridge.adapter_probe import probe_adapter
 from omx_remote.bridge.adapter_status import read_adapter_status
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.history.session_search import search_sessions
-from omx_remote.runtime.active_runtime_modes import read_active_runtime_modes
-from omx_remote.runtime.codex_goal_runtime import (
+from omx_remote.runtime.goal.codex_goal_runtime import (
     read_codex_goal_status,
     start_codex_goal,
 )
-from omx_remote.runtime.codex_goal_supervisor import (
+from omx_remote.runtime.goal.codex_goal_supervisor import (
     prepare_tracked_codex_goal_ralph_handoff_prompt,
 )
-from omx_remote.runtime.ralph_control import (
+from omx_remote.runtime.ralph.ralph_control import (
     build_ralph_launch_plan,
     build_ralph_resume_plan,
-    cleanup_ralph_state,
     format_preflight_failure,
     format_resume_outcome,
 )
-from omx_remote.runtime.runtime_mode_state import read_runtime_mode_state
-from omx_remote.runtime.runtime_mode_status import read_runtime_mode_status
-from omx_remote.runtime.runtime_snapshot import read_runtime_status
-from omx_remote.runtime.ultrawork_control import (
+from omx_remote.runtime.ralph.ralph_state import cleanup_ralph_state
+from omx_remote.runtime.status.active_runtime_modes import read_active_runtime_modes
+from omx_remote.runtime.status.runtime_mode_state import read_runtime_mode_state
+from omx_remote.runtime.status.runtime_mode_status import read_runtime_mode_status
+from omx_remote.runtime.status.runtime_snapshot import read_runtime_status
+from omx_remote.runtime.ultrawork.ultrawork_control import (
     build_ultrawork_launch_plan,
     build_ultrawork_resume_plan,
     cleanup_ultrawork_state,
     format_preflight_failure as format_ultrawork_preflight_failure,
     format_resume_outcome as format_ultrawork_resume_outcome,
 )
-from omx_remote.schemas.bridge_schemas import AdapterProbeRequest
-from omx_remote.schemas.codex_goal import (
+from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
+from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalExecutionShape,
     CodexGoalLaunchRequest,
     CodexGoalReviewPolicy,
     CodexGoalSpawnStatus,
 )
-from omx_remote.schemas.history_schemas import SessionSearchRequest
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.history.session_schemas import SessionSearchRequest
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStateRequest,
     RuntimeModeStatusRequest,
     RuntimeStatusRequest,
 )
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiClaimTaskRequest,
     TeamApiCleanupRequest,
@@ -67,6 +67,8 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiWorkerInboxWriteRequest,
     TeamApiWriteShutdownRequest,
     TeamApiWriteTaskApprovalRequest,
+)
+from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
     TeamStatusRequest,
 )
@@ -122,7 +124,11 @@ app.add_typer(ultrawork_app, name="ultrawork")
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
-    """Show the top-level help when no subcommand is provided."""
+    """Show the top-level help when no subcommand is provided.
+    
+    Args:
+        ctx [typer.Context]: Function argument.
+    """
     if ctx.invoked_subcommand is None:
         typer.echo(ctx.get_help())
 
@@ -137,6 +143,14 @@ def version() -> None:
 def _parse_goal_execution_shape(
     execution_shape_text: str,
 ) -> CodexGoalExecutionShape:
+    """Handles parse goal execution shape.
+    
+    Args:
+        execution_shape_text [str]: Function argument.
+    
+    Returns:
+        CodexGoalExecutionShape: Function return value.
+    """
     if execution_shape_text == "goal_only":
         execution_shape: CodexGoalExecutionShape = CodexGoalExecutionShape.GOAL_ONLY
         return execution_shape
@@ -153,6 +167,14 @@ def _parse_goal_execution_shape(
 def _parse_goal_review_policy(
     review_policy_text: str,
 ) -> CodexGoalReviewPolicy:
+    """Handles parse goal review policy.
+    
+    Args:
+        review_policy_text [str]: Function argument.
+    
+    Returns:
+        CodexGoalReviewPolicy: Function return value.
+    """
     if review_policy_text == "continue_automatically":
         review_policy: CodexGoalReviewPolicy = (
             CodexGoalReviewPolicy.CONTINUE_AUTOMATICALLY
@@ -191,7 +213,15 @@ def goal_start(
         help="Optional working directory where Codex should start and mirror state should be written.",
     ),
 ) -> None:
-    """Start one adapter-tracked native Codex Goal session."""
+    """Start one adapter-tracked native Codex Goal session.
+    
+    Args:
+        objective [str]: Function argument.
+        execution_shape [str]: Function argument.
+        review_policy [str]: Function argument.
+        team_worker_count [int | None]: Function argument.
+        cwd [str | None]: Function argument.
+    """
     try:
         parsed_execution_shape: CodexGoalExecutionShape = _parse_goal_execution_shape(
             execution_shape
@@ -224,7 +254,11 @@ def goal_status(
         help="Optional working directory whose adapter-owned goal mirror state should be read.",
     ),
 ) -> None:
-    """Read the latest adapter-owned native Codex Goal mirror state."""
+    """Read the latest adapter-owned native Codex Goal mirror state.
+    
+    Args:
+        cwd [str | None]: Function argument.
+    """
     try:
         result = read_codex_goal_status(working_directory=cwd)
     except (ValidationError, ValueError) as error:
@@ -262,7 +296,15 @@ def goal_prepare_ralph(
         help="Optional working directory whose adapter-owned goal mirror state should be read.",
     ),
 ) -> None:
-    """Prepare a read-only Ralph PRD handoff prompt from the tracked Goal."""
+    """Prepare a read-only Ralph PRD handoff prompt from the tracked Goal.
+    
+    Args:
+        source_paths [list[str] | None]: Function argument.
+        requested_slice [str]: Function argument.
+        constraints [list[str] | None]: Function argument.
+        verification_expectations [list[str] | None]: Function argument.
+        cwd [str | None]: Function argument.
+    """
     try:
         result = prepare_tracked_codex_goal_ralph_handoff_prompt(
             working_directory=cwd,
@@ -298,21 +340,33 @@ def runtime_active_modes() -> None:
 
 @runtime_app.command("mode-status")
 def runtime_mode_status(mode: str = typer.Option(..., "--mode", help="OMX mode name to inspect.")) -> None:
-    """Read normalized OMX state get-status result for one mode."""
+    """Read normalized OMX state get-status result for one mode.
+    
+    Args:
+        mode [str]: Function argument.
+    """
     result = asyncio.run(read_runtime_mode_status(RuntimeModeStatusRequest(mode=mode)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @runtime_app.command("mode-state")
 def runtime_mode_state(mode: str = typer.Option(..., "--mode", help="OMX mode name to inspect.")) -> None:
-    """Read normalized OMX state read result for one mode."""
+    """Read normalized OMX state read result for one mode.
+    
+    Args:
+        mode [str]: Function argument.
+    """
     result = asyncio.run(read_runtime_mode_state(RuntimeModeStateRequest(mode=mode)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @team_app.command("status")
 def team_status(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
-    """Read normalized OMX team status."""
+    """Read normalized OMX team status.
+    
+    Args:
+        team [str]: Function argument.
+    """
     result = asyncio.run(read_team_status(TeamStatusRequest(team_name=team)))
     typer.echo(result.model_dump_json(indent=2))
 
@@ -322,7 +376,12 @@ def team_await_event(
     team: str = typer.Option(..., "--team", help="Team name to inspect."),
     timeout_ms: int = typer.Option(1000, "--timeout-ms", help="Wait timeout in milliseconds."),
 ) -> None:
-    """Read one normalized OMX team await snapshot."""
+    """Read one normalized OMX team await snapshot.
+    
+    Args:
+        team [str]: Function argument.
+        timeout_ms [int]: Function argument.
+    """
     _ = timeout_ms
     result = asyncio.run(await_team_status(TeamAwaitRequest(team_name=team)))
     typer.echo(result.model_dump_json(indent=2))
@@ -330,14 +389,22 @@ def team_await_event(
 
 @team_app.command("tasks")
 def team_tasks(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
-    """Read normalized OMX team task list."""
+    """Read normalized OMX team task list.
+    
+    Args:
+        team [str]: Function argument.
+    """
     result = asyncio.run(read_team_api_list_tasks(TeamApiListTasksRequest(team_name=team)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @team_app.command("events")
 def team_events(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
-    """Read normalized OMX team event list."""
+    """Read normalized OMX team event list.
+    
+    Args:
+        team [str]: Function argument.
+    """
     result = asyncio.run(read_team_api_read_events(TeamApiReadEventsRequest(team_name=team)))
     typer.echo(result.model_dump_json(indent=2))
 
@@ -347,7 +414,12 @@ def team_worker_status(
     team: str = typer.Option(..., "--team", help="Team name to inspect."),
     worker: str = typer.Option(..., "--worker", help="Worker name to inspect."),
 ) -> None:
-    """Read normalized OMX team worker status."""
+    """Read normalized OMX team worker status.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+    """
     result = asyncio.run(
         read_team_api_read_worker_status(
             TeamApiReadWorkerStatusRequest(team_name=team, worker=worker)
@@ -363,7 +435,14 @@ def team_send_message(
     to_worker: str = typer.Option(..., "--to-worker", help="Worker identity receiving the message."),
     body: str = typer.Option(..., "--body", help="Message body to deliver."),
 ) -> None:
-    """Send one typed OMX team message."""
+    """Send one typed OMX team message.
+    
+    Args:
+        team [str]: Function argument.
+        from_worker [str]: Function argument.
+        to_worker [str]: Function argument.
+        body [str]: Function argument.
+    """
     result = asyncio.run(
         send_team_message(
             TeamApiSendMessageRequest(
@@ -385,7 +464,13 @@ def team_write_inbox(
     worker: str = typer.Option(..., "--worker", help="Worker identity whose inbox should be updated."),
     content: str = typer.Option(..., "--content", help="Inbox content to write."),
 ) -> None:
-    """Write one typed OMX worker inbox entry."""
+    """Write one typed OMX worker inbox entry.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+        content [str]: Function argument.
+    """
     result = asyncio.run(
         write_team_worker_inbox(
             TeamApiWorkerInboxWriteRequest(
@@ -406,7 +491,13 @@ def team_broadcast(
     from_worker: str = typer.Option(..., "--from-worker", help="Worker identity sending the broadcast."),
     body: str = typer.Option(..., "--body", help="Broadcast body to deliver."),
 ) -> None:
-    """Broadcast one typed OMX team message."""
+    """Broadcast one typed OMX team message.
+    
+    Args:
+        team [str]: Function argument.
+        from_worker [str]: Function argument.
+        body [str]: Function argument.
+    """
     result = asyncio.run(
         broadcast_team_message(
             TeamApiBroadcastRequest(
@@ -428,7 +519,14 @@ def team_create_task(
     description: str = typer.Option(..., "--description", help="Task description/body."),
     owner: str | None = typer.Option(None, "--owner", help="Optional worker owner to assign."),
 ) -> None:
-    """Create one typed OMX team task."""
+    """Create one typed OMX team task.
+    
+    Args:
+        team [str]: Function argument.
+        subject [str]: Function argument.
+        description [str]: Function argument.
+        owner [str | None]: Function argument.
+    """
     result = asyncio.run(
         create_team_task(
             TeamApiCreateTaskRequest(
@@ -449,7 +547,12 @@ def team_read_task(
     team: str = typer.Option(..., "--team", help="Team name that owns the task."),
     task_id: str = typer.Option(..., "--task-id", help="Task id to inspect."),
 ) -> None:
-    """Read one typed OMX team task command result."""
+    """Read one typed OMX team task command result.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+    """
     result = asyncio.run(
         read_team_task(
             TeamApiReadTaskRequest(
@@ -471,7 +574,15 @@ def team_transition_task_status(
     to_status: str = typer.Option(..., "--to-status", help="Next task status."),
     claim_token: str = typer.Option(..., "--claim-token", help="Task claim token required by OMX."),
 ) -> None:
-    """Transition one typed OMX team task status."""
+    """Transition one typed OMX team task status.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+        from_status [str]: Function argument.
+        to_status [str]: Function argument.
+        claim_token [str]: Function argument.
+    """
     result = asyncio.run(
         transition_team_task_status(
             TeamApiTransitionTaskStatusRequest(
@@ -501,7 +612,16 @@ def team_update_task(
         help="Optional requires_code_change boolean override.",
     ),
 ) -> None:
-    """Update one typed OMX team task metadata record."""
+    """Update one typed OMX team task metadata record.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+        subject [str | None]: Function argument.
+        description [str | None]: Function argument.
+        blocked_by [list[str] | None]: Function argument.
+        requires_code_change [bool | None]: Function argument.
+    """
     result = asyncio.run(
         update_team_task(
             TeamApiUpdateTaskRequest(
@@ -526,7 +646,14 @@ def team_claim_task(
     worker: str = typer.Option(..., "--worker", help="Worker identity claiming the task."),
     expected_version: int | None = typer.Option(None, "--expected-version", help="Optional expected task version guard."),
 ) -> None:
-    """Claim one typed OMX team task."""
+    """Claim one typed OMX team task.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+        worker [str]: Function argument.
+        expected_version [int | None]: Function argument.
+    """
     result = asyncio.run(
         claim_team_task(
             TeamApiClaimTaskRequest(
@@ -549,7 +676,14 @@ def team_release_task_claim(
     claim_token: str = typer.Option(..., "--claim-token", help="Task claim token to release."),
     worker: str = typer.Option(..., "--worker", help="Worker identity releasing the claim."),
 ) -> None:
-    """Release one typed OMX team task claim."""
+    """Release one typed OMX team task claim.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+        claim_token [str]: Function argument.
+        worker [str]: Function argument.
+    """
     result = asyncio.run(
         release_team_task_claim(
             TeamApiReleaseTaskClaimRequest(
@@ -570,7 +704,12 @@ def team_read_task_approval(
     team: str = typer.Option(..., "--team", help="Team name that owns the task."),
     task_id: str = typer.Option(..., "--task-id", help="Task id whose approval state should be read."),
 ) -> None:
-    """Read one typed OMX team task approval command result."""
+    """Read one typed OMX team task approval command result.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+    """
     result = asyncio.run(
         read_team_task_approval(
             TeamApiReadTaskApprovalRequest(
@@ -597,7 +736,16 @@ def team_write_task_approval(
         help="Optional required flag override.",
     ),
 ) -> None:
-    """Write one typed OMX team task approval record."""
+    """Write one typed OMX team task approval record.
+    
+    Args:
+        team [str]: Function argument.
+        task_id [str]: Function argument.
+        status [str]: Function argument.
+        reviewer [str]: Function argument.
+        decision_reason [str]: Function argument.
+        required [bool | None]: Function argument.
+    """
     result = asyncio.run(
         write_team_task_approval(
             TeamApiWriteTaskApprovalRequest(
@@ -621,7 +769,13 @@ def team_mailbox_mark_delivered(
     worker: str = typer.Option(..., "--worker", help="Worker identity that owns the mailbox message."),
     message_id: str = typer.Option(..., "--message-id", help="Mailbox message id to mark as delivered."),
 ) -> None:
-    """Mark one typed OMX mailbox message as delivered."""
+    """Mark one typed OMX mailbox message as delivered.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+        message_id [str]: Function argument.
+    """
     result = asyncio.run(
         mark_team_mailbox_delivered(
             TeamApiMailboxMarkDeliveredRequest(
@@ -642,7 +796,13 @@ def team_mailbox_mark_notified(
     worker: str = typer.Option(..., "--worker", help="Worker identity that owns the mailbox message."),
     message_id: str = typer.Option(..., "--message-id", help="Mailbox message id to mark as notified."),
 ) -> None:
-    """Mark one typed OMX mailbox message as notified."""
+    """Mark one typed OMX mailbox message as notified.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+        message_id [str]: Function argument.
+    """
     result = asyncio.run(
         mark_team_mailbox_notified(
             TeamApiMailboxMarkNotifiedRequest(
@@ -663,7 +823,13 @@ def team_write_shutdown_request(
     worker: str = typer.Option(..., "--worker", help="Worker identity receiving the shutdown request."),
     requested_by: str = typer.Option(..., "--requested-by", help="Requester identity writing the shutdown request."),
 ) -> None:
-    """Write one typed OMX team shutdown request."""
+    """Write one typed OMX team shutdown request.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+        requested_by [str]: Function argument.
+    """
     result = asyncio.run(
         write_team_shutdown_request(
             TeamApiWriteShutdownRequest(
@@ -684,7 +850,13 @@ def team_read_shutdown_ack(
     worker: str = typer.Option(..., "--worker", help="Worker identity whose shutdown ack should be read."),
     min_updated_at: str | None = typer.Option(None, "--min-updated-at", help="Optional minimum ack updated_at watermark."),
 ) -> None:
-    """Read one typed OMX team shutdown ack command result."""
+    """Read one typed OMX team shutdown ack command result.
+    
+    Args:
+        team [str]: Function argument.
+        worker [str]: Function argument.
+        min_updated_at [str | None]: Function argument.
+    """
     result = asyncio.run(
         read_team_shutdown_ack(
             TeamApiReadShutdownAckRequest(
@@ -713,7 +885,13 @@ def team_cleanup(
         help="Optional failed-task acknowledgement override for cleanup orchestration.",
     ),
 ) -> None:
-    """Run one typed OMX team cleanup call."""
+    """Run one typed OMX team cleanup call.
+    
+    Args:
+        team [str]: Function argument.
+        force [bool | None]: Function argument.
+        confirm_issues [bool | None]: Function argument.
+    """
     result = asyncio.run(
         cleanup_team_state(
             TeamApiCleanupRequest(
@@ -732,7 +910,11 @@ def team_cleanup(
 def team_orphan_cleanup(
     team: str = typer.Option(..., "--team", help="Team name whose orphaned runtime state should be cleaned up."),
 ) -> None:
-    """Run one typed OMX team orphan-cleanup call."""
+    """Run one typed OMX team orphan-cleanup call.
+    
+    Args:
+        team [str]: Function argument.
+    """
     result = asyncio.run(
         cleanup_team_orphans(
             TeamApiOrphanCleanupRequest(
@@ -750,28 +932,45 @@ def history_session_search(
     query: str = typer.Option(..., "--query", help="Search query to run against OMX session history."),
     limit: int = typer.Option(10, "--limit", help="Maximum number of results to return."),
 ) -> None:
-    """Read normalized OMX session-search results."""
+    """Read normalized OMX session-search results.
+    
+    Args:
+        query [str]: Function argument.
+        limit [int]: Function argument.
+    """
     result = asyncio.run(search_sessions(SessionSearchRequest(query=query, limit=limit)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @adapt_app.command("probe")
 def adapt_probe(target: str = typer.Option(..., "--target", help="Adapter target name to inspect.")) -> None:
-    """Read normalized OMX adapter probe output."""
+    """Read normalized OMX adapter probe output.
+    
+    Args:
+        target [str]: Function argument.
+    """
     result = asyncio.run(probe_adapter(AdapterProbeRequest(target=target)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @adapt_app.command("status")
 def adapt_status(target: str = typer.Option(..., "--target", help="Adapter target name to inspect.")) -> None:
-    """Read normalized OMX adapter status output."""
+    """Read normalized OMX adapter status output.
+    
+    Args:
+        target [str]: Function argument.
+    """
     result = asyncio.run(read_adapter_status(AdapterProbeRequest(target=target)))
     typer.echo(result.model_dump_json(indent=2))
 
 
 @adapt_app.command("envelope")
 def adapt_envelope(target: str = typer.Option(..., "--target", help="Adapter target name to inspect.")) -> None:
-    """Read normalized OMX adapter envelope output."""
+    """Read normalized OMX adapter envelope output.
+    
+    Args:
+        target [str]: Function argument.
+    """
     result = asyncio.run(read_adapter_envelope(AdapterProbeRequest(target=target)))
     typer.echo(result.model_dump_json(indent=2))
 
@@ -810,7 +1009,13 @@ def ralph_launch(
         help="Allow launch from a non-interactive stdin environment when you know upstream behavior is acceptable.",
     ),
 ) -> None:
-    """Launch Ralph through the OMX CLI PRD-gated startup path."""
+    """Launch Ralph through the OMX CLI PRD-gated startup path.
+    
+    Args:
+        task [str]: Function argument.
+        force_cleanup [bool]: Function argument.
+        allow_non_tty [bool]: Function argument.
+    """
     try:
         command, preflight_warnings = build_ralph_launch_plan(
             task,
@@ -880,7 +1085,15 @@ def ultrawork_launch(
         help="Allow launch from a non-interactive stdin environment when you know upstream behavior is acceptable.",
     ),
 ) -> None:
-    """Launch Ultrawork through `omx team [N:role]` with state-aware guardrails."""
+    """Launch Ultrawork through `omx team [N:role]` with state-aware guardrails.
+    
+    Args:
+        task [str]: Function argument.
+        team_size [int]: Function argument.
+        team_role [str]: Function argument.
+        force_cleanup [bool]: Function argument.
+        allow_non_tty [bool]: Function argument.
+    """
     try:
         command, preflight_warnings = build_ultrawork_launch_plan(
             task,
@@ -905,7 +1118,11 @@ def ultrawork_launch(
 def ultrawork_resume(
     team_name: str = typer.Option(..., "--team-name", help="Team name to resume."),
 ) -> None:
-    """Resume Ultrawork through `omx team resume <team-name>`."""
+    """Resume Ultrawork through `omx team resume <team-name>`.
+    
+    Args:
+        team_name [str]: Function argument.
+    """
     try:
         command, preflight_warnings = build_ultrawork_resume_plan(team_name)
     except ValueError as error:

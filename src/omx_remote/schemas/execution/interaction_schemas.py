@@ -1,82 +1,16 @@
 from __future__ import annotations
 
-from typing import Literal
-
-from pydantic import NonNegativeInt, model_validator
+from pydantic import model_validator
 
 from omx_remote.schemas.common_schemas import (
     NonEmptyString,
     StrictSchemaModel,
 )
+from omx_remote.schemas.execution.event_schemas import ExecToolCall, ExecToolResult
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionAnomalyCategory,
-    ExecutionPayloadKind,
     ToolInteractionState,
 )
-
-
-class ExecRequest(StrictSchemaModel):
-    """Represents a normalized execution request."""
-
-    prompt: NonEmptyString
-    cwd: NonEmptyString | None = None
-
-
-class ExecutionEventDecodeRequest(StrictSchemaModel):
-    """Represents the typed request boundary for execution event decoding."""
-
-    payload: NonEmptyString
-
-
-class ExecMessage(StrictSchemaModel):
-    """Represents a promoted execution message event."""
-
-    kind: Literal[ExecutionPayloadKind.MESSAGE]
-    text: str
-
-
-class ExecOutput(StrictSchemaModel):
-    """Represents promoted plain-text execution output."""
-
-    kind: Literal[ExecutionPayloadKind.OUTPUT_TEXT]
-    text: str
-
-
-class ExecCommandExecution(StrictSchemaModel):
-    """Represents a promoted command-execution event."""
-
-    kind: Literal[ExecutionPayloadKind.COMMAND_EXECUTION]
-    command: NonEmptyString
-    aggregated_output: str
-    exit_code: int
-    status: NonEmptyString
-
-
-class ExecToolCall(StrictSchemaModel):
-    """Represents a promoted tool-call event."""
-
-    kind: Literal[ExecutionPayloadKind.TOOL_CALL]
-    tool_name: NonEmptyString
-    call_id: NonEmptyString
-    arguments: str
-
-
-class ExecToolResult(StrictSchemaModel):
-    """Represents a promoted tool-result event."""
-
-    kind: Literal[ExecutionPayloadKind.TOOL_RESULT]
-    tool_name: NonEmptyString
-    call_id: NonEmptyString
-    text: str
-
-
-class TurnUsage(StrictSchemaModel):
-    """Represents stable token-usage metadata reported on turn completion."""
-
-    input_tokens: NonNegativeInt
-    cached_input_tokens: NonNegativeInt
-    output_tokens: NonNegativeInt
-    reasoning_output_tokens: NonNegativeInt
 
 
 class ToolInteractionAnomaly(StrictSchemaModel):
@@ -97,7 +31,11 @@ class ToolInteraction(StrictSchemaModel):
 
     @model_validator(mode="after")
     def _validate_state(self) -> ToolInteraction:
-        """Validates that the state of the interaction matches whether a result is present."""
+        """Validates that the state of the interaction matches whether a result is present.
+        
+        Returns:
+            ToolInteraction: Function return value.
+        """
         expected_state: ToolInteractionState
         if self.result is None:
             expected_state = ToolInteractionState.MISSING_RESULT
@@ -137,7 +75,11 @@ class ToolInteractionReport(StrictSchemaModel):
 
     @model_validator(mode="after")
     def _validate_summary_counts(self) -> ToolInteractionReport:
-        """Validates that derived summary counters match the underlying lists."""
+        """Validates that derived summary counters match the underlying lists.
+        
+        Returns:
+            ToolInteractionReport: Function return value.
+        """
         expected_interaction_count: int = len(self.interactions)
 
         if self.interaction_count != expected_interaction_count:

@@ -8,7 +8,10 @@ from omx_remote.adapter_types.bridge_types import (
     AdapterProbeTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge_schemas import AdapterProbeRequest, AdapterProbeSnapshot
+from omx_remote.schemas.bridge.adapter_schemas import (
+    AdapterProbeRequest,
+    AdapterProbeSnapshot,
+)
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
@@ -31,7 +34,14 @@ async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
 
 
 def _load_adapter_probe_transport_payload(stdout: str) -> AdapterProbeTransportPayload:
-    """Loads one adapter probe transport payload from raw stdout."""
+    """Loads one adapter probe transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        AdapterProbeTransportPayload: Function return value.
+    """
     if not stdout:
         raise BridgeSurfaceError("omx adapt probe returned no stdout output")
 

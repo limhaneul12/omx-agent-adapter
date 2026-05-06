@@ -4,10 +4,10 @@ from enum import StrEnum
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.ralph_control import RalphStateClassifier
-from omx_remote.runtime.ultrawork_control import UltraworkStateClassifier
+from omx_remote.runtime.ralph.ralph_state import RalphStateClassifier
+from omx_remote.runtime.ultrawork.ultrawork_control import UltraworkStateClassifier
 from omx_remote.schemas.common_schemas import StrictRootSchemaModel, StrictSchemaModel
-from omx_remote.schemas.codex_goal import (
+from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalExecutionShape,
     CodexGoalHandoffState,
     CodexGoalLaunchRequest,
@@ -15,11 +15,17 @@ from omx_remote.schemas.codex_goal import (
     CodexGoalReviewPolicy,
     CodexGoalTrackingState,
 )
-from omx_remote.schemas.multi_operator import FlowSelector, ManagedFlowKind
-from omx_remote.schemas.operator import OperatorActionResult, OperatorLoopState
-from omx_remote.schemas.runtime import (
-    RuntimeModeStatus,
+from omx_remote.schemas.multi_operator.snapshot_schemas import (
+    FlowSelector,
+    ManagedFlowKind,
+)
+from omx_remote.schemas.operator.action_schemas import (
+    OperatorActionResult,
+    OperatorLoopState,
+)
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeSnapshot,
+    RuntimeModeStatus,
     RuntimeStatusAnomaly,
     RuntimeStatusAnomalyCategory,
 )

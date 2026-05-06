@@ -1,5 +1,5 @@
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.shared.omx_enums.operator_enums import (
     OperatorLane,
     OperatorLoopState,

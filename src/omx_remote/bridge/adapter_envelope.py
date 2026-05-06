@@ -8,7 +8,7 @@ from omx_remote.adapter_types.bridge_types import (
     AdapterEnvelopeTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge_schemas import (
+from omx_remote.schemas.bridge.adapter_schemas import (
     AdapterEnvelopeSnapshot,
     AdapterProbeRequest,
 )
@@ -34,7 +34,14 @@ async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelope
 
 
 def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTransportPayload:
-    """Loads one adapter envelope transport payload from raw stdout."""
+    """Loads one adapter envelope transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        AdapterEnvelopeTransportPayload: Function return value.
+    """
     if not stdout:
         raise BridgeSurfaceError("omx adapt envelope returned no stdout output")
 
@@ -59,7 +66,14 @@ def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTran
 
 
 def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
-    """Normalizes one `omx adapt <target> envelope --json` payload."""
+    """Normalizes one `omx adapt <target> envelope --json` payload.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        AdapterEnvelopeSnapshot: Function return value.
+    """
     parsed_payload: AdapterEnvelopeTransportPayload = _load_adapter_envelope_transport_payload(
         stdout
     )

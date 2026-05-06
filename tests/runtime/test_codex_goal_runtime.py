@@ -6,13 +6,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.codex_goal_runtime import (
+from omx_remote.runtime.goal.codex_goal_runtime import (
+    CodexGoalMirrorStateStore,
     mark_codex_goal_handoff_started,
     read_codex_goal_status,
     start_codex_goal,
 )
-from omx_remote.schemas.codex_goal import (
+from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalLaunchRequest,
+    CodexGoalLaunchResult,
     CodexGoalMirrorState,
     CodexGoalSpawnResult,
 )
@@ -46,6 +48,71 @@ def test_codex_goal_mirror_state_accepts_goal_only_shape() -> None:
 
 
 
+def test_codex_goal_runtime_sequences_promote_to_tuple_contracts() -> None:
+    mirror_state = CodexGoalMirrorState(
+        goal_id="goal-1",
+        objective_text="Ship the first native goal bridge",
+        source="codex_goal",
+        execution_shape="goal_only",
+        review_policy="continue_automatically",
+        team_worker_count=None,
+        working_directory="/tmp/project",
+        codex_command=["codex", "--enable", "goals"],
+        session_locator="agent-remote-goal-goal-1",
+        process_id=1234,
+        launched_at="2026-05-05T12:00:00+00:00",
+        handoff_state="goal_only",
+        tracking_state="starting",
+    )
+    spawn_result = CodexGoalSpawnResult(
+        session_locator="agent-remote-goal-goal-1",
+        process_id=1234,
+        spawn_status="started",
+        slash_command_written=True,
+    )
+
+    assert mirror_state.codex_command == ("codex", "--enable", "goals")
+    launch_result = CodexGoalLaunchResult(
+        mirror_state=mirror_state,
+        spawn_result=spawn_result,
+        slash_command_injected=True,
+        warnings=["allow-non-tty is enabled"],
+    )
+    assert launch_result.warnings == ("allow-non-tty is enabled",)
+    json_payload = launch_result.model_dump(mode="json")
+    assert json_payload["mirror_state"]["codex_command"] == ["codex", "--enable", "goals"]
+    assert json_payload["warnings"] == ["allow-non-tty is enabled"]
+
+
+
+def test_codex_goal_mirror_state_store_owns_state_path_and_persistence(
+    tmp_path: Path,
+) -> None:
+    store = CodexGoalMirrorStateStore(working_directory=str(tmp_path))
+    mirror_state = CodexGoalMirrorState(
+        goal_id="goal-store",
+        objective_text="Persist through a concept-owned store",
+        source="codex_goal",
+        execution_shape="goal_only",
+        review_policy="continue_automatically",
+        team_worker_count=None,
+        working_directory=str(tmp_path),
+        codex_command=["codex", "--enable", "goals"],
+        session_locator="agent-remote-goal-goal-store",
+        process_id=1234,
+        launched_at="2026-05-05T12:00:00+00:00",
+        handoff_state="goal_only",
+        tracking_state="starting",
+    )
+
+    store.write_mirror_state(mirror_state)
+    result: CodexGoalMirrorState = store.read_mirror_state()
+
+    assert store.state_path == tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    assert result.goal_id == "goal-store"
+    assert result.codex_command == ("codex", "--enable", "goals")
+
+
 def test_start_codex_goal_builds_goal_enabled_codex_command(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -72,7 +139,7 @@ def test_start_codex_goal_builds_goal_enabled_codex_command(
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.spawn_codex_goal_session",
+        "omx_remote.runtime.goal.codex_goal_runtime.spawn_codex_goal_session",
         fake_spawn_codex_goal_session,
     )
 
@@ -117,7 +184,7 @@ def test_start_codex_goal_records_adapter_owned_mirror_state(
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.spawn_codex_goal_session",
+        "omx_remote.runtime.goal.codex_goal_runtime.spawn_codex_goal_session",
         fake_spawn_codex_goal_session,
     )
 
@@ -167,7 +234,7 @@ def test_read_codex_goal_status_returns_latest_mirror_state(
     )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.is_codex_goal_session_active",
+        "omx_remote.runtime.goal.codex_goal_runtime.is_codex_goal_session_active",
         lambda session_locator: True,
     )
 
@@ -203,7 +270,7 @@ def test_start_codex_goal_marks_slash_command_injected_when_goal_command_is_writ
         return result
 
     monkeypatch.setattr(
-        "omx_remote.runtime.codex_goal_runtime.spawn_codex_goal_session",
+        "omx_remote.runtime.goal.codex_goal_runtime.spawn_codex_goal_session",
         fake_spawn_codex_goal_session,
     )
 

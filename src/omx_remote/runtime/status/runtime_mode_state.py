@@ -7,7 +7,7 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStateTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStateRequest,
     RuntimeModeStateSnapshot,
 )
@@ -17,7 +17,14 @@ from omx_remote.shared.exceptions import RuntimeSurfaceError
 async def read_runtime_mode_state(
     request: RuntimeModeStateRequest,
 ) -> RuntimeModeStateSnapshot:
-    """Reads and normalizes one OMX runtime mode-state snapshot."""
+    """Reads and normalizes one OMX runtime mode-state snapshot.
+    
+    Args:
+        request [RuntimeModeStateRequest]: Function argument.
+    
+    Returns:
+        RuntimeModeStateSnapshot: Function return value.
+    """
 
     command_result = await asyncio.to_thread(
         run_omx_command,
@@ -35,7 +42,14 @@ async def read_runtime_mode_state(
 
 
 def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPayload:
-    """Loads one runtime mode-state transport payload from raw stdout."""
+    """Loads one runtime mode-state transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        RuntimeModeStateTransportPayload: Function return value.
+    """
     if not stdout:
         raise RuntimeSurfaceError("omx state read returned no stdout output")
 
@@ -71,7 +85,14 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
 
 
 def _normalize_runtime_mode_state(stdout: str) -> RuntimeModeStateSnapshot:
-    """Normalizes `omx state read --json` stdout into a stable contract."""
+    """Normalizes `omx state read --json` stdout into a stable contract.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        RuntimeModeStateSnapshot: Function return value.
+    """
     payload: RuntimeModeStateTransportPayload = _load_runtime_mode_state_payload(stdout)
     raw_state_payload: dict[str, object] | None = payload.get("state")
 

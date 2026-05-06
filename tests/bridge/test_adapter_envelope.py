@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_envelope
-from omx_remote.schemas.bridge_schemas import AdapterProbeRequest
+from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 

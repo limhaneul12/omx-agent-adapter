@@ -4,7 +4,7 @@ import orjson
 
 from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime import ActiveRuntimeModes
+from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 
@@ -24,7 +24,14 @@ async def read_active_runtime_modes() -> ActiveRuntimeModes:
 
 
 def _load_active_runtime_modes_payload(stdout: str) -> ActiveRuntimeModesTransportPayload:
-    """Loads one active-runtime-modes transport payload from raw stdout."""
+    """Loads one active-runtime-modes transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        ActiveRuntimeModesTransportPayload: Function return value.
+    """
     if not stdout:
         raise RuntimeSurfaceError("omx state list-active returned no stdout output")
 

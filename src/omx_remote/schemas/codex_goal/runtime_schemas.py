@@ -1,6 +1,10 @@
 from pydantic import Field, model_validator
 
-from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    NonEmptyStrings,
+    StrictSchemaModel,
+)
 from omx_remote.shared.omx_enums.codex_goal_enums import (
     CodexGoalExecutionShape,
     CodexGoalHandoffState,
@@ -22,6 +26,11 @@ class CodexGoalLaunchRequest(StrictSchemaModel):
 
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> "CodexGoalLaunchRequest":
+        """Handles validate team worker count.
+        
+        Returns:
+            'CodexGoalLaunchRequest': Function return value.
+        """
         if (
             self.execution_shape == CodexGoalExecutionShape.GOAL_ONLY
             and self.team_worker_count is not None
@@ -54,7 +63,7 @@ class CodexGoalMirrorState(StrictSchemaModel):
     review_policy: CodexGoalReviewPolicy
     team_worker_count: int | None = Field(default=None, ge=1)
     working_directory: NonEmptyString
-    codex_command: list[NonEmptyString] = Field(min_length=1)
+    codex_command: NonEmptyStrings = Field(min_length=1)
     session_locator: NonEmptyString
     process_id: int | None = Field(default=None, ge=1)
     launched_at: NonEmptyString
@@ -63,6 +72,11 @@ class CodexGoalMirrorState(StrictSchemaModel):
 
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> "CodexGoalMirrorState":
+        """Handles validate team worker count.
+        
+        Returns:
+            'CodexGoalMirrorState': Function return value.
+        """
         if (
             self.execution_shape == CodexGoalExecutionShape.GOAL_ONLY
             and self.team_worker_count is not None
@@ -81,4 +95,4 @@ class CodexGoalLaunchResult(StrictSchemaModel):
     mirror_state: CodexGoalMirrorState
     spawn_result: CodexGoalSpawnResult
     slash_command_injected: bool
-    warnings: list[NonEmptyString] = Field(default_factory=list)
+    warnings: NonEmptyStrings = ()

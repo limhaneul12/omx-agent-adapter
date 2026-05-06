@@ -3,7 +3,7 @@
 import asyncio
 
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime import (
+from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatus,
@@ -185,7 +185,6 @@ def _build_mode_snapshots(
 
 
 def _build_runtime_status_anomalies(
-    *,
     stdout: str,
     stderr: str,
 ) -> list[RuntimeStatusAnomaly]:
@@ -305,7 +304,14 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
 
 
 def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
-    """Parses one runtime mode status line into a typed pair."""
+    """Parses one runtime mode status line into a typed pair.
+    
+    Args:
+        line [str]: Function argument.
+    
+    Returns:
+        tuple[str, RuntimeModeStatus] | None: Function return value.
+    """
     parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
         _parse_mode_status_entry(line)
     )
@@ -323,7 +329,14 @@ def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
 
 
 def _parse_active_mode_name(line: str) -> str | None:
-    """Parses one active runtime mode name from a status line."""
+    """Parses one active runtime mode name from a status line.
+    
+    Args:
+        line [str]: Function argument.
+    
+    Returns:
+        str | None: Function return value.
+    """
     parsed_mode_status_entry: tuple[str, RuntimeModeStatus, str] | None = (
         _parse_mode_status_entry(line)
     )
