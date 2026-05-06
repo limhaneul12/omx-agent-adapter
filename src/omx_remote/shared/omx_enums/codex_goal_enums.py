@@ -114,3 +114,37 @@ class CodexGoalLifecycleRestoreTarget(StrEnum):
     GOAL_CLOSE = "goal_close"
     RALPH_FOLLOW_UP = "ralph_follow_up"
     HUMAN_REVIEW = "human_review"
+
+
+class CodexGoalOperatingStage(StrEnum):
+    """Agent-facing Goal/OMX operating stages derived from lifecycle state."""
+
+    TEAM_ADMIN_AGGREGATION_PENDING = "team_admin_aggregation_pending"
+    RALPH_POST_TEAM_REVIEW_PENDING = "ralph_post_team_review_pending"
+    GOAL_LIFECYCLE_DECISION_PENDING = "goal_lifecycle_decision_pending"
+    GOAL_CLOSE_READY = "goal_close_ready"
+    RALPH_FOLLOW_UP_READY = "ralph_follow_up_ready"
+    HUMAN_REVIEW_REQUIRED = "human_review_required"
+
+
+class CodexGoalOperatingAction(StrEnum):
+    """Next actions an agent can take while operating OMX through Goal lifecycle state."""
+
+    COLLECT_TEAM_ADMIN_AGGREGATION = "collect_team_admin_aggregation"
+    RUN_RALPH_POST_TEAM_REVIEW = "run_ralph_post_team_review"
+    BUILD_GOAL_LIFECYCLE_DECISION = "build_goal_lifecycle_decision"
+    CLOSE_GOAL = "close_goal"
+    PREPARE_RALPH_FOLLOW_UP = "prepare_ralph_follow_up"
+    WAIT_FOR_HUMAN_REVIEW = "wait_for_human_review"
+
+
+class CodexGoalOperatingEvidenceSource(StrEnum):
+    """Evidence sources agents should inspect before mutating OMX or Goal state."""
+
+    GOAL_LIFECYCLE_ARTIFACT = "goal_lifecycle_artifact"
+    OMX_TEAM_API_LIST_TASKS = "omx_team_api_list_tasks"
+    OMX_TEAM_API_READ_EVENTS = "omx_team_api_read_events"
+    OMX_TEAM_API_READ_WORKER_STATUS = "omx_team_api_read_worker_status"
+    TEAM_ADMIN_AGGREGATION_REPORT = "team_admin_aggregation_report"
+    RALPH_POST_TEAM_REVIEW_RESULT = "ralph_post_team_review_result"
+    GOAL_LIFECYCLE_DECISION = "goal_lifecycle_decision"
