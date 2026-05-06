@@ -139,6 +139,7 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert "status" in completed_process.stdout
     assert "prepare-ralph" in completed_process.stdout
     assert "restore-lifecycle" in completed_process.stdout
+    assert "operating-decision" in completed_process.stdout
 
 
 def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
@@ -177,6 +178,42 @@ def test_package_entrypoint_runs_goal_restore_lifecycle(tmp_path: Path) -> None:
     assert output["bundle"]["goal_id"] == "goal-cli"
     assert output["next_resume_target"] == "ralph_post_team_review"
     assert output["ready_to_resume"] is True
+
+
+def test_package_entrypoint_runs_goal_operating_decision_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "operating-decision", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--goal-id" in completed_process.stdout
+    assert "--team-name" in completed_process.stdout
+    assert "--cwd" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_operating_decision(tmp_path: Path) -> None:
+    _write_goal_lifecycle_bundle(tmp_path)
+
+    completed_process = _run_agent_remote_command([
+        "goal",
+        "operating-decision",
+        "--goal-id",
+        "goal-cli",
+        "--team-name",
+        "team-alpha",
+        "--cwd",
+        str(tmp_path),
+    ])
+
+    assert completed_process.returncode == 0
+    output = orjson.loads(completed_process.stdout)
+    assert output["goal_id"] == "goal-cli"
+    assert output["current_stage"] == "ralph_post_team_review_pending"
+    assert output["next_action"] == "run_ralph_post_team_review"
+    assert output["available_evidence"] == [
+        "goal_lifecycle_artifact",
+        "team_admin_aggregation_report",
+    ]
+    assert output["missing_evidence"] == []
+    assert output["safe_to_mutate"] is False
 
 
 def test_package_entrypoint_runs_goal_start_help() -> None:

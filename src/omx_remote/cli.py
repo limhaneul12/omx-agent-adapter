@@ -13,6 +13,7 @@ from omx_remote.runtime.goal.codex_goal_runtime import (
     start_codex_goal,
 )
 from omx_remote.runtime.goal.codex_goal_supervisor import (
+    build_goal_operating_decision,
     prepare_tracked_codex_goal_ralph_handoff_prompt,
     restore_goal_lifecycle_state,
 )
@@ -35,6 +36,9 @@ from omx_remote.runtime.ultrawork.ultrawork_control import (
     format_resume_outcome as format_ultrawork_resume_outcome,
 )
 from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
+from omx_remote.schemas.codex_goal.operating_schemas import (
+    CodexGoalOperatingDecisionRequest,
+)
 from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalExecutionShape,
     CodexGoalLaunchRequest,
@@ -346,6 +350,46 @@ def goal_restore_lifecycle(
     """
     try:
         result = restore_goal_lifecycle_state(goal_id, working_directory=cwd)
+    except (ValidationError, ValueError) as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=2) from error
+
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@goal_app.command("operating-decision")
+def goal_operating_decision(
+    goal_id: str = typer.Option(
+        ...,
+        "--goal-id",
+        help="Goal identifier whose durable lifecycle artifact should drive the recommendation.",
+    ),
+    team_name: str = typer.Option(
+        ...,
+        "--team-name",
+        help="OMX Team name to use when rendering read-only evidence commands.",
+    ),
+    cwd: str | None = typer.Option(
+        None,
+        "--cwd",
+        help="Optional working directory whose lifecycle artifact store should be read.",
+    ),
+) -> None:
+    """Recommend the next agent action from durable Goal lifecycle state.
+
+    Args:
+        goal_id [str]: Function argument.
+        team_name [str]: Function argument.
+        cwd [str | None]: Function argument.
+    """
+    try:
+        restored_state = restore_goal_lifecycle_state(goal_id, working_directory=cwd)
+        result = build_goal_operating_decision(
+            CodexGoalOperatingDecisionRequest(
+                restored_state=restored_state,
+                team_name=team_name,
+            )
+        )
     except (ValidationError, ValueError) as error:
         typer.echo(str(error))
         raise typer.Exit(code=2) from error
