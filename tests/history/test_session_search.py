@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.history import session_search
-from omx_remote.schemas.history_schemas import SessionSearchRequest
+from omx_remote.schemas.history.session_schemas import SessionSearchRequest
 from omx_remote.shared.exceptions import HistorySurfaceError
 
 
