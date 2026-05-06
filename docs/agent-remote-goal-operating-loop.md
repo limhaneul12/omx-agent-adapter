@@ -97,11 +97,15 @@ It also includes a short route guide for:
 ```text
 Goal only
 Goal → Ralph
-Goal → Ultrawork
 Goal → Ralph → Team
+Ralph → Team
+Ultrawork only
+Hypergoal
 ```
 
 This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
+
+Use `agent-remote hypergoal template` when the work is too large for a normal Goal-only loop and needs deep-work checkpoints/resume context. Hypergoal is a static scaffold in this slice, not an executor.
 
 ## 2.3 Goal route map
 
@@ -109,16 +113,22 @@ Use Goal as the objective/context/done-condition envelope, then choose the light
 
 ```text
 Goal only
-  Small, clear, single-agent objective loop. Use when the task does not need PRD ownership or long-running focused execution.
+  Small, clear, single-agent objective loop.
 
 Goal → Ralph
   Use when scope, requirements, ownership, or verification need a structured PRD/owner lane before implementation.
 
-Goal → Ultrawork
-  Use when the goal is clear but the work needs one agent to keep deep context over a long focused execution/resume loop.
-
 Goal → Ralph → Team
   Use only when Ralph can split independent worker ownership for real fanout. Team remains a Ralph consequence, not a direct Goal v1 mode.
+
+Ralph → Team
+  Existing Ralph-owned Team fanout without wrapping the work as a Goal route.
+
+Ultrawork only
+  Existing focused deep-work executor by itself.
+
+Hypergoal
+  Future-oriented Goal + Ultrawork concept for long work that needs explicit checkpoints and resume context.
 ```
 
 Keep this route map as expression/context only. Do not add `goal draft`, automatic route selection, automatic fanout, automatic close, or automatic merge without a separate review.

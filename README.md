@@ -95,11 +95,13 @@ Use `agent-remote goal template` as a lightweight `/goal` scaffold, then choose 
 ```text
 Goal only: small, clear, single-agent work.
 Goal → Ralph: structured PRD/owner planning is needed.
-Goal → Ultrawork: one agent needs long focused execution/resume context.
 Goal → Ralph → Team: Ralph can split independent worker ownership for real fanout.
+Ralph → Team: existing Ralph-owned Team fanout without wrapping it as Goal.
+Ultrawork only: existing focused deep-work executor.
+Hypergoal: lightweight Goal + Ultrawork deep-work scaffold; not an executor.
 ```
 
-This is intentionally not `goal draft`: the CLI does not infer files, choose routes automatically, launch runtimes, or mutate state.
+This is intentionally not `goal draft`: the CLI does not infer files, choose routes automatically, launch runtimes, or mutate state. Use `agent-remote hypergoal template` only for a static deep-work scaffold.
 
 ## Safe live verification examples
 

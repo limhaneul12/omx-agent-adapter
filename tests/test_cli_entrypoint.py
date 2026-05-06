@@ -81,6 +81,7 @@ def test_package_entrypoint_runs_help() -> None:
     assert "history" in completed_process.stdout
     assert "adapt" in completed_process.stdout
     assert "goal" in completed_process.stdout
+    assert "hypergoal" in completed_process.stdout
     assert "ralph" in completed_process.stdout
     assert "ultrawork" in completed_process.stdout
     assert "version" in completed_process.stdout
@@ -146,7 +147,9 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert completed_process.returncode == 0
     assert "Goal only" in completed_process.stdout
     assert "Goal → Ralph" in completed_process.stdout
-    assert "Goal → Ultrawork" in completed_process.stdout
+    assert "Goal → Team" not in completed_process.stdout
+    assert "Goal → Ultrawork" not in completed_process.stdout
+    assert "Hypergoal" in completed_process.stdout
     assert "start" in completed_process.stdout
     assert "status" in completed_process.stdout
     assert "template" in completed_process.stdout
@@ -174,7 +177,28 @@ def test_package_entrypoint_runs_goal_template() -> None:
     assert "Route guide:" in completed_process.stdout
     assert "Goal only" in completed_process.stdout
     assert "Goal → Ralph" in completed_process.stdout
-    assert "Goal → Ultrawork" in completed_process.stdout
+    assert "Goal → Ralph → Team" in completed_process.stdout
+    assert "Ralph → Team" in completed_process.stdout
+    assert "Ultrawork only" in completed_process.stdout
+    assert "Hypergoal" in completed_process.stdout
+    assert "Goal → Ultrawork" not in completed_process.stdout
+
+
+def test_package_entrypoint_runs_hypergoal_help() -> None:
+    completed_process = _run_agent_remote_command(["hypergoal", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "template" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_hypergoal_template() -> None:
+    completed_process = _run_agent_remote_command(["hypergoal", "template"])
+
+    assert completed_process.returncode == 0
+    assert "# Hypergoal Deep-Work Scaffold" in completed_process.stdout
+    assert "Focus window:" in completed_process.stdout
+    assert "Recovery checklist:" in completed_process.stdout
+    assert "Goal → Ultrawork" not in completed_process.stdout
 
 
 def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
