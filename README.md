@@ -29,6 +29,13 @@ agent-remote --help
 agent-remote version
 ```
 
+After install, do not prefix normal CLI usage with `uv run`. Treat `agent-remote` like any other installed executable:
+
+```bash
+agent-remote goal restore-lifecycle --goal-id <goal-id> --cwd .
+agent-remote goal operating-decision --goal-id <goal-id> --team-name <team-name> --cwd .
+```
+
 For one-off execution without a persistent tool install:
 
 ```bash
@@ -40,6 +47,8 @@ During local development inside this repository, prefer source-first execution s
 ```bash
 PYTHONPATH="$PWD/src:$PWD" uv run agent-remote --help
 ```
+
+Use `uv run` only inside a checked-out development repository. Installed users and other agents should run `agent-remote` directly.
 
 ### Future PyPI package
 
@@ -55,17 +64,25 @@ Do not publish to PyPI until wheel build/install checks pass cleanly and the ope
 
 ## CLI quick help
 
+For installed users and other agents:
+
 ```bash
-uv run agent-remote --help
-uv run agent-remote version
-uv run agent-remote runtime --help
-uv run agent-remote team --help
-uv run agent-remote adapt --help
-uv run agent-remote ralph --help
-uv run agent-remote ultrawork --help
-uv run agent-remote goal --help
-uv run agent-remote goal restore-lifecycle --help
-uv run agent-remote goal operating-decision --help
+agent-remote --help
+agent-remote version
+agent-remote runtime --help
+agent-remote team --help
+agent-remote adapt --help
+agent-remote ralph --help
+agent-remote ultrawork --help
+agent-remote goal --help
+agent-remote goal restore-lifecycle --help
+agent-remote goal operating-decision --help
+```
+
+For development from this repository, prefix with `PYTHONPATH="$PWD/src:$PWD" uv run` only when you need the current working tree:
+
+```bash
+PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal operating-decision --help
 ```
 
 The current CLI is still intentionally thin, but it now exposes concrete runtime/team/history/adapt/control subcommands instead of only descriptive top-level text. The main value still lives in the importable Python surfaces under `src/`.

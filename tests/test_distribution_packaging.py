@@ -31,3 +31,11 @@ def test_readme_documents_private_install_before_public_pypi() -> None:
     assert "uv tool install git+https://github.com/limhaneul12/omx-agent-adapter.git" in readme
     assert "PyPI" in readme
     assert "not published" in readme
+
+
+def test_readme_separates_installed_cli_from_development_uv_run() -> None:
+    readme = (ROOT / "README.md").read_text()
+
+    assert "After install, do not prefix normal CLI usage with `uv run`." in readme
+    assert "agent-remote goal operating-decision" in readme
+    assert "Use `uv run` only inside a checked-out development repository" in readme

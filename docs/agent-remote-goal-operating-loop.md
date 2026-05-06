@@ -53,12 +53,21 @@ Useful status checks:
 ```bash
 git status --short
 git rev-list --left-right --count origin/main...HEAD
-uv run agent-remote version
+agent-remote version
 omx status
 omx doctor --team
 ```
 
-During local development, prefer source-first CLI execution:
+## 2.1 Installed CLI vs development CLI
+
+For other agents or machines where the package has been installed, run the executable directly. Do **not** use `uv run` for normal CLI usage:
+
+```bash
+agent-remote goal restore-lifecycle --goal-id <goal-id> --cwd .
+agent-remote goal operating-decision --goal-id <goal-id> --team-name <team-name> --cwd .
+```
+
+During local development, prefer source-first CLI execution only when you need the current working tree:
 
 ```bash
 PYTHONPATH="$PWD/src:$PWD" uv run agent-remote ...
@@ -117,7 +126,7 @@ If no durable lifecycle artifact exists yet, do not invent a lifecycle state. St
 ### B. Restore lifecycle state
 
 ```bash
-PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal restore-lifecycle \
+agent-remote goal restore-lifecycle \
   --goal-id <goal-id> \
   --cwd .
 ```
@@ -138,7 +147,7 @@ If `ready_to_resume=false`, stop and inspect why. Do not continue by guessing.
 ### C. Ask for the operating decision
 
 ```bash
-PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal operating-decision \
+agent-remote goal operating-decision \
   --goal-id <goal-id> \
   --team-name <team-name> \
   --cwd .
@@ -348,11 +357,11 @@ Stop and surface `review_blockers`. This is an intentional gate.
 ```bash
 cd /Users/imhaneul/Documents/sky_document/project/omx-agent-adapter
 
-PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal restore-lifecycle \
+agent-remote goal restore-lifecycle \
   --goal-id <goal-id> \
   --cwd .
 
-PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal operating-decision \
+agent-remote goal operating-decision \
   --goal-id <goal-id> \
   --team-name <team-name> \
   --cwd .
