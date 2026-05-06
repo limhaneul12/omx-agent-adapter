@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from shutil import which
 from typing import ClassVar
 
+import orjson
 from pydantic import ValidationError
 
 from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.ralph import RalphPrdArtifact
+from omx_remote.schemas.ralph import RalphPrdArtifact, TeamWorkerAssignment
 from omx_remote.shared.omx_enums.ralph_enums import (
     RalphRunOutcome,
     RalphRuntimePhase,
@@ -116,6 +118,11 @@ def _resolve_ralph_team_launch_task_from_prd(
     if team_worker_count is None:
         raise ValueError(
             "The typed Ralph PRD artifact requires Team fanout but does not declare team_worker_count."
+        )
+
+    if ralph_prd_artifact.team_worker_assignments is None:
+        raise ValueError(
+            "The typed Ralph PRD artifact requires Team fanout but does not declare Team worker assignments."
         )
 
     canonical_launch_task: str = ralph_prd_artifact.objective.strip()
@@ -590,6 +597,144 @@ def build_ralph_launch_plan(
 
 
 
+def _quote_omx_task(task: str) -> str:
+    quoted_task: str = orjson.dumps(task).decode()
+    return quoted_task
+
+
+def _format_markdown_list(values: tuple[str, ...] | list[str]) -> str:
+    if not values:
+        return "- none"
+    return "\n".join(f"- {value}" for value in values)
+
+
+def _render_worker_assignment_description(assignment: TeamWorkerAssignment) -> str:
+    description: str = f"""Lane: {assignment.lane_name}
+Objective: {assignment.objective}
+
+Owned files:
+{_format_markdown_list(assignment.owned_files)}
+
+Read-only context files:
+{_format_markdown_list(assignment.read_only_context_files)}
+
+Forbidden files / coordination notes:
+{_format_markdown_list(assignment.forbidden_files)}
+
+TDD steps:
+{_format_markdown_list(assignment.tdd_steps)}
+
+Verification commands:
+{_format_markdown_list(assignment.verification_commands)}
+
+Handoff summary required:
+- {assignment.handoff_summary_required}
+""".strip()
+    return description
+
+
+def _planning_artifact_slug() -> str:
+    timestamp: str = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    slug: str = f"{timestamp}-ralph-team"
+    return slug
+
+
+def _write_ralph_team_dag_handoff_artifacts(
+    *,
+    ralph_prd_artifact: RalphPrdArtifact,
+    canonical_launch_task: str,
+    team_worker_count: int,
+    workspace_root: Path,
+) -> None:
+    assignments: tuple[TeamWorkerAssignment, ...] | None = (
+        ralph_prd_artifact.team_worker_assignments
+    )
+    if assignments is None:
+        raise ValueError(
+            "The typed Ralph PRD artifact requires Team fanout but does not declare Team worker assignments."
+        )
+
+    plans_dir: Path = workspace_root / ".omx" / "plans"
+    plans_dir.mkdir(parents=True, exist_ok=True)
+
+    artifact_slug: str = _planning_artifact_slug()
+    prd_name: str = f"prd-{artifact_slug}.md"
+    test_spec_name: str = f"test-spec-{artifact_slug}.md"
+    dag_name: str = f"team-dag-{artifact_slug}.json"
+    launch_hint: str = (
+        f"omx team {team_worker_count}:executor {_quote_omx_task(canonical_launch_task)}"
+    )
+
+    prd_lines: list[str] = [
+        "# Ralph Team PRD Handoff",
+        "",
+        f"Launch via {launch_hint}",
+        "",
+        "## Objective",
+        canonical_launch_task,
+        "",
+        "## Scope",
+        _format_markdown_list(ralph_prd_artifact.scope),
+        "",
+        "## Constraints",
+        _format_markdown_list(ralph_prd_artifact.constraints),
+        "",
+        "## Execution Plan",
+        _format_markdown_list(ralph_prd_artifact.execution_plan),
+        "",
+        "## Verification Expectations",
+        _format_markdown_list(ralph_prd_artifact.verification_expectations),
+        "",
+        "## Team DAG Handoff",
+        "```json",
+    ]
+    dag_payload: dict[str, object] = {
+        "schema_version": 1,
+        "plan_slug": artifact_slug,
+        "source_prd": prd_name,
+        "worker_policy": {
+            "requested_count": team_worker_count,
+            "count_source": "plan-suggested",
+            "strict_max_count": True,
+        },
+        "nodes": [
+            {
+                "id": assignment.worker_id,
+                "subject": assignment.lane_name,
+                "description": _render_worker_assignment_description(assignment),
+                "role": "executor",
+                "lane": assignment.lane_name,
+                "filePaths": list(assignment.owned_files),
+                "depends_on": [],
+                "acceptance": [
+                    *assignment.verification_commands,
+                    assignment.handoff_summary_required,
+                ],
+            }
+            for assignment in assignments
+        ],
+    }
+    dag_text: str = orjson.dumps(dag_payload, option=orjson.OPT_INDENT_2).decode()
+    prd_lines.extend([dag_text, "```", ""])
+
+    test_spec_lines: list[str] = [
+        "# Ralph Team Test Spec",
+        "",
+        "The approved Ralph Team PRD requires every worker lane to follow RED -> GREEN -> verification.",
+        "",
+        "## Required verification",
+        _format_markdown_list(ralph_prd_artifact.verification_expectations),
+        "",
+    ]
+
+    (plans_dir / prd_name).write_text("\n".join(prd_lines), encoding="utf-8")
+    (plans_dir / test_spec_name).write_text(
+        "\n".join(test_spec_lines), encoding="utf-8"
+    )
+    (plans_dir / dag_name).write_text(f"{dag_text}\n", encoding="utf-8")
+
+
+
 def build_ralph_team_launch_plan(
     *,
     allow_non_tty: bool,
@@ -604,6 +749,12 @@ def build_ralph_team_launch_plan(
     team_worker_count: int
     canonical_launch_task, team_worker_count = _resolve_ralph_team_launch_task_from_prd(
         ralph_prd_artifact=ralph_prd_artifact,
+    )
+    _write_ralph_team_dag_handoff_artifacts(
+        ralph_prd_artifact=ralph_prd_artifact,
+        canonical_launch_task=canonical_launch_task,
+        team_worker_count=team_worker_count,
+        workspace_root=Path.cwd(),
     )
 
     launch_command: list[str] = [

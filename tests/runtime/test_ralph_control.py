@@ -20,6 +20,7 @@ def _write_valid_prd_artifact(
     objective: str = "Ship feature",
     requires_team_fanout: bool = False,
     team_worker_count: int | None = None,
+    team_worker_assignments: list[dict[str, object]] | None = None,
 ) -> None:
     prd_dir = tmp_path / ".omx"
     prd_dir.mkdir(exist_ok=True)
@@ -34,7 +35,28 @@ def _write_valid_prd_artifact(
         "team_worker_count": team_worker_count,
         "continuation_policy": "review_required",
     }
+    if team_worker_assignments is not None:
+        prd_payload["team_worker_assignments"] = team_worker_assignments
     prd_path.write_text(json.dumps(prd_payload), encoding="utf-8")
+
+
+def _team_assignment(
+    worker_id: str,
+    *,
+    lane_name: str = "Implementation lane",
+    owned_file: str = "src/omx_remote/runtime/ralph_control.py",
+) -> dict[str, object]:
+    return {
+        "worker_id": worker_id,
+        "lane_name": lane_name,
+        "objective": f"Own {lane_name}",
+        "owned_files": [owned_file],
+        "read_only_context_files": ["docs/jobs/schema-type-refactor-hardening/8_ralph-prd-to-team-worker-distribution-prompt.md"],
+        "forbidden_files": ["src/omx_remote/runtime/codex_goal_supervisor.py"],
+        "tdd_steps": ["Write a failing focused regression", "Make the regression pass"],
+        "verification_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+        "handoff_summary_required": "Summarize changed files and verification output.",
+    }
 
 
 def test_ralph_launch_rejects_blank_task() -> None:
@@ -128,12 +150,74 @@ def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_co
         objective="Ship feature",
         requires_team_fanout=True,
         team_worker_count=3,
+        team_worker_assignments=[
+            _team_assignment("worker-1", owned_file="src/impl.py"),
+            _team_assignment("worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"),
+            _team_assignment("worker-3", lane_name="Docs lane", owned_file="docs/impl.md"),
+        ],
     )
 
     command, warnings = build_ralph_team_launch_plan(allow_non_tty=True)
 
     assert command == ["team", "3:executor", "Ship feature"]
     assert "allow-non-tty is enabled" in "\n".join(warnings)
+
+
+def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(
+        tmp_path,
+        objective="Ship feature with \"quoted\" task",
+        requires_team_fanout=True,
+        team_worker_count=2,
+        team_worker_assignments=[
+            _team_assignment("worker-1", owned_file="src/impl.py"),
+            _team_assignment("worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"),
+        ],
+    )
+
+    command, _warnings = build_ralph_team_launch_plan(allow_non_tty=True)
+
+    assert command == ["team", "2:executor", "Ship feature with \"quoted\" task"]
+    plans_dir = tmp_path / ".omx" / "plans"
+    prd_path = next(plans_dir.glob("prd-*-ralph-team.md"))
+    test_spec_path = next(plans_dir.glob("test-spec-*-ralph-team.md"))
+    dag_path = next(plans_dir.glob("team-dag-*-ralph-team.json"))
+
+    prd_text = prd_path.read_text(encoding="utf-8")
+    assert 'Launch via omx team 2:executor "Ship feature with \\"quoted\\" task"' in prd_text
+    assert test_spec_path.read_text(encoding="utf-8").startswith("# Ralph Team Test Spec")
+
+    dag_payload = json.loads(dag_path.read_text(encoding="utf-8"))
+    assert dag_payload["schema_version"] == 1
+    assert dag_payload["source_prd"] == prd_path.name
+    assert dag_payload["worker_policy"] == {
+        "requested_count": 2,
+        "count_source": "plan-suggested",
+        "strict_max_count": True,
+    }
+    assert [node["id"] for node in dag_payload["nodes"]] == ["worker-1", "worker-2"]
+    assert dag_payload["nodes"][0]["filePaths"] == ["src/impl.py"]
+    assert dag_payload["nodes"][1]["lane"] == "Test lane"
+
+
+def test_build_ralph_team_launch_plan_requires_worker_assignments(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(
+        tmp_path,
+        objective="Ship feature",
+        requires_team_fanout=True,
+        team_worker_count=3,
+    )
+
+    with pytest.raises(ValueError, match="Team worker assignments"):
+        build_ralph_team_launch_plan(allow_non_tty=True)
 
 
 def test_build_ralph_team_launch_plan_rejects_prd_without_team_fanout(
