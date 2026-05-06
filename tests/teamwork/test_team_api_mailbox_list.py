@@ -4,7 +4,7 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import TeamApiMailboxListRequest
+from omx_remote.schemas.teamwork.api_request_schemas import TeamApiMailboxListRequest
 from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_api_snapshot
 
@@ -45,7 +45,7 @@ def test_read_team_api_mailbox_list_returns_empty_snapshot(monkeypatch) -> None:
 
     assert result.worker == "worker-1"
     assert result.count == 0
-    assert result.messages == []
+    assert result.messages == ()
 
 
 def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypatch) -> None:

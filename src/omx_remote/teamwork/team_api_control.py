@@ -3,8 +3,8 @@ import asyncio
 import orjson
 
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiClaimTaskRequest,
     TeamApiCleanupRequest,

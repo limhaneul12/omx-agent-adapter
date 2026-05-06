@@ -1,8 +1,8 @@
 import asyncio
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.teamwork_schemas import (
-    TeamApiWorkerStatusSnapshot,
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.teamwork.api_snapshot_schemas import TeamApiWorkerStatusSnapshot
+from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
     TeamOperatorDispatchTaskRequest,
     TeamOperatorTaskApprovalRequest,

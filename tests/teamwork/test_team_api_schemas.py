@@ -1,22 +1,18 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiClaimTaskRequest,
     TeamApiCleanupRequest,
     TeamApiCreateTaskRequest,
+    TeamApiListTasksRequest,
     TeamApiMailboxListRequest,
-    TeamApiMailboxListSnapshot,
     TeamApiMailboxMarkDeliveredRequest,
     TeamApiMailboxMarkNotifiedRequest,
-    TeamApiListTasksRequest,
-    TeamApiListTasksSnapshot,
     TeamApiOrphanCleanupRequest,
     TeamApiReadEventsRequest,
-    TeamApiReadEventsSnapshot,
     TeamApiReadMonitorSnapshotRequest,
-    TeamApiReadMonitorSnapshot,
     TeamApiReadShutdownAckRequest,
     TeamApiReadTaskApprovalRequest,
     TeamApiReadTaskRequest,
@@ -26,9 +22,17 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiTransitionTaskStatusRequest,
     TeamApiUpdateTaskRequest,
     TeamApiWorkerInboxWriteRequest,
-    TeamApiWorkerStatusSnapshot,
     TeamApiWriteShutdownRequest,
     TeamApiWriteTaskApprovalRequest,
+)
+from omx_remote.schemas.teamwork.api_snapshot_schemas import (
+    TeamApiListTasksSnapshot,
+    TeamApiMailboxListSnapshot,
+    TeamApiReadEventsSnapshot,
+    TeamApiReadMonitorSnapshot,
+    TeamApiWorkerStatusSnapshot,
+)
+from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
     TeamOperatorDispatchOutcome,
     TeamOperatorDispatchTaskRequest,
@@ -55,7 +59,7 @@ def test_team_api_list_tasks_snapshot_accepts_empty_task_list() -> None:
     )
 
     assert result.count == 0
-    assert result.tasks == []
+    assert result.tasks == ()
 
 
 def test_team_api_list_tasks_snapshot_rejects_unexpected_extra_fields() -> None:
@@ -201,7 +205,7 @@ def test_team_api_create_task_request_accepts_required_fields() -> None:
     assert result.team_name == "alpha"
     assert result.subject == "Demo task"
     assert result.description == "Created through CLI interop"
-    assert result.blocked_by == []
+    assert result.blocked_by == ()
 
 
 def test_team_api_create_task_request_rejects_empty_subject() -> None:
@@ -275,7 +279,7 @@ def test_team_api_update_task_request_accepts_optional_metadata_fields() -> None
     assert result.team_name == "alpha"
     assert result.task_id == "1"
     assert result.subject == "Refined task"
-    assert result.blocked_by == []
+    assert result.blocked_by == ()
     assert result.requires_code_change is False
 
 
@@ -583,7 +587,7 @@ def test_team_api_mailbox_list_snapshot_accepts_empty_message_list() -> None:
 
     assert result.worker == "worker-1"
     assert result.count == 0
-    assert result.messages == []
+    assert result.messages == ()
 
 
 def test_team_api_mailbox_list_snapshot_rejects_unexpected_extra_fields() -> None:
@@ -625,7 +629,7 @@ def test_team_api_read_events_snapshot_accepts_empty_event_list() -> None:
 
     assert result.count == 0
     assert result.cursor == ""
-    assert result.events == []
+    assert result.events == ()
 
 
 def test_team_api_read_events_snapshot_rejects_unexpected_extra_fields() -> None:

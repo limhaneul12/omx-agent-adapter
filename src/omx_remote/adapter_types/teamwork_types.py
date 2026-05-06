@@ -1,5 +1,37 @@
 from typing import NotRequired, TypedDict
 
+import msgspec
+
+
+class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded top-level team-api transport envelope."""
+
+    ok: bool | None = None
+    data: object = None
+    error: object = None
+
+
+class TeamApiDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded nested team-api data payload before stable subset normalization."""
+
+    count: object = None
+    tasks: object = None
+    cursor: object = None
+    events: object = None
+    worker: object = None
+    messages: object = None
+    snapshot: object = None
+    status: object = None
+    config: object = None
+    manifest: object = None
+
+
+class TeamApiErrorSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded nested team-api error payload before stable subset normalization."""
+
+    code: object = None
+    message: object = None
+
 
 class TeamApiEnvelopePayload(TypedDict):
     """Represents the stable top-level envelope subset for successful team-api payloads."""
@@ -95,6 +127,34 @@ class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
 
     state: str
     updated_at: str
+
+
+class TeamStatusSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded `omx team status` transport payload."""
+
+    team_name: object = None
+    status: object = None
+    phase: object = None
+    current_phase: object = None
+    dead_workers: object = None
+    non_reporting_workers: object = None
+
+
+class TeamAwaitEventSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded nested `omx team await` event payload."""
+
+    type: object = None
+    worker: object = None
+    task_id: object = None
+
+
+class TeamAwaitSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded `omx team await` transport payload."""
+
+    team_name: object = None
+    status: object = None
+    cursor: object = None
+    event: object = None
 
 
 class TeamStatusTransportPayload(TypedDict):

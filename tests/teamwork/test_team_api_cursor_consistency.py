@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
     TeamApiReadEventsRequest,
 )

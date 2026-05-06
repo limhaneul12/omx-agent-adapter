@@ -1,16 +1,20 @@
 import asyncio
 
+import msgspec
 import orjson
 
 from omx_remote.adapter_types.teamwork_types import (
+    TeamAwaitEventSpec,
     TeamAwaitNormalizedPayload,
+    TeamAwaitSpec,
     TeamAwaitTransportEventPayload,
     TeamAwaitTransportPayload,
     TeamStatusNormalizedPayload,
+    TeamStatusSpec,
     TeamStatusTransportPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
     TeamAwaitSnapshot,
     TeamStatusRequest,
@@ -20,7 +24,14 @@ from omx_remote.shared.exceptions import TeamworkSurfaceError
 
 
 async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
-    """Reads team status through the typed teamwork surface."""
+    """Reads team status through the typed teamwork surface.
+    
+    Args:
+        request [TeamStatusRequest]: Function argument.
+    
+    Returns:
+        TeamStatusSnapshot: Function return value.
+    """
 
     command_result = await asyncio.to_thread(
         run_omx_command,
@@ -32,62 +43,67 @@ async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
 
 
 def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPayload:
-    """Loads one team-status transport payload from raw stdout."""
+    """Loads one team-status transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        TeamStatusTransportPayload: Function return value.
+    """
     if not stdout:
         raise TeamworkSurfaceError("omx team status returned no stdout output")
 
     try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
+        decoded_payload: object = orjson.loads(stdout)
+        parsed_payload: TeamStatusSpec = msgspec.convert(
+            decoded_payload,
+            type=TeamStatusSpec,
+        )
+    except (orjson.JSONDecodeError, msgspec.ValidationError) as error:
         raise TeamworkSurfaceError(
             "omx team status returned unparseable JSON output"
         ) from error
 
-    if not isinstance(parsed_payload, dict):
+    if not isinstance(decoded_payload, dict):
         raise TeamworkSurfaceError(
             "omx team status returned a non-object JSON payload"
         )
-
-    team_name_value: object | None = parsed_payload.get("team_name")
-    if not isinstance(team_name_value, str):
+    if not isinstance(parsed_payload.team_name, str):
         raise TeamworkSurfaceError("omx team status returned a non-string team_name")
-
-    status_value: object | None = parsed_payload.get("status")
-    if not isinstance(status_value, str):
+    if not isinstance(parsed_payload.status, str):
         raise TeamworkSurfaceError("omx team status returned a non-string status")
 
     result = TeamStatusTransportPayload(
-        team_name=team_name_value,
-        status=status_value,
+        team_name=parsed_payload.team_name,
+        status=parsed_payload.status,
     )
 
-    phase_value: object | None = parsed_payload.get("phase")
-    if phase_value is None or isinstance(phase_value, str):
-        result["phase"] = phase_value
-
-    current_phase_value: object | None = parsed_payload.get("current_phase")
-    if current_phase_value is None or isinstance(current_phase_value, str):
-        result["current_phase"] = current_phase_value
-
-    dead_workers_value: object | None = parsed_payload.get("dead_workers")
-    if isinstance(dead_workers_value, list) and all(
-        isinstance(worker_name, str) for worker_name in dead_workers_value
+    if parsed_payload.phase is None or isinstance(parsed_payload.phase, str):
+        result["phase"] = parsed_payload.phase
+    if parsed_payload.current_phase is None or isinstance(parsed_payload.current_phase, str):
+        result["current_phase"] = parsed_payload.current_phase
+    if isinstance(parsed_payload.dead_workers, list) and all(
+        isinstance(worker_name, str) for worker_name in parsed_payload.dead_workers
     ):
-        result["dead_workers"] = dead_workers_value
-
-    non_reporting_workers_value: object | None = parsed_payload.get(
-        "non_reporting_workers"
-    )
-    if isinstance(non_reporting_workers_value, list) and all(
-        isinstance(worker_name, str) for worker_name in non_reporting_workers_value
+        result["dead_workers"] = parsed_payload.dead_workers
+    if isinstance(parsed_payload.non_reporting_workers, list) and all(
+        isinstance(worker_name, str)
+        for worker_name in parsed_payload.non_reporting_workers
     ):
-        result["non_reporting_workers"] = non_reporting_workers_value
+        result["non_reporting_workers"] = parsed_payload.non_reporting_workers
 
     return result
 
-
 def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
-    """Normalizes `omx team status ... --json` stdout into a stable contract."""
+    """Normalizes `omx team status ... --json` stdout into a stable contract.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        TeamStatusSnapshot: Function return value.
+    """
     parsed_payload: TeamStatusTransportPayload = _load_team_status_transport_payload(
         stdout
     )
@@ -126,7 +142,14 @@ def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
 
 
 async def await_team_status(request: TeamAwaitRequest) -> TeamAwaitSnapshot:
-    """Awaits team status through the typed teamwork surface."""
+    """Awaits team status through the typed teamwork surface.
+    
+    Args:
+        request [TeamAwaitRequest]: Function argument.
+    
+    Returns:
+        TeamAwaitSnapshot: Function return value.
+    """
 
     command_result = await asyncio.to_thread(
         run_omx_command,
@@ -145,64 +168,73 @@ async def await_team_status(request: TeamAwaitRequest) -> TeamAwaitSnapshot:
 
 
 def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload:
-    """Loads one team-await transport payload from raw stdout."""
+    """Loads one team-await transport payload from raw stdout.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        TeamAwaitTransportPayload: Function return value.
+    """
     if not stdout:
         raise TeamworkSurfaceError("omx team await returned no stdout output")
 
     try:
-        parsed_payload: object = orjson.loads(stdout)
-    except orjson.JSONDecodeError as error:
+        decoded_payload: object = orjson.loads(stdout)
+        parsed_payload: TeamAwaitSpec = msgspec.convert(
+            decoded_payload,
+            type=TeamAwaitSpec,
+        )
+    except (orjson.JSONDecodeError, msgspec.ValidationError) as error:
         raise TeamworkSurfaceError(
             "omx team await returned unparseable JSON output"
         ) from error
 
-    if not isinstance(parsed_payload, dict):
+    if not isinstance(decoded_payload, dict):
         raise TeamworkSurfaceError(
             "omx team await returned a non-object JSON payload"
         )
-
-    team_name_value: object | None = parsed_payload.get("team_name")
-    if not isinstance(team_name_value, str):
+    if not isinstance(parsed_payload.team_name, str):
         raise TeamworkSurfaceError("omx team await returned a non-string team_name")
-
-    status_value: object | None = parsed_payload.get("status")
-    if not isinstance(status_value, str):
+    if not isinstance(parsed_payload.status, str):
         raise TeamworkSurfaceError("omx team await returned a non-string status")
 
     result = TeamAwaitTransportPayload(
-        team_name=team_name_value,
-        status=status_value,
+        team_name=parsed_payload.team_name,
+        status=parsed_payload.status,
     )
 
-    cursor_value: object | None = parsed_payload.get("cursor")
-    if isinstance(cursor_value, str):
-        result["cursor"] = cursor_value
+    if isinstance(parsed_payload.cursor, str):
+        result["cursor"] = parsed_payload.cursor
 
-    event_value: object | None = parsed_payload.get("event")
-    if event_value is None:
+    event_payload: object = parsed_payload.event
+    if event_payload is None:
         result["event"] = None
-    elif isinstance(event_value, dict):
+    elif isinstance(event_payload, dict):
+        event_spec: TeamAwaitEventSpec = msgspec.convert(
+            event_payload,
+            type=TeamAwaitEventSpec,
+        )
         normalized_event_payload = TeamAwaitTransportEventPayload()
-
-        event_type_value: object | None = event_value.get("type")
-        if isinstance(event_type_value, str):
-            normalized_event_payload["type"] = event_type_value
-
-        event_worker_value: object | None = event_value.get("worker")
-        if isinstance(event_worker_value, str):
-            normalized_event_payload["worker"] = event_worker_value
-
-        event_task_id_value: object | None = event_value.get("task_id")
-        if isinstance(event_task_id_value, str):
-            normalized_event_payload["task_id"] = event_task_id_value
-
+        if isinstance(event_spec.type, str):
+            normalized_event_payload["type"] = event_spec.type
+        if isinstance(event_spec.worker, str):
+            normalized_event_payload["worker"] = event_spec.worker
+        if isinstance(event_spec.task_id, str):
+            normalized_event_payload["task_id"] = event_spec.task_id
         result["event"] = normalized_event_payload
 
     return result
 
-
 def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
-    """Normalizes `omx team await ... --json` stdout into a stable contract."""
+    """Normalizes `omx team await ... --json` stdout into a stable contract.
+    
+    Args:
+        stdout [str]: Function argument.
+    
+    Returns:
+        TeamAwaitSnapshot: Function return value.
+    """
     parsed_payload: TeamAwaitTransportPayload = _load_team_await_transport_payload(
         stdout
     )

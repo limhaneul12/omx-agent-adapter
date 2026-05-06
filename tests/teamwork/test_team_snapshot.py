@@ -4,7 +4,10 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import TeamAwaitRequest, TeamStatusRequest
+from omx_remote.schemas.teamwork.status_schemas import (
+    TeamAwaitRequest,
+    TeamStatusRequest,
+)
 from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.teamwork import team_snapshot
 
@@ -77,8 +80,8 @@ def test_read_team_status_defaults_missing_worker_edge_lists_to_empty_lists(
         team_snapshot.read_team_status(TeamStatusRequest(team_name="alpha"))
     )
 
-    assert result.dead_workers == []
-    assert result.non_reporting_workers == ["worker-3"]
+    assert result.dead_workers == ()
+    assert result.non_reporting_workers == ("worker-3",)
 
 
 def test_read_team_status_exposes_worker_edge_lists(monkeypatch) -> None:
@@ -97,8 +100,8 @@ def test_read_team_status_exposes_worker_edge_lists(monkeypatch) -> None:
     assert result.team_name == "alpha"
     assert result.status == "ok"
     assert result.phase == "team-exec"
-    assert result.dead_workers == ["worker-2"]
-    assert result.non_reporting_workers == ["worker-3"]
+    assert result.dead_workers == ("worker-2",)
+    assert result.non_reporting_workers == ("worker-3",)
 
 
 def test_read_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:

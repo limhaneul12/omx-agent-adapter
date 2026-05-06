@@ -1,8 +1,8 @@
 import asyncio
 import inspect
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiClaimTaskRequest,
     TeamApiCleanupRequest,
@@ -15,10 +15,10 @@ from omx_remote.schemas.teamwork_schemas import (
     TeamApiReadTaskRequest,
     TeamApiReleaseTaskClaimRequest,
     TeamApiSendMessageRequest,
-    TeamApiWriteShutdownRequest,
     TeamApiTransitionTaskStatusRequest,
     TeamApiUpdateTaskRequest,
     TeamApiWorkerInboxWriteRequest,
+    TeamApiWriteShutdownRequest,
     TeamApiWriteTaskApprovalRequest,
 )
 from omx_remote.teamwork import team_api_control

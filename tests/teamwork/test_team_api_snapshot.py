@@ -4,22 +4,24 @@ import inspect
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import (
-    TeamApiMailboxListRequest,
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
-    TeamApiReadConfigError,
+    TeamApiMailboxListRequest,
     TeamApiReadConfigRequest,
-    TeamApiReadConfigSnapshot,
     TeamApiReadEventsRequest,
-    TeamApiReadManifestError,
     TeamApiReadManifestRequest,
-    TeamApiReadManifestSnapshot,
     TeamApiReadMonitorSnapshotRequest,
     TeamApiReadWorkerStatusRequest,
+)
+from omx_remote.schemas.teamwork.api_snapshot_schemas import (
+    TeamApiReadConfigError,
+    TeamApiReadConfigSnapshot,
+    TeamApiReadManifestError,
+    TeamApiReadManifestSnapshot,
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
-from omx_remote.teamwork import team_api_snapshot
+from omx_remote.teamwork import team_api_normalizers, team_api_snapshot, team_api_transport
 
 
 class DummyResult:
@@ -32,24 +34,23 @@ def test_read_team_api_list_tasks_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_list_tasks)
 
 
-def test_team_api_snapshot_loader_class_is_available() -> None:
-    assert hasattr(team_api_snapshot, "TeamApiSnapshotLoader")
+def test_team_api_snapshot_uses_split_transport_and_normalizer_modules() -> None:
+    assert hasattr(team_api_transport, "load_team_api_payload")
+    assert hasattr(team_api_normalizers, "normalize_team_api_monitor_snapshot_result")
 
 
-def test_team_api_snapshot_loader_normalize_monitor_snapshot_result_preserves_missing_snapshot_as_none() -> None:
-    result = team_api_snapshot.TeamApiSnapshotLoader.normalize_monitor_snapshot_result(
-        team_api_snapshot.TeamApiTransportPayload()
+def test_team_api_normalizer_preserves_missing_monitor_snapshot_as_none() -> None:
+    result = team_api_normalizers.normalize_team_api_monitor_snapshot_result(
+        team_api_transport.TeamApiTransportPayload()
     )
 
     assert result.snapshot is None
 
 
-def test_team_api_snapshot_loader_normalize_config_snapshot_result_drops_non_object_config_payload() -> None:
-    data_payload = team_api_snapshot.TeamApiTransportPayload(config=["not", "a", "config"])
+def test_team_api_normalizer_drops_non_object_config_payload() -> None:
+    data_payload = team_api_transport.TeamApiTransportPayload(config=["not", "a", "config"])
 
-    result = team_api_snapshot.TeamApiSnapshotLoader.normalize_config_snapshot_result(
-        data_payload
-    )
+    result = team_api_normalizers.normalize_team_api_config_snapshot_result(data_payload)
 
     assert result.config is None
 
@@ -79,7 +80,7 @@ def test_read_team_api_list_tasks_returns_empty_snapshot(monkeypatch) -> None:
     )
 
     assert result.count == 0
-    assert result.tasks == []
+    assert result.tasks == ()
 
 
 def test_read_team_api_list_tasks_rejects_unparseable_json_transport(monkeypatch) -> None:
@@ -194,7 +195,7 @@ def test_read_team_api_list_tasks_drops_unstable_task_transport_fields(
         )
     )
 
-    assert result.model_dump() == {
+    assert result.model_dump(mode="json") == {
         "count": 1,
         "tasks": [
             {
@@ -237,7 +238,7 @@ def test_read_team_api_read_events_returns_empty_snapshot(monkeypatch) -> None:
 
     assert result.count == 0
     assert result.cursor == ""
-    assert result.events == []
+    assert result.events == ()
 
 
 def test_read_team_api_read_events_rejects_transport_error_payload(monkeypatch) -> None:
@@ -319,7 +320,7 @@ def test_read_team_api_read_events_drops_unstable_event_transport_fields(
         )
     )
 
-    assert result.model_dump() == {
+    assert result.model_dump(mode="json") == {
         "count": 1,
         "cursor": "cursor-1",
         "events": [
@@ -335,7 +336,7 @@ def test_read_team_api_read_events_drops_unstable_event_transport_fields(
 
 def test_load_team_api_payload_rejects_null_transport_payload() -> None:
     with pytest.raises(TeamworkSurfaceError):
-        team_api_snapshot._load_team_api_payload(
+        team_api_transport.load_team_api_payload(
             'null',
             "omx team api list-tasks",
         )
@@ -343,7 +344,7 @@ def test_load_team_api_payload_rejects_null_transport_payload() -> None:
 
 def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
     with pytest.raises(TeamworkSurfaceError):
-        team_api_snapshot._load_team_api_payload(
+        team_api_transport.load_team_api_payload(
             '{"ok":true,"data":[]}',
             "omx team api list-tasks",
         )
@@ -379,7 +380,7 @@ def test_read_team_api_mailbox_list_returns_empty_snapshot(monkeypatch) -> None:
 
     assert result.worker == "worker-1"
     assert result.count == 0
-    assert result.messages == []
+    assert result.messages == ()
 
 
 def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypatch) -> None:

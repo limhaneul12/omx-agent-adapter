@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import TeamApiReadEventsSnapshot
+from omx_remote.schemas.teamwork.api_snapshot_schemas import TeamApiReadEventsSnapshot
 
 
 def test_team_api_read_events_snapshot_accepts_task_completed_event_without_message_id() -> (

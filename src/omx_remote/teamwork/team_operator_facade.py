@@ -1,13 +1,15 @@
 from typing import Literal
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
-from omx_remote.schemas.teamwork_schemas import (
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiCreateTaskRequest,
     TeamApiReadWorkerStatusRequest,
     TeamApiSendMessageRequest,
     TeamApiWorkerInboxWriteRequest,
     TeamApiWriteTaskApprovalRequest,
+)
+from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
     TeamOperatorDispatchOutcome,
     TeamOperatorDispatchTaskRequest,
@@ -26,7 +28,6 @@ from omx_remote.teamwork.team_api_snapshot import read_team_api_read_worker_stat
 
 
 def _build_dispatch_outcome(
-    *,
     selected_operation: Literal[
         "send-message",
         "write-worker-inbox",

@@ -1,11 +1,15 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.teamwork_schemas import (
-    TeamApiEventSnapshot,
+from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
     TeamApiReadEventsRequest,
+)
+from omx_remote.schemas.teamwork.api_snapshot_schemas import (
+    TeamApiEventSnapshot,
     TeamApiTaskSnapshot,
+)
+from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
     TeamAwaitSnapshot,
     TeamStatusRequest,
@@ -109,8 +113,11 @@ def test_team_status_snapshot_accepts_worker_edge_lists() -> None:
         }
     )
 
-    assert result.dead_workers == ["worker-2"]
-    assert result.non_reporting_workers == ["worker-3"]
+    assert result.dead_workers == ("worker-2",)
+    assert result.non_reporting_workers == ("worker-3",)
+    json_payload = result.model_dump(mode="json")
+    assert json_payload["dead_workers"] == ["worker-2"]
+    assert json_payload["non_reporting_workers"] == ["worker-3"]
 
 
 def test_team_status_snapshot_rejects_unexpected_extra_fields() -> None:
