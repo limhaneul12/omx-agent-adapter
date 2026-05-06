@@ -88,6 +88,19 @@ PYTHONPATH="$PWD/src:$PWD" uv run agent-remote goal operating-decision --help
 
 The current CLI is still intentionally thin, but it now exposes concrete runtime/team/history/adapt/control subcommands instead of only descriptive top-level text. The main value still lives in the importable Python surfaces under `src/`.
 
+## Goal route guide
+
+Use `agent-remote goal template` as a lightweight `/goal` scaffold, then choose the lightest existing route:
+
+```text
+Goal only: small, clear, single-agent work.
+Goal → Ralph: structured PRD/owner planning is needed.
+Goal → Ultrawork: one agent needs long focused execution/resume context.
+Goal → Ralph → Team: Ralph can split independent worker ownership for real fanout.
+```
+
+This is intentionally not `goal draft`: the CLI does not infer files, choose routes automatically, launch runtimes, or mutate state.
+
 ## Safe live verification examples
 
 ```bash

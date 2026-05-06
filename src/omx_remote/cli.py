@@ -106,8 +106,13 @@ from omx_remote.teamwork.team_snapshot import await_team_status, read_team_statu
 
 HELP_TEXT = """Agent-facing adapter layer for operating OMX as a stateful runtime.
 
-Supported commands expose currently implemented read-oriented OMX surfaces.
+AI-friendly observability and context for Codex/OMX development layers.
 Use subcommand --help to see available operations for each domain.
+"""
+
+GOAL_HELP_TEXT = """Start and inspect adapter-tracked native Codex Goal sessions.
+
+Routes: Goal only for small objective loops; Goal → Ralph for structured owner planning; Goal → Ultrawork for long focused work; Goal → Ralph → Team when Ralph can split real fanout.
 """
 
 GOAL_TEMPLATE_TEXT = """# Codex /goal Prompt Template
@@ -142,7 +147,7 @@ runtime_app = typer.Typer(help="Read OMX runtime and mode state.", add_completio
 team_app = typer.Typer(help="Read OMX team runtime and team API state.", add_completion=False)
 history_app = typer.Typer(help="Read OMX session history search results.", add_completion=False)
 adapt_app = typer.Typer(help="Read OMX adapter probe, status, and envelope surfaces.", add_completion=False)
-goal_app = typer.Typer(help="Start and inspect adapter-tracked native Codex Goal sessions.", add_completion=False)
+goal_app = typer.Typer(help=GOAL_HELP_TEXT, add_completion=False)
 ralph_app = typer.Typer(help="Read Ralph-related OMX runtime state.", add_completion=False)
 ultrawork_app = typer.Typer(help="Read/operate Ultrawork-related OMX runtime state.", add_completion=False)
 

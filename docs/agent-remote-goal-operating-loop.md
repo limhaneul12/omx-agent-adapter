@@ -103,6 +103,26 @@ Goal → Ralph → Team
 
 This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
 
+## 2.3 Goal route map
+
+Use Goal as the objective/context/done-condition envelope, then choose the lightest existing development layer that fits the work:
+
+```text
+Goal only
+  Small, clear, single-agent objective loop. Use when the task does not need PRD ownership or long-running focused execution.
+
+Goal → Ralph
+  Use when scope, requirements, ownership, or verification need a structured PRD/owner lane before implementation.
+
+Goal → Ultrawork
+  Use when the goal is clear but the work needs one agent to keep deep context over a long focused execution/resume loop.
+
+Goal → Ralph → Team
+  Use only when Ralph can split independent worker ownership for real fanout. Team remains a Ralph consequence, not a direct Goal v1 mode.
+```
+
+Keep this route map as expression/context only. Do not add `goal draft`, automatic route selection, automatic fanout, automatic close, or automatic merge without a separate review.
+
 ## 3. Hermes skill usage
 
 A local Hermes skill exists for this workflow:
