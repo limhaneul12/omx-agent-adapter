@@ -1,21 +1,25 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.execution.payload_mapping import (
+from omx_remote.adapter_types.type_contract.execution_contract_type import (
     KNOWN_EXECUTION_EVENT_TYPES,
     PROMOTABLE_EXECUTION_PAYLOAD_TYPES,
 )
-from omx_remote.schemas.execution_schemas import (
+from omx_remote.schemas.execution.event_schemas import (
     ExecCommandExecution,
     ExecMessage,
-    ExecRequest,
     ExecToolCall,
     ExecToolResult,
-    ExecutionEventDecodeRequest,
+    TurnUsage,
+)
+from omx_remote.schemas.execution.interaction_schemas import (
     ToolInteraction,
     ToolInteractionAnomaly,
     ToolInteractionReport,
-    TurnUsage,
+)
+from omx_remote.schemas.execution.request_schemas import (
+    ExecRequest,
+    ExecutionEventDecodeRequest,
 )
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionPayloadKind,

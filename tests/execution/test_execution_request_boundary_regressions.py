@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.execution.event_feed import decode_event_lines
-from omx_remote.schemas.execution_schemas import ExecRequest
+from omx_remote.schemas.execution.request_schemas import ExecRequest
 
 
 def test_exec_request_rejects_empty_prompt() -> None:

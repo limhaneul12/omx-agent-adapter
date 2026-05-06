@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 
 
 def test_omx_command_result_accepts_exit_code_stdout_and_stderr() -> None:

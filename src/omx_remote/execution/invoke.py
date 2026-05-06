@@ -1,10 +1,18 @@
 import subprocess
 from collections.abc import Sequence
 
-from omx_remote.schemas.invoke_schemas import OmxCommandResult
+from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 
 
 def _command_failure_exit_code(error: OSError) -> int:
+    """Maps one subprocess launch error to a shell-compatible exit code.
+
+    Args:
+        error [OSError]: Subprocess launch error raised before OMX returned a process result.
+
+    Returns:
+        int: Shell-compatible failure exit code for the launch error category.
+    """
     if isinstance(error, FileNotFoundError):
         return 127
     if isinstance(error, PermissionError):
@@ -13,6 +21,14 @@ def _command_failure_exit_code(error: OSError) -> int:
 
 
 def _normalize_completed_process_stream_text(stream_text: str | None) -> str:
+    """Normalizes optional completed-process stream text.
+
+    Args:
+        stream_text [str | None]: Raw stdout or stderr text from a completed subprocess.
+
+    Returns:
+        str: Stream text, with missing streams represented as an empty string.
+    """
     if stream_text is None:
         normalized_stream_text: str = ""
         return normalized_stream_text

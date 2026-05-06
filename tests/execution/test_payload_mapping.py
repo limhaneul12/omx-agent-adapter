@@ -1,19 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.execution.payload_mapping import (
-    _load_execution_transport_payload,
-    _normalize_execution_event_payload,
-    _normalize_execution_event_type,
-    _normalize_execution_item_completed_payload,
-    _normalize_execution_item_payload,
-    _normalize_execution_thread_started_payload,
-    _normalize_execution_turn_completed_payload,
-    build_tool_interaction,
-    build_tool_interaction_report,
-    build_tool_interactions,
+from omx_remote.execution.contract_promotion import (
     is_promotable_execution_payload,
-    load_execution_payload,
     promote_exec_command_execution,
     promote_exec_message,
     promote_exec_output,
@@ -22,6 +11,21 @@ from omx_remote.execution.payload_mapping import (
     promote_execution_contract,
     route_execution_payload,
     split_event_payloads,
+)
+from omx_remote.execution.payload_transport import (
+    _load_execution_transport_payload,
+    _normalize_execution_event_payload,
+    _normalize_execution_event_type,
+    _normalize_execution_item_completed_payload,
+    _normalize_execution_item_payload,
+    _normalize_execution_thread_started_payload,
+    _normalize_execution_turn_completed_payload,
+    load_execution_payload,
+)
+from omx_remote.execution.tool_interactions import (
+    build_tool_interaction,
+    build_tool_interaction_report,
+    build_tool_interactions,
 )
 from omx_remote.shared.exceptions import (
     UnsupportedExecutionPayloadError,

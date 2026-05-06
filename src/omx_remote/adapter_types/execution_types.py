@@ -1,5 +1,14 @@
 from typing import Literal, TypedDict
 
+import msgspec
+
+from omx_remote.schemas.execution.event_schemas import (
+    ExecCommandExecution,
+    ExecMessage,
+    ExecOutput,
+    ExecToolCall,
+    ExecToolResult,
+)
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionEventKind,
     KnownExecutionEventType,
@@ -8,7 +17,59 @@ from omx_remote.shared.omx_enums.execution_enums import (
 
 type KnownExecutionEventTypeSet = frozenset[KnownExecutionEventType]
 type PromotableExecutionPayloadTypeSet = frozenset[PromotableExecutionPayloadType]
+type ExecutionPayload = ExecutionTransportPayload
+type ExecutionContract = (
+    ExecMessage
+    | ExecOutput
+    | ExecCommandExecution
+    | ExecToolCall
+    | ExecToolResult
+)
+type RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 type ExecutionTransportPayloads = tuple[ExecutionTransportPayload, ...]
+
+
+class ExecutionUsageSpec(msgspec.Struct, omit_defaults=True):
+    """Represents the msgspec field contract for execution usage payloads."""
+
+    input_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    output_tokens: int | None = None
+    reasoning_output_tokens: int | None = None
+
+
+class ExecutionItemSpec(msgspec.Struct, omit_defaults=True):
+    """Represents the msgspec field contract for execution item payloads."""
+
+    id: str | None = None
+    type: str | None = None
+    text: str | None = None
+    tool_name: str | None = None
+    call_id: str | None = None
+    arguments: str | None = None
+    command: str | None = None
+    aggregated_output: str | None = None
+    exit_code: int | None = None
+    status: str | None = None
+
+
+class ExecutionTransportSpec(msgspec.Struct, omit_defaults=True):
+    """Represents the msgspec field contract for top-level execution payloads."""
+
+    type: str | None = None
+    text: str | None = None
+    item: object | None = None
+    tool_name: str | None = None
+    call_id: str | None = None
+    arguments: str | None = None
+    command: str | None = None
+    aggregated_output: str | None = None
+    exit_code: int | None = None
+    status: str | None = None
+    id: str | None = None
+    extra: object | None = None
+    thread_id: str | None = None
+    usage: object | None = None
 
 
 class ExecutionUsageTransportPayload(TypedDict, total=False):

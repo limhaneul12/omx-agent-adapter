@@ -1,13 +1,21 @@
 import subprocess
 from collections.abc import Sequence
 
-from omx_remote.schemas.codex_goal import (
+from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalSpawnResult,
     CodexGoalSpawnStatus,
 )
 
 
 def _normalize_stream_text(stream_text: str | None) -> str:
+    """Normalizes optional tmux subprocess stream text.
+
+    Args:
+        stream_text [str | None]: Raw stdout or stderr text from a tmux subprocess.
+
+    Returns:
+        str: Stream text, with missing streams represented as an empty string.
+    """
     if stream_text is None:
         normalized_stream_text: str = ""
         return normalized_stream_text
@@ -18,6 +26,14 @@ def _normalize_stream_text(stream_text: str | None) -> str:
 
 
 def _read_process_id_from_tmux_session(session_locator: str) -> int | None:
+    """Reads the pane process id for one tmux-backed Codex Goal session.
+
+    Args:
+        session_locator [str]: Tmux session name used to locate the Codex Goal pane.
+
+    Returns:
+        int | None: Pane process id when tmux reports a numeric id, otherwise `None`.
+    """
     completed_process = subprocess.run(
         ["tmux", "display-message", "-p", "-t", session_locator, "#{pane_pid}"],
         text=True,
@@ -35,13 +51,22 @@ def _read_process_id_from_tmux_session(session_locator: str) -> int | None:
 
 
 def spawn_codex_goal_session(
-    *,
     goal_id: str,
     codex_command: Sequence[str],
     working_directory: str | None,
     slash_command_text: str,
 ) -> CodexGoalSpawnResult:
-    """Spawn one detached tmux-backed Codex Goal session and inject `/goal` text."""
+    """Spawns one detached tmux-backed Codex Goal session and injects `/goal` text.
+
+    Args:
+        goal_id [str]: Adapter-owned goal identifier used to derive the tmux session name.
+        codex_command [Sequence[str]]: Native Codex command argv used to start the session.
+        working_directory [str | None]: Optional directory where the tmux session should start.
+        slash_command_text [str]: Full `/goal` slash command text to inject after spawn.
+
+    Returns:
+        CodexGoalSpawnResult: Spawn status, session locator, process id, and any tmux error text.
+    """
     session_locator: str = f"agent-remote-goal-{goal_id}"
     new_session_command: list[str] = ["tmux", "new-session", "-d", "-s", session_locator]
     if working_directory is not None:
@@ -98,7 +123,14 @@ def spawn_codex_goal_session(
 
 
 def is_codex_goal_session_active(session_locator: str) -> bool:
-    """Check whether one tmux-backed Codex Goal session is still present."""
+    """Checks whether one tmux-backed Codex Goal session is still present.
+
+    Args:
+        session_locator [str]: Tmux session name used to locate the Codex Goal session.
+
+    Returns:
+        bool: `True` when tmux still knows the session, otherwise `False`.
+    """
     completed_process = subprocess.run(
         ["tmux", "has-session", "-t", session_locator],
         text=True,

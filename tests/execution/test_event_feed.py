@@ -3,7 +3,7 @@ import inspect
 import json
 
 from omx_remote.execution.event_feed import decode_event_lines
-from omx_remote.schemas.execution_schemas import ExecutionEventDecodeRequest
+from omx_remote.schemas.execution.request_schemas import ExecutionEventDecodeRequest
 
 
 def test_decode_event_lines_ignores_non_json_lines() -> None:

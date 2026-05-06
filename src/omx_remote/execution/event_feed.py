@@ -2,12 +2,10 @@ import asyncio
 
 import orjson
 
-from omx_remote.execution.payload_mapping import (
-    ExecutionPayload,
-    load_execution_payload,
-    split_event_payloads,
-)
-from omx_remote.schemas.execution_schemas import ExecutionEventDecodeRequest
+from omx_remote.adapter_types.execution_types import ExecutionPayload
+from omx_remote.execution.contract_promotion import split_event_payloads
+from omx_remote.execution.payload_transport import load_execution_payload
+from omx_remote.schemas.execution.request_schemas import ExecutionEventDecodeRequest
 
 
 async def decode_event_lines(
@@ -35,6 +33,14 @@ async def decode_event_lines(
 
 
 def _decode_event_lines_sync(payload: str) -> list[ExecutionPayload]:
+    """Handles decode event lines sync.
+    
+    Args:
+        payload [str]: Function argument.
+    
+    Returns:
+        list[ExecutionPayload]: Function return value.
+    """
     events: list[ExecutionPayload] = []
     line: str
     for line in payload.splitlines():
