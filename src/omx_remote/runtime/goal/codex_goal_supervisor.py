@@ -9,6 +9,9 @@ from omx_remote.runtime.goal.goal_delegation import (
     dispatch_goal_delegation,
     select_goal_delegation,
 )
+from omx_remote.runtime.goal.goal_lifecycle_artifacts import (
+    restore_goal_lifecycle_state,
+)
 from omx_remote.runtime.goal.goal_lifecycle_decision import (
     build_goal_lifecycle_decision,
 )
@@ -47,6 +50,7 @@ __all__ = (
     "build_goal_to_ralph_handoff_prompt",
     "dispatch_goal_delegation",
     "prepare_tracked_codex_goal_ralph_handoff_prompt",
+    "restore_goal_lifecycle_state",
     "select_goal_delegation",
 )
 

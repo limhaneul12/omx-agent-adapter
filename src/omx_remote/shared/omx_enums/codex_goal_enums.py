@@ -103,3 +103,14 @@ class CodexGoalLifecycleTarget(StrEnum):
     GOAL_CLOSE = "goal_close"
     RALPH_FOLLOW_UP = "ralph_follow_up"
     HUMAN_REVIEW = "human_review"
+
+
+class CodexGoalLifecycleRestoreTarget(StrEnum):
+    """Resume targets derived from durable Goal lifecycle artifacts."""
+
+    TEAM_ADMIN_AGGREGATION = "team_admin_aggregation"
+    RALPH_POST_TEAM_REVIEW = "ralph_post_team_review"
+    GOAL_LIFECYCLE_DECISION = "goal_lifecycle_decision"
+    GOAL_CLOSE = "goal_close"
+    RALPH_FOLLOW_UP = "ralph_follow_up"
+    HUMAN_REVIEW = "human_review"
