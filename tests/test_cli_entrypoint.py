@@ -97,6 +97,30 @@ def test_package_entrypoint_runs_runtime_help() -> None:
     assert "mode-state" in completed_process.stdout
 
 
+def test_team_cli_is_split_into_feature_launcher_modules() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    team_cli_path = repo_root / "src" / "omx_remote" / "cli_launcher" / "team_cli.py"
+    team_launcher_dir = (
+        repo_root / "src" / "omx_remote" / "cli_launcher" / "team_launcher"
+    )
+    expected_modules = {
+        "team_read_cli.py",
+        "team_message_cli.py",
+        "team_task_cli.py",
+        "team_approval_cli.py",
+        "team_mailbox_cli.py",
+        "team_shutdown_cli.py",
+        "team_cleanup_cli.py",
+    }
+
+    assert team_launcher_dir.is_dir()
+    assert not (team_launcher_dir / "__init__.py").exists()
+    assert expected_modules == {
+        module_path.name for module_path in team_launcher_dir.glob("*.py")
+    }
+    assert len(team_cli_path.read_text().splitlines()) <= 80
+
+
 def test_package_entrypoint_runs_team_help() -> None:
     completed_process = _run_agent_remote_command(["team", "--help"])
 
