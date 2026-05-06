@@ -1,0 +1,24 @@
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    NonEmptyStrings,
+    StrictSchemaModel,
+)
+from omx_remote.shared.omx_enums.team_admin_enums import TeamAdminAggregationState
+
+
+class TeamAdminAggregationReport(StrictSchemaModel):
+    """Ralph-facing Team Admin final aggregation report."""
+
+    admin_id: NonEmptyString
+    aggregation_state: TeamAdminAggregationState
+    merge_ready: bool
+    final_report_required: bool
+    completed_workers: NonEmptyStrings
+    missing_workers: NonEmptyStrings
+    blocked_workers: NonEmptyStrings
+    incomplete_workers: NonEmptyStrings
+    requires_human_review: bool
+    requires_llm_review: bool
+    task_count: int
+    event_count: int
+    summary: NonEmptyString
