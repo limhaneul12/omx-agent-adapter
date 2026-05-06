@@ -56,6 +56,13 @@ def _team_assignment(
         "tdd_steps": ["Write a failing focused regression", "Make the regression pass"],
         "verification_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
         "handoff_summary_required": "Summarize changed files and verification output.",
+        "authorization_policy": "preapproved",
+        "authorization_scope": {
+            "allowed_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+            "forbidden_commands": ["git push"],
+            "requires_human_for": ["modify forbidden_files or files outside owned_files"],
+            "requires_llm_review_for": ["local checkpoint commit"],
+        },
     }
 
 
@@ -201,6 +208,14 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
     }
     assert [node["id"] for node in dag_payload["nodes"]] == ["worker-1", "worker-2"]
     assert dag_payload["nodes"][0]["filePaths"] == ["src/impl.py"]
+    assert dag_payload["nodes"][0]["authorization"] == {
+        "policy": "preapproved",
+        "allowed_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+        "forbidden_commands": ["git push"],
+        "requires_human_for": ["modify forbidden_files or files outside owned_files"],
+        "requires_llm_review_for": ["local checkpoint commit"],
+    }
+    assert "Authorization policy: preapproved" in dag_payload["nodes"][0]["description"]
     assert dag_payload["nodes"][1]["lane"] == "Test lane"
 
 

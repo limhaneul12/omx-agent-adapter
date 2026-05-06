@@ -7,9 +7,21 @@ from omx_remote.schemas.common_schemas import (
     StrictRootSchemaModel,
     StrictSchemaModel,
 )
-from omx_remote.shared.omx_enums.ralph_enums import RalphPrdContinuationPolicy
+from omx_remote.shared.omx_enums.ralph_enums import (
+    RalphPrdContinuationPolicy,
+    TeamWorkerAuthorizationPolicy,
+)
 
 type NonEmptyStrings = tuple[NonEmptyString, ...]
+
+
+class TeamWorkerAuthorizationScope(StrictSchemaModel):
+    """Allowed and escalated actions for one Team worker assignment."""
+
+    allowed_commands: NonEmptyStrings = ()
+    forbidden_commands: NonEmptyStrings = ()
+    requires_human_for: NonEmptyStrings = ()
+    requires_llm_review_for: NonEmptyStrings = ()
 
 
 class TeamWorkerAssignment(StrictSchemaModel):
@@ -24,6 +36,8 @@ class TeamWorkerAssignment(StrictSchemaModel):
     tdd_steps: NonEmptyStrings = Field(min_length=1)
     verification_commands: NonEmptyStrings = Field(min_length=1)
     handoff_summary_required: NonEmptyString
+    authorization_policy: TeamWorkerAuthorizationPolicy
+    authorization_scope: TeamWorkerAuthorizationScope
 
 
 class RalphTeamDistributionPlan(StrictRootSchemaModel[tuple[TeamWorkerAssignment, ...]]):

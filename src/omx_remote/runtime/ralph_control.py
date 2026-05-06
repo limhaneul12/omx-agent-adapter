@@ -629,8 +629,37 @@ Verification commands:
 
 Handoff summary required:
 - {assignment.handoff_summary_required}
+
+Authorization policy: {assignment.authorization_policy}
+
+Allowed commands:
+{_format_markdown_list(assignment.authorization_scope.allowed_commands)}
+
+Forbidden commands:
+{_format_markdown_list(assignment.authorization_scope.forbidden_commands)}
+
+Requires human approval for:
+{_format_markdown_list(assignment.authorization_scope.requires_human_for)}
+
+Requires LLM review for:
+{_format_markdown_list(assignment.authorization_scope.requires_llm_review_for)}
 """.strip()
     return description
+
+
+def _build_worker_authorization_payload(
+    assignment: TeamWorkerAssignment,
+) -> dict[str, object]:
+    authorization_payload: dict[str, object] = {
+        "policy": assignment.authorization_policy,
+        "allowed_commands": list(assignment.authorization_scope.allowed_commands),
+        "forbidden_commands": list(assignment.authorization_scope.forbidden_commands),
+        "requires_human_for": list(assignment.authorization_scope.requires_human_for),
+        "requires_llm_review_for": list(
+            assignment.authorization_scope.requires_llm_review_for
+        ),
+    }
+    return authorization_payload
 
 
 def _planning_artifact_slug() -> str:
@@ -706,6 +735,7 @@ def _write_ralph_team_dag_handoff_artifacts(
                 "lane": assignment.lane_name,
                 "filePaths": list(assignment.owned_files),
                 "depends_on": [],
+                "authorization": _build_worker_authorization_payload(assignment),
                 "acceptance": [
                     *assignment.verification_commands,
                     assignment.handoff_summary_required,

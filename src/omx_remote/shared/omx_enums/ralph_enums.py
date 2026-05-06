@@ -44,6 +44,14 @@ class RalphPrdContinuationPolicy(StrEnum):
     CONTINUE_AUTOMATICALLY = "continue_automatically"
 
 
+class TeamWorkerAuthorizationPolicy(StrEnum):
+    """Per-worker authorization policies for Team assignment allow decisions."""
+
+    HUMAN_REQUIRED = "human_required"
+    LLM_REVIEW = "llm_review"
+    PREAPPROVED = "preapproved"
+
+
 class RalphStateClassification(StrEnum):
     """Adapter classifications for Ralph state preflight decisions."""
 

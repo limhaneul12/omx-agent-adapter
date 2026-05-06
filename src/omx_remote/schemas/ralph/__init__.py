@@ -3,6 +3,8 @@ from omx_remote.schemas.ralph.prd_schemas import (
     RalphPrdContinuationPolicy,
     RalphTeamDistributionPlan,
     TeamWorkerAssignment,
+    TeamWorkerAuthorizationPolicy,
+    TeamWorkerAuthorizationScope,
 )
 
 __all__ = [
@@ -10,4 +12,6 @@ __all__ = [
     "RalphPrdContinuationPolicy",
     "RalphTeamDistributionPlan",
     "TeamWorkerAssignment",
+    "TeamWorkerAuthorizationPolicy",
+    "TeamWorkerAuthorizationScope",
 ]
