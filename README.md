@@ -75,6 +75,7 @@ agent-remote adapt --help
 agent-remote ralph --help
 agent-remote ultrawork --help
 agent-remote goal --help
+agent-remote goal template
 agent-remote goal restore-lifecycle --help
 agent-remote goal operating-decision --help
 ```

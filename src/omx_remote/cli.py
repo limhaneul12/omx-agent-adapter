@@ -110,6 +110,33 @@ Supported commands expose currently implemented read-oriented OMX surfaces.
 Use subcommand --help to see available operations for each domain.
 """
 
+GOAL_TEMPLATE_TEXT = """# Codex /goal Prompt Template
+
+Goal:
+  <What should be completed, and where should the agent stop?>
+
+Context:
+  <Relevant files, directories, current state, prior decisions, and known evidence.>
+
+Constraints:
+  <Architecture rules, non-goals, safety boundaries, and testing expectations.>
+
+Done When:
+  <Concrete completion criteria, including verification commands and behavior that must not regress.>
+
+Route guide:
+  - Goal only: small, clear, single-agent task.
+  - Goal → Ralph: unclear scope, PRD/owner planning, or execution structure needed.
+  - Goal → Ultrawork: long focused work where one agent should keep deep context.
+  - Goal → Ralph → Team: Ralph can split independent worker ownership for real fanout.
+
+Verification checklist:
+  - Targeted tests pass.
+  - Static checks pass.
+  - Full test suite passes when code changed.
+  - Handoff notes explain what changed, what was verified, and what remains.
+"""
+
 app = typer.Typer(help=HELP_TEXT, add_completion=False)
 runtime_app = typer.Typer(help="Read OMX runtime and mode state.", add_completion=False)
 team_app = typer.Typer(help="Read OMX team runtime and team API state.", add_completion=False)
@@ -272,6 +299,12 @@ def goal_status(
         raise typer.Exit(code=2) from error
 
     typer.echo(result.model_dump_json(indent=2))
+
+
+@goal_app.command("template", help="Print a lightweight Codex /goal prompt scaffold.")
+def goal_template() -> None:
+    """Print a lightweight Codex /goal prompt scaffold."""
+    typer.echo(GOAL_TEMPLATE_TEXT)
 
 
 @goal_app.command("prepare-ralph")

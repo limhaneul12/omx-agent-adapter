@@ -145,9 +145,32 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert completed_process.returncode == 0
     assert "start" in completed_process.stdout
     assert "status" in completed_process.stdout
+    assert "template" in completed_process.stdout
     assert "prepare-ralph" in completed_process.stdout
     assert "restore-lifecycle" in completed_process.stdout
     assert "operating-decision" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_template_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "template", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "Codex /goal prompt scaffold" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_goal_template() -> None:
+    completed_process = _run_agent_remote_command(["goal", "template"])
+
+    assert completed_process.returncode == 0
+    assert "# Codex /goal Prompt Template" in completed_process.stdout
+    assert "Goal:" in completed_process.stdout
+    assert "Context:" in completed_process.stdout
+    assert "Constraints:" in completed_process.stdout
+    assert "Done When:" in completed_process.stdout
+    assert "Route guide:" in completed_process.stdout
+    assert "Goal only" in completed_process.stdout
+    assert "Goal → Ralph" in completed_process.stdout
+    assert "Goal → Ultrawork" in completed_process.stdout
 
 
 def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:

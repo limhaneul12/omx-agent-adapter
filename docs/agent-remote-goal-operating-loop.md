@@ -75,6 +75,34 @@ PYTHONPATH="$PWD/src:$PWD" uv run agent-remote ...
 
 Why: a plain installed console entrypoint can point at an older installed package while the working tree contains newer unpushed code.
 
+## 2.2 Lightweight Goal template
+
+Use `agent-remote goal template` when preparing a Codex `/goal` prompt and you need a lightweight scaffold rather than a generated plan:
+
+```bash
+agent-remote goal template
+```
+
+The command prints the static structure recommended for effective `/goal` use:
+
+```text
+Goal
+Context
+Constraints
+Done When
+```
+
+It also includes a short route guide for:
+
+```text
+Goal only
+Goal → Ralph
+Goal → Ultrawork
+Goal → Ralph → Team
+```
+
+This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
+
 ## 3. Hermes skill usage
 
 A local Hermes skill exists for this workflow:
