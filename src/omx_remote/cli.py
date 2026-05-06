@@ -1,5 +1,6 @@
 import asyncio
 
+import orjson
 import typer
 from pydantic import ValidationError
 
@@ -1060,12 +1061,11 @@ def ralph_startability() -> None:
     """Read Ralph mode state and mode status to assess whether Ralph can be inspected or resumed safely."""
     mode_state = asyncio.run(read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph")))
     mode_status = asyncio.run(read_runtime_mode_status(RuntimeModeStatusRequest(mode="ralph")))
-    typer.echo(
-        {
-            "mode_state": mode_state.model_dump(),
-            "mode_status": mode_status.model_dump(),
-        }
-    )
+    output_payload = {
+        "mode_state": mode_state.model_dump(mode="json"),
+        "mode_status": mode_status.model_dump(mode="json"),
+    }
+    typer.echo(orjson.dumps(output_payload, option=orjson.OPT_INDENT_2).decode())
 
 
 @ralph_app.command("launch")

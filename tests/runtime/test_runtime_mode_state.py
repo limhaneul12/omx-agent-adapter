@@ -52,6 +52,28 @@ def test_read_runtime_mode_state_returns_present_state_result(monkeypatch) -> No
     assert result.state == {"active": True, "current_phase": "executing"}
 
 
+def test_read_runtime_mode_state_accepts_direct_omx_state_payload(monkeypatch) -> None:
+    monkeypatch.setattr(
+        runtime_mode_state,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"active":false,"mode":"ralph","current_phase":"cancelled"}\n'
+        ),
+    )
+
+    result = asyncio.run(
+        runtime_mode_state.read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph"))
+    )
+
+    assert result.mode == "ralph"
+    assert result.exists is True
+    assert result.state == {
+        "active": False,
+        "mode": "ralph",
+        "current_phase": "cancelled",
+    }
+
+
 def test_read_runtime_mode_state_rejects_unparseable_json_transport(
     monkeypatch,
 ) -> None:

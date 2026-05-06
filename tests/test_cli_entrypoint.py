@@ -3,6 +3,14 @@ import subprocess
 from pathlib import Path
 
 import orjson
+from typer.testing import CliRunner
+
+from omx_remote.cli import app
+from omx_remote.schemas.runtime.status_schemas import (
+    RuntimeModeStateSnapshot,
+    RuntimeModeStatusResult,
+    RuntimeModeStatusSnapshot,
+)
 
 
 def _run_agent_remote_command(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -235,6 +243,39 @@ def test_package_entrypoint_runs_ralph_help() -> None:
     assert "launch" in completed_process.stdout
     assert "resume" in completed_process.stdout
     assert "cleanup-stale" in completed_process.stdout
+
+
+def test_ralph_startability_outputs_json(monkeypatch) -> None:
+    async def fake_read_runtime_mode_state(request):
+        _ = request
+        return RuntimeModeStateSnapshot(
+            mode="ralph",
+            exists=True,
+            state={"active": False, "mode": "ralph"},
+        )
+
+    async def fake_read_runtime_mode_status(request):
+        _ = request
+        return RuntimeModeStatusResult(
+            requested_mode="ralph",
+            found=True,
+            mode_snapshot=RuntimeModeStatusSnapshot(
+                name="ralph",
+                is_active=False,
+                phase="cancelled",
+                state_path="/tmp/ralph-state.json",
+            ),
+        )
+
+    monkeypatch.setattr("omx_remote.cli.read_runtime_mode_state", fake_read_runtime_mode_state)
+    monkeypatch.setattr("omx_remote.cli.read_runtime_mode_status", fake_read_runtime_mode_status)
+
+    result = CliRunner().invoke(app, ["ralph", "startability"])
+
+    assert result.exit_code == 0
+    output = orjson.loads(result.stdout)
+    assert output["mode_state"]["mode"] == "ralph"
+    assert output["mode_status"]["requested_mode"] == "ralph"
 
 
 def test_package_entrypoint_runs_ultrawork_help() -> None:

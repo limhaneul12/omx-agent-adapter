@@ -63,25 +63,60 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
     if not isinstance(parsed_payload, dict):
         raise RuntimeSurfaceError("omx state read returned a non-object JSON payload")
 
-    exists_value: object | None = parsed_payload.get("exists")
-    if not isinstance(exists_value, bool):
-        raise RuntimeSurfaceError("omx state read returned a non-boolean exists payload")
-
     mode_value: object | None = parsed_payload.get("mode")
     if not isinstance(mode_value, str):
         raise RuntimeSurfaceError("omx state read returned a non-string mode payload")
+
+    exists_value: object | None = parsed_payload.get("exists")
+    if exists_value is None:
+        direct_state_payload: dict[str, object] = _copy_runtime_mode_state_payload(
+            parsed_payload
+        )
+        direct_result = RuntimeModeStateTransportPayload(
+            exists=True,
+            mode=mode_value,
+            state=direct_state_payload,
+        )
+        return direct_result
+
+    if not isinstance(exists_value, bool):
+        raise RuntimeSurfaceError("omx state read returned a non-boolean exists payload")
 
     state_value: object | None = parsed_payload.get("state")
     if state_value is not None and not isinstance(state_value, dict):
         raise RuntimeSurfaceError("omx state read returned a non-object state payload")
 
+    normalized_state_value: dict[str, object] | None = None
+    if isinstance(state_value, dict):
+        normalized_state_value = _copy_runtime_mode_state_payload(state_value)
+
     result = RuntimeModeStateTransportPayload(
         exists=exists_value,
         mode=mode_value,
-        state=state_value,
+        state=normalized_state_value,
     )
 
     return result
+
+
+def _copy_runtime_mode_state_payload(
+    payload: dict[object, object],
+) -> dict[str, object]:
+    """Copies a runtime mode-state object into a string-keyed payload.
+
+    Args:
+        payload [dict[object, object]]: Runtime mode-state object decoded from OMX JSON.
+
+    Returns:
+        dict[str, object]: Stable string-keyed state payload for schema validation.
+    """
+    copied_payload: dict[str, object] = {}
+    for key, value in payload.items():
+        if not isinstance(key, str):
+            raise RuntimeSurfaceError("omx state read returned a non-string state key")
+        copied_payload[key] = value
+
+    return copied_payload
 
 
 def _normalize_runtime_mode_state(stdout: str) -> RuntimeModeStateSnapshot:
