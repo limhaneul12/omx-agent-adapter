@@ -53,7 +53,7 @@ def test_session_search_snapshot_accepts_zero_results() -> None:
     )
 
     assert result.query == "hermes"
-    assert result.results == []
+    assert result.results == ()
 
 
 def test_session_search_snapshot_accepts_populated_results() -> None:
@@ -76,6 +76,7 @@ def test_session_search_snapshot_accepts_populated_results() -> None:
     )
 
     assert result.matched_sessions == 1
+    assert isinstance(result.results, tuple)
     assert len(result.results) == 1
 
 

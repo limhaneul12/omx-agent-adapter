@@ -61,6 +61,7 @@ def test_adapter_probe_snapshot_accepts_live_probe_subset() -> None:
 
     assert result.target == "hermes"
     assert result.phase == "foundation"
+    assert isinstance(result.capabilities, tuple)
     assert len(result.capabilities) == 1
     assert result.target_runtime_state == "unavailable"
 
@@ -80,6 +81,7 @@ def test_adapter_status_snapshot_accepts_live_status_subset() -> None:
     )
 
     assert result.adapter_state == "not-initialized"
+    assert result.capabilities == ()
     assert result.target_runtime_state == "unavailable"
 
 
@@ -96,4 +98,5 @@ def test_adapter_envelope_snapshot_accepts_live_envelope_subset() -> None:
     )
 
     assert result.display_name == "Hermes"
+    assert result.capabilities == ()
     assert result.target_runtime_state == "unavailable"

@@ -39,7 +39,7 @@ def test_search_sessions_returns_zero_result_snapshot(monkeypatch) -> None:
 
     assert result.query == "hermes"
     assert result.matched_sessions == 0
-    assert result.results == []
+    assert result.results == ()
 
 
 def test_search_sessions_returns_populated_snapshot(monkeypatch) -> None:
@@ -54,6 +54,7 @@ def test_search_sessions_returns_populated_snapshot(monkeypatch) -> None:
     result = asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
 
     assert result.matched_sessions == 1
+    assert isinstance(result.results, tuple)
     assert result.results[0].session_id == "019de86e-6ec0-7993-8d67-23d629f5783c"
     assert result.results[0].snippet == "probe result"
 

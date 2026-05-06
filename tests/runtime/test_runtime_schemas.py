@@ -90,7 +90,7 @@ def test_runtime_status_anomaly_rejects_empty_mode_name_when_present() -> None:
 def test_active_runtime_modes_accepts_non_empty_mode_names() -> None:
     result = ActiveRuntimeModes.model_validate({"active_modes": ["ralph", "run"]})
 
-    assert result.active_modes == ["ralph", "run"]
+    assert result.active_modes == ("ralph", "run")
 
 
 def test_active_runtime_modes_rejects_unexpected_extra_fields() -> None:

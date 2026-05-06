@@ -1,5 +1,3 @@
-from pydantic import Field
-
 from omx_remote.schemas.common_schemas import (
     NonEmptyString,
     StrictSchemaModel,
@@ -28,7 +26,7 @@ class AdapterProbeSnapshot(StrictSchemaModel):
     target: NonEmptyString
     phase: NonEmptyString
     summary: NonEmptyString
-    capabilities: list[AdapterCapabilitySnapshot] = Field(default_factory=list)
+    capabilities: tuple[AdapterCapabilitySnapshot, ...]
     target_runtime_state: NonEmptyString
     target_runtime_detail: NonEmptyString
 
@@ -43,7 +41,7 @@ class AdapterStatusSnapshot(StrictSchemaModel):
     adapter_detail: NonEmptyString
     target_runtime_state: NonEmptyString
     target_runtime_detail: NonEmptyString
-    capabilities: list[AdapterCapabilitySnapshot] = Field(default_factory=list)
+    capabilities: tuple[AdapterCapabilitySnapshot, ...]
 
 
 class AdapterEnvelopeSnapshot(StrictSchemaModel):
@@ -52,6 +50,6 @@ class AdapterEnvelopeSnapshot(StrictSchemaModel):
     target: NonEmptyString
     display_name: NonEmptyString
     summary: NonEmptyString
-    capabilities: list[AdapterCapabilitySnapshot] = Field(default_factory=list)
+    capabilities: tuple[AdapterCapabilitySnapshot, ...]
     target_runtime_state: NonEmptyString
     target_runtime_detail: NonEmptyString

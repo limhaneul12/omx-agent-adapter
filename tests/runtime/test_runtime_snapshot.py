@@ -22,7 +22,7 @@ def test_read_runtime_status_uses_stdout(monkeypatch) -> None:
 
     assert result.summary == "No active modes."
     assert result.has_active_modes is False
-    assert result.active_mode_names == []
+    assert result.active_mode_names == ()
     assert result.mode_statuses == {}
 
 
@@ -52,7 +52,7 @@ def test_read_runtime_status_falls_back_to_stderr(monkeypatch) -> None:
 
     assert result.summary == "worker notify failed"
     assert result.has_active_modes is None
-    assert result.active_mode_names == []
+    assert result.active_mode_names == ()
     assert result.mode_statuses == {}
     assert len(result.anomalies) == 1
     assert result.anomalies[0].category == "stderr_fallback"
@@ -72,11 +72,11 @@ def test_read_runtime_status_marks_active_modes_when_summary_is_not_idle(
 
     assert result.summary == "ralph: active"
     assert result.has_active_modes is True
-    assert result.active_mode_names == ["ralph"]
+    assert result.active_mode_names == ("ralph",)
     assert result.mode_statuses == {"ralph": "active"}
     assert [mode_snapshot.name for mode_snapshot in result.mode_snapshots] == ["ralph"]
     assert result.mode_snapshots[0].status == "active"
-    assert result.anomalies == []
+    assert result.anomalies == ()
 
 
 def test_read_runtime_status_extracts_multiple_active_mode_names(
@@ -92,7 +92,7 @@ def test_read_runtime_status_extracts_multiple_active_mode_names(
 
     assert result.summary == "ralph: active\nteam: active"
     assert result.has_active_modes is True
-    assert result.active_mode_names == ["ralph", "team"]
+    assert result.active_mode_names == ("ralph", "team")
     assert result.mode_statuses == {"ralph": "active", "team": "active"}
 
 
@@ -143,7 +143,7 @@ def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomali
     result = asyncio.run(runtime_snapshot.read_runtime_status())
 
     assert result.has_active_modes is True
-    assert result.active_mode_names == ["ralph"]
+    assert result.active_mode_names == ("ralph",)
     assert result.mode_statuses == {
         "hud": "idle",
         "ralph": "active",
@@ -159,7 +159,7 @@ def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomali
         "ACTIVE (phase: starting)",
         "inactive (phase: cancelled)",
     ]
-    assert result.anomalies == []
+    assert result.anomalies == ()
 
 
 def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:
@@ -231,7 +231,7 @@ def test_read_runtime_status_reports_no_anomalies_for_idle_stdout(monkeypatch) -
 
     result = asyncio.run(runtime_snapshot.read_runtime_status())
 
-    assert result.anomalies == []
+    assert result.anomalies == ()
     assert result.has_anomalies is False
     assert result.anomaly_count == 0
 
