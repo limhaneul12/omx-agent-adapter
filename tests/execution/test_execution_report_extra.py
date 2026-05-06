@@ -55,6 +55,7 @@ def test_build_tool_interaction_report_preserves_anomaly_category_order() -> Non
         ]
     )
 
+    assert isinstance(report.anomalies, tuple)
     assert [anomaly.category for anomaly in report.anomalies] == [
         "duplicate_result",
         "unmatched_result",

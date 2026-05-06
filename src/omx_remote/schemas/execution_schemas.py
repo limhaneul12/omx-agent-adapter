@@ -122,11 +122,11 @@ class ToolInteraction(StrictSchemaModel):
 class ToolInteractionReport(StrictSchemaModel):
     """Represents grouped tool interactions plus anomaly buckets."""
 
-    interactions: list[ToolInteraction]
-    unmatched_results: list[ExecToolResult]
-    duplicate_results: list[ExecToolResult]
-    missing_result_calls: list[ExecToolCall]
-    anomalies: list[ToolInteractionAnomaly]
+    interactions: tuple[ToolInteraction, ...]
+    unmatched_results: tuple[ExecToolResult, ...]
+    duplicate_results: tuple[ExecToolResult, ...]
+    missing_result_calls: tuple[ExecToolCall, ...]
+    anomalies: tuple[ToolInteractionAnomaly, ...]
     interaction_count: int
     completed_count: int
     missing_result_count: int

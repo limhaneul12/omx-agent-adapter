@@ -257,6 +257,31 @@ def test_tool_interaction_report_rejects_unexpected_extra_fields() -> None:
         )
 
 
+def test_tool_interaction_report_coerces_collection_fields_to_tuples() -> None:
+    result = ToolInteractionReport.model_validate(
+        {
+            "interactions": [],
+            "unmatched_results": [],
+            "duplicate_results": [],
+            "missing_result_calls": [],
+            "anomalies": [],
+            "interaction_count": 0,
+            "completed_count": 0,
+            "missing_result_count": 0,
+            "duplicate_result_count": 0,
+            "unmatched_result_count": 0,
+            "has_anomalies": False,
+            "anomaly_count": 0,
+        }
+    )
+
+    assert result.interactions == ()
+    assert result.unmatched_results == ()
+    assert result.duplicate_results == ()
+    assert result.missing_result_calls == ()
+    assert result.anomalies == ()
+
+
 def test_tool_interaction_report_rejects_inconsistent_summary_counts() -> None:
     tool_call = ExecToolCall.model_validate(
         {
