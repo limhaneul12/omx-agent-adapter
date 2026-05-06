@@ -7,6 +7,9 @@ from pydantic import ValidationError
 from omx_remote.runtime.ralph.ralph_prd import read_ralph_prd_artifact
 from omx_remote.schemas.ralph.prd_schemas import (
     RalphPrdArtifact,
+    TeamAdminAggregationPolicy,
+    TeamAdminCompletionPolicy,
+    TeamAdminMergePolicy,
     TeamWorkerAuthorizationPolicy,
 )
 
@@ -33,6 +36,17 @@ def _team_assignment(worker_id: str, owned_file: str) -> dict[str, object]:
             "requires_human_for": ["modify files outside owned_files"],
             "requires_llm_review_for": ["local checkpoint commit"],
         },
+    }
+
+def _team_admin() -> dict[str, object]:
+    return {
+        "admin_id": "team-admin",
+        "aggregation_policy": "collect_all_workers_then_review",
+        "merge_policy": "review_before_merge",
+        "completion_policy": "all_required_tasks_completed",
+        "requires_human_for": ["merge conflicts or worker scope expansion"],
+        "requires_llm_review_for": ["final aggregation report before Ralph review"],
+        "final_report_required": True,
     }
 
 
@@ -63,6 +77,21 @@ def test_ralph_prd_artifact_requires_team_worker_count_when_team_fanout_is_enabl
         )
 
 
+def test_ralph_prd_artifact_requires_team_admin_when_team_fanout_is_enabled() -> None:
+    with pytest.raises(ValidationError, match="team_admin is required"):
+        RalphPrdArtifact(
+            objective="ship Team Admin aggregation contract",
+            scope=["make aggregation explicit after Team fanout"],
+            constraints=["Ralph owns the admin contract but does not babysit workers"],
+            execution_plan=["validate Team Admin policy before Team launch"],
+            verification_expectations=["Team DAG sidecar includes admin policy"],
+            requires_team_fanout=True,
+            team_worker_count=1,
+            continuation_policy="review_required",
+            team_worker_assignments=[_team_assignment("worker-1", "src/impl.py")],
+        )
+
+
 def test_ralph_prd_artifact_rejects_assignment_count_that_mismatches_worker_count() -> None:
     with pytest.raises(ValidationError, match="team_worker_assignments length"):
         RalphPrdArtifact(
@@ -75,6 +104,7 @@ def test_ralph_prd_artifact_rejects_assignment_count_that_mismatches_worker_coun
             team_worker_count=2,
             continuation_policy="review_required",
             team_worker_assignments=[_team_assignment("worker-1", "src/impl.py")],
+            team_admin=_team_admin(),
         )
 
 
@@ -93,6 +123,7 @@ def test_ralph_prd_artifact_rejects_duplicate_owned_files_across_assignments() -
                 _team_assignment("worker-1", "src/shared.py"),
                 _team_assignment("worker-2", "src/shared.py"),
             ],
+            team_admin=_team_admin(),
         )
 
 
@@ -109,8 +140,10 @@ def test_read_ralph_prd_artifact_returns_typed_contract_for_valid_file(tmp_path:
             "execution_plan": ["validate .omx/prd.json before launch"],
             "verification_expectations": ["ralph launch rejects malformed prd.json"],
             "requires_team_fanout": True,
-            "team_worker_count": 4,
+            "team_worker_count": 1,
             "continuation_policy": "review_required",
+            "team_worker_assignments": [_team_assignment("worker-1", "src/impl.py")],
+            "team_admin": _team_admin(),
         },
     )
 
@@ -118,8 +151,10 @@ def test_read_ralph_prd_artifact_returns_typed_contract_for_valid_file(tmp_path:
 
     assert result.objective == "ship the first typed prd artifact gate"
     assert result.execution_plan == ("validate .omx/prd.json before launch",)
-    assert result.team_worker_count == 4
+    assert result.team_worker_count == 1
     assert result.continuation_policy == "review_required"
+    assert result.team_admin is not None
+    assert result.team_admin.admin_id == "team-admin"
 
 
 def test_ralph_prd_artifact_promotes_sequence_fields_to_tuple_contracts() -> None:
@@ -158,6 +193,7 @@ def test_team_worker_assignment_authorization_policy_emits_stable_wire_value() -
         team_worker_assignments=[
             _team_assignment("worker-1", "src/omx_remote/schemas/ralph/prd_schemas.py")
         ],
+        team_admin=_team_admin(),
     )
 
     assignment = artifact.team_worker_assignments[0]
@@ -170,6 +206,43 @@ def test_team_worker_assignment_authorization_policy_emits_stable_wire_value() -
         "forbidden_commands": ["git push"],
         "requires_human_for": ["modify files outside owned_files"],
         "requires_llm_review_for": ["local checkpoint commit"],
+    }
+
+
+def test_team_admin_contract_emits_stable_wire_values() -> None:
+    artifact = RalphPrdArtifact(
+        objective="ship Team Admin aggregation policy",
+        scope=["make aggregation explicit"],
+        constraints=["Ralph reviews the final Team Admin report"],
+        execution_plan=["embed admin policy in Team DAG"],
+        verification_expectations=["DAG sidecar includes admin_policy"],
+        requires_team_fanout=True,
+        team_worker_count=1,
+        continuation_policy="review_required",
+        team_worker_assignments=[_team_assignment("worker-1", "src/impl.py")],
+        team_admin=_team_admin(),
+    )
+
+    dumped_artifact = artifact.model_dump(mode="json")
+
+    assert artifact.team_admin is not None
+    assert (
+        artifact.team_admin.aggregation_policy
+        == TeamAdminAggregationPolicy.COLLECT_ALL_WORKERS_THEN_REVIEW
+    )
+    assert artifact.team_admin.merge_policy == TeamAdminMergePolicy.REVIEW_BEFORE_MERGE
+    assert (
+        artifact.team_admin.completion_policy
+        == TeamAdminCompletionPolicy.ALL_REQUIRED_TASKS_COMPLETED
+    )
+    assert dumped_artifact["team_admin"] == {
+        "admin_id": "team-admin",
+        "aggregation_policy": "collect_all_workers_then_review",
+        "merge_policy": "review_before_merge",
+        "completion_policy": "all_required_tasks_completed",
+        "requires_human_for": ["merge conflicts or worker scope expansion"],
+        "requires_llm_review_for": ["final aggregation report before Ralph review"],
+        "final_report_required": True,
     }
 
 

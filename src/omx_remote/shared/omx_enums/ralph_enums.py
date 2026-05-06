@@ -52,6 +52,24 @@ class TeamWorkerAuthorizationPolicy(StrEnum):
     PREAPPROVED = "preapproved"
 
 
+class TeamAdminAggregationPolicy(StrEnum):
+    """Team Admin worker-result collection policies owned by Ralph PRDs."""
+
+    COLLECT_ALL_WORKERS_THEN_REVIEW = "collect_all_workers_then_review"
+
+
+class TeamAdminMergePolicy(StrEnum):
+    """Team Admin merge-readiness policies owned by Ralph PRDs."""
+
+    REVIEW_BEFORE_MERGE = "review_before_merge"
+
+
+class TeamAdminCompletionPolicy(StrEnum):
+    """Team Admin completion policies checked before Ralph post-Team review."""
+
+    ALL_REQUIRED_TASKS_COMPLETED = "all_required_tasks_completed"
+
+
 class RalphStateClassification(StrEnum):
     """Adapter classifications for Ralph state preflight decisions."""
 

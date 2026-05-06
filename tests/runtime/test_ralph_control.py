@@ -8,6 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.adapter_types.ralph_types import (
+    RalphTeamDagAdminPolicyPayload,
     RalphTeamDagNodePayload,
     RalphTeamDagPayload,
     RalphWorkerAuthorizationPayload,
@@ -26,6 +27,7 @@ def _write_valid_prd_artifact(
     requires_team_fanout: bool = False,
     team_worker_count: int | None = None,
     team_worker_assignments: list[dict[str, object]] | None = None,
+    team_admin: dict[str, object] | None = None,
 ) -> None:
     prd_dir = tmp_path / ".omx"
     prd_dir.mkdir(exist_ok=True)
@@ -42,7 +44,24 @@ def _write_valid_prd_artifact(
     }
     if team_worker_assignments is not None:
         prd_payload["team_worker_assignments"] = team_worker_assignments
+    if requires_team_fanout:
+        if team_admin is None:
+            prd_payload["team_admin"] = _team_admin()
+        else:
+            prd_payload["team_admin"] = team_admin
     prd_path.write_text(json.dumps(prd_payload), encoding="utf-8")
+
+
+def _team_admin() -> dict[str, object]:
+    return {
+        "admin_id": "team-admin",
+        "aggregation_policy": "collect_all_workers_then_review",
+        "merge_policy": "review_before_merge",
+        "completion_policy": "all_required_tasks_completed",
+        "requires_human_for": ["merge conflicts or worker scope expansion"],
+        "requires_llm_review_for": ["final aggregation report before Ralph review"],
+        "final_report_required": True,
+    }
 
 
 def _team_assignment(
@@ -94,12 +113,24 @@ def test_ralph_team_dag_payload_types_expose_stable_contract_keys() -> None:
             "acceptance",
         }
     )
+    assert RalphTeamDagAdminPolicyPayload.__required_keys__ == frozenset(
+        {
+            "admin_id",
+            "aggregation_policy",
+            "merge_policy",
+            "completion_policy",
+            "requires_human_for",
+            "requires_llm_review_for",
+            "final_report_required",
+        }
+    )
     assert RalphTeamDagPayload.__required_keys__ == frozenset(
         {
             "schema_version",
             "plan_slug",
             "source_prd",
             "worker_policy",
+            "admin_policy",
             "nodes",
         }
     )
@@ -244,6 +275,15 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
         "requested_count": 2,
         "count_source": "plan-suggested",
         "strict_max_count": True,
+    }
+    assert dag_payload["admin_policy"] == {
+        "admin_id": "team-admin",
+        "aggregation_policy": "collect_all_workers_then_review",
+        "merge_policy": "review_before_merge",
+        "completion_policy": "all_required_tasks_completed",
+        "requires_human_for": ["merge conflicts or worker scope expansion"],
+        "requires_llm_review_for": ["final aggregation report before Ralph review"],
+        "final_report_required": True,
     }
     assert [node["id"] for node in dag_payload["nodes"]] == ["worker-1", "worker-2"]
     assert dag_payload["nodes"][0]["filePaths"] == ["src/impl.py"]

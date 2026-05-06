@@ -4,6 +4,7 @@ from pathlib import Path
 import orjson
 
 from omx_remote.adapter_types.ralph_types import (
+    RalphTeamDagAdminPolicyPayload,
     RalphTeamDagNodePayload,
     RalphTeamDagPayload,
     RalphTeamDagWorkerPolicyPayload,
@@ -95,6 +96,39 @@ def build_worker_authorization_payload(
         ),
     )
     return authorization_payload
+
+
+def build_team_admin_policy_payload(
+    ralph_prd_artifact: RalphPrdArtifact,
+) -> RalphTeamDagAdminPolicyPayload:
+    """Builds typed Team Admin policy payload from a Ralph PRD artifact.
+
+    Args:
+        ralph_prd_artifact [RalphPrdArtifact]: Typed Ralph PRD artifact that owns the Team Admin contract.
+
+    Returns:
+        RalphTeamDagAdminPolicyPayload: Stable Team Admin policy payload embedded in the DAG.
+
+    Raises:
+        ValueError: Raised when the PRD is missing the Team Admin contract.
+    """
+    team_admin = ralph_prd_artifact.team_admin
+    if team_admin is None:
+        raise ValueError(
+            "The typed Ralph PRD artifact requires Team fanout but does not declare a Team Admin contract."
+        )
+
+    admin_policy_payload: RalphTeamDagAdminPolicyPayload = RalphTeamDagAdminPolicyPayload(
+        admin_id=team_admin.admin_id,
+        aggregation_policy=team_admin.aggregation_policy,
+        merge_policy=team_admin.merge_policy,
+        completion_policy=team_admin.completion_policy,
+        requires_human_for=list(team_admin.requires_human_for),
+        requires_llm_review_for=list(team_admin.requires_llm_review_for),
+        final_report_required=team_admin.final_report_required,
+    )
+    return admin_policy_payload
+
 
 
 def planning_artifact_slug() -> str:
@@ -192,6 +226,7 @@ def write_ralph_team_dag_handoff_artifacts(
         plan_slug=artifact_slug,
         source_prd=prd_name,
         worker_policy=worker_policy_payload,
+        admin_policy=build_team_admin_policy_payload(ralph_prd_artifact),
         nodes=node_payloads,
     )
     dag_text: str = orjson.dumps(dag_payload, option=orjson.OPT_INDENT_2).decode()

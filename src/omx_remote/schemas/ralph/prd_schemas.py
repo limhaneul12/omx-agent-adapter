@@ -10,6 +10,9 @@ from omx_remote.schemas.common_schemas import (
 )
 from omx_remote.shared.omx_enums.ralph_enums import (
     RalphPrdContinuationPolicy,
+    TeamAdminAggregationPolicy,
+    TeamAdminCompletionPolicy,
+    TeamAdminMergePolicy,
     TeamWorkerAuthorizationPolicy,
 )
 
@@ -77,6 +80,18 @@ class RalphTeamDistributionPlan(StrictRootSchemaModel[tuple[TeamWorkerAssignment
         return self
 
 
+class TeamAdminAggregationContract(StrictSchemaModel):
+    """Ralph-owned Team Admin result aggregation and review contract."""
+
+    admin_id: NonEmptyString
+    aggregation_policy: TeamAdminAggregationPolicy
+    merge_policy: TeamAdminMergePolicy
+    completion_policy: TeamAdminCompletionPolicy
+    requires_human_for: NonEmptyStrings = Field(min_length=1)
+    requires_llm_review_for: NonEmptyStrings = Field(min_length=1)
+    final_report_required: bool
+
+
 class RalphPrdArtifact(StrictSchemaModel):
     """Represents the minimum stable Ralph-owned PRD artifact contract."""
 
@@ -89,6 +104,7 @@ class RalphPrdArtifact(StrictSchemaModel):
     team_worker_count: int | None = Field(default=None, ge=1)
     continuation_policy: RalphPrdContinuationPolicy
     team_worker_assignments: tuple[TeamWorkerAssignment, ...] | None = None
+    team_admin: TeamAdminAggregationContract | None = None
 
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> Self:
@@ -107,6 +123,14 @@ class RalphPrdArtifact(StrictSchemaModel):
                 "team_worker_count must be omitted when requires_team_fanout is false."
             )
 
+        if self.requires_team_fanout and self.team_worker_assignments is None:
+            raise ValueError(
+                "Team worker assignments are required when requires_team_fanout is true."
+            )
+
+        if self.requires_team_fanout and self.team_admin is None:
+            raise ValueError("team_admin is required when requires_team_fanout is true.")
+
         if self.team_worker_assignments is not None:
             RalphTeamDistributionPlan(root=self.team_worker_assignments)
 
@@ -121,5 +145,8 @@ class RalphPrdArtifact(StrictSchemaModel):
             raise ValueError(
                 "team_worker_assignments must be omitted when requires_team_fanout is false."
             )
+
+        if not self.requires_team_fanout and self.team_admin is not None:
+            raise ValueError("team_admin must be omitted when requires_team_fanout is false.")
 
         return self

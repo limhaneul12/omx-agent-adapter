@@ -24,6 +24,9 @@ def summarize_prd_validation_error(validation_error: ValidationError) -> str:
 
         location_parts: list[str] = [str(location_token) for location_token in raw_location]
         if not location_parts:
+            error_message: object = error_payload.get("msg")
+            if isinstance(error_message, str):
+                field_paths.append(error_message)
             continue
 
         field_paths.append(".".join(location_parts))

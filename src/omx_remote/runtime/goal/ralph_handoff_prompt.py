@@ -102,6 +102,8 @@ The RalphPrdArtifact must include:
 - verification_expectations
 - requires_team_fanout
 - team_worker_count when Team fanout is required
+- team_worker_assignments when Team fanout is required
+- team_admin when Team fanout is required, including aggregation_policy, merge_policy, completion_policy, approval triggers, and final_report_required
 - continuation_policy
 
 Pipeline policy:

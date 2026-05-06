@@ -172,6 +172,45 @@ def _build_codex_goal_mirror_state() -> CodexGoalMirrorState:
 
 
 
+def _build_team_worker_assignments(team_worker_count: int) -> list[dict[str, object]]:
+    assignments: list[dict[str, object]] = []
+    for worker_index in range(team_worker_count):
+        worker_number = worker_index + 1
+        assignment = {
+            "worker_id": f"worker-{worker_number}",
+            "lane_name": f"Goal fanout lane {worker_number}",
+            "objective": "execute one Ralph-owned goal fanout lane",
+            "owned_files": [f"src/omx_remote/runtime/goal/lane_{worker_number}.py"],
+            "read_only_context_files": ["AGENTS.md"],
+            "forbidden_files": [".omx/**"],
+            "tdd_steps": ["write a focused failing regression", "make it pass"],
+            "verification_commands": ["uv run pytest tests/runtime/test_codex_goal_supervisor.py -q"],
+            "handoff_summary_required": "report changed files and verification output",
+            "authorization_policy": "llm_review",
+            "authorization_scope": {
+                "allowed_commands": ["uv run pytest tests/runtime/test_codex_goal_supervisor.py -q"],
+                "forbidden_commands": ["git push"],
+                "requires_human_for": ["change files outside owned_files"],
+                "requires_llm_review_for": ["local checkpoint commit"],
+            },
+        }
+        assignments.append(assignment)
+    return assignments
+
+
+def _build_team_admin_contract() -> dict[str, object]:
+    team_admin = {
+        "admin_id": "team-admin",
+        "aggregation_policy": "collect_all_workers_then_review",
+        "merge_policy": "review_before_merge",
+        "completion_policy": "all_required_tasks_completed",
+        "requires_human_for": ["merge conflicts or worker scope expansion"],
+        "requires_llm_review_for": ["final aggregation report before Ralph review"],
+        "final_report_required": True,
+    }
+    return team_admin
+
+
 def _build_ralph_prd_artifact(
     *,
     objective: str,
@@ -179,16 +218,23 @@ def _build_ralph_prd_artifact(
     team_worker_count: int | None = None,
     continuation_policy: str = "continue_automatically",
 ) -> RalphPrdArtifact:
-    result = RalphPrdArtifact(
-        objective=objective,
-        scope=["stabilize goal to ralph handoff"],
-        constraints=["keep ralph independently operable"],
-        execution_plan=["reuse typed prd artifacts when still aligned"],
-        verification_expectations=["goal delegation reflects typed prd state"],
-        requires_team_fanout=requires_team_fanout,
-        team_worker_count=team_worker_count,
-        continuation_policy=continuation_policy,
-    )
+    prd_payload: dict[str, object] = {
+        "objective": objective,
+        "scope": ["stabilize goal to ralph handoff"],
+        "constraints": ["keep ralph independently operable"],
+        "execution_plan": ["reuse typed prd artifacts when still aligned"],
+        "verification_expectations": ["goal delegation reflects typed prd state"],
+        "requires_team_fanout": requires_team_fanout,
+        "team_worker_count": team_worker_count,
+        "continuation_policy": continuation_policy,
+    }
+    if requires_team_fanout and team_worker_count is not None:
+        prd_payload["team_worker_assignments"] = _build_team_worker_assignments(
+            team_worker_count
+        )
+        prd_payload["team_admin"] = _build_team_admin_contract()
+
+    result = RalphPrdArtifact.model_validate(prd_payload)
     return result
 
 
@@ -300,6 +346,9 @@ def test_build_goal_to_ralph_handoff_prompt_renders_prd_contract() -> None:
     assert "RalphPrdArtifact" in prompt
     assert "requires_team_fanout" in prompt
     assert "team_worker_count: 2" in prompt
+    assert "team_worker_assignments" in prompt
+    assert "team_admin" in prompt
+    assert "aggregation_policy" in prompt
     assert "Do not implement code" in prompt
     assert "Do not launch Team" in prompt
     assert "Stop after creating or validating the PRD artifact" in prompt
