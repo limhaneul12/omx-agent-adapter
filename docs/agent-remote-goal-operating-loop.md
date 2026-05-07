@@ -2,7 +2,25 @@
 
 ## 0. Why this exists
 
-`agent-remote` is an **agent-facing cockpit/harness for OMX**. It is not a replacement runtime for OMX, Ralph, or Team.
+`agent-remote` is an **agent-facing control layer for using OMX + Codex strongly**. It is not a replacement runtime for OMX, Codex, Ralph, Team, or Ultrawork.
+
+The project direction is no longer only “wrap raw OMX safely.” The stronger definition is:
+
+```text
+Help agents choose and operate a small set of Codex/OMX development lanes using typed state,
+readable evidence, runtime guardrails, and durable lifecycle artifacts.
+```
+
+The top-level lanes are:
+
+```text
+1. Goal only
+2. Goal → Ralph
+3. Goal → Ralph → Team(s)
+4. Ultrawork only
+5. Hypergoal, planned only for now
+6. Ralph → Team
+```
 
 The Goal/Ralph/Team work in this repository exists to solve one practical problem:
 
@@ -16,6 +34,8 @@ Agents can call many OMX commands, but they need a safe operating loop for decid
 ```
 
 The operating loop keeps OMX/Ralph/Team artifacts as source of truth and lets `agent-remote` derive typed recommendations from those artifacts.
+
+For lane status, read `docs/project-operating-lanes-status.md` first. This operating-loop document explains how to work those lanes safely.
 
 ## 1. Golden rule
 
@@ -95,43 +115,83 @@ Done When
 It also includes a short route guide for:
 
 ```text
-Goal only
-Goal → Ralph
-Goal → Ralph → Team
-Ralph → Team
-Ultrawork only
-Hypergoal
+1. Goal only
+2. Goal → Ralph
+3. Goal → Ralph → Team(s)
+4. Ultrawork only
+5. Hypergoal, planned only
+6. Ralph → Team
 ```
+
+`Goal → Ralph → Team(s)` and `Ralph → Team` are separate lanes: the first is Goal-supervised lifecycle work, while the second is Ralph-owned Team fanout without a Goal envelope.
 
 This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
 
 Use `agent-remote hypergoal template` when the work is too large for a normal Goal-only loop and needs deep-work checkpoints/resume context. Hypergoal is a static scaffold in this slice, not an executor.
 
-## 2.3 Goal route map
+## 2.3 Operating lane map
 
-Use Goal as the objective/context/done-condition envelope, then choose the lightest existing development layer that fits the work:
+Choose one of the six top-level lanes before acting. The point is not to replace OMX/Codex; the point is to let agents use OMX + Codex more strongly and safely.
 
 ```text
-Goal only
-  Small, clear, single-agent objective loop.
+1. Goal only
+   Small, clear Codex Goal objective loop.
+   Implemented baseline:
+   - `agent-remote goal start`
+   - `agent-remote goal status`
+   - `agent-remote goal template`
 
-Goal → Ralph
-  Use when scope, requirements, ownership, or verification need a structured PRD/owner lane before implementation.
+2. Goal → Ralph
+   Use when Goal should hand structured PRD/context ownership to Ralph before implementation.
+   Implemented baseline:
+   - read-only `agent-remote goal prepare-ralph`
+   - Ralph launch/resume/cleanup state control under `agent-remote ralph`
+   Needs correction:
+   - `agent-remote goal launch-ralph` is a misleading narrow helper and should be removed or replaced before this lane is marked complete.
 
-Goal → Ralph → Team
-  Use only when Ralph can split independent worker ownership for real fanout. Team remains a Ralph consequence, not a direct Goal v1 mode.
+3. Goal → Ralph → Team(s)
+   Use when Goal supervises objective/lifecycle and Ralph owns the PRD/team split.
+   Implemented contract pieces:
+   - `RalphPrdArtifact.requires_team_fanout`
+   - `team_worker_assignments`
+   - `team_admin`
+   - Team Admin aggregation report
+   - Ralph post-Team review
+   - Goal lifecycle decision / operating-decision contracts
+   Not complete yet:
+   - one coherent CLI/lifecycle path across the whole lane
+   - live dogfood proof with Team worker startup, aggregation, post-Team review, and Goal lifecycle decision
 
-Ralph → Team
-  Existing Ralph-owned Team fanout without wrapping the work as a Goal route.
+4. Ultrawork only
+   Existing focused deep-work executor through OMX Team/Ultrawork, not wrapped as Goal.
+   Implemented baseline:
+   - `agent-remote ultrawork launch`
+   - `agent-remote ultrawork resume`
+   - `agent-remote ultrawork cleanup-stale`
 
-Ultrawork only
-  Existing focused deep-work executor by itself.
+5. Hypergoal
+   Future long-work concept. For now it is planning/scaffold only.
+   Implemented baseline:
+   - `agent-remote hypergoal template`
+   Not complete yet:
+   - executor
+   - runtime state model
+   - lifecycle/restore loop
 
-Hypergoal
-  Future-oriented Goal + Ultrawork concept for long work that needs explicit checkpoints and resume context.
+6. Ralph → Team
+   Use when Ralph already owns the PRD/task and needs direct Team fanout without Goal lifecycle wrapping.
+   Implemented contract pieces:
+   - Ralph PRD requires-team-fanout validation
+   - Team worker assignment contracts
+   - Team Admin policy fields
+   - Ralph Team DAG/handoff artifact helpers
+   - Ralph/Team launch guardrails
+   Not complete yet:
+   - clean live proof specific to this lane
+   - better readiness/status UX for Team launch and worker startup
 ```
 
-Keep this route map as expression/context only. Do not add `goal draft`, automatic route selection, automatic fanout, automatic close, or automatic merge without a separate review.
+Keep this route map as explicit operating language. Do not add `goal draft`, automatic route selection, automatic fanout, automatic close, or automatic merge without a separate review.
 
 ## 3. Hermes skill usage
 

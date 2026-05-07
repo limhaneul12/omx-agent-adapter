@@ -36,7 +36,7 @@ from omx_remote.shared.omx_enums.codex_goal_enums import GoalRalphPrdReviewMode
 
 GOAL_HELP_TEXT = """Start and inspect adapter-tracked native Codex Goal sessions.
 
-Routes: Goal only for small objective loops; Goal → Ralph for structured owner planning; Goal → Ralph → Team when Ralph can split real fanout. Hypergoal is the future Goal + Ultrawork deep-work concept, not a Goal route.
+Lanes: Goal only; Goal → Ralph; Goal → Ralph → Team(s); Ultrawork only; Hypergoal planned-only; Ralph → Team. Use explicit lane status docs before treating a route as complete.
 """
 
 GOAL_TEMPLATE_TEXT = """# Codex /goal Prompt Template
@@ -371,7 +371,7 @@ def goal_launch_ralph(
         help="Optional working directory whose adapter-owned goal mirror state should be read.",
     ),
 ) -> None:
-    """Prepare a typed PRD from Goal state and optionally launch Ralph.
+    """Deprecated narrow helper: prepare a typed PRD and optionally launch Ralph.
 
     Args:
         source_paths [list[str]]: Source paths Ralph must read.

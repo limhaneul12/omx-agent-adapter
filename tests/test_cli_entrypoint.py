@@ -96,8 +96,8 @@ def test_package_entrypoint_runs_help() -> None:
     completed_process = _run_agent_remote_command(["--help"])
 
     assert completed_process.returncode == 0
-    assert "AI-friendly observability and context" in completed_process.stdout
-    assert "Agent-facing adapter layer" in completed_process.stdout
+    assert "AI-friendly route guidance" in completed_process.stdout
+    assert "Agent-facing control layer" in completed_process.stdout
     assert "runtime" in completed_process.stdout
     assert "team" in completed_process.stdout
     assert "history" in completed_process.stdout
@@ -193,6 +193,9 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert completed_process.returncode == 0
     assert "Goal only" in completed_process.stdout
     assert "Goal → Ralph" in completed_process.stdout
+    assert "Goal → Ralph → Team" in completed_process.stdout
+    assert "Ralph → Team" in completed_process.stdout
+    assert "Ultrawork only" in completed_process.stdout
     assert "Goal → Team" not in completed_process.stdout
     assert "Goal → Ultrawork" not in completed_process.stdout
     assert "Hypergoal" in completed_process.stdout

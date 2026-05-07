@@ -2,6 +2,10 @@
 
 ## Purpose
 
+This document captures future-runtime guardrails. It does **not** redefine the current product: `agent-remote` is currently an agent-facing control layer for using OMX + Codex strongly.
+
+Current lane/status truth lives in `docs/project-operating-lanes-status.md`.
+
 This document captures the current OMX-first adapter seams that are already stable enough to reuse,
 what remains OMX-specific today, and the guardrails for adding a second runtime later without
 forcing speculative abstraction into the repository now.

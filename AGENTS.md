@@ -1,13 +1,22 @@
 # omx-agent-adapter Development Conventions
 
-This repository builds an agent-facing adapter layer that helps multiple agents use OMX consistently and safely.
+This repository builds an agent-facing control layer that helps agents use OMX + Codex strongly, safely, and consistently.
 
 ## Project Positioning
 
 - This project is **not** a new agent framework.
 - This project is **not** MCP itself.
-- This project is **not** a replacement for OMX.
-- This project **is** a control surface / adapter layer that helps agents operate OMX as a stateful runtime.
+- This project is **not** a replacement for OMX, Codex, Ralph, Team, or Ultrawork.
+- This project **is** a control surface / adapter layer that helps agents operate the Codex/OMX stack through typed state, route guidance, evidence collection, runtime guardrails, and lifecycle artifacts.
+- The top-level operating lanes are intentionally limited to:
+  1. Goal only
+  2. Goal → Ralph
+  3. Goal → Ralph → Team(s)
+  4. Ultrawork only
+  5. Hypergoal, planned only for now
+  6. Ralph → Team
+- `Ralph → Team` is a supported Ralph-owned lane, while `Goal → Ralph → Team(s)` is the Goal-supervised lane that uses Ralph-owned Team fanout internally.
+- Canonical lane/status details live in `docs/project-operating-lanes-status.md`.
 
 ## Rules Source of Truth
 
