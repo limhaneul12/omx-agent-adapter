@@ -390,6 +390,58 @@ def test_package_entrypoint_runs_ralph_help() -> None:
     assert "cleanup-stale" in completed_process.stdout
 
 
+def test_package_entrypoint_runs_ralph_launch_help() -> None:
+    completed_process = _run_agent_remote_command(["ralph", "launch", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--task" in completed_process.stdout
+    assert "--inherit-stdio" in completed_process.stdout
+
+
+def test_ralph_launch_can_inherit_stdio_for_interactive_omx(monkeypatch) -> None:
+    seen_command: list[str] = []
+
+    def fake_build_ralph_launch_plan(
+        task: str,
+        force_cleanup: bool,
+        allow_non_tty: bool,
+    ):
+        assert task == "Launch Ralph interactively."
+        assert force_cleanup is False
+        assert allow_non_tty is False
+        return ["ralph", "--prd", "Launch Ralph interactively."], []
+
+    def fake_run_omx_command_inherited_stdio(command: list[str]):
+        nonlocal seen_command
+        seen_command = command
+        from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+
+        return OmxCommandResult(exit_code=0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.ralph_cli.build_ralph_launch_plan",
+        fake_build_ralph_launch_plan,
+    )
+    monkeypatch.setattr(
+        "omx_remote.cli.run_omx_command_inherited_stdio",
+        fake_run_omx_command_inherited_stdio,
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "ralph",
+            "launch",
+            "--task",
+            "Launch Ralph interactively.",
+            "--inherit-stdio",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert seen_command == ["ralph", "--prd", "Launch Ralph interactively."]
+
+
 def test_ralph_startability_outputs_json(monkeypatch) -> None:
     async def fake_read_runtime_mode_state(request):
         _ = request

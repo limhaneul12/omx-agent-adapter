@@ -3,7 +3,7 @@ import subprocess
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.execution.invoke import run_omx_command
+from omx_remote.execution.invoke import run_omx_command, run_omx_command_inherited_stdio
 from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 
 
@@ -76,6 +76,34 @@ def test_run_omx_command_passes_expected_subprocess_arguments(monkeypatch) -> No
         "capture_output": True,
         "check": False,
     }
+
+
+def test_run_omx_command_inherited_stdio_does_not_capture_terminal_streams(
+    monkeypatch,
+) -> None:
+    seen_arguments: dict[str, object] = {}
+
+    def fake_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        seen_arguments["args"] = args
+        seen_arguments["kwargs"] = kwargs
+        return subprocess.CompletedProcess(
+            args=["omx", "ralph", "--prd", "Launch task."],
+            returncode=0,
+        )
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = run_omx_command_inherited_stdio(
+        ["ralph", "--prd", "Launch task."], cwd="/tmp/demo"
+    )
+
+    assert seen_arguments["args"] == (["omx", "ralph", "--prd", "Launch task."],)
+    assert seen_arguments["kwargs"] == {
+        "cwd": "/tmp/demo",
+        "text": True,
+        "check": False,
+    }
+    assert result == OmxCommandResult(exit_code=0, stdout="", stderr="")
 
 
 def test_run_omx_command_returns_typed_result_when_omx_is_missing(

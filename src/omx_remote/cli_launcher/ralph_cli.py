@@ -28,7 +28,20 @@ def _run_omx_command(command: list[str]):
     """
     from omx_remote import cli as cli_facade
 
-    return cli_facade.run_omx_command(command)
+    command_result = cli_facade.run_omx_command(command)
+    return command_result
+
+
+def _run_omx_command_inherited_stdio(command: list[str]):
+    """Run one OMX command while inheriting terminal stdio.
+
+    Args:
+        command [list[str]]: OMX command arguments without executable name.
+    """
+    from omx_remote import cli as cli_facade
+
+    command_result = cli_facade.run_omx_command_inherited_stdio(command)
+    return command_result
 
 
 def _read_runtime_mode_state(request: RuntimeModeStateRequest):
@@ -85,6 +98,11 @@ def ralph_launch(
         "--allow-non-tty",
         help="Allow launch from a non-interactive stdin environment when you know upstream behavior is acceptable.",
     ),
+    inherit_stdio: bool = typer.Option(
+        False,
+        "--inherit-stdio",
+        help="Run OMX with inherited terminal stdin/stdout/stderr for interactive Ralph startup.",
+    ),
 ) -> None:
     """Launch Ralph through the OMX CLI PRD-gated startup path.
     
@@ -92,6 +110,7 @@ def ralph_launch(
         task [str]: Function argument.
         force_cleanup [bool]: Function argument.
         allow_non_tty [bool]: Function argument.
+        inherit_stdio [bool]: Function argument.
     """
     try:
         command, preflight_warnings = build_ralph_launch_plan(
@@ -107,7 +126,10 @@ def ralph_launch(
     for warning in preflight_warnings:
         typer.echo(f"warning: {warning}")
 
-    command_result = _run_omx_command(command)
+    if inherit_stdio:
+        command_result = _run_omx_command_inherited_stdio(command)
+    else:
+        command_result = _run_omx_command(command)
     typer.echo(command_result.model_dump_json(indent=2))
 
 

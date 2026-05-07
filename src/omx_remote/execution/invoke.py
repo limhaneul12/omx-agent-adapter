@@ -60,20 +60,58 @@ def run_omx_command(
             check=False,
         )
     except OSError as error:
-        return OmxCommandResult(
+        command_result: OmxCommandResult = OmxCommandResult(
             exit_code=_command_failure_exit_code(error),
             stdout="",
             stderr=str(error),
         )
+        return command_result
     stdout_text: str = _normalize_completed_process_stream_text(
         completed_process.stdout
     )
     stderr_text: str = _normalize_completed_process_stream_text(
         completed_process.stderr
     )
-    command_result: OmxCommandResult = OmxCommandResult(
+    command_result = OmxCommandResult(
         exit_code=completed_process.returncode,
         stdout=stdout_text,
         stderr=stderr_text,
+    )
+    return command_result
+
+
+def run_omx_command_inherited_stdio(
+    arguments: Sequence[str],
+    cwd: str | None = None,
+) -> OmxCommandResult:
+    """Runs an OMX subprocess while inheriting terminal stdio.
+
+    Args:
+        arguments [Sequence[str]]: OMX command arguments without the leading executable name.
+        cwd [str | None]: Working directory used when the OMX command runs.
+
+    Returns:
+        OmxCommandResult: Completed OMX command result with streams intentionally empty.
+    """
+    command_arguments: list[str] = ["omx", *arguments]
+    try:
+        completed_process: subprocess.CompletedProcess[str] = subprocess.run(
+            command_arguments,
+            cwd=cwd,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        command_result: OmxCommandResult = OmxCommandResult(
+            exit_code=_command_failure_exit_code(error),
+            stdout="",
+            stderr=str(error),
+        )
+        return command_result
+
+    command_result = OmxCommandResult(
+        exit_code=completed_process.returncode,
+        stdout="",
+        stderr="",
     )
     return command_result
