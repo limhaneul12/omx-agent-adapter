@@ -11,7 +11,7 @@ The intended top-level operating lanes are intentionally small and fixed:
 | Lane | Status | Meaning |
 | --- | --- | --- |
 | Goal only | Implemented baseline | Native Codex Goal objective loop with adapter-tracked mirror state, status, and template surfaces. |
-| Goal → Ralph | Partially implemented / usable by handoff | Goal prepares Ralph-owned PRD context; Ralph launch/control exists separately. The current `goal launch-ralph` surface is misleading and should be removed or replaced before being treated as done. |
+| Goal → Ralph | Partially implemented / usable by handoff | Goal prepares Ralph-owned PRD context through `goal prepare-ralph`; Ralph launch/control exists separately under `agent-remote ralph`. The misleading public `goal launch-ralph` surface has been removed. |
 | Goal → Ralph → Team(s) | Partially implemented contracts, not end-to-end done | Goal-supervised lane where Ralph owns PRD/team split and Team Admin aggregation feeds Ralph/Goal lifecycle decisions. Contracts exist; full CLI/lifecycle stitching and live dogfood proof remain. |
 | Ultrawork only | Implemented baseline | Guarded launch/resume/cleanup for focused OMX Team/Ultrawork execution without wrapping it in Goal. |
 | Hypergoal | Planned only | Static scaffold/template exists, but no executor or operating loop should be claimed yet. |
@@ -118,7 +118,7 @@ Choose one of the six top-level lanes before acting. The distinction between `Go
 2. Goal → Ralph
    Use when Goal needs Ralph to own PRD shaping, implementation planning, or single-owner execution.
    Done baseline: read-only `goal prepare-ralph` handoff and Ralph launch/control surfaces exist.
-   Not done: the current `goal launch-ralph` command is too narrow/misleading and should not be used as proof of the lane.
+   Correction made: the narrow/misleading public `goal launch-ralph` command has been removed; do not use it as proof of this lane.
 
 3. Goal → Ralph → Team(s)
    Use when Goal needs lifecycle supervision and Ralph must split independent worker ownership through Team.

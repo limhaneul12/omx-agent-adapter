@@ -89,13 +89,6 @@ class GoalDelegationDispatchAction(StrEnum):
     TEAM_LAUNCH = "team_launch"
 
 
-class GoalRalphPrdReviewMode(StrEnum):
-    """Review gates available before Goal dispatches a typed PRD into Ralph."""
-
-    LLM_PROMPT = "llm_prompt"
-    AUTO_APPROVE = "auto_approve"
-
-
 class CodexGoalLifecycleAction(StrEnum):
     """Goal lifecycle actions selected after Ralph post-Team review."""
 

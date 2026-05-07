@@ -142,12 +142,12 @@ Choose one of the six top-level lanes before acting. The point is not to replace
    - `agent-remote goal template`
 
 2. Goal → Ralph
-   Use when Goal should hand structured PRD/context ownership to Ralph before implementation.
-   Implemented baseline:
-   - read-only `agent-remote goal prepare-ralph`
+   Implemented / usable:
+   - `agent-remote goal prepare-ralph` read-only handoff prompt
+   - Ralph PRD artifact contract
    - Ralph launch/resume/cleanup state control under `agent-remote ralph`
-   Needs correction:
-   - `agent-remote goal launch-ralph` is a misleading narrow helper and should be removed or replaced before this lane is marked complete.
+   Correction made:
+   - The misleading public `agent-remote goal launch-ralph` helper has been removed. Use `goal prepare-ralph` for read-only Goal→Ralph handoff and `agent-remote ralph ...` for Ralph-owned launch/control.
 
 3. Goal → Ralph → Team(s)
    Use when Goal supervises objective/lifecycle and Ralph owns the PRD/team split.

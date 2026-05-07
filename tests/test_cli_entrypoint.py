@@ -203,7 +203,7 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert "status" in completed_process.stdout
     assert "template" in completed_process.stdout
     assert "prepare-ralph" in completed_process.stdout
-    assert "launch-ralph" in completed_process.stdout
+    assert "launch-ralph" not in completed_process.stdout
     assert "restore-lifecycle" in completed_process.stdout
     assert "operating-decision" in completed_process.stdout
 
@@ -310,48 +310,11 @@ def test_package_entrypoint_runs_goal_prepare_ralph_without_constraints(
     ]
 
 
-def test_package_entrypoint_runs_goal_launch_ralph_help() -> None:
+def test_package_entrypoint_rejects_removed_goal_launch_ralph_help() -> None:
     completed_process = _run_agent_remote_command(["goal", "launch-ralph", "--help"])
 
-    assert completed_process.returncode == 0
-    assert "--source-path" in completed_process.stdout
-    assert "--requested-slice" in completed_process.stdout
-    assert "--verification-expectation" in completed_process.stdout
-    assert "--review-mode" in completed_process.stdout
-    assert "llm_prompt" in completed_process.stdout
-    assert "auto_approve" in completed_process.stdout
-    assert "--inherit-stdio" in completed_process.stdout
-
-
-def test_package_entrypoint_runs_goal_launch_ralph_llm_prompt_mode(
-    tmp_path: Path,
-) -> None:
-    _write_codex_goal_mirror_state(tmp_path)
-
-    completed_process = _run_agent_remote_command(
-        [
-            "goal",
-            "launch-ralph",
-            "--cwd",
-            str(tmp_path),
-            "--source-path",
-            "AGENTS.md",
-            "--requested-slice",
-            "reviewed bridge slice",
-            "--verification-expectation",
-            "targeted tests pass",
-            "--review-mode",
-            "llm_prompt",
-        ]
-    )
-
-    assert completed_process.returncode == 0, completed_process.stderr
-    output = orjson.loads(completed_process.stdout)
-    assert output["review_required"] is True
-    assert output["launch_attempted"] is False
-    assert output["review_prompt_path"].endswith("goal-cli-ralph-prd-review.md")
-    assert output["ralph_prd_artifact"]["objective"] == "Prepare a Ralph handoff from CLI."
-    assert Path(output["review_prompt_path"]).exists()
+    assert completed_process.returncode != 0
+    assert "launch-ralph" in completed_process.stderr
 
 
 def test_package_entrypoint_runs_goal_restore_lifecycle_help() -> None:

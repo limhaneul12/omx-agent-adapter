@@ -23,7 +23,7 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | # | Lane | Status | Developed pieces | Missing / next correction |
 | --- | --- | --- | --- | --- |
 | 1 | Goal only | Implemented baseline | `agent-remote goal start`, `goal status`, `goal template`, adapter-owned Goal mirror state, tests around native Goal startup/status/template. | Continue dogfood; do not add automatic route selection or `goal draft` without review. |
-| 2 | Goal → Ralph | Partial, usable by handoff | `agent-remote goal prepare-ralph`, typed Goal mirror/handoff prompt, Ralph PRD artifact contract, Ralph launch/resume/cleanup guardrails. | `agent-remote goal launch-ralph` is deprecated/misleading because it creates a narrow PRD helper and can bypass the intended lane semantics. Remove or replace with a proper reviewed handoff/operating-loop surface. |
+| 2 | Goal → Ralph | Partial, usable by handoff | `agent-remote goal prepare-ralph`, typed Goal mirror/handoff prompt, Ralph PRD artifact contract, Ralph launch/resume/cleanup guardrails. The misleading public `agent-remote goal launch-ralph` command has been removed. | Keep Goal→Ralph as read-only handoff plus Ralph-owned control; add no new broad launcher without dogfood evidence. |
 | 3 | Goal → Ralph → Team(s) | Partial, not end-to-end complete | Goal/Ralph handoff prompt, Ralph PRD Team fanout fields, Team worker assignments, Team Admin policy, Team Admin aggregation report contract, Ralph post-Team review, Goal lifecycle decision/restore/operating-decision contracts. | One coherent CLI/lifecycle path, Team worker startup/readiness evidence, Team Admin aggregation command, Ralph post-Team review command, Goal lifecycle decision command, full dogfood proof. |
 | 4 | Ultrawork only | Implemented baseline | `agent-remote ultrawork launch`, `ultrawork resume`, `ultrawork cleanup-stale`, state preflight, stale/resumable/terminal guards. | Keep dogfooding; improve only from concrete OMX evidence. |
 | 5 | Hypergoal | Planned only | `agent-remote hypergoal template` static scaffold. | No executor, runtime state, lifecycle loop, or auto orchestration yet. Do not claim more than planning/template support. |
@@ -33,7 +33,7 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 
 | Surface | Status | Reason | Action |
 | --- | --- | --- | --- |
-| `agent-remote goal launch-ralph` | Deprecated / remove or replace | It was added as a narrow Goal→Ralph PRD review/launch helper and does not represent the full Goal→Ralph or Goal→Ralph→Team operating lanes. It also risks implying that Goal directly controls launch semantics instead of using the evidence-first operating loop. | Remove in the next code cleanup, or replace with a reviewed handoff command whose name and output make the limited scope explicit. |
+| `agent-remote goal launch-ralph` | Removed public surface | It was added as a narrow Goal→Ralph PRD review/launch helper and did not represent the full Goal→Ralph or Goal→Ralph→Team operating lanes. It also risked implying that Goal directly controls launch semantics instead of using the evidence-first operating loop. | Keep removed; use `goal prepare-ralph` plus `agent-remote ralph ...` until a better reviewed handoff surface is proven. |
 | Treating `Ralph → Team` as only an implementation detail | Deprecated wording | The current product definition recognizes `Ralph → Team` as its own Ralph-owned operating lane, separate from Goal-supervised `Goal → Ralph → Team(s)`. | Keep both lanes in docs/help/status tables. |
 | `Goal → Ultrawork` as a route label | Deprecated wording | Hypergoal is the planned concept for long Goal + Ultrawork-style work; `Goal → Ultrawork` should not appear as a current route. | Use `Hypergoal` and mark it planned only. |
 | `agent-remote` as only a type-safe OMX wrapper | Deprecated wording | The project definition changed to helping agents use OMX + Codex strongly, not just wrapping commands. | Prefer “agent-facing control layer for OMX + Codex.” |
@@ -64,7 +64,7 @@ A lane is not done because a prompt or schema exists. It is done when the route 
 
 ## Immediate next documentation/code cleanup
 
-1. Remove or replace `agent-remote goal launch-ralph` so it does not misrepresent Goal→Ralph or Goal→Ralph→Team.
-2. Add explicit CLI/status surfaces for the missing Goal→Ralph→Team steps instead of adding another broad launcher.
-3. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
+1. Add explicit CLI/status surfaces for the missing Goal→Ralph→Team steps instead of adding another broad launcher.
+2. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
+3. Continue dogfooding the six-lane taxonomy and keep docs/help aligned with real capabilities.
 4. Preserve `Ralph → Team` as a separate lane in docs and help text.

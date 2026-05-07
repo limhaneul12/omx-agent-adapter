@@ -11,7 +11,6 @@ from omx_remote.schemas.common_schemas import (
     NonEmptyStrings,
     StrictSchemaModel,
 )
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.schemas.multi_operator.snapshot_schemas import MultiOperatorSnapshot
 from omx_remote.schemas.operator.action_schemas import OperatorActionResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
@@ -21,7 +20,6 @@ from omx_remote.shared.omx_enums.codex_goal_enums import (
     GoalDelegationDispatchAction,
     GoalDelegationDispatchStatus,
     GoalDelegationTarget,
-    GoalRalphPrdReviewMode,
 )
 
 
@@ -132,33 +130,6 @@ class CodexGoalAdvanceRequest(StrictSchemaModel):
     ralph_prd_artifact: RalphPrdArtifact | None = None
     force_cleanup: bool = False
     allow_non_tty: bool = False
-
-
-class GoalRalphLaunchRequest(StrictSchemaModel):
-    """Represents one Goal-owned request to prepare and optionally launch Ralph."""
-
-    mirror_state: CodexGoalMirrorState
-    source_paths: NonEmptyStrings = Field(min_length=1)
-    requested_slice: NonEmptyString
-    constraints: NonEmptyStrings
-    verification_expectations: NonEmptyStrings = Field(min_length=1)
-    review_mode: GoalRalphPrdReviewMode
-    inherit_stdio: bool = False
-    force_cleanup: bool = False
-    allow_non_tty: bool = False
-
-
-class GoalRalphLaunchResult(StrictSchemaModel):
-    """Represents the durable PRD/review preparation result for a Goal-to-Ralph launch."""
-
-    goal_id: NonEmptyString
-    prd_path: NonEmptyString
-    review_required: bool
-    review_prompt_path: NonEmptyString | None = None
-    launch_attempted: bool
-    launch_blocked_reason: NonEmptyString | None = None
-    ralph_prd_artifact: RalphPrdArtifact
-    command_result: OmxCommandResult | None = None
 
 
 class CodexGoalAdvanceResult(StrictSchemaModel):
