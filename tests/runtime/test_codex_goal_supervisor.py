@@ -313,6 +313,55 @@ def test_goal_to_ralph_handoff_prompt_request_requires_source_paths() -> None:
 
 
 
+def test_goal_to_ralph_handoff_prompt_request_allows_empty_constraints() -> None:
+    request = GoalToRalphHandoffPromptRequest(
+        goal_id="goal-1",
+        goal_objective_text="harden schema/type contracts",
+        source_paths=("AGENTS.md",),
+        requested_slice="schema config and root base",
+        constraints=(),
+        verification_expectations=("targeted tests pass",),
+        review_policy="review_required",
+        team_worker_count=2,
+    )
+
+    assert request.constraints == ()
+
+
+
+def test_goal_to_ralph_handoff_prompt_request_requires_verification_expectations() -> None:
+    with pytest.raises(ValidationError):
+        GoalToRalphHandoffPromptRequest(
+            goal_id="goal-1",
+            goal_objective_text="harden schema/type contracts",
+            source_paths=("AGENTS.md",),
+            requested_slice="schema config and root base",
+            constraints=(),
+            verification_expectations=(),
+            review_policy="review_required",
+            team_worker_count=2,
+        )
+
+
+
+def test_build_goal_to_ralph_handoff_prompt_renders_empty_constraints_state() -> None:
+    request = GoalToRalphHandoffPromptRequest(
+        goal_id="goal-1",
+        goal_objective_text="harden schema/type contracts",
+        source_paths=("AGENTS.md",),
+        requested_slice="schema config and root base",
+        constraints=(),
+        verification_expectations=("targeted tests pass",),
+        review_policy="review_required",
+        team_worker_count=2,
+    )
+
+    prompt = build_goal_to_ralph_handoff_prompt(request)
+
+    assert "No additional handoff constraints supplied." in prompt
+
+
+
 def test_build_goal_to_ralph_handoff_prompt_renders_prd_contract() -> None:
     request = GoalToRalphHandoffPromptRequest(
         goal_id="goal-1",

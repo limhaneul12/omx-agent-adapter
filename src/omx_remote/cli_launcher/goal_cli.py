@@ -193,8 +193,8 @@ def goal_template() -> None:
 
 @goal_app.command("prepare-ralph")
 def goal_prepare_ralph(
-    source_paths: list[str] | None = typer.Option(
-        None,
+    source_paths: list[str] = typer.Option(
+        ...,
         "--source-path",
         help="Source path Ralph must read. Pass multiple times for multiple paths.",
     ),
@@ -208,8 +208,8 @@ def goal_prepare_ralph(
         "--constraint",
         help="Constraint Ralph must preserve. Pass multiple times for multiple constraints.",
     ),
-    verification_expectations: list[str] | None = typer.Option(
-        None,
+    verification_expectations: list[str] = typer.Option(
+        ...,
         "--verification-expectation",
         help="Verification gate Ralph must include. Pass multiple times for multiple gates.",
     ),
@@ -222,23 +222,19 @@ def goal_prepare_ralph(
     """Prepare a read-only Ralph PRD handoff prompt from the tracked Goal.
     
     Args:
-        source_paths [list[str] | None]: Function argument.
+        source_paths [list[str]]: Source paths Ralph must read.
         requested_slice [str]: Function argument.
-        constraints [list[str] | None]: Function argument.
-        verification_expectations [list[str] | None]: Function argument.
+        constraints [list[str] | None]: Optional handoff constraints.
+        verification_expectations [list[str]]: Verification gates Ralph must include.
         cwd [str | None]: Function argument.
     """
     try:
         result = prepare_tracked_codex_goal_ralph_handoff_prompt(
             working_directory=cwd,
-            source_paths=tuple([] if source_paths is None else source_paths),
+            source_paths=tuple(source_paths),
             requested_slice=requested_slice,
             constraints=tuple([] if constraints is None else constraints),
-            verification_expectations=tuple(
-                []
-                if verification_expectations is None
-                else verification_expectations
-            ),
+            verification_expectations=tuple(verification_expectations),
         )
     except (ValidationError, ValueError) as error:
         typer.echo(str(error))

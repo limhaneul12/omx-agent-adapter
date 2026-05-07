@@ -104,10 +104,10 @@ class GoalToRalphHandoffPromptRequest(StrictSchemaModel):
 
     goal_id: NonEmptyString
     goal_objective_text: NonEmptyString
-    source_paths: tuple[NonEmptyString, ...] = Field(min_length=1)
+    source_paths: NonEmptyStrings = Field(min_length=1)
     requested_slice: NonEmptyString
-    constraints: tuple[NonEmptyString, ...] = Field(min_length=1)
-    verification_expectations: tuple[NonEmptyString, ...] = Field(min_length=1)
+    constraints: NonEmptyStrings
+    verification_expectations: NonEmptyStrings = Field(min_length=1)
     review_policy: CodexGoalReviewPolicy
     team_worker_count: int | None = Field(ge=1)
 

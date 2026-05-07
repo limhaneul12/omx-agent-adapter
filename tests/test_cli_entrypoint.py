@@ -70,6 +70,28 @@ def _write_goal_lifecycle_bundle(tmp_path: Path) -> None:
     (artifact_dir / "goal-cli.json").write_bytes(orjson.dumps(payload))
 
 
+
+def _write_codex_goal_mirror_state(tmp_path: Path) -> None:
+    artifact_dir = tmp_path / ".agent-remote" / "state"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "goal_id": "goal-cli",
+        "objective_text": "Prepare a Ralph handoff from CLI.",
+        "source": "codex_goal",
+        "execution_shape": "ralph_pipeline",
+        "review_policy": "review_required",
+        "team_worker_count": 2,
+        "working_directory": str(tmp_path),
+        "codex_command": ["codex", "--enable", "goals"],
+        "session_locator": "agent-remote-goal-goal-cli",
+        "process_id": 1234,
+        "launched_at": "2026-05-05T12:00:00+00:00",
+        "handoff_state": "awaiting_ralph",
+        "tracking_state": "active",
+    }
+    (artifact_dir / "codex-goal.json").write_bytes(orjson.dumps(payload))
+
+
 def test_package_entrypoint_runs_help() -> None:
     completed_process = _run_agent_remote_command(["--help"])
 
@@ -234,6 +256,54 @@ def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
     assert "--constraint" in completed_process.stdout
     assert "--verification-expectation" in completed_process.stdout
     assert "--cwd" in completed_process.stdout
+    source_path_block = completed_process.stdout.split("--source-path", 1)[1].split(
+        "--requested-slice",
+        1,
+    )[0]
+    requested_slice_block = completed_process.stdout.split("--requested-slice", 1)[
+        1
+    ].split("--constraint", 1)[0]
+    constraint_block = completed_process.stdout.split("--constraint", 1)[1].split(
+        "--verification-expectation",
+        1,
+    )[0]
+    verification_block = completed_process.stdout.split("--verification-expectation", 1)[
+        1
+    ].split("--cwd", 1)[0]
+    assert "[required]" in source_path_block
+    assert "[required]" in requested_slice_block
+    assert "[required]" not in constraint_block
+    assert "[required]" in verification_block
+
+
+
+def test_package_entrypoint_runs_goal_prepare_ralph_without_constraints(
+    tmp_path: Path,
+) -> None:
+    _write_codex_goal_mirror_state(tmp_path)
+
+    completed_process = _run_agent_remote_command(
+        [
+            "goal",
+            "prepare-ralph",
+            "--cwd",
+            str(tmp_path),
+            "--source-path",
+            "AGENTS.md",
+            "--requested-slice",
+            "schema config and root base",
+            "--verification-expectation",
+            "targeted tests pass",
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["prompt_request"]["source_paths"] == ["AGENTS.md"]
+    assert output["prompt_request"]["constraints"] == []
+    assert output["prompt_request"]["verification_expectations"] == [
+        "targeted tests pass"
+    ]
 
 
 def test_package_entrypoint_runs_goal_restore_lifecycle_help() -> None:

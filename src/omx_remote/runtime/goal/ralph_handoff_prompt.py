@@ -28,6 +28,19 @@ class GoalToRalphHandoffPromptRenderer:
         formatted_bullets: str = "\n".join(bullet_lines)
         return formatted_bullets
 
+    def _format_constraint_bullets(self) -> str:
+        """Formats handoff constraints, including the explicit empty-constraints state.
+
+        Returns:
+            str: Markdown bullet lines for handoff constraints.
+        """
+        if not self.request.constraints:
+            empty_constraint_lines: str = "- No additional handoff constraints supplied."
+            return empty_constraint_lines
+
+        constraint_lines: str = self._format_bullets(self.request.constraints)
+        return constraint_lines
+
     def _format_review_instruction(self) -> str:
         """Formats the review-policy-specific Ralph instruction.
 
@@ -65,7 +78,7 @@ class GoalToRalphHandoffPromptRenderer:
             str: Prompt text Ralph can use to create or validate the PRD artifact.
         """
         source_path_lines: str = self._format_bullets(self.request.source_paths)
-        constraint_lines: str = self._format_bullets(self.request.constraints)
+        constraint_lines: str = self._format_constraint_bullets()
         verification_lines: str = self._format_bullets(
             self.request.verification_expectations
         )
