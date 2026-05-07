@@ -1,5 +1,8 @@
 import typer
 
+from omx_remote.cli_launcher.team_launcher.team_admin_cli import (
+    register_team_admin_commands,
+)
 from omx_remote.cli_launcher.team_launcher.team_approval_cli import (
     register_team_approval_commands,
 )
@@ -31,3 +34,4 @@ register_team_approval_commands(team_app)
 register_team_mailbox_commands(team_app)
 register_team_shutdown_commands(team_app)
 register_team_cleanup_commands(team_app)
+register_team_admin_commands(team_app)

@@ -11,6 +11,9 @@ from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
 )
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReport,
+)
 
 
 def _run_agent_remote_command(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -92,6 +95,52 @@ def _write_codex_goal_mirror_state(tmp_path: Path) -> None:
     (artifact_dir / "codex-goal.json").write_bytes(orjson.dumps(payload))
 
 
+def _write_team_admin_prd_artifact(tmp_path: Path) -> Path:
+    prd_path = tmp_path / ".omx" / "prd.json"
+    prd_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "objective": "Collect Team Admin results from CLI.",
+        "scope": ["aggregate Team worker output"],
+        "constraints": ["read-only Team API collection"],
+        "execution_plan": ["collect tasks/events/statuses"],
+        "verification_expectations": ["admin report is valid JSON"],
+        "requires_team_fanout": True,
+        "team_worker_count": 1,
+        "continuation_policy": "review_required",
+        "team_worker_assignments": [
+            {
+                "worker_id": "worker-1",
+                "lane_name": "worker-1 lane",
+                "objective": "Return one handoff.",
+                "owned_files": ["src/worker.py"],
+                "read_only_context_files": ["AGENTS.md"],
+                "forbidden_files": [".omx/**"],
+                "tdd_steps": ["write failing test"],
+                "verification_commands": ["uv run pytest -q"],
+                "handoff_summary_required": "summarize worker result",
+                "authorization_policy": "llm_review",
+                "authorization_scope": {
+                    "allowed_commands": ["uv run pytest -q"],
+                    "forbidden_commands": ["git push"],
+                    "requires_human_for": ["outside owned_files"],
+                    "requires_llm_review_for": ["final handoff"],
+                },
+            }
+        ],
+        "team_admin": {
+            "admin_id": "team-admin",
+            "aggregation_policy": "collect_all_workers_then_review",
+            "merge_policy": "review_before_merge",
+            "completion_policy": "all_required_tasks_completed",
+            "requires_human_for": ["missing worker output"],
+            "requires_llm_review_for": ["final aggregation report"],
+            "final_report_required": True,
+        },
+    }
+    prd_path.write_bytes(orjson.dumps(payload))
+    return prd_path
+
+
 def test_package_entrypoint_runs_help() -> None:
     completed_process = _run_agent_remote_command(["--help"])
 
@@ -133,6 +182,7 @@ def test_team_cli_is_split_into_feature_launcher_modules() -> None:
         "team_mailbox_cli.py",
         "team_shutdown_cli.py",
         "team_cleanup_cli.py",
+        "team_admin_cli.py",
     }
 
     assert team_launcher_dir.is_dir()
@@ -169,6 +219,68 @@ def test_package_entrypoint_runs_team_help() -> None:
     assert "read-shutdown-ack" in completed_process.stdout
     assert "cleanup" in completed_process.stdout
     assert "orphan-cleanup" in completed_process.stdout
+    assert "admin-report" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_team_admin_report_help() -> None:
+    completed_process = _run_agent_remote_command(["team", "admin-report", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--team" in completed_process.stdout
+    assert "--prd-path" in completed_process.stdout
+    assert "--output-path" in completed_process.stdout
+
+
+def test_team_admin_report_outputs_and_writes_report_json(monkeypatch, tmp_path: Path) -> None:
+    from omx_remote.cli_launcher.team_launcher import team_admin_cli
+
+    prd_path = _write_team_admin_prd_artifact(tmp_path)
+    output_path = tmp_path / "reports" / "team-admin.json"
+
+    async def fake_read_team_admin_aggregation_report(request):
+        assert request.team_name == "alpha-team"
+        assert request.ralph_prd_artifact.objective == "Collect Team Admin results from CLI."
+        return TeamAdminAggregationReport(
+            admin_id="team-admin",
+            aggregation_state="ready_for_ralph_review",
+            merge_ready=True,
+            final_report_required=True,
+            completed_workers=("worker-1",),
+            missing_workers=(),
+            blocked_workers=(),
+            incomplete_workers=(),
+            requires_human_review=False,
+            requires_llm_review=True,
+            task_count=1,
+            event_count=1,
+            summary="Team Admin collected 1/1 completed worker results; ready for Ralph review.",
+        )
+
+    monkeypatch.setattr(
+        team_admin_cli,
+        "read_team_admin_aggregation_report",
+        fake_read_team_admin_aggregation_report,
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "team",
+            "admin-report",
+            "--team",
+            "alpha-team",
+            "--prd-path",
+            str(prd_path),
+            "--output-path",
+            str(output_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    stdout_payload = orjson.loads(result.stdout)
+    written_payload = orjson.loads(output_path.read_bytes())
+    assert stdout_payload["aggregation_state"] == "ready_for_ralph_review"
+    assert written_payload == stdout_payload
 
 
 def test_package_entrypoint_runs_history_help() -> None:
