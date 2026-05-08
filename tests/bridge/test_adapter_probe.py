@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_probe
+from omx_remote.bridge.adapter_transport_payloads import copy_runtime_evidence_payload
 from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
@@ -116,3 +117,27 @@ def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fie
             "evidence": {},
         },
     }
+
+
+def test_adapter_runtime_evidence_copy_preserves_dynamic_values() -> None:
+    result = copy_runtime_evidence_payload(
+        {
+            "attempts": 2,
+            "reachable": False,
+            "details": {"socket": "missing"},
+            "events": ["probe-started"],
+        },
+        "omx adapt probe",
+    )
+
+    assert result == {
+        "attempts": 2,
+        "reachable": False,
+        "details": {"socket": "missing"},
+        "events": ["probe-started"],
+    }
+
+
+def test_adapter_runtime_evidence_copy_rejects_non_string_keys() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        copy_runtime_evidence_payload({1: "bad-key"}, "omx adapt probe")

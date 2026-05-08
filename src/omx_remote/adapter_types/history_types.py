@@ -8,36 +8,36 @@ from omx_remote.schemas.history.session_schemas import SessionSearchResultSnapsh
 class SessionSearchResultSpec(msgspec.Struct, kw_only=True):
     """Represents one decoded session-search result item before normalization."""
 
-    session_id: object = None
-    timestamp: object = None
-    cwd: object = None
-    record_type: object = None
-    line_number: object = None
-    snippet: object = None
+    session_id: str | None = None
+    timestamp: str | None = None
+    cwd: str | None = None
+    record_type: str | None = None
+    line_number: int | None = None
+    snippet: str | None = None
 
 
 class SessionSearchSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded session-search transport payload."""
 
-    query: object = None
-    searched_files: object = None
-    matched_sessions: object = None
-    results: object = None
+    query: str | None = None
+    searched_files: int | None = None
+    matched_sessions: int | None = None
+    results: list[SessionSearchResultSpec] | None = None
 
 
 class SessionSearchTransportResultPayload(TypedDict):
     """Represents the stable observed subset for one session-search result item."""
 
-    session_id: str
-    timestamp: str
-    cwd: str
-    record_type: str
-    line_number: int
-    snippet: str
+    session_id: str | None
+    timestamp: str | None
+    cwd: str | None
+    record_type: str | None
+    line_number: int | None
+    snippet: str | None
 
 
-type SessionSearchTransportResults = list[SessionSearchTransportResultPayload] | list[object]
-type SessionSearchNormalizedResults = list[SessionSearchResultSnapshot] | list[object]
+type SessionSearchTransportResults = list[SessionSearchResultSpec] | list[SessionSearchTransportResultPayload]
+type SessionSearchNormalizedResults = list[SessionSearchResultSnapshot]
 
 
 class SessionSearchTransportPayload(TypedDict):

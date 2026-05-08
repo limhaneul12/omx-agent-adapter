@@ -6,6 +6,8 @@ from typing_extensions import TypedDict
 class RuntimeModeStateDataPayload(TypedDict, extra_items=object):
     """Represents a mode-owned runtime state object with string keys."""
 
+    # Mode state values stay broad because each OMX runtime mode owns its payload shape.
+
 
 class RuntimeModeStatusDataPayload(TypedDict, total=False, closed=True):
     """Represents the stable nested transport subset for runtime mode-status data."""

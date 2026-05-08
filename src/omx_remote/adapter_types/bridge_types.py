@@ -6,6 +6,8 @@ from typing_extensions import TypedDict
 class AdapterRuntimeEvidencePayload(TypedDict, extra_items=object):
     """Represents target-owned runtime evidence with target-specific keys."""
 
+    # Evidence values stay broad because adapter targets own nested evidence shapes.
+
 
 class AdapterCapabilityTransportPayload(TypedDict, closed=True):
     """Represents one stable capability item emitted by adapter bridge payloads."""

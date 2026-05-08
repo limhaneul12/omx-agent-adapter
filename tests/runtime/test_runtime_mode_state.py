@@ -104,3 +104,26 @@ def test_read_runtime_mode_state_rejects_non_object_state_payload(monkeypatch) -
                 RuntimeModeStateRequest(mode="ralph")
             )
         )
+
+
+def test_runtime_mode_state_payload_copy_preserves_dynamic_values() -> None:
+    result = runtime_mode_state._copy_runtime_mode_state_payload(
+        {
+            "active": True,
+            "count": 2,
+            "nested": {"phase": "executing"},
+            "warnings": ["slow"],
+        }
+    )
+
+    assert result == {
+        "active": True,
+        "count": 2,
+        "nested": {"phase": "executing"},
+        "warnings": ["slow"],
+    }
+
+
+def test_runtime_mode_state_payload_copy_rejects_non_string_keys() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_mode_state._copy_runtime_mode_state_payload({1: "bad-key"})
