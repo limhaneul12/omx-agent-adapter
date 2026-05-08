@@ -3,6 +3,11 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from omx_remote.runtime.cockpit.linked_team_discovery import (
+    LinkedTeamDiscoveryResult,
+    discover_linked_team_names,
+    merge_explicit_and_discovered_team_names,
+)
 from omx_remote.runtime.goal.codex_goal_runtime import CodexGoalMirrorStateStore
 from omx_remote.runtime.status.active_runtime_modes import read_active_runtime_modes
 from omx_remote.runtime.status.runtime_snapshot import read_runtime_status
@@ -18,6 +23,8 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitLaneState,
     CockpitSnapshot,
     CockpitSnapshotRequest,
+    CockpitStatusSourceObservation,
+    CockpitStatusSourceState,
     CockpitTeamObservation,
     CockpitTeamWorkerObservation,
 )
@@ -66,18 +73,40 @@ async def read_cockpit_snapshot(
     """
     runtime_status_task = asyncio.create_task(read_runtime_status())
     active_modes_task = asyncio.create_task(read_active_runtime_modes())
+
+    goal_mirror_state: CodexGoalMirrorState | None = _read_optional_goal_mirror_state(
+        request.repo_root
+    )
+    team_discovery: LinkedTeamDiscoveryResult = discover_linked_team_names(
+        request.repo_root
+    )
+    selected_team_names: tuple[str, ...] = merge_explicit_and_discovered_team_names(
+        explicit_team_names=request.team_names,
+        discovered_team_names=team_discovery.discovered_team_names,
+    )
     team_observations_task = asyncio.create_task(
-        _read_team_observations(request.team_names)
+        _read_team_observations(selected_team_names)
     )
 
     runtime_status: RuntimeStatus = await runtime_status_task
     active_runtime_modes: ActiveRuntimeModes = await active_modes_task
     team_observations: tuple[CockpitTeamObservation, ...] = await team_observations_task
-    goal_mirror_state: CodexGoalMirrorState | None = _read_optional_goal_mirror_state(
-        request.repo_root
-    )
     ultrawork_state_classification, ultrawork_warnings = _read_ultrawork_state(
         Path(request.repo_root)
+    )
+    status_sources: tuple[CockpitStatusSourceObservation, ...] = _build_status_sources(
+        goal_mirror_state=goal_mirror_state,
+        team_discovery=team_discovery,
+        selected_team_names=selected_team_names,
+        runtime_status=runtime_status,
+        active_runtime_modes=active_runtime_modes,
+        ultrawork_warnings=tuple(ultrawork_warnings),
+    )
+    warnings: tuple[str, ...] = _build_top_level_warnings(
+        warnings=team_discovery.warnings,
+        ultrawork_warnings=tuple(ultrawork_warnings),
+        team_names=selected_team_names,
+        team_observations=team_observations,
     )
     result: CockpitSnapshot = build_cockpit_snapshot(
         repo_root=request.repo_root,
@@ -86,8 +115,11 @@ async def read_cockpit_snapshot(
         goal_mirror_state=goal_mirror_state,
         ultrawork_state_classification=ultrawork_state_classification,
         ultrawork_warnings=tuple(ultrawork_warnings),
-        team_names=request.team_names,
+        team_names=selected_team_names,
         team_observations=team_observations,
+        discovered_team_names=team_discovery.discovered_team_names,
+        status_sources=status_sources,
+        warnings=warnings,
     )
     return result
 
@@ -101,6 +133,9 @@ def build_cockpit_snapshot(
     ultrawork_warnings: tuple[str, ...],
     team_names: tuple[str, ...],
     team_observations: tuple[CockpitTeamObservation, ...] = (),
+    discovered_team_names: tuple[str, ...] = (),
+    status_sources: tuple[CockpitStatusSourceObservation, ...] = (),
+    warnings: tuple[str, ...] = (),
 ) -> CockpitSnapshot:
     """Build a read-only cockpit snapshot from normalized surface observations.
 
@@ -143,8 +178,11 @@ def build_cockpit_snapshot(
         repo_root=repo_root,
         runtime_summary=runtime_status.summary,
         active_runtime_modes=active_runtime_modes.active_modes,
+        discovered_teams=discovered_team_names,
+        status_sources=status_sources,
         contradictions=contradictions,
         lanes=lanes,
+        warnings=warnings,
         safe_to_mutate=safe_to_mutate,
         recommended_next_action=recommended_next_action,
     )
@@ -168,6 +206,135 @@ def _read_optional_goal_mirror_state(repo_root: str) -> CodexGoalMirrorState | N
         return missing_goal_mirror_state
 
     return goal_mirror_state
+
+
+def _build_status_sources(
+    goal_mirror_state: CodexGoalMirrorState | None,
+    team_discovery: LinkedTeamDiscoveryResult,
+    selected_team_names: tuple[str, ...],
+    runtime_status: RuntimeStatus,
+    active_runtime_modes: ActiveRuntimeModes,
+    ultrawork_warnings: tuple[str, ...],
+) -> tuple[CockpitStatusSourceObservation, ...]:
+    """Build read-only source observations for the all-status cockpit.
+
+    Args:
+        goal_mirror_state [CodexGoalMirrorState | None]: Optional Goal mirror evidence.
+        team_discovery [LinkedTeamDiscoveryResult]: Team-name discovery evidence.
+        selected_team_names [tuple[str, ...]]: Team names selected for evidence reads.
+        runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
+        active_runtime_modes [ActiveRuntimeModes]: Active runtime modes snapshot.
+        ultrawork_warnings [tuple[str, ...]]: Ultrawork source warnings.
+
+    Returns:
+        tuple[CockpitStatusSourceObservation, ...]: Stable source status observations.
+    """
+    goal_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
+    goal_detail = "No adapter-owned Goal mirror state was found."
+    goal_evidence_path: str | None = None
+    if goal_mirror_state is not None:
+        goal_status = CockpitStatusSourceState.OBSERVED
+        goal_detail = f"Goal mirror state for {goal_mirror_state.goal_id} was read."
+        goal_evidence_path = f"{goal_mirror_state.working_directory}/.agent-remote/state/codex-goal.json"
+
+    team_discovery_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
+    team_discovery_detail = "No exact linked Team names were discovered."
+    if team_discovery.discovered_team_names:
+        team_discovery_status = CockpitStatusSourceState.OBSERVED
+        discovered_text: str = ", ".join(team_discovery.discovered_team_names)
+        team_discovery_detail = f"Discovered linked Team names: {discovered_text}."
+    elif team_discovery.warnings:
+        team_discovery_status = CockpitStatusSourceState.FAILED
+        team_discovery_detail = "Team discovery inspected persisted state with warnings."
+
+    team_selection_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
+    team_selection_detail = "No explicit or discovered Team names were selected."
+    if selected_team_names:
+        team_selection_status = CockpitStatusSourceState.OBSERVED
+        selected_text: str = ", ".join(selected_team_names)
+        team_selection_detail = f"Selected Team names for evidence reads: {selected_text}."
+
+    active_modes_detail = "No active runtime modes were reported."
+    if active_runtime_modes.active_modes:
+        active_modes_text: str = ", ".join(active_runtime_modes.active_modes)
+        active_modes_detail = f"Active runtime modes were reported: {active_modes_text}."
+
+    ultrawork_status: CockpitStatusSourceState = CockpitStatusSourceState.OBSERVED
+    ultrawork_detail = "Ultrawork state was classified."
+    if ultrawork_warnings:
+        ultrawork_status = CockpitStatusSourceState.FAILED
+        ultrawork_detail = "Ultrawork state was classified with warnings."
+
+    first_team_discovery_source: str | None = None
+    if team_discovery.inspected_sources:
+        first_team_discovery_source = team_discovery.inspected_sources[0]
+
+    sources: tuple[CockpitStatusSourceObservation, ...] = (
+        CockpitStatusSourceObservation(
+            name="runtime_status",
+            status=CockpitStatusSourceState.OBSERVED,
+            detail=runtime_status.summary or "Runtime status was read.",
+        ),
+        CockpitStatusSourceObservation(
+            name="active_runtime_modes",
+            status=CockpitStatusSourceState.OBSERVED,
+            detail=active_modes_detail,
+        ),
+        CockpitStatusSourceObservation(
+            name="goal_mirror_state",
+            status=goal_status,
+            detail=goal_detail,
+            evidence_path=goal_evidence_path,
+        ),
+        CockpitStatusSourceObservation(
+            name="team_discovery",
+            status=team_discovery_status,
+            detail=team_discovery_detail,
+            evidence_path=first_team_discovery_source,
+        ),
+        CockpitStatusSourceObservation(
+            name="team_selection",
+            status=team_selection_status,
+            detail=team_selection_detail,
+        ),
+        CockpitStatusSourceObservation(
+            name="ultrawork_state",
+            status=ultrawork_status,
+            detail=ultrawork_detail,
+        ),
+    )
+    return sources
+
+
+def _build_top_level_warnings(
+    warnings: tuple[str, ...],
+    ultrawork_warnings: tuple[str, ...],
+    team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> tuple[str, ...]:
+    """Build top-level warning labels from cockpit degradation evidence.
+
+    Args:
+        warnings [tuple[str, ...]]: Discovery or source warnings.
+        ultrawork_warnings [tuple[str, ...]]: Ultrawork read warnings.
+        team_names [tuple[str, ...]]: Team names selected for Team evidence reads.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        tuple[str, ...]: Stable ordered top-level warnings.
+    """
+    top_level_warnings: list[str] = [
+        *warnings,
+        *ultrawork_warnings,
+        *_collect_team_observation_warnings(team_observations),
+    ]
+    if team_names and not team_observations:
+        top_level_warnings.append(
+            "Team names were selected but no Team evidence observations were produced."
+        )
+
+    result: tuple[str, ...] = tuple(top_level_warnings)
+    return result
 
 
 async def _read_team_observations(
