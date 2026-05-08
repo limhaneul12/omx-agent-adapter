@@ -38,7 +38,11 @@ Completed feature slices:
    - Degrades read failures into warnings instead of mutating or aborting the whole snapshot.
 
 4. **Development timeline tracking**
-   - Added `docs/dev_timeline.md` to record this branch's cockpit work.
+   - Historical branch notes were first captured in `docs/dev_timeline.md`.
+   - Forward-looking dated tracking now lives in `dev_timeline/2026-05-08.md`.
+
+5. **Tracked handoff/timeline routine**
+   - Added `docs/rules/handoff-and-timeline-rules.md` to formalize timeline-first work starts, concept-based branch naming, verification, PR, and handoff expectations.
 
 ## Current merge-ready stopping point
 

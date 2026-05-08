@@ -33,6 +33,7 @@ Current rule documents:
 - `docs/rules/naming-rules.md`
 - `docs/rules/schema-boundary-rules.md`
 - `docs/rules/lint-and-typecheck-rules.md`
+- `docs/rules/handoff-and-timeline-rules.md`
 - `docs/rules/pydantic/README.md`
 
 Recommended reading order for normal code work:
@@ -40,7 +41,8 @@ Recommended reading order for normal code work:
 2. `docs/rules/schema-boundary-rules.md`
 3. `docs/rules/pydantic/README.md`
 4. `docs/rules/naming-rules.md`
-5. `docs/rules/lint-and-typecheck-rules.md`
+5. `docs/rules/handoff-and-timeline-rules.md`
+6. `docs/rules/lint-and-typecheck-rules.md`
 
 Rule ownership summary for agents:
 - `docs/rules/type-development-rules.md`
@@ -57,6 +59,9 @@ Rule ownership summary for agents:
 - `docs/rules/naming-rules.md`
   - filename and module naming policy
   - use this before creating new files or splitting an existing concept
+- `docs/rules/handoff-and-timeline-rules.md`
+  - work-start timeline, branch naming, handoff completeness, and PR routine
+  - use this before beginning a tracked slice or handing the repo to another contributor
 - `docs/rules/lint-and-typecheck-rules.md`
   - verification gates and lint/typecheck expectations
   - use this before final validation and when deciding whether a warning can be ignored

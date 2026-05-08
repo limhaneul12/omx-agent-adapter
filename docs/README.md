@@ -10,6 +10,7 @@ Commit documentation only when it is durable enough to guide future agents, main
 | Operating procedures for current surfaces | Yes | `docs/agent-remote-goal-operating-loop.md` | Keep when the procedure affects safe operation, review gates, evidence, or mutation boundaries. |
 | Stable engineering rules | Yes | `docs/rules/` | These are repo conventions, not temporary planning notes. |
 | Current-code guardrails for future extension | Yes, only if grounded in current code | `docs/future-runtime-readiness.md` | Keep as a guardrail/refusal list, not as an active roadmap. Delete or move to local planning if it becomes speculative. |
+| Tracked daily development handoff record | Yes | `dev_timeline/<YYYY-MM-DD>.md` | Use for dated progress, handoff completeness, verification evidence, and next-slice intent. |
 | One-off worker notes / review transcripts | Usually no | `docs/reviews/*` | Do not add new tracked one-off review notes unless they capture durable evidence that cannot live in a status doc or test. |
 | Local implementation plans and backlog | No by default | `docs/jobs/` | This directory is gitignored. Use it for local planning, task history, and completion ledgers. |
 | Runtime artifacts | No | `.omx/`, `.agent-remote/` | Local runtime/control state only unless explicitly requested otherwise. |

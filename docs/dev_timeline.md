@@ -1,5 +1,9 @@
 # Development Timeline
 
+> Historical note: this file captures branch-level cockpit notes recorded before the per-day
+> `dev_timeline/<YYYY-MM-DD>.md` routine existed. New dated progress entries should go under the
+> repository-root `dev_timeline/` directory instead of extending this file.
+
 ## 2026-05-08 16:50 KST — Cockpit Ralph→Team evidence slice started
 
 - Branch: `feat/agent-remote-cockpit`
