@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+from pydantic import Field
+
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 
 
@@ -39,6 +41,26 @@ class CockpitContradiction(StrictSchemaModel):
     message: NonEmptyString
 
 
+class CockpitTeamWorkerObservation(StrictSchemaModel):
+    """Represents one Team worker status observed by cockpit."""
+
+    worker: NonEmptyString
+    state: NonEmptyString
+    updated_at: NonEmptyString
+
+
+class CockpitTeamObservation(StrictSchemaModel):
+    """Represents read-only Team evidence included in the cockpit."""
+
+    team_name: NonEmptyString
+    status: NonEmptyString
+    phase: NonEmptyString | None = None
+    task_count: int = Field(ge=0)
+    event_count: int = Field(ge=0)
+    worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = ()
+    warnings: tuple[NonEmptyString, ...] = ()
+
+
 class CockpitLaneSnapshot(StrictSchemaModel):
     """Represents one read-only cockpit lane snapshot."""
 
@@ -47,6 +69,7 @@ class CockpitLaneSnapshot(StrictSchemaModel):
     summary: NonEmptyString
     evidence_paths: tuple[NonEmptyString, ...] = ()
     warnings: tuple[NonEmptyString, ...] = ()
+    team_observations: tuple[CockpitTeamObservation, ...] = ()
     recommended_next_action: NonEmptyString
 
 

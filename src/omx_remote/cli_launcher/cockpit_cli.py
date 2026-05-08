@@ -19,6 +19,7 @@ def cockpit_snapshot(
     team_names: list[str] | None = typer.Option(
         None,
         "--team",
+        "--team-name",
         help="Optional explicit Team name to include in the Ralph -> Team lane.",
     ),
 ) -> None:

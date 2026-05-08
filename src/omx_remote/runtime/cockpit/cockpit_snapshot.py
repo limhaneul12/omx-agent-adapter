@@ -18,9 +18,26 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitLaneState,
     CockpitSnapshot,
     CockpitSnapshotRequest,
+    CockpitTeamObservation,
+    CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
 from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.teamwork.api_request_schemas import (
+    TeamApiListTasksRequest,
+    TeamApiReadEventsRequest,
+    TeamApiReadWorkerStatusRequest,
+)
+from omx_remote.schemas.teamwork.api_snapshot_schemas import (
+    TeamApiListTasksSnapshot,
+    TeamApiReadEventsSnapshot,
+    TeamApiWorkerStatusSnapshot,
+)
+from omx_remote.schemas.teamwork.status_schemas import (
+    TeamStatusRequest,
+    TeamStatusSnapshot,
+)
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.shared.omx_enums.codex_goal_enums import (
     CodexGoalExecutionShape,
     CodexGoalHandoffState,
@@ -28,6 +45,12 @@ from omx_remote.shared.omx_enums.codex_goal_enums import (
 )
 from omx_remote.shared.omx_enums.ultrawork_enums import UltraworkStateClassification
 from omx_remote.shared.utils.json_file_store import json_file_stores
+from omx_remote.teamwork.team_api_snapshot import (
+    read_team_api_list_tasks,
+    read_team_api_read_events,
+    read_team_api_read_worker_status,
+)
+from omx_remote.teamwork.team_snapshot import read_team_status
 
 
 async def read_cockpit_snapshot(
@@ -43,9 +66,13 @@ async def read_cockpit_snapshot(
     """
     runtime_status_task = asyncio.create_task(read_runtime_status())
     active_modes_task = asyncio.create_task(read_active_runtime_modes())
+    team_observations_task = asyncio.create_task(
+        _read_team_observations(request.team_names)
+    )
 
     runtime_status: RuntimeStatus = await runtime_status_task
     active_runtime_modes: ActiveRuntimeModes = await active_modes_task
+    team_observations: tuple[CockpitTeamObservation, ...] = await team_observations_task
     goal_mirror_state: CodexGoalMirrorState | None = _read_optional_goal_mirror_state(
         request.repo_root
     )
@@ -60,6 +87,7 @@ async def read_cockpit_snapshot(
         ultrawork_state_classification=ultrawork_state_classification,
         ultrawork_warnings=tuple(ultrawork_warnings),
         team_names=request.team_names,
+        team_observations=team_observations,
     )
     return result
 
@@ -72,6 +100,7 @@ def build_cockpit_snapshot(
     ultrawork_state_classification: UltraworkStateClassification,
     ultrawork_warnings: tuple[str, ...],
     team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...] = (),
 ) -> CockpitSnapshot:
     """Build a read-only cockpit snapshot from normalized surface observations.
 
@@ -83,6 +112,7 @@ def build_cockpit_snapshot(
         ultrawork_state_classification [UltraworkStateClassification]: Ultrawork state classification.
         ultrawork_warnings [tuple[str, ...]]: Ultrawork status warnings.
         team_names [tuple[str, ...]]: Explicit Team names included in this cockpit read.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
         CockpitSnapshot: Aggregated cockpit snapshot with lane states and top-level guidance.
@@ -97,6 +127,7 @@ def build_cockpit_snapshot(
         ultrawork_state_classification=ultrawork_state_classification,
         ultrawork_warnings=ultrawork_warnings,
         team_names=team_names,
+        team_observations=team_observations,
     )
     safe_to_mutate: bool = _derive_safe_to_mutate(
         contradictions=contradictions,
@@ -137,6 +168,177 @@ def _read_optional_goal_mirror_state(repo_root: str) -> CodexGoalMirrorState | N
         return missing_goal_mirror_state
 
     return goal_mirror_state
+
+
+async def _read_team_observations(
+    team_names: tuple[str, ...],
+) -> tuple[CockpitTeamObservation, ...]:
+    """Read explicit Team evidence for the cockpit.
+
+    Args:
+        team_names [tuple[str, ...]]: Team names requested by the caller.
+
+    Returns:
+        tuple[CockpitTeamObservation, ...]: Team evidence snapshots in caller order.
+    """
+    if not team_names:
+        empty_observations: tuple[CockpitTeamObservation, ...] = ()
+        return empty_observations
+
+    observation_tasks = [
+        asyncio.create_task(_read_team_observation(team_name)) for team_name in team_names
+    ]
+    observations_list: list[CockpitTeamObservation] = list(await asyncio.gather(*observation_tasks))
+    observations: tuple[CockpitTeamObservation, ...] = tuple(observations_list)
+    return observations
+
+
+async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
+    """Read one Team's status, tasks, events, and worker statuses.
+
+    Args:
+        team_name [str]: Team name to inspect through read-only Team surfaces.
+
+    Returns:
+        CockpitTeamObservation: Aggregated Team evidence for the cockpit.
+    """
+    warnings: list[str] = []
+    status_snapshot: TeamStatusSnapshot | None = None
+    tasks_snapshot: TeamApiListTasksSnapshot | None = None
+    events_snapshot: TeamApiReadEventsSnapshot | None = None
+
+    try:
+        status_snapshot = await read_team_status(TeamStatusRequest(team_name=team_name))
+    except TeamworkSurfaceError as error:
+        warnings.append(f"team status read failed for {team_name}: {error}")
+
+    try:
+        tasks_snapshot = await read_team_api_list_tasks(
+            TeamApiListTasksRequest(team_name=team_name)
+        )
+    except TeamworkSurfaceError as error:
+        warnings.append(f"team task read failed for {team_name}: {error}")
+
+    try:
+        events_snapshot = await read_team_api_read_events(
+            TeamApiReadEventsRequest(team_name=team_name)
+        )
+    except TeamworkSurfaceError as error:
+        warnings.append(f"team event read failed for {team_name}: {error}")
+
+    worker_names: tuple[str, ...] = _derive_observed_worker_names(
+        status_snapshot=status_snapshot,
+        tasks_snapshot=tasks_snapshot,
+        events_snapshot=events_snapshot,
+    )
+    worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = await _read_team_worker_observations(
+        team_name=team_name,
+        worker_names=worker_names,
+        warnings=warnings,
+    )
+
+    status_value: str = "unknown"
+    phase_value: str | None = None
+    if status_snapshot is not None:
+        status_value = status_snapshot.status
+        phase_value = status_snapshot.phase
+
+    task_count: int = 0
+    if tasks_snapshot is not None:
+        task_count = tasks_snapshot.count
+
+    event_count: int = 0
+    if events_snapshot is not None:
+        event_count = events_snapshot.count
+
+    observation = CockpitTeamObservation(
+        team_name=team_name,
+        status=status_value,
+        phase=phase_value,
+        task_count=task_count,
+        event_count=event_count,
+        worker_statuses=worker_statuses,
+        warnings=tuple(warnings),
+    )
+    return observation
+
+
+def _derive_observed_worker_names(
+    status_snapshot: TeamStatusSnapshot | None,
+    tasks_snapshot: TeamApiListTasksSnapshot | None,
+    events_snapshot: TeamApiReadEventsSnapshot | None,
+) -> tuple[str, ...]:
+    """Derive worker names worth probing from Team status/task/event evidence.
+
+    Args:
+        status_snapshot [TeamStatusSnapshot | None]: Optional Team status evidence.
+        tasks_snapshot [TeamApiListTasksSnapshot | None]: Optional Team task evidence.
+        events_snapshot [TeamApiReadEventsSnapshot | None]: Optional Team event evidence.
+
+    Returns:
+        tuple[str, ...]: Stable ordered unique worker names.
+    """
+    worker_names: list[str] = []
+    seen_worker_names: set[str] = set()
+
+    if status_snapshot is not None:
+        for worker_name in (*status_snapshot.dead_workers, *status_snapshot.non_reporting_workers):
+            if worker_name not in seen_worker_names:
+                seen_worker_names.add(worker_name)
+                worker_names.append(worker_name)
+
+    if tasks_snapshot is not None:
+        for task_snapshot in tasks_snapshot.tasks:
+            if task_snapshot.owner is not None and task_snapshot.owner not in seen_worker_names:
+                seen_worker_names.add(task_snapshot.owner)
+                worker_names.append(task_snapshot.owner)
+
+    if events_snapshot is not None:
+        for event_snapshot in events_snapshot.events:
+            if event_snapshot.worker is not None and event_snapshot.worker not in seen_worker_names:
+                seen_worker_names.add(event_snapshot.worker)
+                worker_names.append(event_snapshot.worker)
+
+    result: tuple[str, ...] = tuple(worker_names)
+    return result
+
+
+async def _read_team_worker_observations(
+    team_name: str,
+    worker_names: tuple[str, ...],
+    warnings: list[str],
+) -> tuple[CockpitTeamWorkerObservation, ...]:
+    """Read worker-status snapshots for observed Team workers.
+
+    Args:
+        team_name [str]: Team name owning the workers.
+        worker_names [tuple[str, ...]]: Worker names to inspect.
+        warnings [list[str]]: Mutable warning collection for read failures.
+
+    Returns:
+        tuple[CockpitTeamWorkerObservation, ...]: Worker status observations.
+    """
+    worker_observations: list[CockpitTeamWorkerObservation] = []
+    for worker_name in worker_names:
+        try:
+            worker_status: TeamApiWorkerStatusSnapshot = await read_team_api_read_worker_status(
+                TeamApiReadWorkerStatusRequest(team_name=team_name, worker=worker_name)
+            )
+        except TeamworkSurfaceError as error:
+            warnings.append(
+                f"team worker-status read failed for {team_name}/{worker_name}: {error}"
+            )
+            continue
+
+        worker_observation = CockpitTeamWorkerObservation(
+            worker=worker_status.worker,
+            state=worker_status.state,
+            updated_at=worker_status.updated_at,
+        )
+        worker_observations.append(worker_observation)
+
+    result: tuple[CockpitTeamWorkerObservation, ...] = tuple(worker_observations)
+    return result
 
 
 def _read_ultrawork_state(
@@ -227,6 +429,7 @@ def _build_lane_snapshots(
     ultrawork_state_classification: UltraworkStateClassification,
     ultrawork_warnings: tuple[str, ...],
     team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...],
 ) -> tuple[CockpitLaneSnapshot, ...]:
     """Build snapshots for the six public operating lanes.
 
@@ -236,6 +439,7 @@ def _build_lane_snapshots(
         ultrawork_state_classification [UltraworkStateClassification]: Ultrawork state classification.
         ultrawork_warnings [tuple[str, ...]]: Ultrawork status warnings.
         team_names [tuple[str, ...]]: Explicit Team names included in this cockpit read.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
         tuple[CockpitLaneSnapshot, ...]: Ordered lane snapshots.
@@ -246,7 +450,7 @@ def _build_lane_snapshots(
         _build_goal_ralph_teams_lane(repo_root, goal_mirror_state),
         _build_ultrawork_lane(ultrawork_state_classification, ultrawork_warnings),
         _build_hypergoal_lane(),
-        _build_ralph_team_lane(team_names),
+        _build_ralph_team_lane(team_names, team_observations),
     )
     return lanes
 
@@ -401,11 +605,15 @@ def _build_hypergoal_lane() -> CockpitLaneSnapshot:
     return lane
 
 
-def _build_ralph_team_lane(team_names: tuple[str, ...]) -> CockpitLaneSnapshot:
+def _build_ralph_team_lane(
+    team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> CockpitLaneSnapshot:
     """Build the Ralph -> Team lane summary.
 
     Args:
         team_names [tuple[str, ...]]: Explicit Team names included in this cockpit read.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
         CockpitLaneSnapshot: Ralph -> Team lane summary.
@@ -419,14 +627,101 @@ def _build_ralph_team_lane(team_names: tuple[str, ...]) -> CockpitLaneSnapshot:
         )
         return lane
 
-    team_names_text: str = ", ".join(team_names)
+    if not team_observations:
+        team_names_text: str = ", ".join(team_names)
+        missing_observation_lane = CockpitLaneSnapshot(
+            name=CockpitLaneName.RALPH_TEAM,
+            state=CockpitLaneState.UNKNOWN,
+            summary=f"Explicit Team names were provided but no Team evidence was read: {team_names_text}.",
+            recommended_next_action="inspect_team_status",
+        )
+        return missing_observation_lane
+
+    state: CockpitLaneState = _derive_ralph_team_lane_state(team_observations)
+    summary: str = _summarize_team_observations(team_observations)
     lane = CockpitLaneSnapshot(
         name=CockpitLaneName.RALPH_TEAM,
-        state=CockpitLaneState.UNKNOWN,
-        summary=f"Explicit Team names were provided for future inspection: {team_names_text}.",
-        recommended_next_action="inspect_team_status",
+        state=state,
+        summary=summary,
+        team_observations=team_observations,
+        warnings=_collect_team_observation_warnings(team_observations),
+        recommended_next_action="inspect_team_evidence",
     )
     return lane
+
+
+def _derive_ralph_team_lane_state(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> CockpitLaneState:
+    """Derive the Ralph -> Team lane state from Team observations.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        CockpitLaneState: Aggregate Ralph -> Team lane state.
+    """
+    has_active_team: bool = any(
+        observation.status not in ("missing", "inactive", "ended")
+        for observation in team_observations
+    )
+    if has_active_team:
+        active_state: CockpitLaneState = CockpitLaneState.ACTIVE
+        return active_state
+
+    all_missing: bool = all(observation.status == "missing" for observation in team_observations)
+    if all_missing:
+        missing_state: CockpitLaneState = CockpitLaneState.MISSING
+        return missing_state
+
+    unknown_state: CockpitLaneState = CockpitLaneState.UNKNOWN
+    return unknown_state
+
+
+def _summarize_team_observations(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> str:
+    """Summarize Team observations for the Ralph -> Team cockpit lane.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        str: Compact human-readable Team evidence summary.
+    """
+    summary_parts: list[str] = []
+    for observation in team_observations:
+        phase_text: str = "no phase"
+        if observation.phase is not None:
+            phase_text = observation.phase
+        worker_count: int = len(observation.worker_statuses)
+        summary_parts.append(
+            f"{observation.team_name}: {observation.status} ({phase_text}), "
+            f"{observation.task_count} tasks, {observation.event_count} events, "
+            f"{worker_count} worker statuses"
+        )
+
+    summary: str = "; ".join(summary_parts)
+    return summary
+
+
+def _collect_team_observation_warnings(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> tuple[str, ...]:
+    """Collect warnings from Team observations.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        tuple[str, ...]: Flattened warning texts.
+    """
+    warnings: list[str] = []
+    for observation in team_observations:
+        warnings.extend(observation.warnings)
+
+    result: tuple[str, ...] = tuple(warnings)
+    return result
 
 
 def _map_goal_tracking_state(tracking_state: CodexGoalTrackingState) -> CockpitLaneState:

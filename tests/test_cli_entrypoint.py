@@ -222,6 +222,7 @@ def test_package_entrypoint_runs_cockpit_snapshot_help() -> None:
     assert completed_process.returncode == 0
     assert "--cwd" in completed_process.stdout
     assert "--team" in completed_process.stdout
+    assert "--team-name" in completed_process.stdout
 
 
 def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) -> None:
@@ -257,7 +258,7 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
 
     result = CliRunner().invoke(
         app,
-        ["cockpit", "snapshot", "--cwd", str(tmp_path), "--team", "team-alpha"],
+        ["cockpit", "snapshot", "--cwd", str(tmp_path), "--team-name", "team-alpha"],
     )
 
     assert result.exit_code == 0
