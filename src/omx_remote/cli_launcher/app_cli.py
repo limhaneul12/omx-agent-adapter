@@ -1,6 +1,7 @@
 import typer
 
 from omx_remote.cli_launcher.adapt_cli import adapt_app
+from omx_remote.cli_launcher.cockpit_cli import cockpit_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
 from omx_remote.cli_launcher.hypergoal_cli import hypergoal_app
@@ -17,6 +18,7 @@ Use subcommand --help to see available operations for each domain.
 
 app = typer.Typer(help=HELP_TEXT, add_completion=False)
 app.add_typer(runtime_app, name="runtime")
+app.add_typer(cockpit_app, name="cockpit")
 app.add_typer(team_app, name="team")
 app.add_typer(history_app, name="history")
 app.add_typer(adapt_app, name="adapt")

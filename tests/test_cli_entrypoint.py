@@ -188,6 +188,7 @@ def test_package_entrypoint_runs_help() -> None:
     assert "AI-friendly route guidance" in completed_process.stdout
     assert "Agent-facing control layer" in completed_process.stdout
     assert "runtime" in completed_process.stdout
+    assert "cockpit" in completed_process.stdout
     assert "team" in completed_process.stdout
     assert "history" in completed_process.stdout
     assert "adapt" in completed_process.stdout
@@ -206,6 +207,64 @@ def test_package_entrypoint_runs_runtime_help() -> None:
     assert "active-modes" in completed_process.stdout
     assert "mode-status" in completed_process.stdout
     assert "mode-state" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_cockpit_help() -> None:
+    completed_process = _run_agent_remote_command(["cockpit", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "snapshot" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_cockpit_snapshot_help() -> None:
+    completed_process = _run_agent_remote_command(["cockpit", "snapshot", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--cwd" in completed_process.stdout
+    assert "--team" in completed_process.stdout
+    assert "--team-name" in completed_process.stdout
+
+
+def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) -> None:
+    from omx_remote.cli_launcher import cockpit_cli
+    from omx_remote.schemas.cockpit.snapshot_schemas import (
+        CockpitLaneName,
+        CockpitLaneSnapshot,
+        CockpitLaneState,
+        CockpitSnapshot,
+    )
+
+    async def fake_read_cockpit_snapshot(request):
+        assert request.repo_root == str(tmp_path.resolve())
+        assert request.team_names == ("team-alpha",)
+        return CockpitSnapshot(
+            repo_root=request.repo_root,
+            runtime_summary="No active modes.",
+            active_runtime_modes=(),
+            contradictions=(),
+            lanes=(
+                CockpitLaneSnapshot(
+                    name=CockpitLaneName.HYPERGOAL,
+                    state=CockpitLaneState.PLANNED_ONLY,
+                    summary="Hypergoal is template-only.",
+                    recommended_next_action="use_hypergoal_template_only",
+                ),
+            ),
+            safe_to_mutate=True,
+            recommended_next_action="observe",
+        )
+
+    monkeypatch.setattr(cockpit_cli, "read_cockpit_snapshot", fake_read_cockpit_snapshot)
+
+    result = CliRunner().invoke(
+        app,
+        ["cockpit", "snapshot", "--cwd", str(tmp_path), "--team-name", "team-alpha"],
+    )
+
+    assert result.exit_code == 0
+    output = orjson.loads(result.stdout)
+    assert output["repo_root"] == str(tmp_path.resolve())
+    assert output["lanes"][0]["name"] == "hypergoal"
 
 
 def test_team_cli_is_split_into_feature_launcher_modules() -> None:
