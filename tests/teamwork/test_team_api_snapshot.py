@@ -350,6 +350,18 @@ def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
         )
 
 
+def test_load_team_api_payload_drops_non_list_collection_fields() -> None:
+    result = team_api_transport.load_team_api_payload(
+        '{"ok":true,"data":{"count":1,"worker":"worker-1","tasks":{"id":"not-a-list"},"events":"not-a-list","messages":123}}',
+        "omx team api list-tasks",
+    )
+
+    assert result == {
+        "count": 1,
+        "worker": "worker-1",
+    }
+
+
 def test_read_team_api_mailbox_list_is_async() -> None:
     assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_mailbox_list)
 

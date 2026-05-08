@@ -37,7 +37,7 @@ class TeamApiEnvelopePayload(TypedDict):
     """Represents the stable top-level envelope subset for successful team-api payloads."""
 
     ok: bool
-    data: object
+    data: dict[str, object]
 
 
 class TeamApiErrorTransportPayload(TypedDict):
@@ -51,38 +51,15 @@ class TeamApiTransportPayload(TypedDict, total=False):
     """Represents the stable nested `data` subset shared by typed team-api reads."""
 
     count: int
-    tasks: object
+    tasks: list[object]
     cursor: str
-    events: object
+    events: list[object]
     worker: str
-    messages: object
+    messages: list[object]
     snapshot: object
-    status: object
-    config: object
-    manifest: object
-
-
-class TeamApiListTasksNormalizedPayload(TypedDict):
-    """Represents the normalized adapter-owned payload for team-api list-tasks."""
-
-    count: int
-    tasks: object
-
-
-class TeamApiReadEventsNormalizedPayload(TypedDict):
-    """Represents the normalized adapter-owned payload for team-api read-events."""
-
-    count: int
-    cursor: str
-    events: object
-
-
-class TeamApiMailboxListNormalizedPayload(TypedDict):
-    """Represents the normalized adapter-owned payload for team-api mailbox-list."""
-
-    worker: str
-    count: int
-    messages: object
+    status: dict[str, object]
+    config: dict[str, object]
+    manifest: dict[str, object]
 
 
 class TeamApiWorkerStatusNormalizedPayload(TypedDict):
@@ -127,6 +104,29 @@ class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
 
     state: str
     updated_at: str
+
+
+class TeamApiListTasksNormalizedPayload(TypedDict):
+    """Represents the normalized adapter-owned payload for team-api list-tasks."""
+
+    count: int
+    tasks: list[TeamApiTransportTaskPayload]
+
+
+class TeamApiReadEventsNormalizedPayload(TypedDict):
+    """Represents the normalized adapter-owned payload for team-api read-events."""
+
+    count: int
+    cursor: str
+    events: list[TeamApiTransportEventPayload]
+
+
+class TeamApiMailboxListNormalizedPayload(TypedDict):
+    """Represents the normalized adapter-owned payload for team-api mailbox-list."""
+
+    worker: str
+    count: int
+    messages: list[TeamApiTransportMailboxMessagePayload]
 
 
 class TeamStatusSpec(msgspec.Struct, kw_only=True):

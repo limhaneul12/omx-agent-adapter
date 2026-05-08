@@ -67,14 +67,20 @@ def _normalize_team_api_data_payload(
         result["cursor"] = data_spec.cursor
     if isinstance(data_spec.worker, str):
         result["worker"] = data_spec.worker
-
-    result["tasks"] = data_spec.tasks
-    result["events"] = data_spec.events
-    result["messages"] = data_spec.messages
-    result["snapshot"] = data_spec.snapshot
-    result["status"] = data_spec.status
-    result["config"] = data_spec.config
-    result["manifest"] = data_spec.manifest
+    if isinstance(data_spec.tasks, list):
+        result["tasks"] = data_spec.tasks
+    if isinstance(data_spec.events, list):
+        result["events"] = data_spec.events
+    if isinstance(data_spec.messages, list):
+        result["messages"] = data_spec.messages
+    if data_spec.snapshot is not None:
+        result["snapshot"] = data_spec.snapshot
+    if isinstance(data_spec.status, dict):
+        result["status"] = data_spec.status
+    if isinstance(data_spec.config, dict):
+        result["config"] = data_spec.config
+    if isinstance(data_spec.manifest, dict):
+        result["manifest"] = data_spec.manifest
     return result
 
 
@@ -95,14 +101,16 @@ def load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportP
     if envelope.ok is not True:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
 
-    top_level_payload = TeamApiEnvelopePayload(ok=True, data=envelope.data)
-    data_payload: object = top_level_payload["data"]
+    data_payload: object = envelope.data
     if not isinstance(data_payload, dict):
         raise TeamworkSurfaceError(
             f"{operation_name} returned a non-object data payload"
         )
 
-    result: TeamApiTransportPayload = _normalize_team_api_data_payload(data_payload)
+    top_level_payload = TeamApiEnvelopePayload(ok=True, data=data_payload)
+    result: TeamApiTransportPayload = _normalize_team_api_data_payload(
+        top_level_payload["data"]
+    )
     return result
 
 

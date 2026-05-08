@@ -7,7 +7,10 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiListTasksNormalizedPayload,
     TeamApiMailboxListNormalizedPayload,
     TeamApiReadEventsNormalizedPayload,
+    TeamApiTransportEventPayload,
+    TeamApiTransportMailboxMessagePayload,
     TeamApiTransportPayload,
+    TeamApiTransportTaskPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork.api_request_schemas import (
@@ -90,16 +93,21 @@ async def read_team_api_list_tasks(
         command_result.stdout.strip(),
         "omx team api list-tasks",
     )
-    raw_tasks: object = data_payload.get("tasks")
+    raw_tasks: list[object] | None = data_payload.get("tasks")
     count_value: int | None = data_payload.get("count")
+    if raw_tasks is None:
+        result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
+            {"count": 0 if count_value is None else count_value}
+        )
+        return result
+
+    normalized_tasks: list[TeamApiTransportTaskPayload] = [
+        normalize_team_api_task_payload(task_payload) for task_payload in raw_tasks
+    ]
     normalized_payload = TeamApiListTasksNormalizedPayload(
         count=0 if count_value is None else count_value,
-        tasks=raw_tasks,
+        tasks=normalized_tasks,
     )
-    if isinstance(raw_tasks, list):
-        normalized_payload["tasks"] = [
-            normalize_team_api_task_payload(task_payload) for task_payload in raw_tasks
-        ]
     result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
         normalized_payload
     )
@@ -138,18 +146,23 @@ async def read_team_api_read_events(
         command_result.stdout.strip(),
         "omx team api read-events",
     )
-    raw_events: object = data_payload.get("events")
+    raw_events: list[object] | None = data_payload.get("events")
     count_value: int | None = data_payload.get("count")
     cursor_value: str | None = data_payload.get("cursor")
+    if raw_events is None:
+        result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
+            {"count": 0 if count_value is None else count_value, "cursor": "" if cursor_value is None else cursor_value}
+        )
+        return result
+
+    normalized_events: list[TeamApiTransportEventPayload] = [
+        normalize_team_api_event_payload(event_payload) for event_payload in raw_events
+    ]
     normalized_payload = TeamApiReadEventsNormalizedPayload(
         count=0 if count_value is None else count_value,
         cursor="" if cursor_value is None else cursor_value,
-        events=raw_events,
+        events=normalized_events,
     )
-    if isinstance(raw_events, list):
-        normalized_payload["events"] = [
-            normalize_team_api_event_payload(event_payload) for event_payload in raw_events
-        ]
     result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
         normalized_payload
     )
@@ -188,19 +201,24 @@ async def read_team_api_mailbox_list(
         command_result.stdout.strip(),
         "omx team api mailbox-list",
     )
-    raw_messages: object = data_payload.get("messages")
+    raw_messages: list[object] | None = data_payload.get("messages")
     worker_value: str | None = data_payload.get("worker")
     count_value: int | None = data_payload.get("count")
+    if raw_messages is None:
+        result: TeamApiMailboxListSnapshot = TeamApiMailboxListSnapshot.model_validate(
+            {"worker": "" if worker_value is None else worker_value, "count": 0 if count_value is None else count_value}
+        )
+        return result
+
+    normalized_messages: list[TeamApiTransportMailboxMessagePayload] = [
+        normalize_team_api_mailbox_message_payload(message_payload)
+        for message_payload in raw_messages
+    ]
     normalized_payload = TeamApiMailboxListNormalizedPayload(
         worker="" if worker_value is None else worker_value,
         count=0 if count_value is None else count_value,
-        messages=raw_messages,
+        messages=normalized_messages,
     )
-    if isinstance(raw_messages, list):
-        normalized_payload["messages"] = [
-            normalize_team_api_mailbox_message_payload(message_payload)
-            for message_payload in raw_messages
-        ]
     result: TeamApiMailboxListSnapshot = TeamApiMailboxListSnapshot.model_validate(
         normalized_payload
     )
