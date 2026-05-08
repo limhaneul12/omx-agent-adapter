@@ -156,8 +156,11 @@ shared/
 ## Python Version and Tooling
 
 - Use `uv` for environment and dependency management.
-- If using Python 3.13, prefer the latest stable patch release in the 3.13 line that is officially available.
-- At the time of writing, the currently recommended 3.13 patch release is `3.13.5`.
+- Support Python 3.13 and 3.14 for the shipped package (`requires-python = ">=3.13,<3.15"`).
+- Keep Ruff and Pyrefly configured to the lower-bound Python 3.13 target unless the project intentionally drops 3.13 support; this prevents accidental 3.14-only syntax or stdlib imports from breaking 3.13 users.
+- Python 3.14 makes deferred annotation evaluation standard via PEP 649/749 and adds `annotationlib`, but do not remove `from __future__ import annotations` solely for style while 3.13 remains supported.
+- Do not adopt `typing.TypeForm` as a 3.14 feature; current PEP 747 documentation targets Python 3.15.
+- Avoid deprecated/removed typing aliases such as `typing.ByteString`; use concrete buffer-compatible types or `collections.abc.Buffer` when a buffer contract is needed.
 - Python version decisions should consider practical ecosystem compatibility, not only language-version preference.
 
 ## Implementation Guidance
