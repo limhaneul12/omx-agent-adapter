@@ -47,3 +47,14 @@
   - task count: `0`
   - event count: `2`
   - worker statuses observed: `1`
+
+## 2026-05-08 17:50 KST — Current feature development scope recorded
+
+- Added `docs/current-feature-development-scope.md` as the merge-ready feature boundary for `feat/agent-remote-cockpit`.
+- Recorded that the current branch stops at a read-only cockpit baseline, Python 3.13/3.14 support, explicit Team evidence reads, and timeline tracking.
+- Recorded the next intended direction after merge:
+  - typed transport hardening first, starting with Teamwork adapter types
+  - then cockpit Team discovery without explicit `--team-name`
+  - then Goal advance/watch only after truthful repo/flow snapshot prerequisites exist
+  - native OMX startup reliability hardening outside cockpit mutation
+- Recorded the dependency decision: do not start a broad Pydantic upgrade; use `typing_extensions.TypedDict` only when a concrete PEP 728 transport-hardening slice needs it.
