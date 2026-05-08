@@ -16,7 +16,7 @@ class AdapterCapabilityTransportPayload(TypedDict, closed=True):
 
     id: str
     label: str
-    ownership: str
+    ownership: NotRequired[str]
     status: str
     summary: str
 

@@ -5,7 +5,10 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_probe
-from omx_remote.bridge.adapter_transport_payloads import copy_runtime_evidence_payload
+from omx_remote.bridge.adapter_transport_payloads import (
+    copy_runtime_evidence_payload,
+    load_capabilities_payload,
+)
 from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
@@ -99,6 +102,29 @@ def test_load_adapter_probe_transport_payload_rejects_non_string_runtime_state()
         adapter_probe._load_adapter_probe_transport_payload(
             '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":42,"detail":"missing"}}'
         )
+
+
+def test_load_capabilities_payload_accepts_schema_supported_missing_ownership() -> None:
+    result = load_capabilities_payload(
+        [
+            {
+                "id": "foundation-reporting",
+                "label": "Foundation reporting surface",
+                "status": "ready",
+                "summary": "Probe/status/envelope share an adapter contract.",
+            }
+        ],
+        "omx adapt probe",
+    )
+
+    assert result == [
+        {
+            "id": "foundation-reporting",
+            "label": "Foundation reporting surface",
+            "status": "ready",
+            "summary": "Probe/status/envelope share an adapter contract.",
+        }
+    ]
 
 
 def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> None:

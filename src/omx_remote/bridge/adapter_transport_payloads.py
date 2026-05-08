@@ -57,10 +57,16 @@ def load_capabilities_payload(
         capability_payload = AdapterCapabilityTransportPayload(
             id=require_string_field(raw_capability_payload, "id", source),
             label=require_string_field(raw_capability_payload, "label", source),
-            ownership=require_string_field(raw_capability_payload, "ownership", source),
             status=require_string_field(raw_capability_payload, "status", source),
             summary=require_string_field(raw_capability_payload, "summary", source),
         )
+        ownership_value: object | None = raw_capability_payload.get("ownership")
+        if ownership_value is not None:
+            if not isinstance(ownership_value, str):
+                raise BridgeSurfaceError(
+                    f"{source} returned a non-string ownership payload"
+                )
+            capability_payload["ownership"] = ownership_value
         capabilities.append(capability_payload)
 
     result: list[AdapterCapabilityTransportPayload] = capabilities
