@@ -1,6 +1,9 @@
 from omx_remote.adapter_types.execution_types import (
+    ExecutionItemTransportPayload,
     ExecutionThreadStartedTransportPayload,
+    ExecutionTransportPayload,
     ExecutionTurnCompletedTransportPayload,
+    ExecutionUsageTransportPayload,
 )
 from omx_remote.adapter_types.runtime_types import (
     ActiveRuntimeModesTransportPayload,
@@ -99,3 +102,20 @@ def test_execution_transport_payload_types_accept_enum_narrowing() -> None:
 
     assert thread_started_transport["type"] == ExecutionEventKind.THREAD_STARTED
     assert turn_completed_transport["type"] == ExecutionEventKind.TURN_COMPLETED
+
+
+def test_execution_transport_payload_types_keep_raw_passthrough_extras() -> None:
+    unknown_item_transport: ExecutionItemTransportPayload = {
+        "type": "custom_item",
+        "payload": {"nested": True},
+    }
+    unknown_event_transport: ExecutionTransportPayload = {
+        "type": "session.configured",
+        "payload": {"mode": "agent"},
+    }
+
+    assert getattr(ExecutionUsageTransportPayload, "__closed__", False) is True
+    assert getattr(ExecutionItemTransportPayload, "__extra_items__", None) is object
+    assert getattr(ExecutionTransportPayload, "__extra_items__", None) is object
+    assert unknown_item_transport["payload"] == {"nested": True}
+    assert unknown_event_transport["payload"] == {"mode": "agent"}

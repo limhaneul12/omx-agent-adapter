@@ -80,6 +80,22 @@ def test_normalize_execution_item_payload_preserves_command_execution_shape() ->
     assert result["status"] == "completed"
 
 
+def test_normalize_execution_item_payload_preserves_unknown_item_extras() -> None:
+    result = _normalize_execution_item_payload(
+        {
+            "id": "item_unknown",
+            "type": "custom_item",
+            "payload": {"nested": True},
+            "sequence": 3,
+        }
+    )
+
+    assert result["id"] == "item_unknown"
+    assert result["type"] == "custom_item"
+    assert result["payload"] == {"nested": True}
+    assert result["sequence"] == 3
+
+
 def test_normalize_execution_event_type_preserves_known_thread_started_event() -> None:
     result = _normalize_execution_event_type("thread.started")
 
@@ -282,6 +298,41 @@ def test_load_execution_payload_preserves_live_command_execution_item_shape() ->
     assert result["type"] == "item.completed"
     assert result["item"]["type"] == "command_execution"
     assert result["item"]["exit_code"] == 0
+
+
+def test_load_execution_payload_preserves_unknown_event_extra_fields() -> None:
+    result = load_execution_payload(
+        "event payload",
+        {
+            "type": "session.configured",
+            "payload": {"mode": "agent"},
+            "sequence": 7,
+        },
+    )
+
+    assert result["type"] == "session.configured"
+    assert result["payload"] == {"mode": "agent"}
+    assert result["sequence"] == 7
+
+
+def test_load_execution_payload_preserves_unknown_item_completed_item_fields() -> None:
+    result = load_execution_payload(
+        "event payload",
+        {
+            "type": "item.completed",
+            "item": {
+                "id": "item_unknown",
+                "type": "custom_item",
+                "payload": {"nested": True},
+                "sequence": 3,
+            },
+        },
+    )
+
+    assert result["type"] == "item.completed"
+    assert result["item"]["type"] == "custom_item"
+    assert result["item"]["payload"] == {"nested": True}
+    assert result["item"]["sequence"] == 3
 
 
 def test_load_execution_transport_payload_preserves_top_level_message_text_as_string_only() -> (
@@ -1216,4 +1267,3 @@ def test_build_tool_interaction_report_marks_clean_report_without_anomalies() ->
 
     assert report.has_anomalies is False
     assert report.anomaly_count == 0
-

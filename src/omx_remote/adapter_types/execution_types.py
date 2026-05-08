@@ -1,6 +1,7 @@
-from typing import Literal, TypedDict
+from typing import Literal
 
 import msgspec
+from typing_extensions import TypedDict
 
 from omx_remote.schemas.execution.event_schemas import (
     ExecCommandExecution,
@@ -27,6 +28,93 @@ type ExecutionContract = (
 )
 type RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 type ExecutionTransportPayloads = tuple[ExecutionTransportPayload, ...]
+
+
+class ExecutionUsageTransportPayload(TypedDict, total=False, closed=True):
+    """Represents the stable observed token-usage subset on turn completion."""
+
+    input_tokens: int
+    cached_input_tokens: int
+    output_tokens: int
+    reasoning_output_tokens: int
+
+
+class ExecutionThreadStartedTransportPayload(TypedDict, closed=True):
+    """Represents the stable transport subset for `thread.started` events."""
+
+    type: ExecutionEventKind
+    thread_id: str
+
+
+class ExecutionAgentMessageItemTransportPayload(TypedDict, extra_items=object):
+    """Represents the stable observed `agent_message` execution-item subset."""
+
+    id: str
+    type: str
+    text: str
+
+
+class ExecutionCommandExecutionItemTransportPayload(
+    TypedDict,
+    extra_items=object,
+):
+    """Represents the stable observed `command_execution` execution-item subset."""
+
+    id: str
+    type: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
+
+
+class ExecutionItemTransportPayload(TypedDict, total=False, extra_items=object):
+    """Represents the mixed execution-item subset with raw extras preserved."""
+
+    id: str
+    type: str
+    text: str
+    tool_name: str
+    call_id: str
+    arguments: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
+
+
+class ExecutionTurnCompletedTransportPayload(TypedDict, closed=True):
+    """Represents the stable transport subset for `turn.completed` events."""
+
+    type: ExecutionEventKind
+    usage: ExecutionUsageTransportPayload
+
+
+class ExecutionItemCompletedTransportPayload(TypedDict, closed=True):
+    """Represents the stable transport subset for `item.completed` events."""
+
+    type: ExecutionEventKind
+    item: ExecutionItemTransportPayload
+
+
+class ExecutionTransportPayload(TypedDict, total=False, extra_items=object):
+    """Represents the owned top-level execution transport subset before promotion."""
+
+    type: str | None
+    text: str
+    item: ExecutionItemTransportPayload
+    tool_name: str
+    call_id: str
+    arguments: str
+    command: str
+    aggregated_output: str
+    exit_code: int
+    status: str
+    id: str
+    extra: object
+    kind: object
+    thread_id: str
+    usage: ExecutionUsageTransportPayload
 
 
 class ExecutionUsageSpec(msgspec.Struct, omit_defaults=True):
@@ -58,7 +146,7 @@ class ExecutionTransportSpec(msgspec.Struct, omit_defaults=True):
 
     type: str | None = None
     text: str | None = None
-    item: object | None = None
+    item: ExecutionItemTransportPayload | None = None
     tool_name: str | None = None
     call_id: str | None = None
     arguments: str | None = None
@@ -69,91 +157,7 @@ class ExecutionTransportSpec(msgspec.Struct, omit_defaults=True):
     id: str | None = None
     extra: object | None = None
     thread_id: str | None = None
-    usage: object | None = None
-
-
-class ExecutionUsageTransportPayload(TypedDict, total=False):
-    """Represents the stable observed token-usage subset on turn completion."""
-
-    input_tokens: int
-    cached_input_tokens: int
-    output_tokens: int
-    reasoning_output_tokens: int
-
-
-class ExecutionThreadStartedTransportPayload(TypedDict):
-    """Represents the stable transport subset for `thread.started` events."""
-
-    type: ExecutionEventKind
-    thread_id: str
-
-
-class ExecutionAgentMessageItemTransportPayload(TypedDict):
-    """Represents the stable observed `agent_message` execution-item subset."""
-
-    id: str
-    type: str
-    text: str
-
-
-class ExecutionCommandExecutionItemTransportPayload(TypedDict):
-    """Represents the stable observed `command_execution` execution-item subset."""
-
-    id: str
-    type: str
-    command: str
-    aggregated_output: str
-    exit_code: int
-    status: str
-
-
-class ExecutionItemTransportPayload(TypedDict, total=False):
-    """Represents the stable mixed execution-item transport subset across known item kinds."""
-
-    id: str
-    type: str
-    text: str
-    tool_name: str
-    call_id: str
-    arguments: str
-    command: str
-    aggregated_output: str
-    exit_code: int
-    status: str
-
-
-class ExecutionTurnCompletedTransportPayload(TypedDict):
-    """Represents the stable transport subset for `turn.completed` events."""
-
-    type: ExecutionEventKind
-    usage: ExecutionUsageTransportPayload
-
-
-class ExecutionItemCompletedTransportPayload(TypedDict):
-    """Represents the stable transport subset for `item.completed` events."""
-
-    type: ExecutionEventKind
-    item: ExecutionItemTransportPayload
-
-
-class ExecutionTransportPayload(TypedDict, total=False):
-    """Represents the owned top-level execution transport subset before promotion."""
-
-    type: str | None
-    text: str
-    item: ExecutionItemTransportPayload
-    tool_name: str
-    call_id: str
-    arguments: str
-    command: str
-    aggregated_output: str
-    exit_code: int
-    status: str
-    id: str
-    extra: object
-    kind: object
-    thread_id: str
-    usage: ExecutionUsageTransportPayload
+    usage: ExecutionUsageTransportPayload | None = None
 
 
 class ExecMessageNormalizedPayload(TypedDict):
