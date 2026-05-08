@@ -4,8 +4,13 @@ import orjson
 
 from omx_remote.adapter_types.bridge_types import (
     AdapterStatusNormalizedPayload,
-    AdapterStatusRuntimePayload,
     AdapterStatusTransportPayload,
+)
+from omx_remote.bridge.adapter_transport_payloads import (
+    load_capabilities_payload,
+    load_probe_runtime_payload,
+    load_status_runtime_payload,
+    require_string_field,
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge.adapter_schemas import (
@@ -56,12 +61,21 @@ def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTranspor
         raise BridgeSurfaceError("omx adapt status returned a non-object JSON payload")
 
     result = AdapterStatusTransportPayload(
-        target=parsed_payload.get("target"),
-        phase=parsed_payload.get("phase"),
-        summary=parsed_payload.get("summary"),
-        capabilities=parsed_payload.get("capabilities"),
-        adapter=parsed_payload.get("adapter"),
-        targetRuntime=parsed_payload.get("targetRuntime"),
+        target=require_string_field(parsed_payload, "target", "omx adapt status"),
+        phase=require_string_field(parsed_payload, "phase", "omx adapt status"),
+        summary=require_string_field(parsed_payload, "summary", "omx adapt status"),
+        capabilities=load_capabilities_payload(
+            parsed_payload.get("capabilities"),
+            "omx adapt status",
+        ),
+        adapter=load_status_runtime_payload(
+            parsed_payload.get("adapter"),
+            "omx adapt status adapter",
+        ),
+        targetRuntime=load_probe_runtime_payload(
+            parsed_payload.get("targetRuntime"),
+            "omx adapt status targetRuntime",
+        ),
     )
     return result
 
@@ -79,37 +93,19 @@ def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
         stdout
     )
 
-    adapter_payload: object | None = parsed_payload.get("adapter")
-    adapter_state: str | None = None
-    adapter_detail: str | None = None
-    if isinstance(adapter_payload, dict):
-        normalized_adapter_payload = AdapterStatusRuntimePayload(
-            state=adapter_payload.get("state"),
-            detail=adapter_payload.get("detail"),
-        )
-        adapter_state = normalized_adapter_payload["state"]
-        adapter_detail = normalized_adapter_payload["detail"]
+    adapter_payload = parsed_payload["adapter"]
+    adapter_state: str = adapter_payload["state"]
+    adapter_detail: str = adapter_payload["detail"]
 
-    target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
-    target_runtime_state: str | None = None
-    target_runtime_detail: str | None = None
-    if isinstance(target_runtime_payload, dict):
-        normalized_target_runtime_payload = AdapterStatusRuntimePayload(
-            state=target_runtime_payload.get("state"),
-            detail=target_runtime_payload.get("detail"),
-        )
-        target_runtime_state = normalized_target_runtime_payload["state"]
-        target_runtime_detail = normalized_target_runtime_payload["detail"]
-
-    capabilities_payload: object | None = parsed_payload.get("capabilities")
-    normalized_capabilities: object = capabilities_payload
-    if capabilities_payload is None:
-        normalized_capabilities = []
+    target_runtime_payload = parsed_payload["targetRuntime"]
+    target_runtime_state: str = target_runtime_payload["state"]
+    target_runtime_detail: str = target_runtime_payload["detail"]
+    normalized_capabilities = parsed_payload["capabilities"]
 
     normalized_payload = AdapterStatusNormalizedPayload(
-        target=parsed_payload.get("target"),
-        phase=parsed_payload.get("phase"),
-        summary=parsed_payload.get("summary"),
+        target=parsed_payload["target"],
+        phase=parsed_payload["phase"],
+        summary=parsed_payload["summary"],
         adapter_state=adapter_state,
         adapter_detail=adapter_detail,
         target_runtime_state=target_runtime_state,

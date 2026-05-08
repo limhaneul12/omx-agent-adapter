@@ -187,3 +187,24 @@ def test_load_runtime_mode_status_payload_rejects_non_object_statuses_payload() 
             stdout='{"statuses":[]}',
             requested_mode="ralph",
         )
+
+
+def test_load_runtime_mode_status_payload_rejects_non_string_phase_when_present() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_mode_status._load_runtime_mode_status_payload(
+            '{"statuses":{"ralph":{"active":true,"phase":42}}}'
+        )
+
+
+def test_load_runtime_mode_status_payload_rejects_non_string_path_when_present() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_mode_status._load_runtime_mode_status_payload(
+            '{"statuses":{"ralph":{"active":true,"path":42}}}'
+        )
+
+
+def test_load_runtime_mode_status_payload_rejects_non_string_current_phase_when_present() -> None:
+    with pytest.raises(RuntimeSurfaceError):
+        runtime_mode_status._load_runtime_mode_status_payload(
+            '{"statuses":{"ralph":{"active":true,"data":{"current_phase":42}}}}'
+        )

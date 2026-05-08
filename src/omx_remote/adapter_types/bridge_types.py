@@ -1,93 +1,109 @@
-from typing import NotRequired, TypedDict
+from typing import NotRequired
+
+from typing_extensions import TypedDict
 
 
-class AdapterProbeRuntimePayload(TypedDict):
+class AdapterRuntimeEvidencePayload(TypedDict, extra_items=object):
+    """Represents target-owned runtime evidence with target-specific keys."""
+
+
+class AdapterCapabilityTransportPayload(TypedDict, closed=True):
+    """Represents one stable capability item emitted by adapter bridge payloads."""
+
+    id: str
+    label: str
+    ownership: str
+    status: str
+    summary: str
+
+
+class AdapterProbeRuntimePayload(TypedDict, closed=True):
     """Represents the stable runtime subset nested under adapter probe payloads."""
 
-    state: str | None
-    detail: str | None
-    evidence: NotRequired[object]
+    state: str
+    detail: str
+    evidence: NotRequired[AdapterRuntimeEvidencePayload]
 
 
-class AdapterProbeTransportPayload(TypedDict):
+class AdapterProbeTransportPayload(TypedDict, closed=True):
     """Represents the stable top-level transport subset for adapter probe."""
 
-    target: str | None
-    phase: str | None
-    summary: str | None
-    capabilities: object
-    targetRuntime: NotRequired[AdapterProbeRuntimePayload | object]
+    target: str
+    phase: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    targetRuntime: AdapterProbeRuntimePayload
 
 
-class AdapterProbeNormalizedPayload(TypedDict):
+class AdapterProbeNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for adapter probe."""
 
-    target: str | None
-    phase: str | None
-    summary: str | None
-    capabilities: object
-    target_runtime_state: str | None
-    target_runtime_detail: str | None
+    target: str
+    phase: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    target_runtime_state: str
+    target_runtime_detail: str
 
 
-class AdapterStatusRuntimePayload(TypedDict):
+class AdapterStatusRuntimePayload(TypedDict, closed=True):
     """Represents the stable runtime subset nested under adapter status payloads."""
 
-    state: str | None
-    detail: str | None
-    configPath: NotRequired[str | None]
-    envelopePath: NotRequired[str | None]
-    evidence: NotRequired[object]
+    state: str
+    detail: str
+    configPath: NotRequired[str]
+    envelopePath: NotRequired[str]
+    evidence: NotRequired[AdapterRuntimeEvidencePayload]
 
 
-class AdapterStatusTransportPayload(TypedDict):
+class AdapterStatusTransportPayload(TypedDict, closed=True):
     """Represents the stable top-level transport subset for adapter status."""
 
-    target: str | None
-    phase: str | None
-    summary: str | None
-    capabilities: object
-    adapter: NotRequired[AdapterStatusRuntimePayload | object]
-    targetRuntime: NotRequired[AdapterProbeRuntimePayload | object]
+    target: str
+    phase: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    adapter: AdapterStatusRuntimePayload
+    targetRuntime: AdapterProbeRuntimePayload
 
 
-class AdapterStatusNormalizedPayload(TypedDict):
+class AdapterStatusNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for adapter status."""
 
-    target: str | None
-    phase: str | None
-    summary: str | None
-    capabilities: object
-    adapter_state: str | None
-    adapter_detail: str | None
-    target_runtime_state: str | None
-    target_runtime_detail: str | None
+    target: str
+    phase: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    adapter_state: str
+    adapter_detail: str
+    target_runtime_state: str
+    target_runtime_detail: str
 
 
-class AdapterEnvelopeRuntimePayload(TypedDict):
+class AdapterEnvelopeRuntimePayload(TypedDict, closed=True):
     """Represents the stable runtime subset nested under adapter envelope payloads."""
 
-    state: str | None
-    detail: str | None
-    evidence: NotRequired[object]
+    state: str
+    detail: str
+    evidence: NotRequired[AdapterRuntimeEvidencePayload]
 
 
-class AdapterEnvelopeTransportPayload(TypedDict):
+class AdapterEnvelopeTransportPayload(TypedDict, closed=True):
     """Represents the stable top-level transport subset for adapter envelope."""
 
-    target: str | None
-    displayName: str | None
-    summary: str | None
-    capabilities: object
-    targetRuntime: NotRequired[AdapterEnvelopeRuntimePayload | object]
+    target: str
+    displayName: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    targetRuntime: AdapterEnvelopeRuntimePayload
 
 
-class AdapterEnvelopeNormalizedPayload(TypedDict):
+class AdapterEnvelopeNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for adapter envelope."""
 
-    target: str | None
-    display_name: str | None
-    summary: str | None
-    capabilities: object
-    target_runtime_state: str | None
-    target_runtime_detail: str | None
+    target: str
+    display_name: str
+    summary: str
+    capabilities: list[AdapterCapabilityTransportPayload]
+    target_runtime_state: str
+    target_runtime_detail: str

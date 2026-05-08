@@ -61,7 +61,9 @@ def test_read_adapter_envelope_preserves_required_contract_validation(monkeypatc
     monkeypatch.setattr(
         adapter_envelope,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"target":"hermes"}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"target":"hermes","displayName":"Hermes","summary":"","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}\n'
+        ),
     )
 
     with pytest.raises(ValidationError):
@@ -73,6 +75,20 @@ def test_read_adapter_envelope_preserves_required_contract_validation(monkeypatc
 def test_load_adapter_envelope_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_envelope._load_adapter_envelope_transport_payload("[]")
+
+
+def test_load_adapter_envelope_transport_payload_rejects_non_string_display_name() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_envelope._load_adapter_envelope_transport_payload(
+            '{"target":"hermes","displayName":42,"summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_envelope_transport_payload_rejects_non_string_runtime_detail() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_envelope._load_adapter_envelope_transport_payload(
+            '{"target":"hermes","displayName":"Hermes","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":42}}'
+        )
 
 
 def test_load_adapter_envelope_transport_payload_preserves_live_required_bridge_fields() -> None:

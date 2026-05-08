@@ -58,7 +58,9 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
     monkeypatch.setattr(
         adapter_probe,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"target":"hermes"}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"target":"hermes","phase":"foundation","summary":"","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}\n'
+        ),
     )
 
     with pytest.raises(ValidationError):
@@ -68,6 +70,34 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
 def test_load_adapter_probe_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_probe._load_adapter_probe_transport_payload("[]")
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_target() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":42,"phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_list_capabilities() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":{},"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_capability_id() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[{"id":42,"label":"Foundation reporting surface","ownership":"shared-contract","status":"ready","summary":"ok"}],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_runtime_state() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":42,"detail":"missing"}}'
+        )
 
 
 def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> None:

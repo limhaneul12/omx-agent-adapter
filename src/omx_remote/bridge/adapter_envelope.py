@@ -4,8 +4,12 @@ import orjson
 
 from omx_remote.adapter_types.bridge_types import (
     AdapterEnvelopeNormalizedPayload,
-    AdapterEnvelopeRuntimePayload,
     AdapterEnvelopeTransportPayload,
+)
+from omx_remote.bridge.adapter_transport_payloads import (
+    load_capabilities_payload,
+    load_envelope_runtime_payload,
+    require_string_field,
 )
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge.adapter_schemas import (
@@ -56,11 +60,21 @@ def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTran
         raise BridgeSurfaceError("omx adapt envelope returned a non-object JSON payload")
 
     result = AdapterEnvelopeTransportPayload(
-        target=parsed_payload.get("target"),
-        displayName=parsed_payload.get("displayName"),
-        summary=parsed_payload.get("summary"),
-        capabilities=parsed_payload.get("capabilities"),
-        targetRuntime=parsed_payload.get("targetRuntime"),
+        target=require_string_field(parsed_payload, "target", "omx adapt envelope"),
+        displayName=require_string_field(
+            parsed_payload,
+            "displayName",
+            "omx adapt envelope",
+        ),
+        summary=require_string_field(parsed_payload, "summary", "omx adapt envelope"),
+        capabilities=load_capabilities_payload(
+            parsed_payload.get("capabilities"),
+            "omx adapt envelope",
+        ),
+        targetRuntime=load_envelope_runtime_payload(
+            parsed_payload.get("targetRuntime"),
+            "omx adapt envelope",
+        ),
     )
     return result
 
@@ -78,26 +92,15 @@ def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
         stdout
     )
 
-    target_runtime_payload: object | None = parsed_payload.get("targetRuntime")
-    target_runtime_state: str | None = None
-    target_runtime_detail: str | None = None
-    if isinstance(target_runtime_payload, dict):
-        normalized_target_runtime_payload = AdapterEnvelopeRuntimePayload(
-            state=target_runtime_payload.get("state"),
-            detail=target_runtime_payload.get("detail"),
-        )
-        target_runtime_state = normalized_target_runtime_payload["state"]
-        target_runtime_detail = normalized_target_runtime_payload["detail"]
-
-    capabilities_payload: object | None = parsed_payload.get("capabilities")
-    normalized_capabilities: object = capabilities_payload
-    if capabilities_payload is None:
-        normalized_capabilities = []
+    target_runtime_payload = parsed_payload["targetRuntime"]
+    target_runtime_state: str = target_runtime_payload["state"]
+    target_runtime_detail: str = target_runtime_payload["detail"]
+    normalized_capabilities = parsed_payload["capabilities"]
 
     normalized_payload = AdapterEnvelopeNormalizedPayload(
-        target=parsed_payload.get("target"),
-        display_name=parsed_payload.get("displayName"),
-        summary=parsed_payload.get("summary"),
+        target=parsed_payload["target"],
+        display_name=parsed_payload["displayName"],
+        summary=parsed_payload["summary"],
         capabilities=normalized_capabilities,
         target_runtime_state=target_runtime_state,
         target_runtime_detail=target_runtime_detail,

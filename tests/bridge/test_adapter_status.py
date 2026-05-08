@@ -61,7 +61,9 @@ def test_read_adapter_status_preserves_required_contract_validation(monkeypatch)
     monkeypatch.setattr(
         adapter_status,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"target":"hermes"}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"target":"hermes","phase":"foundation","summary":"","capabilities":[],"adapter":{"state":"not-initialized","detail":"write init"},"targetRuntime":{"state":"unavailable","detail":"missing"}}\n'
+        ),
     )
 
     with pytest.raises(ValidationError):
@@ -73,6 +75,20 @@ def test_read_adapter_status_preserves_required_contract_validation(monkeypatch)
 def test_load_adapter_status_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_status._load_adapter_status_transport_payload("[]")
+
+
+def test_load_adapter_status_transport_payload_rejects_non_string_adapter_state() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_status._load_adapter_status_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"adapter":{"state":42,"detail":"write init","configPath":"/tmp/adapter.json","envelopePath":"/tmp/envelope.json"},"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_status_transport_payload_rejects_non_string_config_path() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_status._load_adapter_status_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"adapter":{"state":"not-initialized","detail":"write init","configPath":42,"envelopePath":"/tmp/envelope.json"},"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
 
 
 def test_load_adapter_status_transport_payload_preserves_live_required_bridge_fields() -> None:
