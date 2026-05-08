@@ -44,7 +44,7 @@ def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiEnvelo
         envelope: TeamApiEnvelopeSpec = msgspec.convert(
             parsed_payload,
             TeamApiEnvelopeSpec,
-            strict=False,
+            strict=True,
         )
     except (orjson.JSONDecodeError, msgspec.ValidationError) as error:
         raise TeamworkSurfaceError(
@@ -318,15 +318,16 @@ def load_team_api_error_payload(
             f"{operation_name} returned a non-object error payload"
         )
 
-    error_spec: TeamApiErrorSpec = msgspec.convert(
-        error_payload,
-        TeamApiErrorSpec,
-        strict=False,
-    )
-    if not isinstance(error_spec.code, str) or not isinstance(error_spec.message, str):
+    try:
+        error_spec: TeamApiErrorSpec = msgspec.convert(
+            error_payload,
+            TeamApiErrorSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
         raise TeamworkSurfaceError(
             f"{operation_name} returned a malformed error payload"
-        )
+        ) from error
 
     result = TeamApiErrorTransportPayload(
         code=error_spec.code,

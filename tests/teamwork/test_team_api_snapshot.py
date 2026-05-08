@@ -5,7 +5,6 @@ import msgspec
 import pytest
 
 import omx_remote.adapter_types.teamwork_types as teamwork_types
-
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
     TeamApiMailboxListRequest,
@@ -19,11 +18,14 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiReadConfigError,
     TeamApiReadConfigSnapshot,
     TeamApiReadManifestError,
-    TeamApiReadManifestSnapshot,
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
-from omx_remote.teamwork import team_api_normalizers, team_api_snapshot, team_api_transport
+from omx_remote.teamwork import (
+    team_api_normalizers,
+    team_api_snapshot,
+    team_api_transport,
+)
 
 
 class DummyResult:
@@ -50,6 +52,30 @@ def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None
     assert hasattr(team_api_transport, "load_team_api_read_events_payload")
     assert hasattr(team_api_transport, "load_team_api_mailbox_list_payload")
     assert hasattr(team_api_transport, "load_team_api_read_monitor_snapshot_payload")
+
+
+def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
+    envelope_hints = teamwork_types.TeamApiEnvelopeSpec.__annotations__
+
+    assert envelope_hints["ok"] is bool
+    assert getattr(teamwork_types.TeamApiEnvelopePayload, "__extra_items__", None) is object
+    assert getattr(teamwork_types.TeamApiTransportPayload, "__extra_items__", None) is object
+    assert getattr(teamwork_types.TeamApiErrorTransportPayload, "__closed__", None) is True
+    assert getattr(teamwork_types.TeamApiListTasksTransportPayload, "__closed__", None) is True
+    assert getattr(teamwork_types.TeamApiReadEventsTransportPayload, "__closed__", None) is True
+    assert getattr(teamwork_types.TeamApiMailboxListTransportPayload, "__closed__", None) is True
+    assert (
+        getattr(
+            teamwork_types.TeamApiReadMonitorSnapshotTransportPayload,
+            "__closed__",
+            None,
+        )
+        is True
+    )
+    assert (
+        getattr(teamwork_types.TeamApiReadWorkerStatusTransportPayload, "__closed__", None)
+        is True
+    )
 
 
 def test_team_api_normalizer_preserves_missing_monitor_snapshot_as_none() -> None:
@@ -363,6 +389,21 @@ def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
         )
 
 
+def test_load_team_api_payload_rejects_non_boolean_ok_value() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_payload(
+            '{"ok":"true","data":{"count":0,"tasks":[]}}',
+            "omx team api list-tasks",
+        )
+
+
+def test_load_team_api_list_tasks_payload_rejects_missing_count() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_list_tasks_payload(
+            '{"ok":true,"data":{"tasks":[]}}'
+        )
+
+
 def test_load_team_api_list_tasks_payload_rejects_non_list_tasks() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_list_tasks_payload(
@@ -370,10 +411,24 @@ def test_load_team_api_list_tasks_payload_rejects_non_list_tasks() -> None:
         )
 
 
+def test_load_team_api_read_events_payload_rejects_missing_cursor() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_read_events_payload(
+            '{"ok":true,"data":{"count":0,"events":[]}}'
+        )
+
+
 def test_load_team_api_read_events_payload_rejects_non_list_events() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_read_events_payload(
             '{"ok":true,"data":{"count":1,"cursor":"cursor-1","events":"not-a-list"}}'
+        )
+
+
+def test_load_team_api_mailbox_list_payload_rejects_missing_count() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_mailbox_list_payload(
+            '{"ok":true,"data":{"worker":"worker-1","messages":[]}}'
         )
 
 

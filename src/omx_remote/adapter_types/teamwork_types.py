@@ -1,12 +1,13 @@
-from typing import NotRequired, TypedDict
+from typing import NotRequired
 
 import msgspec
+from typing_extensions import TypedDict
 
 
 class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded top-level team-api transport envelope."""
 
-    ok: bool | None = None
+    ok: bool
     data: object = None
     error: object = None
 
@@ -14,24 +15,27 @@ class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
 class TeamApiListTasksDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api list-tasks`."""
 
+    count: int
+    # Task items carry variable upstream metadata and are narrowed by normalizers.
     tasks: list[object]
-    count: int = 0
 
 
 class TeamApiReadEventsDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-events`."""
 
+    count: int
+    cursor: str
+    # Event items carry operation-specific extras and are narrowed by normalizers.
     events: list[object]
-    count: int = 0
-    cursor: str = ""
 
 
 class TeamApiMailboxListDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api mailbox-list`."""
 
     worker: str
+    count: int
+    # Mailbox items carry upstream extras and are narrowed by normalizers.
     messages: list[object]
-    count: int = 0
 
 
 class TeamApiReadMonitorSnapshotDataSpec(msgspec.Struct, kw_only=True):
@@ -56,25 +60,25 @@ class TeamApiReadWorkerStatusDataSpec(msgspec.Struct, kw_only=True):
 class TeamApiErrorSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded nested team-api error payload before stable subset normalization."""
 
-    code: object = None
-    message: object = None
+    code: str
+    message: str
 
 
-class TeamApiEnvelopePayload(TypedDict):
+class TeamApiEnvelopePayload(TypedDict, extra_items=object):
     """Represents the stable top-level envelope subset for successful team-api payloads."""
 
     ok: bool
     data: dict[str, object]
 
 
-class TeamApiErrorTransportPayload(TypedDict):
+class TeamApiErrorTransportPayload(TypedDict, closed=True):
     """Represents the stable nested error subset for unsuccessful team-api payloads."""
 
     code: str
     message: str
 
 
-class TeamApiTransportPayload(TypedDict, total=False):
+class TeamApiTransportPayload(TypedDict, total=False, extra_items=object):
     """Represents the stable nested `data` subset shared by typed team-api reads."""
 
     count: int
@@ -89,14 +93,14 @@ class TeamApiTransportPayload(TypedDict, total=False):
     manifest: dict[str, object]
 
 
-class TeamApiListTasksTransportPayload(TypedDict):
+class TeamApiListTasksTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api list-tasks`."""
 
     count: int
     tasks: list[object]
 
 
-class TeamApiReadEventsTransportPayload(TypedDict):
+class TeamApiReadEventsTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-events`."""
 
     count: int
@@ -104,7 +108,7 @@ class TeamApiReadEventsTransportPayload(TypedDict):
     events: list[object]
 
 
-class TeamApiMailboxListTransportPayload(TypedDict):
+class TeamApiMailboxListTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api mailbox-list`."""
 
     worker: str
@@ -112,26 +116,26 @@ class TeamApiMailboxListTransportPayload(TypedDict):
     messages: list[object]
 
 
-class TeamApiReadMonitorSnapshotTransportPayload(TypedDict):
+class TeamApiReadMonitorSnapshotTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-monitor-snapshot`."""
 
     snapshot: object | None
 
 
-class TeamApiReadConfigTransportPayload(TypedDict):
+class TeamApiReadConfigTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-config`."""
 
     config: dict[str, object] | None
 
 
-class TeamApiReadWorkerStatusTransportPayload(TypedDict):
+class TeamApiReadWorkerStatusTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-worker-status`."""
 
     worker: str
     status: dict[str, object]
 
 
-class TeamApiWorkerStatusNormalizedPayload(TypedDict):
+class TeamApiWorkerStatusNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for team-api worker status."""
 
     worker: str
@@ -139,7 +143,7 @@ class TeamApiWorkerStatusNormalizedPayload(TypedDict):
     updated_at: str
 
 
-class TeamApiTransportTaskPayload(TypedDict, total=False):
+class TeamApiTransportTaskPayload(TypedDict, total=False, closed=True):
     """Represents the stable observed subset for one team-api task item."""
 
     id: str
@@ -150,7 +154,7 @@ class TeamApiTransportTaskPayload(TypedDict, total=False):
     assignee: str
 
 
-class TeamApiTransportEventPayload(TypedDict, total=False):
+class TeamApiTransportEventPayload(TypedDict, total=False, closed=True):
     """Represents the stable observed subset for one team-api event item."""
 
     type: str
@@ -159,7 +163,7 @@ class TeamApiTransportEventPayload(TypedDict, total=False):
     message_id: str | None
 
 
-class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
+class TeamApiTransportMailboxMessagePayload(TypedDict, total=False, closed=True):
     """Represents the stable observed subset for one team-api mailbox message item."""
 
     id: str
@@ -168,21 +172,21 @@ class TeamApiTransportMailboxMessagePayload(TypedDict, total=False):
     delivered: bool
 
 
-class TeamApiTransportWorkerStatusPayload(TypedDict, total=False):
+class TeamApiTransportWorkerStatusPayload(TypedDict, total=False, closed=True):
     """Represents the stable observed subset for one team-api worker-status item."""
 
     state: str
     updated_at: str
 
 
-class TeamApiListTasksNormalizedPayload(TypedDict):
+class TeamApiListTasksNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for team-api list-tasks."""
 
     count: int
     tasks: list[TeamApiTransportTaskPayload]
 
 
-class TeamApiReadEventsNormalizedPayload(TypedDict):
+class TeamApiReadEventsNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for team-api read-events."""
 
     count: int
@@ -190,7 +194,7 @@ class TeamApiReadEventsNormalizedPayload(TypedDict):
     events: list[TeamApiTransportEventPayload]
 
 
-class TeamApiMailboxListNormalizedPayload(TypedDict):
+class TeamApiMailboxListNormalizedPayload(TypedDict, closed=True):
     """Represents the normalized adapter-owned payload for team-api mailbox-list."""
 
     worker: str
