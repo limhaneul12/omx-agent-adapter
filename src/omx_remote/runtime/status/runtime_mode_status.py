@@ -114,8 +114,13 @@ def _normalize_runtime_mode_status_data_payload(
 
     current_phase_value: object | None = nested_data_payload.get("current_phase")
     normalized_data_payload: RuntimeModeStatusDataPayload = {}
-    if isinstance(current_phase_value, str):
-        normalized_data_payload["current_phase"] = current_phase_value
+    if current_phase_value is None:
+        return normalized_data_payload
+    if not isinstance(current_phase_value, str):
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-string current_phase payload"
+        )
+    normalized_data_payload["current_phase"] = current_phase_value
 
     return normalized_data_payload
 
@@ -149,10 +154,18 @@ def _normalize_runtime_mode_status_entry_payload(
     phase_value: object | None = status_payload.get("phase")
     if phase_value is None or isinstance(phase_value, str):
         normalized_transport_payload["phase"] = phase_value
+    else:
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-string phase payload"
+        )
 
     path_value: object | None = status_payload.get("path")
     if path_value is None or isinstance(path_value, str):
         normalized_transport_payload["path"] = path_value
+    else:
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-string path payload"
+        )
 
     data_value: object | None = status_payload.get("data")
     if data_value is None:
@@ -160,6 +173,10 @@ def _normalize_runtime_mode_status_entry_payload(
     elif isinstance(data_value, dict):
         normalized_transport_payload["data"] = _normalize_runtime_mode_status_data_payload(
             data_value
+        )
+    else:
+        raise RuntimeSurfaceError(
+            "omx state get-status returned a non-object nested data payload"
         )
 
     return normalized_transport_payload

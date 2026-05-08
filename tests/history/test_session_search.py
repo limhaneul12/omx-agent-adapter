@@ -2,7 +2,6 @@ import asyncio
 import inspect
 
 import pytest
-from pydantic import ValidationError
 
 from omx_remote.history import session_search
 from omx_remote.schemas.history.session_schemas import SessionSearchRequest
@@ -81,7 +80,9 @@ def test_search_sessions_rejects_missing_searched_files_field(monkeypatch) -> No
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
 
 
-def test_search_sessions_rejects_non_mapping_result_items(monkeypatch) -> None:
+def test_search_sessions_rejects_non_mapping_result_items_at_transport_boundary(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         session_search,
         "run_omx_command",
@@ -90,7 +91,22 @@ def test_search_sessions_rejects_non_mapping_result_items(monkeypatch) -> None:
         ),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(HistorySurfaceError):
+        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+
+
+def test_search_sessions_rejects_wrong_typed_result_fields_at_transport_boundary(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        session_search,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"query":"hermes","searched_files":1,"matched_sessions":1,"results":[{"session_id":42,"timestamp":"2026-05-02T11:24:04.685Z","cwd":"/tmp/project","record_type":"event_msg:exec_command_end","line_number":26,"snippet":"probe result"}]}\n'
+        ),
+    )
+
+    with pytest.raises(HistorySurfaceError):
         asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
 
 

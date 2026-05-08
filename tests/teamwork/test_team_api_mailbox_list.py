@@ -2,7 +2,6 @@ import asyncio
 import inspect
 
 import pytest
-from pydantic import ValidationError
 
 from omx_remote.schemas.teamwork.api_request_schemas import TeamApiMailboxListRequest
 from omx_remote.shared.exceptions import TeamworkSurfaceError
@@ -63,7 +62,7 @@ def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypat
         )
 
 
-def test_read_team_api_mailbox_list_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(monkeypatch) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -72,7 +71,7 @@ def test_read_team_api_mailbox_list_preserves_required_contract_validation(monke
         ),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TeamworkSurfaceError):
         asyncio.run(
             team_api_snapshot.read_team_api_mailbox_list(
                 TeamApiMailboxListRequest(team_name="alpha", worker="worker-1")

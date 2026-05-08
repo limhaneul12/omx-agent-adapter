@@ -1,8 +1,32 @@
+from typing import get_type_hints
+
 from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
+    SessionSearchResultSpec,
+    SessionSearchSpec,
     SessionSearchTransportPayload,
     SessionSearchTransportResultPayload,
 )
+
+
+def test_session_search_msgspec_specs_use_nullable_stable_fields() -> None:
+    result_hints = get_type_hints(SessionSearchResultSpec)
+    payload_hints = get_type_hints(SessionSearchSpec)
+
+    assert result_hints == {
+        "session_id": str | None,
+        "timestamp": str | None,
+        "cwd": str | None,
+        "record_type": str | None,
+        "line_number": int | None,
+        "snippet": str | None,
+    }
+    assert payload_hints == {
+        "query": str | None,
+        "searched_files": int | None,
+        "matched_sessions": int | None,
+        "results": list[SessionSearchResultSpec] | None,
+    }
 
 
 def test_session_search_typed_dicts_accept_narrowed_stable_shapes() -> None:

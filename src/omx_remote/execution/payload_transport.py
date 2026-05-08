@@ -1,9 +1,10 @@
 from collections.abc import Callable
-from typing import cast
+from typing import Final, cast
 
 import msgspec
 
 from omx_remote.adapter_types.execution_types import (
+    ExecutionExtraTransportPayload,
     ExecutionItemCompletedTransportPayload,
     ExecutionItemSpec,
     ExecutionItemTransportPayload,
@@ -20,6 +21,59 @@ from omx_remote.adapter_types.type_contract.execution_contract_type import (
 )
 from omx_remote.shared.exceptions import UnsupportedExecutionPayloadError
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
+
+EXECUTION_ITEM_STABLE_FIELD_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "id",
+        "type",
+        "text",
+        "tool_name",
+        "call_id",
+        "arguments",
+        "command",
+        "aggregated_output",
+        "exit_code",
+        "status",
+    }
+)
+EXECUTION_TRANSPORT_STABLE_FIELD_KEYS: Final[frozenset[str]] = frozenset(
+    {
+        "type",
+        "text",
+        "item",
+        "tool_name",
+        "call_id",
+        "arguments",
+        "command",
+        "aggregated_output",
+        "exit_code",
+        "status",
+        "id",
+        "extra",
+        "kind",
+        "thread_id",
+        "usage",
+    }
+)
+
+
+def _copy_passthrough_fields(
+    payload: dict[str, object],
+    stable_field_keys: frozenset[str],
+) -> dict[str, object]:
+    """Copies raw fields that are outside the validated stable subset.
+
+    Args:
+        payload [dict[str, object]]: Raw JSON object payload from the execution transport boundary.
+        stable_field_keys [frozenset[str]]: Keys normalized through explicit msgspec-backed fields.
+
+    Returns:
+        dict[str, object]: Raw passthrough fields retained for heterogeneous OMX variants.
+    """
+    passthrough_fields: dict[str, object] = {
+        key: value for key, value in payload.items() if key not in stable_field_keys
+    }
+    return passthrough_fields
 
 
 def _convert_msgspec_optional_str(value: object) -> str | None:
@@ -120,6 +174,28 @@ def _execution_transport_spec_to_payload(
     return payload
 
 
+def _normalize_execution_extra_payload(
+    extra_payload: object,
+) -> ExecutionExtraTransportPayload | None:
+    """Normalizes raw execution diagnostic metadata into a mapping-shaped field.
+
+    Args:
+        extra_payload [object]: Raw `extra` value from an execution transport payload.
+
+    Returns:
+        ExecutionExtraTransportPayload | None: Mapping-shaped diagnostic metadata, otherwise `None`.
+    """
+    extra_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
+        extra_payload
+    )
+    if extra_mapping is None:
+        missing_extra: None = None
+        return missing_extra
+
+    normalized_extra_payload = cast(ExecutionExtraTransportPayload, extra_mapping)
+    return normalized_extra_payload
+
+
 def _normalize_execution_event_type(event_type: object) -> str | None:
     """Normalizes one raw execution event type into a string field.
 
@@ -154,28 +230,37 @@ def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTran
     Raises:
         UnsupportedExecutionPayloadError: Raised when the item value is not a JSON object payload.
     """
-    if not isinstance(item_payload, dict):
+    item_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
+        item_payload
+    )
+    if item_mapping is None:
         raise UnsupportedExecutionPayloadError(
             "execution item payload must be a JSON object payload"
         )
 
-    item_spec = ExecutionItemSpec(
-        id=_convert_msgspec_optional_str(item_payload.get("id")),
-        type=_convert_msgspec_optional_str(item_payload.get("type")),
-        text=_convert_msgspec_optional_str(item_payload.get("text")),
-        tool_name=_convert_msgspec_optional_str(item_payload.get("tool_name")),
-        call_id=_convert_msgspec_optional_str(item_payload.get("call_id")),
-        arguments=_convert_msgspec_optional_str(item_payload.get("arguments")),
-        command=_convert_msgspec_optional_str(item_payload.get("command")),
-        aggregated_output=_convert_msgspec_optional_str(
-            item_payload.get("aggregated_output")
-        ),
-        exit_code=_convert_msgspec_optional_int(item_payload.get("exit_code")),
-        status=_convert_msgspec_optional_str(item_payload.get("status")),
+    passthrough_fields: dict[str, object] = _copy_passthrough_fields(
+        item_mapping,
+        EXECUTION_ITEM_STABLE_FIELD_KEYS,
     )
-    normalized_payload: ExecutionItemTransportPayload = _execution_item_spec_to_payload(
+    item_spec = ExecutionItemSpec(
+        id=_convert_msgspec_optional_str(item_mapping.get("id")),
+        type=_convert_msgspec_optional_str(item_mapping.get("type")),
+        text=_convert_msgspec_optional_str(item_mapping.get("text")),
+        tool_name=_convert_msgspec_optional_str(item_mapping.get("tool_name")),
+        call_id=_convert_msgspec_optional_str(item_mapping.get("call_id")),
+        arguments=_convert_msgspec_optional_str(item_mapping.get("arguments")),
+        command=_convert_msgspec_optional_str(item_mapping.get("command")),
+        aggregated_output=_convert_msgspec_optional_str(
+            item_mapping.get("aggregated_output")
+        ),
+        exit_code=_convert_msgspec_optional_int(item_mapping.get("exit_code")),
+        status=_convert_msgspec_optional_str(item_mapping.get("status")),
+    )
+    stable_payload: ExecutionItemTransportPayload = _execution_item_spec_to_payload(
         item_spec
     )
+    passthrough_fields.update(stable_payload)
+    normalized_payload = cast(ExecutionItemTransportPayload, passthrough_fields)
     return normalized_payload
 
 
@@ -424,16 +509,23 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
     Raises:
         UnsupportedExecutionPayloadError: Raised when the raw payload is not a JSON object payload.
     """
-    if not isinstance(payload, dict):
+    payload_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
+        payload
+    )
+    if payload_mapping is None:
         raise UnsupportedExecutionPayloadError(
             "execution payload must be a JSON object payload"
         )
 
+    passthrough_fields: dict[str, object] = _copy_passthrough_fields(
+        payload_mapping,
+        EXECUTION_TRANSPORT_STABLE_FIELD_KEYS,
+    )
     item_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
-        payload.get("item")
+        payload_mapping.get("item")
     )
     usage_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
-        payload.get("usage")
+        payload_mapping.get("usage")
     )
     if item_mapping is None:
         normalized_item_payload: ExecutionItemTransportPayload | None = None
@@ -445,27 +537,30 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
         normalized_usage_payload = _normalize_execution_usage_payload(usage_mapping)
 
     transport_spec = ExecutionTransportSpec(
-        type=_normalize_execution_event_type(payload.get("type")),
-        text=_convert_msgspec_optional_str(payload.get("text")),
+        type=_normalize_execution_event_type(payload_mapping.get("type")),
+        text=_convert_msgspec_optional_str(payload_mapping.get("text")),
         item=normalized_item_payload,
-        tool_name=_convert_msgspec_optional_str(payload.get("tool_name")),
-        call_id=_convert_msgspec_optional_str(payload.get("call_id")),
-        arguments=_convert_msgspec_optional_str(payload.get("arguments")),
-        command=_convert_msgspec_optional_str(payload.get("command")),
+        tool_name=_convert_msgspec_optional_str(payload_mapping.get("tool_name")),
+        call_id=_convert_msgspec_optional_str(payload_mapping.get("call_id")),
+        arguments=_convert_msgspec_optional_str(payload_mapping.get("arguments")),
+        command=_convert_msgspec_optional_str(payload_mapping.get("command")),
         aggregated_output=_convert_msgspec_optional_str(
-            payload.get("aggregated_output")
+            payload_mapping.get("aggregated_output")
         ),
-        exit_code=_convert_msgspec_optional_int(payload.get("exit_code")),
-        status=_convert_msgspec_optional_str(payload.get("status")),
-        id=_convert_msgspec_optional_str(payload.get("id")),
-        extra=payload.get("extra"),
-        thread_id=_convert_msgspec_optional_str(payload.get("thread_id")),
+        exit_code=_convert_msgspec_optional_int(payload_mapping.get("exit_code")),
+        status=_convert_msgspec_optional_str(payload_mapping.get("status")),
+        id=_convert_msgspec_optional_str(payload_mapping.get("id")),
+        extra=_normalize_execution_extra_payload(payload_mapping.get("extra")),
+        kind=_convert_msgspec_optional_str(payload_mapping.get("kind")),
+        thread_id=_convert_msgspec_optional_str(payload_mapping.get("thread_id")),
         usage=normalized_usage_payload,
     )
-    transport_payload: ExecutionTransportPayload = _execution_transport_spec_to_payload(
+    stable_payload: ExecutionTransportPayload = _execution_transport_spec_to_payload(
         transport_spec
     )
-    return transport_payload
+    passthrough_fields.update(stable_payload)
+    normalized_payload = cast(ExecutionTransportPayload, passthrough_fields)
+    return normalized_payload
 
 
 def load_execution_payload(

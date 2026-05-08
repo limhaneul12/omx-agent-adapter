@@ -5,6 +5,10 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_probe
+from omx_remote.bridge.adapter_transport_payloads import (
+    copy_runtime_evidence_payload,
+    load_capabilities_payload,
+)
 from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
@@ -58,7 +62,9 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
     monkeypatch.setattr(
         adapter_probe,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"target":"hermes"}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"target":"hermes","phase":"foundation","summary":"","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}\n'
+        ),
     )
 
     with pytest.raises(ValidationError):
@@ -68,6 +74,57 @@ def test_probe_adapter_preserves_required_contract_validation(monkeypatch) -> No
 def test_load_adapter_probe_transport_payload_rejects_non_object_transport() -> None:
     with pytest.raises(BridgeSurfaceError):
         adapter_probe._load_adapter_probe_transport_payload("[]")
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_target() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":42,"phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_list_capabilities() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":{},"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_capability_id() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[{"id":42,"label":"Foundation reporting surface","ownership":"shared-contract","status":"ready","summary":"ok"}],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
+        )
+
+
+def test_load_adapter_probe_transport_payload_rejects_non_string_runtime_state() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        adapter_probe._load_adapter_probe_transport_payload(
+            '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":42,"detail":"missing"}}'
+        )
+
+
+def test_load_capabilities_payload_accepts_schema_supported_missing_ownership() -> None:
+    result = load_capabilities_payload(
+        [
+            {
+                "id": "foundation-reporting",
+                "label": "Foundation reporting surface",
+                "status": "ready",
+                "summary": "Probe/status/envelope share an adapter contract.",
+            }
+        ],
+        "omx adapt probe",
+    )
+
+    assert result == [
+        {
+            "id": "foundation-reporting",
+            "label": "Foundation reporting surface",
+            "status": "ready",
+            "summary": "Probe/status/envelope share an adapter contract.",
+        }
+    ]
 
 
 def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> None:
@@ -86,3 +143,27 @@ def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fie
             "evidence": {},
         },
     }
+
+
+def test_adapter_runtime_evidence_copy_preserves_dynamic_values() -> None:
+    result = copy_runtime_evidence_payload(
+        {
+            "attempts": 2,
+            "reachable": False,
+            "details": {"socket": "missing"},
+            "events": ["probe-started"],
+        },
+        "omx adapt probe",
+    )
+
+    assert result == {
+        "attempts": 2,
+        "reachable": False,
+        "details": {"socket": "missing"},
+        "events": ["probe-started"],
+    }
+
+
+def test_adapter_runtime_evidence_copy_rejects_non_string_keys() -> None:
+    with pytest.raises(BridgeSurfaceError):
+        copy_runtime_evidence_payload({1: "bad-key"}, "omx adapt probe")

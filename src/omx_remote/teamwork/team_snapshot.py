@@ -3,7 +3,7 @@ import asyncio
 import msgspec
 import orjson
 
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_command_transport_payloads import (
     TeamAwaitEventSpec,
     TeamAwaitNormalizedPayload,
     TeamAwaitSpec,
@@ -79,18 +79,12 @@ def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPaylo
         status=parsed_payload.status,
     )
 
-    if parsed_payload.phase is None or isinstance(parsed_payload.phase, str):
-        result["phase"] = parsed_payload.phase
-    if parsed_payload.current_phase is None or isinstance(parsed_payload.current_phase, str):
+    result["phase"] = parsed_payload.phase
+    if parsed_payload.current_phase is not None:
         result["current_phase"] = parsed_payload.current_phase
-    if isinstance(parsed_payload.dead_workers, list) and all(
-        isinstance(worker_name, str) for worker_name in parsed_payload.dead_workers
-    ):
+    if parsed_payload.dead_workers is not None:
         result["dead_workers"] = parsed_payload.dead_workers
-    if isinstance(parsed_payload.non_reporting_workers, list) and all(
-        isinstance(worker_name, str)
-        for worker_name in parsed_payload.non_reporting_workers
-    ):
+    if parsed_payload.non_reporting_workers is not None:
         result["non_reporting_workers"] = parsed_payload.non_reporting_workers
 
     return result
@@ -207,20 +201,16 @@ def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload
     if isinstance(parsed_payload.cursor, str):
         result["cursor"] = parsed_payload.cursor
 
-    event_payload: object = parsed_payload.event
-    if event_payload is None:
+    event_spec: TeamAwaitEventSpec | None = parsed_payload.event
+    if event_spec is None:
         result["event"] = None
-    elif isinstance(event_payload, dict):
-        event_spec: TeamAwaitEventSpec = msgspec.convert(
-            event_payload,
-            type=TeamAwaitEventSpec,
-        )
+    else:
         normalized_event_payload = TeamAwaitTransportEventPayload()
-        if isinstance(event_spec.type, str):
+        if event_spec.type is not None:
             normalized_event_payload["type"] = event_spec.type
-        if isinstance(event_spec.worker, str):
+        if event_spec.worker is not None:
             normalized_event_payload["worker"] = event_spec.worker
-        if isinstance(event_spec.task_id, str):
+        if event_spec.task_id is not None:
             normalized_event_payload["task_id"] = event_spec.task_id
         result["event"] = normalized_event_payload
 

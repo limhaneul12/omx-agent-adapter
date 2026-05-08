@@ -6,6 +6,7 @@ import orjson
 from omx_remote.adapter_types.history_types import (
     SessionSearchNormalizedPayload,
     SessionSearchNormalizedResults,
+    SessionSearchResultSpec,
     SessionSearchSpec,
     SessionSearchTransportPayload,
     SessionSearchTransportResultPayload,
@@ -124,26 +125,47 @@ def _normalize_session_search_results(
         raw_results [SessionSearchTransportResults]: Raw result list read from the session-search transport payload.
 
     Returns:
-        SessionSearchNormalizedResults: Result list with valid object-shaped items promoted to pydantic snapshots while malformed items remain visible for strict outer validation.
+        SessionSearchNormalizedResults: Result list promoted to pydantic snapshots.
     """
-    normalized_results: list[object] = []
-    result_item: object
+    normalized_results: list[SessionSearchResultSnapshot] = []
     for result_item in raw_results:
-        if not isinstance(result_item, dict):
-            normalized_results.append(result_item)
-            continue
-
-        normalized_result_payload = SessionSearchTransportResultPayload(
-            session_id=result_item["session_id"],
-            timestamp=result_item["timestamp"],
-            cwd=result_item["cwd"],
-            record_type=result_item["record_type"],
-            line_number=result_item["line_number"],
-            snippet=result_item["snippet"],
+        normalized_result_payload = _session_search_result_payload_from_item(
+            result_item
         )
-        normalized_result_item = SessionSearchResultSnapshot.model_validate(
-            normalized_result_payload
+        normalized_result_item: SessionSearchResultSnapshot = (
+            SessionSearchResultSnapshot.model_validate(normalized_result_payload)
         )
         normalized_results.append(normalized_result_item)
 
     return normalized_results
+
+
+def _session_search_result_payload_from_item(
+    result_item: SessionSearchResultSpec | SessionSearchTransportResultPayload,
+) -> SessionSearchTransportResultPayload:
+    """Converts one loaded or direct-test result item into the stable payload shape.
+
+    Args:
+        result_item [SessionSearchResultSpec | SessionSearchTransportResultPayload]: Loaded msgspec item or already materialized stable payload.
+
+    Returns:
+        SessionSearchTransportResultPayload: Stable result payload for final schema validation.
+    """
+    if isinstance(result_item, SessionSearchResultSpec):
+        return SessionSearchTransportResultPayload(
+            session_id=result_item.session_id,
+            timestamp=result_item.timestamp,
+            cwd=result_item.cwd,
+            record_type=result_item.record_type,
+            line_number=result_item.line_number,
+            snippet=result_item.snippet,
+        )
+
+    return SessionSearchTransportResultPayload(
+        session_id=result_item["session_id"],
+        timestamp=result_item["timestamp"],
+        cwd=result_item["cwd"],
+        record_type=result_item["record_type"],
+        line_number=result_item["line_number"],
+        snippet=result_item["snippet"],
+    )

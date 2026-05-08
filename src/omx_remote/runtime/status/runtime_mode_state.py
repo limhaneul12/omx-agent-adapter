@@ -1,8 +1,11 @@
 import asyncio
+from typing import cast
 
 import orjson
 
+from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.adapter_types.runtime_types import (
+    RuntimeModeStateDataPayload,
     RuntimeModeStateNormalizedPayload,
     RuntimeModeStateTransportPayload,
 )
@@ -69,8 +72,8 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
 
     exists_value: object | None = parsed_payload.get("exists")
     if exists_value is None:
-        direct_state_payload: dict[str, object] = _copy_runtime_mode_state_payload(
-            parsed_payload
+        direct_state_payload: RuntimeModeStateDataPayload = (
+            _copy_runtime_mode_state_payload(parsed_payload)
         )
         direct_result = RuntimeModeStateTransportPayload(
             exists=True,
@@ -86,7 +89,7 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
     if state_value is not None and not isinstance(state_value, dict):
         raise RuntimeSurfaceError("omx state read returned a non-object state payload")
 
-    normalized_state_value: dict[str, object] | None = None
+    normalized_state_value: RuntimeModeStateDataPayload | None = None
     if isinstance(state_value, dict):
         normalized_state_value = _copy_runtime_mode_state_payload(state_value)
 
@@ -101,20 +104,20 @@ def _load_runtime_mode_state_payload(stdout: str) -> RuntimeModeStateTransportPa
 
 def _copy_runtime_mode_state_payload(
     payload: dict[object, object],
-) -> dict[str, object]:
+) -> RuntimeModeStateDataPayload:
     """Copies a runtime mode-state object into a string-keyed payload.
 
     Args:
         payload [dict[object, object]]: Runtime mode-state object decoded from OMX JSON.
 
     Returns:
-        dict[str, object]: Stable string-keyed state payload for schema validation.
+        RuntimeModeStateDataPayload: Stable string-keyed state payload for schema validation.
     """
-    copied_payload: dict[str, object] = {}
+    copied_payload = RuntimeModeStateDataPayload()
     for key, value in payload.items():
         if not isinstance(key, str):
             raise RuntimeSurfaceError("omx state read returned a non-string state key")
-        copied_payload[key] = value
+        copied_payload[key] = cast(JsonValue, value)
 
     return copied_payload
 
@@ -129,7 +132,7 @@ def _normalize_runtime_mode_state(stdout: str) -> RuntimeModeStateSnapshot:
         RuntimeModeStateSnapshot: Function return value.
     """
     payload: RuntimeModeStateTransportPayload = _load_runtime_mode_state_payload(stdout)
-    raw_state_payload: dict[str, object] | None = payload.get("state")
+    raw_state_payload: RuntimeModeStateDataPayload | None = payload.get("state")
 
     normalized_payload = RuntimeModeStateNormalizedPayload(
         mode=payload["mode"],
