@@ -141,6 +141,46 @@ def _write_team_admin_prd_artifact(tmp_path: Path) -> Path:
     return prd_path
 
 
+def _write_team_admin_report_artifact(tmp_path: Path) -> Path:
+    report_path = tmp_path / "reports" / "team-admin.json"
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "admin_id": "team-admin",
+        "aggregation_state": "ready_for_ralph_review",
+        "merge_ready": True,
+        "final_report_required": True,
+        "completed_workers": ["worker-1"],
+        "missing_workers": [],
+        "blocked_workers": [],
+        "incomplete_workers": [],
+        "requires_human_review": False,
+        "requires_llm_review": True,
+        "task_count": 1,
+        "event_count": 2,
+        "summary": "Team Admin collected worker-1 output.",
+    }
+    report_path.write_bytes(orjson.dumps(payload))
+    return report_path
+
+
+def _write_ralph_review_result_artifact(tmp_path: Path) -> Path:
+    review_path = tmp_path / "reports" / "ralph-review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "decision": "complete",
+        "complete": True,
+        "follow_up_required": False,
+        "human_review_required": False,
+        "merge_approved": True,
+        "completed_workers": ["worker-1", "worker-2"],
+        "follow_up_workers": [],
+        "review_blockers": [],
+        "summary": "Ralph accepted all completed worker results.",
+    }
+    review_path.write_bytes(orjson.dumps(payload))
+    return review_path
+
+
 def test_package_entrypoint_runs_help() -> None:
     completed_process = _run_agent_remote_command(["--help"])
 
@@ -492,6 +532,78 @@ def test_package_entrypoint_runs_goal_operating_decision(tmp_path: Path) -> None
     assert output["safe_to_mutate"] is False
 
 
+def test_package_entrypoint_runs_goal_lifecycle_decision_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "lifecycle-decision", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--goal-id" in completed_process.stdout
+    assert "--ralph-review" in completed_process.stdout
+    assert "--cwd" in completed_process.stdout
+    assert "--output-path" in completed_process.stdout
+
+
+def test_goal_lifecycle_decision_outputs_writes_and_updates_bundle(tmp_path: Path) -> None:
+    _write_goal_lifecycle_bundle(tmp_path)
+    ralph_review_path = _write_ralph_review_result_artifact(tmp_path)
+    output_path = tmp_path / "reports" / "goal-lifecycle-decision.json"
+
+    completed_process = _run_agent_remote_command(
+        [
+            "goal",
+            "lifecycle-decision",
+            "--goal-id",
+            "goal-cli",
+            "--ralph-review",
+            str(ralph_review_path),
+            "--cwd",
+            str(tmp_path),
+            "--output-path",
+            str(output_path),
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["goal_id"] == "goal-cli"
+    assert output["action"] == "close_goal"
+    assert output["ready_to_close"] is True
+    assert orjson.loads(output_path.read_bytes()) == output
+
+    bundle_path = tmp_path / ".agent-remote" / "state" / "goal-lifecycle" / "goal-cli.json"
+    bundle = orjson.loads(bundle_path.read_bytes())
+    assert bundle["ralph_review_result"]["decision"] == "complete"
+    assert bundle["lifecycle_decision"]["action"] == "close_goal"
+
+
+def test_goal_lifecycle_decision_initializes_bundle_from_goal_mirror(tmp_path: Path) -> None:
+    _write_codex_goal_mirror_state(tmp_path)
+    ralph_review_path = _write_ralph_review_result_artifact(tmp_path)
+
+    completed_process = _run_agent_remote_command(
+        [
+            "goal",
+            "lifecycle-decision",
+            "--goal-id",
+            "goal-cli",
+            "--ralph-review",
+            str(ralph_review_path),
+            "--cwd",
+            str(tmp_path),
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["action"] == "close_goal"
+
+    bundle_path = tmp_path / ".agent-remote" / "state" / "goal-lifecycle" / "goal-cli.json"
+    bundle = orjson.loads(bundle_path.read_bytes())
+    assert bundle["goal_id"] == "goal-cli"
+    assert bundle["mirror_state"]["objective_text"] == "Prepare a Ralph handoff from CLI."
+    assert bundle["ralph_review_result"]["decision"] == "complete"
+    assert bundle["lifecycle_decision"]["action"] == "close_goal"
+
+
 def test_package_entrypoint_runs_goal_start_help() -> None:
     completed_process = _run_agent_remote_command(["goal", "start", "--help"])
 
@@ -509,6 +621,7 @@ def test_package_entrypoint_runs_ralph_help() -> None:
     assert "snapshot" in completed_process.stdout
     assert "startability" in completed_process.stdout
     assert "launch" in completed_process.stdout
+    assert "launch-team" in completed_process.stdout
     assert "resume" in completed_process.stdout
     assert "cleanup-stale" in completed_process.stdout
 
@@ -519,6 +632,85 @@ def test_package_entrypoint_runs_ralph_launch_help() -> None:
     assert completed_process.returncode == 0
     assert "--task" in completed_process.stdout
     assert "--inherit-stdio" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_ralph_launch_team_help() -> None:
+    completed_process = _run_agent_remote_command(["ralph", "launch-team", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--allow-non-tty" in completed_process.stdout
+    assert "--inherit-stdio" in completed_process.stdout
+    assert "--plan-only" in completed_process.stdout
+
+
+def test_ralph_launch_team_plan_only_writes_assignment_dag_without_invoking_omx(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from omx_remote.cli_launcher import ralph_cli
+
+    monkeypatch.chdir(tmp_path)
+    _write_team_admin_prd_artifact(tmp_path)
+
+    def fail_if_invoked(command: list[str]):
+        raise AssertionError(f"OMX should not be invoked in plan-only mode: {command}")
+
+    monkeypatch.setattr(ralph_cli, "_run_omx_command", fail_if_invoked)
+    monkeypatch.setattr(ralph_cli, "_run_omx_command_inherited_stdio", fail_if_invoked)
+
+    result = CliRunner().invoke(
+        app,
+        ["ralph", "launch-team", "--allow-non-tty", "--plan-only"],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    output = orjson.loads(result.stdout)
+    assert output["command"] == [
+        "team",
+        "1",
+        "Collect Team Admin results from CLI.",
+    ]
+    assert output["planned_only"] is True
+    dag_path = next((tmp_path / ".omx" / "plans").glob("team-dag-*-ralph-team.json"))
+    dag_payload = orjson.loads(dag_path.read_bytes())
+    assert dag_payload["worker_policy"]["requested_count"] == 1
+    assert dag_payload["nodes"][0]["id"] == "worker-1"
+    assert dag_payload["nodes"][0]["description"].startswith("Lane: worker-1 lane")
+    assert dag_payload["nodes"][0]["authorization"]["policy"] == "llm_review"
+
+
+def test_package_entrypoint_runs_ralph_review_team_help() -> None:
+    completed_process = _run_agent_remote_command(["ralph", "review-team", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--prd-path" in completed_process.stdout
+    assert "--admin-report" in completed_process.stdout
+    assert "--output-path" in completed_process.stdout
+
+
+def test_ralph_review_team_outputs_and_writes_review_json(tmp_path: Path) -> None:
+    prd_path = _write_team_admin_prd_artifact(tmp_path)
+    admin_report_path = _write_team_admin_report_artifact(tmp_path)
+    output_path = tmp_path / "reports" / "ralph-review-output.json"
+
+    completed_process = _run_agent_remote_command(
+        [
+            "ralph",
+            "review-team",
+            "--prd-path",
+            str(prd_path),
+            "--admin-report",
+            str(admin_report_path),
+            "--output-path",
+            str(output_path),
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["decision"] == "complete"
+    assert output["merge_approved"] is True
+    assert output["completed_workers"] == ["worker-1"]
+    assert orjson.loads(output_path.read_bytes()) == output
 
 
 def test_ralph_launch_can_inherit_stdio_for_interactive_omx(monkeypatch) -> None:

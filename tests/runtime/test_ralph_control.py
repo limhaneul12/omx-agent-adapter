@@ -236,7 +236,7 @@ def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_co
 
     command, warnings = build_ralph_team_launch_plan(allow_non_tty=True)
 
-    assert command == ["team", "3:executor", "Ship feature"]
+    assert command == ["team", "3", "Ship feature"]
     assert "allow-non-tty is enabled" in "\n".join(warnings)
 
 
@@ -258,14 +258,14 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
 
     command, _warnings = build_ralph_team_launch_plan(allow_non_tty=True)
 
-    assert command == ["team", "2:executor", "Ship feature with \"quoted\" task"]
+    assert command == ["team", "2", "Ship feature with \"quoted\" task"]
     plans_dir = tmp_path / ".omx" / "plans"
     prd_path = next(plans_dir.glob("prd-*-ralph-team.md"))
     test_spec_path = next(plans_dir.glob("test-spec-*-ralph-team.md"))
     dag_path = next(plans_dir.glob("team-dag-*-ralph-team.json"))
 
     prd_text = prd_path.read_text(encoding="utf-8")
-    assert 'Launch via omx team 2:executor "Ship feature with \\"quoted\\" task"' in prd_text
+    assert 'Launch via omx team 2 "Ship feature with \\"quoted\\" task"' in prd_text
     assert test_spec_path.read_text(encoding="utf-8").startswith("# Ralph Team Test Spec")
 
     dag_payload = json.loads(dag_path.read_text(encoding="utf-8"))
@@ -294,8 +294,56 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
         "requires_human_for": ["modify forbidden_files or files outside owned_files"],
         "requires_llm_review_for": ["local checkpoint commit"],
     }
-    assert "Authorization policy: preapproved" in dag_payload["nodes"][0]["description"]
+    assert "Authorization policy: preapproved" in prd_text
+    assert dag_payload["nodes"][0]["role"] == "worker-1"
     assert dag_payload["nodes"][1]["lane"] == "Test lane"
+
+
+def test_build_ralph_team_dag_omits_internal_report_paths_from_allocator_hints(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(
+        tmp_path,
+        objective="Collect independent evidence",
+        requires_team_fanout=True,
+        team_worker_count=3,
+        team_worker_assignments=[
+            _team_assignment(
+                "worker-1",
+                lane_name="Backend evidence",
+                owned_file=".omx/reports/goal-evidence-worker-1.md",
+            ),
+            _team_assignment(
+                "worker-2",
+                lane_name="Frontend evidence",
+                owned_file=".omx/reports/goal-evidence-worker-2.md",
+            ),
+            _team_assignment(
+                "worker-3",
+                lane_name="Docs evidence",
+                owned_file=".agent-remote/reports/goal-evidence-worker-3.md",
+            ),
+        ],
+    )
+
+    build_ralph_team_launch_plan(allow_non_tty=True)
+
+    prd_path = next((tmp_path / ".omx" / "plans").glob("prd-*-ralph-team.md"))
+    dag_path = next((tmp_path / ".omx" / "plans").glob("team-dag-*-ralph-team.json"))
+    prd_text = prd_path.read_text(encoding="utf-8")
+    dag_payload = json.loads(dag_path.read_text(encoding="utf-8"))
+    assert [node["filePaths"] for node in dag_payload["nodes"]] == [[], [], []]
+    assert [node["role"] for node in dag_payload["nodes"]] == [
+        "worker-1",
+        "worker-2",
+        "worker-3",
+    ]
+    assert [node["acceptance"] for node in dag_payload["nodes"]] == [[], [], []]
+    assert dag_payload["nodes"][0]["description"] == "worker-1: Backend evidence. See PRD."
+    assert ".omx/reports/goal-evidence-worker-1.md" in prd_text
+    assert ".agent-remote/reports/goal-evidence-worker-3.md" in prd_text
 
 
 def test_build_ralph_team_launch_plan_requires_worker_assignments(

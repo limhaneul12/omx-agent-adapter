@@ -28,6 +28,86 @@ def format_markdown_list(values: tuple[str, ...] | list[str]) -> str:
     return "\n".join(f"- {value}" for value in values)
 
 
+def allocator_hint_file_paths(assignment: TeamWorkerAssignment) -> list[str]:
+    """Return file paths that should bias OMX worker allocation.
+
+    Ralph-owned internal report artifacts are deliverables, not product-code or
+    repo-scope ownership hints. Passing them to OMX's DAG allocator makes every
+    evidence lane look like the same `.omx`/`.agent-remote` domain and can group
+    independent worker assignments onto worker-1.
+
+    Args:
+        assignment [TeamWorkerAssignment]: Typed worker assignment from the Ralph PRD artifact.
+
+    Returns:
+        list[str]: Owned paths that should be visible as OMX allocation hints.
+    """
+    return [
+        path
+        for path in assignment.owned_files
+        if not path.startswith(".omx/") and not path.startswith(".agent-remote/")
+    ]
+
+
+def uses_internal_only_owned_files(assignment: TeamWorkerAssignment) -> bool:
+    """Return whether the assignment only owns agent/runtime-internal artifacts.
+
+    Args:
+        assignment [TeamWorkerAssignment]: Typed worker assignment from the Ralph PRD artifact.
+
+    Returns:
+        bool: True when all owned files are internal agent/runtime artifacts.
+    """
+    return len(assignment.owned_files) > 0 and not allocator_hint_file_paths(assignment)
+
+
+def allocator_task_role(assignment: TeamWorkerAssignment) -> str:
+    """Return the DAG task role used by OMX's allocator.
+
+    `omx team` uses task role as an allocation signal. Ralph PRD assignments are
+    already worker-specific, so use the worker id as the role to keep assignment
+    lanes separated when the launch command leaves agent type implicit.
+
+    Args:
+        assignment [TeamWorkerAssignment]: Typed worker assignment from the Ralph PRD artifact.
+
+    Returns:
+        str: Worker-specific role value for the DAG node.
+    """
+    return assignment.worker_id
+
+
+def allocator_task_description(assignment: TeamWorkerAssignment) -> str:
+    """Return a concise DAG description that avoids cross-worker hint collisions.
+
+    Args:
+        assignment [TeamWorkerAssignment]: Typed worker assignment from the Ralph PRD artifact.
+
+    Returns:
+        str: DAG node description optimized for OMX allocation.
+    """
+    if uses_internal_only_owned_files(assignment):
+        return f"{assignment.worker_id}: {assignment.lane_name}. See PRD."
+    return render_worker_assignment_description(assignment)
+
+
+def allocator_task_acceptance(assignment: TeamWorkerAssignment) -> list[str]:
+    """Return acceptance hints that should enter OMX allocator-visible task text.
+
+    Args:
+        assignment [TeamWorkerAssignment]: Typed worker assignment from the Ralph PRD artifact.
+
+    Returns:
+        list[str]: Acceptance strings safe to expose to the allocator.
+    """
+    if uses_internal_only_owned_files(assignment):
+        return []
+    return [
+        *assignment.verification_commands,
+        assignment.handoff_summary_required,
+    ]
+
+
 def render_worker_assignment_description(assignment: TeamWorkerAssignment) -> str:
     """Renders one Team worker assignment description for Ralph DAG handoff.
 
@@ -174,7 +254,7 @@ def write_ralph_team_dag_handoff_artifacts(
     prd_name: str = f"prd-{artifact_slug}.md"
     test_spec_name: str = f"test-spec-{artifact_slug}.md"
     dag_name: str = f"team-dag-{artifact_slug}.json"
-    launch_hint: str = f"omx team {team_worker_count}:executor {quote_omx_task(canonical_launch_task)}"
+    launch_hint: str = f"omx team {team_worker_count} {quote_omx_task(canonical_launch_task)}"
 
     prd_lines: list[str] = [
         "# Ralph Team PRD Handoff",
@@ -196,6 +276,13 @@ def write_ralph_team_dag_handoff_artifacts(
         "## Verification Expectations",
         format_markdown_list(ralph_prd_artifact.verification_expectations),
         "",
+        "## Worker Assignments",
+        "",
+        *[
+            f"### {assignment.worker_id}: {assignment.lane_name}\n\n"
+            f"{render_worker_assignment_description(assignment)}\n"
+            for assignment in assignments
+        ],
         "## Team DAG Handoff",
         "```json",
     ]
@@ -208,16 +295,13 @@ def write_ralph_team_dag_handoff_artifacts(
         RalphTeamDagNodePayload(
             id=assignment.worker_id,
             subject=assignment.lane_name,
-            description=render_worker_assignment_description(assignment),
-            role="executor",
+            description=allocator_task_description(assignment),
+            role=allocator_task_role(assignment),
             lane=assignment.lane_name,
-            filePaths=list(assignment.owned_files),
+            filePaths=allocator_hint_file_paths(assignment),
             depends_on=[],
             authorization=build_worker_authorization_payload(assignment),
-            acceptance=[
-                *assignment.verification_commands,
-                assignment.handoff_summary_required,
-            ],
+            acceptance=allocator_task_acceptance(assignment),
         )
         for assignment in assignments
     ]

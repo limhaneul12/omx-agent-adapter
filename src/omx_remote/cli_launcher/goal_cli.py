@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import orjson
 import typer
 from pydantic import ValidationError
 
@@ -9,6 +12,12 @@ from omx_remote.runtime.goal.codex_goal_supervisor import (
     build_goal_operating_decision,
     prepare_tracked_codex_goal_ralph_handoff_prompt,
     restore_goal_lifecycle_state,
+)
+from omx_remote.runtime.goal.goal_lifecycle_artifacts import (
+    write_goal_lifecycle_decision_from_ralph_review,
+)
+from omx_remote.runtime.ralph.ralph_review_artifacts import (
+    read_ralph_post_team_review_artifact,
 )
 from omx_remote.schemas.codex_goal.operating_schemas import (
     CodexGoalOperatingDecisionRequest,
@@ -268,6 +277,58 @@ def goal_restore_lifecycle(
     try:
         result = restore_goal_lifecycle_state(goal_id, working_directory=cwd)
     except (ValidationError, ValueError) as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=2) from error
+
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@goal_app.command("lifecycle-decision")
+def goal_lifecycle_decision(
+    goal_id: str = typer.Option(
+        ...,
+        "--goal-id",
+        help="Goal identifier whose durable lifecycle artifact should be updated.",
+    ),
+    ralph_review: Path = typer.Option(
+        ...,
+        "--ralph-review",
+        help="Path to the RalphPostTeamReviewResult JSON file.",
+    ),
+    cwd: str | None = typer.Option(
+        None,
+        "--cwd",
+        help="Optional working directory whose lifecycle artifact store should be updated.",
+    ),
+    output_path: Path | None = typer.Option(
+        None,
+        "--output-path",
+        help="Optional path where the lifecycle decision JSON should be written.",
+    ),
+) -> None:
+    """Persist a Goal lifecycle decision from Ralph's post-Team review result.
+
+    Args:
+        goal_id [str]: Goal identifier whose lifecycle bundle should be updated.
+        ralph_review [Path]: Path to the Ralph post-Team review JSON file.
+        cwd [str | None]: Optional lifecycle artifact workspace.
+        output_path [Path | None]: Optional decision JSON artifact destination.
+    """
+    try:
+        ralph_review_result = read_ralph_post_team_review_artifact(ralph_review)
+        result = write_goal_lifecycle_decision_from_ralph_review(
+            goal_id,
+            ralph_review_result,
+            working_directory=cwd,
+        )
+        if output_path is not None:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_payload: bytes = orjson.dumps(
+                result.model_dump(mode="json"),
+                option=orjson.OPT_INDENT_2,
+            )
+            output_path.write_bytes(output_payload)
+    except (OSError, orjson.JSONDecodeError, ValidationError, ValueError) as error:
         typer.echo(str(error))
         raise typer.Exit(code=2) from error
 

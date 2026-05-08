@@ -24,10 +24,10 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | --- | --- | --- | --- | --- |
 | 1 | Goal only | Implemented baseline | `agent-remote goal start`, `goal status`, `goal template`, adapter-owned Goal mirror state, tests around native Goal startup/status/template. | Continue dogfood; do not add automatic route selection or `goal draft` without review. |
 | 2 | Goal → Ralph | Partial, usable by handoff | `agent-remote goal prepare-ralph`, typed Goal mirror/handoff prompt, Ralph PRD artifact contract, Ralph launch/resume/cleanup guardrails. The misleading public `agent-remote goal launch-ralph` command has been removed. | Keep Goal→Ralph as read-only handoff plus Ralph-owned control; add no new broad launcher without dogfood evidence. |
-| 3 | Goal → Ralph → Team(s) | Partial, not end-to-end complete | Goal/Ralph handoff prompt, Ralph PRD Team fanout fields, Team worker assignments, Team Admin policy, Team Admin aggregation report contract, Ralph post-Team review, Goal lifecycle decision/restore/operating-decision contracts. | One coherent CLI/lifecycle path, Team worker startup/readiness evidence, Team Admin aggregation command, Ralph post-Team review command, Goal lifecycle decision command, full dogfood proof. |
+| 3 | Goal → Ralph → Team(s) | Implemented baseline, dogfood-proven with follow-up wave | Goal/Ralph handoff prompt, Ralph PRD Team fanout fields, Team worker assignments, Team Admin policy, Team Admin aggregation report/read command, Ralph post-Team review command, Goal lifecycle decision/restore/operating-decision contracts, Ralph-owned Team launch handoff, worker allocation hint cleanup, and startup readiness issue surfacing through `startup_issue_workers`. | Continue dogfood. Remaining hardening is mostly native OMX worker startup reliability: `ready_prompt_timeout` forensics, pane relaunch, and same-assignment redispatch. Keep treating startup failures as follow-up evidence rather than ambiguous completion. |
 | 4 | Ultrawork only | Implemented baseline | `agent-remote ultrawork launch`, `ultrawork resume`, `ultrawork cleanup-stale`, state preflight, stale/resumable/terminal guards. | Keep dogfooding; improve only from concrete OMX evidence. |
 | 5 | Hypergoal | Planned only | `agent-remote hypergoal template` static scaffold. | No executor, runtime state, lifecycle loop, or auto orchestration yet. Do not claim more than planning/template support. |
-| 6 | Ralph → Team | Partial, Ralph-owned fanout | Ralph PRD `requires_team_fanout` validation, `team_worker_assignments`, `team_admin`, Ralph Team DAG/handoff artifact helpers, guarded Team launch path. | Clean live proof without Goal wrapping, better Team launch readiness/status UX, aggregation handoff evidence. |
+| 6 | Ralph → Team | Implemented baseline for handoff and review surfaces | Ralph PRD `requires_team_fanout` validation, `team_worker_assignments`, `team_admin`, Ralph Team DAG/handoff artifact helpers, guarded Team launch path, Team Admin aggregation, Ralph post-Team review, and startup issue follow-up classification. | Clean single-wave live proof still depends on native OMX worker startup reliability. Improve Team launch readiness/status UX and add deeper runtime reconnect only in OMX, not as adapter-owned pane control. |
 
 ## Deprecated or misleading surfaces
 
@@ -51,6 +51,19 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | `docs/rules/` | Current enough | These are development rules, not roadmap status docs. Keep them stable unless code conventions change. |
 | `docs/jobs/` | Local planning, gitignored | Update for local handoff/status, but do not treat as push-bound documentation unless explicitly requested. |
 
+## 2026-05-08 Goal/Ralph/Team dogfood proof
+
+A live Goal-supervised Ralph→Team run closed the baseline loop through a follow-up wave:
+
+- Goal: `goal-decf39b42eff`
+- Team: `dogfood-the-goal-to-r-861e14ef`
+- Follow-up Team: `follow-up-the-documen-861e14ef`
+- Final Ralph review: `complete`
+- Final Goal lifecycle decision: `close_goal`
+- Final operating decision: `current_stage=goal_close_ready`, `safe_to_mutate=true`, `missing_evidence=[]`
+
+The first Team wave proved worker assignment/DAG ownership and surfaced a native OMX/Codex startup reliability gap: `worker-3` reached pane/identity setup but failed ready-prompt detection with `ready_prompt_timeout`. The adapter now preserves that as explicit `startup_issue_workers` evidence in Team Admin aggregation and Ralph post-Team review, so follow-up work is classified deliberately instead of being hidden as ambiguous missing/pending state.
+
 ## What counts as “done” for each lane
 
 A lane is not done because a prompt or schema exists. It is done when the route has:
@@ -64,7 +77,8 @@ A lane is not done because a prompt or schema exists. It is done when the route 
 
 ## Immediate next documentation/code cleanup
 
-1. Add explicit CLI/status surfaces for the missing Goal→Ralph→Team steps instead of adding another broad launcher.
-2. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
-3. Continue dogfooding the six-lane taxonomy and keep docs/help aligned with real capabilities.
-4. Preserve `Ralph → Team` as a separate lane in docs and help text.
+1. Keep the new Goal→Ralph→Team lifecycle surfaces dogfooded across another real feature run before expanding automation.
+2. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
+3. Improve launch/status UX so agents can distinguish Team DAG/assignment success from Codex worker readiness/dispatch success.
+4. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
+5. Preserve `Ralph → Team` as a separate lane in docs and help text.

@@ -118,7 +118,7 @@ def build_ralph_team_launch_plan(
 
     launch_command: list[str] = [
         "team",
-        f"{team_worker_count}:executor",
+        f"{team_worker_count}",
         canonical_launch_task,
     ]
     return launch_command, warnings

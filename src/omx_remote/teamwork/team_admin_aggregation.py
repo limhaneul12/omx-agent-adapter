@@ -28,6 +28,12 @@ from omx_remote.teamwork.team_api_snapshot import (
 COMPLETED_TASK_STATES: frozenset[str] = frozenset({"complete", "completed", "done", "success", "succeeded"})
 BLOCKED_TASK_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
 BLOCKED_WORKER_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
+STARTUP_ISSUE_WORKER_STATES: frozenset[str] = frozenset(
+    {"ready_prompt_timeout", "startup_prompt_timeout", "startup_timeout"}
+)
+STARTUP_ISSUE_EVENT_TYPES: frozenset[str] = frozenset(
+    {"ready_prompt_timeout", "startup_prompt_timeout", "worker_startup_timeout"}
+)
 
 
 def normalize_state_token(state_text: str) -> str:
@@ -61,6 +67,56 @@ def assigned_worker_ids(ralph_prd_artifact: RalphPrdArtifact) -> tuple[str, ...]
 
     worker_ids: tuple[str, ...] = tuple(assignment.worker_id for assignment in assignments)
     return worker_ids
+
+
+def read_local_omx_team_startup_issue_workers(
+    team_name: str,
+    worker_ids: tuple[str, ...],
+    logs_dir: Path | None = None,
+) -> tuple[str, ...]:
+    """Reads local OMX startup timing logs for workers that failed readiness.
+
+    Args:
+        team_name [str]: OMX Team name whose logs should be scanned.
+        worker_ids [tuple[str, ...]]: Ralph-assigned workers eligible for classification.
+        logs_dir [Path | None]: Optional OMX logs directory override.
+
+    Returns:
+        tuple[str, ...]: Ordered workers with local `ready_wait_end` startup failure evidence.
+    """
+    candidate_logs_dir: Path = Path.cwd() / ".omx" / "logs" if logs_dir is None else logs_dir
+    if not candidate_logs_dir.exists():
+        return ()
+
+    worker_id_set: set[str] = set(worker_ids)
+    startup_issue_workers: list[str] = []
+    for log_path in sorted(candidate_logs_dir.glob("team-delivery-*.jsonl")):
+        for line in log_path.read_bytes().splitlines():
+            try:
+                payload = orjson.loads(line)
+            except orjson.JSONDecodeError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+            if payload.get("team") != team_name:
+                continue
+            if payload.get("event") != "dispatch_result":
+                continue
+            if payload.get("phase") != "ready_wait_end":
+                continue
+            if payload.get("result") != "failed":
+                continue
+            worker_value: object | None = payload.get("to_worker", payload.get("worker"))
+            if not isinstance(worker_value, str):
+                continue
+            if worker_value not in worker_id_set:
+                continue
+            if worker_value in startup_issue_workers:
+                continue
+            startup_issue_workers.append(worker_value)
+
+    result: tuple[str, ...] = tuple(startup_issue_workers)
+    return result
 
 
 def worker_has_completed_task(
@@ -118,6 +174,38 @@ def worker_has_blocker(
     return False
 
 
+def worker_has_startup_issue(
+    worker_id: str,
+    event_snapshot: TeamApiReadEventsSnapshot,
+    worker_statuses: tuple[TeamApiWorkerStatusSnapshot, ...],
+) -> bool:
+    """Checks whether Team runtime surfaced a worker startup issue.
+
+    Args:
+        worker_id [str]: Ralph-assigned worker ID.
+        event_snapshot [TeamApiReadEventsSnapshot]: Team API event snapshot.
+        worker_statuses [tuple[TeamApiWorkerStatusSnapshot, ...]]: Team API worker status snapshots.
+
+    Returns:
+        bool: True when runtime evidence points to worker startup readiness failure.
+    """
+    for worker_status in worker_statuses:
+        if worker_status.worker != worker_id:
+            continue
+        worker_state: str = normalize_state_token(worker_status.state)
+        if worker_state in STARTUP_ISSUE_WORKER_STATES:
+            return True
+
+    for event in event_snapshot.events:
+        if event.worker != worker_id:
+            continue
+        event_type: str = normalize_state_token(event.type)
+        if event_type in STARTUP_ISSUE_EVENT_TYPES:
+            return True
+
+    return False
+
+
 def worker_has_task(worker_id: str, task_snapshot: TeamApiListTasksSnapshot) -> bool:
     """Checks whether a Ralph-assigned worker has any Team API task.
 
@@ -136,6 +224,7 @@ def build_team_admin_summary(
     completed_count: int,
     blocked_count: int,
     missing_count: int,
+    startup_issue_count: int,
     total_count: int,
     aggregation_state: TeamAdminAggregationState,
 ) -> str:
@@ -145,6 +234,7 @@ def build_team_admin_summary(
         completed_count [int]: Number of workers with completed output.
         blocked_count [int]: Number of workers with blocked output/state.
         missing_count [int]: Number of workers without any task result.
+        startup_issue_count [int]: Number of workers with runtime startup issue evidence.
         total_count [int]: Number of Ralph-assigned workers.
         aggregation_state [TeamAdminAggregationState]: Final aggregation state.
 
@@ -163,6 +253,12 @@ def build_team_admin_summary(
             f"and {missing_count} missing worker result; human review required."
         )
 
+    if startup_issue_count:
+        return (
+            f"Team Admin collected {completed_count}/{total_count} completed worker results; "
+            f"waiting for {startup_issue_count} startup issue worker to be retried."
+        )
+
     return (
         f"Team Admin collected {completed_count}/{total_count} completed worker results; "
         "waiting for remaining workers."
@@ -174,6 +270,7 @@ def build_team_admin_aggregation_report(
     task_snapshot: TeamApiListTasksSnapshot,
     event_snapshot: TeamApiReadEventsSnapshot,
     worker_statuses: tuple[TeamApiWorkerStatusSnapshot, ...],
+    local_startup_issue_workers: tuple[str, ...] = (),
 ) -> TeamAdminAggregationReport:
     """Builds Ralph-facing Team Admin aggregation report from Team API snapshots.
 
@@ -182,6 +279,7 @@ def build_team_admin_aggregation_report(
         task_snapshot [TeamApiListTasksSnapshot]: Team API task listing snapshot.
         event_snapshot [TeamApiReadEventsSnapshot]: Team API event listing snapshot.
         worker_statuses [tuple[TeamApiWorkerStatusSnapshot, ...]]: Worker status snapshots collected by Team Admin.
+        local_startup_issue_workers [tuple[str, ...]]: Workers with local OMX startup log failure evidence.
 
     Returns:
         TeamAdminAggregationReport: Final aggregation report for Ralph post-Team review.
@@ -194,17 +292,29 @@ def build_team_admin_aggregation_report(
         raise ValueError("Team Admin aggregation requires Ralph team_admin policy.")
 
     worker_ids: tuple[str, ...] = assigned_worker_ids(ralph_prd_artifact)
+    local_startup_issue_worker_set: set[str] = set(local_startup_issue_workers)
     completed_workers: list[str] = []
     missing_workers: list[str] = []
     blocked_workers: list[str] = []
+    startup_issue_workers: list[str] = []
     incomplete_workers: list[str] = []
 
     for worker_id in worker_ids:
         has_task: bool = worker_has_task(worker_id, task_snapshot)
         has_blocker: bool = worker_has_blocker(worker_id, task_snapshot, worker_statuses)
+        has_startup_issue: bool = (not has_task) and (
+            worker_id in local_startup_issue_worker_set
+            or worker_has_startup_issue(
+                worker_id,
+                event_snapshot,
+                worker_statuses,
+            )
+        )
         has_completed_task: bool = worker_has_completed_task(worker_id, task_snapshot)
 
-        if not has_task:
+        if has_startup_issue:
+            startup_issue_workers.append(worker_id)
+        elif not has_task:
             missing_workers.append(worker_id)
         if has_blocker:
             blocked_workers.append(worker_id)
@@ -230,6 +340,7 @@ def build_team_admin_aggregation_report(
         len(completed_workers),
         len(blocked_workers),
         len(missing_workers),
+        len(startup_issue_workers),
         len(worker_ids),
         aggregation_state,
     )
@@ -243,6 +354,7 @@ def build_team_admin_aggregation_report(
             "completed_workers": tuple(completed_workers),
             "missing_workers": tuple(missing_workers),
             "blocked_workers": tuple(blocked_workers),
+            "startup_issue_workers": tuple(startup_issue_workers),
             "incomplete_workers": tuple(incomplete_workers),
             "requires_human_review": requires_human_review,
             "requires_llm_review": requires_llm_review,
@@ -284,11 +396,16 @@ async def read_team_admin_aggregation_report(
             )
         )
     )
+    local_startup_issue_workers: tuple[str, ...] = read_local_omx_team_startup_issue_workers(
+        request.team_name,
+        worker_ids,
+    )
     report: TeamAdminAggregationReport = build_team_admin_aggregation_report(
         request.ralph_prd_artifact,
         task_snapshot,
         event_snapshot,
         worker_statuses,
+        local_startup_issue_workers,
     )
     return report
 

@@ -1,9 +1,16 @@
 from pathlib import Path
 
+from omx_remote.runtime.goal.codex_goal_runtime import CodexGoalMirrorStateStore
+from omx_remote.runtime.goal.goal_lifecycle_decision import (
+    build_goal_lifecycle_decision,
+)
 from omx_remote.schemas.codex_goal.lifecycle_schemas import (
     CodexGoalLifecycleArtifactBundle,
+    CodexGoalLifecycleDecisionRequest,
+    CodexGoalLifecycleDecisionResult,
     CodexGoalLifecycleRestoredState,
 )
+from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
 from omx_remote.shared.omx_enums.codex_goal_enums import (
     CodexGoalLifecycleRestoreTarget,
 )
@@ -156,6 +163,34 @@ class CodexGoalLifecycleArtifactStore:
         )
         return bundle
 
+    def read_or_initialize_bundle(self, goal_id: str) -> CodexGoalLifecycleArtifactBundle:
+        """Reads a lifecycle bundle or initializes it from the Goal mirror state.
+
+        Args:
+            goal_id [str]: Goal identifier.
+
+        Returns:
+            CodexGoalLifecycleArtifactBundle: Existing or newly initialized lifecycle bundle.
+        """
+        artifact_path: Path = self.artifact_path_for_goal(goal_id)
+        if artifact_path.exists():
+            bundle: CodexGoalLifecycleArtifactBundle = self.read_bundle(goal_id)
+            return bundle
+
+        mirror_store = CodexGoalMirrorStateStore(str(self.working_directory))
+        mirror_state = mirror_store.read_mirror_state()
+        if mirror_state.goal_id != goal_id:
+            raise ValueError(
+                f"Goal mirror state belongs to {mirror_state.goal_id}, not {goal_id}."
+            )
+
+        initialized_bundle = CodexGoalLifecycleArtifactBundle(
+            goal_id=goal_id,
+            mirror_state=mirror_state,
+        )
+        self.write_bundle(initialized_bundle)
+        return initialized_bundle
+
     def restore_state(self, goal_id: str) -> CodexGoalLifecycleRestoredState:
         """Restores one Goal lifecycle bundle and selects the next resume target.
 
@@ -183,6 +218,38 @@ class CodexGoalLifecycleArtifactStore:
         )
         return restored_state
 
+    def write_lifecycle_decision_from_ralph_review(
+        self,
+        goal_id: str,
+        ralph_review_result: RalphPostTeamReviewResult,
+    ) -> CodexGoalLifecycleDecisionResult:
+        """Builds and persists a lifecycle decision from one Ralph review result.
+
+        Args:
+            goal_id [str]: Goal identifier whose bundle should be updated.
+            ralph_review_result [RalphPostTeamReviewResult]: Ralph review result to attach.
+
+        Returns:
+            CodexGoalLifecycleDecisionResult: Persisted Goal lifecycle decision.
+        """
+        bundle: CodexGoalLifecycleArtifactBundle = self.read_or_initialize_bundle(goal_id)
+        request = CodexGoalLifecycleDecisionRequest(
+            mirror_state=bundle.mirror_state,
+            ralph_review_result=ralph_review_result,
+        )
+        lifecycle_decision: CodexGoalLifecycleDecisionResult = (
+            build_goal_lifecycle_decision(request)
+        )
+        updated_bundle: CodexGoalLifecycleArtifactBundle = bundle.model_copy(
+            update={
+                "ralph_review_result": ralph_review_result,
+                "lifecycle_decision": lifecycle_decision,
+            }
+        )
+        self.write_bundle(updated_bundle)
+        result: CodexGoalLifecycleDecisionResult = lifecycle_decision
+        return result
+
 
 def restore_goal_lifecycle_state(
     goal_id: str,
@@ -200,3 +267,25 @@ def restore_goal_lifecycle_state(
     store = CodexGoalLifecycleArtifactStore(working_directory)
     restored_state: CodexGoalLifecycleRestoredState = store.restore_state(goal_id)
     return restored_state
+
+
+def write_goal_lifecycle_decision_from_ralph_review(
+    goal_id: str,
+    ralph_review_result: RalphPostTeamReviewResult,
+    working_directory: str | None = None,
+) -> CodexGoalLifecycleDecisionResult:
+    """Builds and persists a Goal lifecycle decision from a Ralph review result.
+
+    Args:
+        goal_id [str]: Goal identifier whose bundle should be updated.
+        ralph_review_result [RalphPostTeamReviewResult]: Ralph review result to attach.
+        working_directory [str | None]: Optional workspace path.
+
+    Returns:
+        CodexGoalLifecycleDecisionResult: Persisted Goal lifecycle decision.
+    """
+    store = CodexGoalLifecycleArtifactStore(working_directory)
+    lifecycle_decision: CodexGoalLifecycleDecisionResult = (
+        store.write_lifecycle_decision_from_ralph_review(goal_id, ralph_review_result)
+    )
+    return lifecycle_decision

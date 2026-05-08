@@ -24,6 +24,7 @@ class TeamAdminAggregationReport(StrictSchemaModel):
     completed_workers: NonEmptyStrings
     missing_workers: NonEmptyStrings
     blocked_workers: NonEmptyStrings
+    startup_issue_workers: NonEmptyStrings = ()
     incomplete_workers: NonEmptyStrings
     requires_human_review: bool
     requires_llm_review: bool

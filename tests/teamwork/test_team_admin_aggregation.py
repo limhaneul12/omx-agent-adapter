@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
@@ -165,12 +166,129 @@ def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_work
     assert report.completed_workers == ("worker-1",)
     assert report.blocked_workers == ("worker-2",)
     assert report.missing_workers == ("worker-3",)
+    assert report.startup_issue_workers == ()
     assert report.incomplete_workers == ("worker-2", "worker-3")
     assert report.requires_human_review is True
     assert report.requires_llm_review is True
     assert report.task_count == 2
     assert report.event_count == 2
     assert report.summary == "Team Admin found 1 completed, 1 blocked, and 1 missing worker result; human review required."
+
+
+
+def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_up_not_human_review() -> None:
+    report = build_team_admin_aggregation_report(
+        ralph_prd_artifact=_prd_artifact(),
+        task_snapshot=TeamApiListTasksSnapshot(
+            count=2,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="worker-1 handoff",
+                    status="completed",
+                    owner="worker-1",
+                ),
+                TeamApiTaskSnapshot(
+                    id="task-2",
+                    subject="worker-2 handoff",
+                    status="completed",
+                    owner="worker-2",
+                ),
+            ),
+        ),
+        event_snapshot=TeamApiReadEventsSnapshot(
+            count=3,
+            cursor="3",
+            events=(
+                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-1", task_id="task-1"),
+                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-2", task_id="task-2"),
+                TeamApiEventSnapshot(type="ready_prompt_timeout", worker="worker-3"),
+            ),
+        ),
+        worker_statuses=(
+            TeamApiWorkerStatusSnapshot(worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"),
+            TeamApiWorkerStatusSnapshot(worker="worker-2", state="idle", updated_at="2026-05-06T00:00:00Z"),
+            TeamApiWorkerStatusSnapshot(worker="worker-3", state="unknown", updated_at="1970-01-01T00:00:00.000Z"),
+        ),
+    )
+
+    assert report.aggregation_state == "waiting_for_workers"
+    assert report.merge_ready is False
+    assert report.completed_workers == ("worker-1", "worker-2")
+    assert report.missing_workers == ()
+    assert report.startup_issue_workers == ("worker-3",)
+    assert report.incomplete_workers == ("worker-3",)
+    assert report.requires_human_review is False
+    assert "1 startup issue" in report.summary
+
+
+
+def test_read_team_admin_aggregation_report_uses_local_startup_timing_log(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    logs_dir = tmp_path / ".omx" / "logs"
+    logs_dir.mkdir(parents=True)
+    log_payload = (
+        '{"timestamp":"2026-05-07T15:34:29.842Z","event":"dispatch_result",'
+        '"source":"team.runtime.startup-timing",'
+        '"team":"alpha-team","result":"failed","phase":"ready_wait_end",'
+        '"to_worker":"worker-3","pane_id":"%13"}\n'
+    )
+    (logs_dir / "team-delivery-2026-05-07.jsonl").write_text(log_payload)
+    monkeypatch.chdir(tmp_path)
+
+    async def fake_read_tasks(request):
+        return TeamApiListTasksSnapshot(
+            count=2,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="worker-1 handoff",
+                    status="completed",
+                    owner="worker-1",
+                ),
+                TeamApiTaskSnapshot(
+                    id="task-2",
+                    subject="worker-2 handoff",
+                    status="completed",
+                    owner="worker-2",
+                ),
+            ),
+        )
+
+    async def fake_read_events(request):
+        return TeamApiReadEventsSnapshot(count=0, cursor="", events=())
+
+    async def fake_read_worker_status(request):
+        return TeamApiWorkerStatusSnapshot(
+            worker=request.worker,
+            state="unknown",
+            updated_at="1970-01-01T00:00:00.000Z",
+        )
+
+    monkeypatch.setattr(team_admin_aggregation, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(team_admin_aggregation, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_admin_aggregation,
+        "read_team_api_read_worker_status",
+        fake_read_worker_status,
+    )
+
+    report = asyncio.run(
+        read_team_admin_aggregation_report(
+            TeamAdminAggregationReportRequest(
+                team_name="alpha-team",
+                ralph_prd_artifact=_prd_artifact(),
+            )
+        )
+    )
+
+    assert report.aggregation_state == "waiting_for_workers"
+    assert report.missing_workers == ()
+    assert report.startup_issue_workers == ("worker-3",)
+    assert report.incomplete_workers == ("worker-3",)
+    assert report.requires_human_review is False
 
 
 

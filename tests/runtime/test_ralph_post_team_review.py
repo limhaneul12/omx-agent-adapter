@@ -107,6 +107,30 @@ def test_ralph_post_team_review_requires_follow_up_for_waiting_workers() -> None
     assert result.follow_up_workers == ("worker-2",)
 
 
+
+def test_ralph_post_team_review_surfaces_startup_issue_for_follow_up() -> None:
+    result = build_ralph_post_team_review(
+        RalphPostTeamReviewRequest(
+            ralph_prd_artifact=_prd_artifact(),
+            aggregation_report=_aggregation_report(
+                aggregation_state="waiting_for_workers",
+                merge_ready=False,
+                completed_workers=["worker-1"],
+                startup_issue_workers=["worker-2"],
+                incomplete_workers=["worker-2"],
+                summary="Team Admin found a startup issue worker.",
+            ),
+        )
+    )
+
+    assert result.decision == "follow_up_wave_required"
+    assert result.human_review_required is False
+    assert result.follow_up_workers == ("worker-2",)
+    assert result.startup_issue_workers == ("worker-2",)
+    assert result.review_blockers == ()
+
+
+
 def test_ralph_post_team_review_escalates_blocked_or_missing_workers() -> None:
     result = build_ralph_post_team_review(
         RalphPostTeamReviewRequest(

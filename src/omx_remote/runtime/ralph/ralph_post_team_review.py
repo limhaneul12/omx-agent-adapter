@@ -129,7 +129,10 @@ def build_follow_up_workers(request: RalphPostTeamReviewRequest) -> tuple[str, .
     """
     report = request.aggregation_report
     workers: tuple[str, ...] = unique_ordered_tokens(
-        report.incomplete_workers + report.missing_workers + missing_expected_workers(request)
+        report.incomplete_workers
+        + report.startup_issue_workers
+        + report.missing_workers
+        + missing_expected_workers(request)
     )
     return workers
 
@@ -237,6 +240,7 @@ def build_ralph_post_team_review(
             "merge_approved": merge_approved,
             "completed_workers": report.completed_workers,
             "follow_up_workers": follow_up_workers,
+            "startup_issue_workers": report.startup_issue_workers,
             "review_blockers": review_blockers,
             "summary": summary,
         }

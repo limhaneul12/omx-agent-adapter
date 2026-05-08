@@ -27,5 +27,6 @@ class RalphPostTeamReviewResult(StrictSchemaModel):
     merge_approved: bool
     completed_workers: NonEmptyStrings
     follow_up_workers: NonEmptyStrings
+    startup_issue_workers: NonEmptyStrings = ()
     review_blockers: NonEmptyStrings
     summary: NonEmptyString
