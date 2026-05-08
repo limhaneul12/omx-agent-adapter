@@ -348,6 +348,40 @@ def test_load_execution_transport_payload_preserves_top_level_message_text_as_st
     assert result["extra"] == {"ignored": True}
 
 
+def test_load_execution_transport_payload_preserves_mapping_extra_and_string_kind() -> (
+    None
+):
+    result = _load_execution_transport_payload(
+        {
+            "type": "message",
+            "text": "done",
+            "extra": {"debug": True},
+            "kind": "message",
+        }
+    )
+
+    assert result["type"] == "message"
+    assert result["text"] == "done"
+    assert result["extra"] == {"debug": True}
+    assert result["kind"] == "message"
+
+
+def test_load_execution_transport_payload_drops_invalid_extra_and_kind_fields() -> None:
+    result = _load_execution_transport_payload(
+        {
+            "type": "message",
+            "text": "done",
+            "extra": ["not", "a", "mapping"],
+            "kind": {"not": "a string"},
+        }
+    )
+
+    assert result["type"] == "message"
+    assert result["text"] == "done"
+    assert "extra" not in result
+    assert "kind" not in result
+
+
 def test_load_execution_transport_payload_drops_non_string_top_level_text() -> None:
     result = _load_execution_transport_payload(
         {"type": "message", "text": ["not", "a", "string"]}

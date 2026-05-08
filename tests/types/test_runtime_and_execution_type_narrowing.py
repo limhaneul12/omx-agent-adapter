@@ -1,4 +1,6 @@
 from omx_remote.adapter_types.execution_types import (
+    ExecutionAgentMessageItemTransportPayload,
+    ExecutionCommandExecutionItemTransportPayload,
     ExecutionItemTransportPayload,
     ExecutionThreadStartedTransportPayload,
     ExecutionTransportPayload,
@@ -115,6 +117,8 @@ def test_execution_transport_payload_types_keep_raw_passthrough_extras() -> None
     }
 
     assert getattr(ExecutionUsageTransportPayload, "__closed__", False) is True
+    assert getattr(ExecutionAgentMessageItemTransportPayload, "__closed__", False) is True
+    assert getattr(ExecutionCommandExecutionItemTransportPayload, "__closed__", False) is True
     assert getattr(ExecutionItemTransportPayload, "__extra_items__", None) is object
     assert getattr(ExecutionTransportPayload, "__extra_items__", None) is object
     assert unknown_item_transport["payload"] == {"nested": True}

@@ -46,7 +46,7 @@ class ExecutionThreadStartedTransportPayload(TypedDict, closed=True):
     thread_id: str
 
 
-class ExecutionAgentMessageItemTransportPayload(TypedDict, extra_items=object):
+class ExecutionAgentMessageItemTransportPayload(TypedDict, closed=True):
     """Represents the stable observed `agent_message` execution-item subset."""
 
     id: str
@@ -56,7 +56,7 @@ class ExecutionAgentMessageItemTransportPayload(TypedDict, extra_items=object):
 
 class ExecutionCommandExecutionItemTransportPayload(
     TypedDict,
-    extra_items=object,
+    closed=True,
 ):
     """Represents the stable observed `command_execution` execution-item subset."""
 
@@ -97,6 +97,12 @@ class ExecutionItemCompletedTransportPayload(TypedDict, closed=True):
     item: ExecutionItemTransportPayload
 
 
+# The upstream `extra` envelope is diagnostic metadata, so this leaf keeps
+# object-valued raw values while the field itself is narrowed to a mapping.
+class ExecutionExtraTransportPayload(TypedDict, total=False, extra_items=object):
+    """Represents raw upstream diagnostic metadata attached to execution events."""
+
+
 class ExecutionTransportPayload(TypedDict, total=False, extra_items=object):
     """Represents the owned top-level execution transport subset before promotion."""
 
@@ -111,8 +117,8 @@ class ExecutionTransportPayload(TypedDict, total=False, extra_items=object):
     exit_code: int
     status: str
     id: str
-    extra: object
-    kind: object
+    extra: ExecutionExtraTransportPayload
+    kind: str
     thread_id: str
     usage: ExecutionUsageTransportPayload
 
@@ -155,7 +161,8 @@ class ExecutionTransportSpec(msgspec.Struct, omit_defaults=True):
     exit_code: int | None = None
     status: str | None = None
     id: str | None = None
-    extra: object | None = None
+    extra: ExecutionExtraTransportPayload | None = None
+    kind: str | None = None
     thread_id: str | None = None
     usage: ExecutionUsageTransportPayload | None = None
 

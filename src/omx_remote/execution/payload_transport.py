@@ -4,6 +4,7 @@ from typing import Final, cast
 import msgspec
 
 from omx_remote.adapter_types.execution_types import (
+    ExecutionExtraTransportPayload,
     ExecutionItemCompletedTransportPayload,
     ExecutionItemSpec,
     ExecutionItemTransportPayload,
@@ -49,6 +50,7 @@ EXECUTION_TRANSPORT_STABLE_FIELD_KEYS: Final[frozenset[str]] = frozenset(
         "status",
         "id",
         "extra",
+        "kind",
         "thread_id",
         "usage",
     }
@@ -170,6 +172,28 @@ def _execution_transport_spec_to_payload(
     """
     payload = cast(ExecutionTransportPayload, msgspec.to_builtins(transport_spec))
     return payload
+
+
+def _normalize_execution_extra_payload(
+    extra_payload: object,
+) -> ExecutionExtraTransportPayload | None:
+    """Normalizes raw execution diagnostic metadata into a mapping-shaped field.
+
+    Args:
+        extra_payload [object]: Raw `extra` value from an execution transport payload.
+
+    Returns:
+        ExecutionExtraTransportPayload | None: Mapping-shaped diagnostic metadata, otherwise `None`.
+    """
+    extra_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
+        extra_payload
+    )
+    if extra_mapping is None:
+        missing_extra: None = None
+        return missing_extra
+
+    normalized_extra_payload = cast(ExecutionExtraTransportPayload, extra_mapping)
+    return normalized_extra_payload
 
 
 def _normalize_execution_event_type(event_type: object) -> str | None:
@@ -526,7 +550,8 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
         exit_code=_convert_msgspec_optional_int(payload_mapping.get("exit_code")),
         status=_convert_msgspec_optional_str(payload_mapping.get("status")),
         id=_convert_msgspec_optional_str(payload_mapping.get("id")),
-        extra=payload_mapping.get("extra"),
+        extra=_normalize_execution_extra_payload(payload_mapping.get("extra")),
+        kind=_convert_msgspec_optional_str(payload_mapping.get("kind")),
         thread_id=_convert_msgspec_optional_str(payload_mapping.get("thread_id")),
         usage=normalized_usage_payload,
     )
