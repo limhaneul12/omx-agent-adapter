@@ -33,6 +33,7 @@ Current rule documents:
 - `docs/rules/naming-rules.md`
 - `docs/rules/schema-boundary-rules.md`
 - `docs/rules/lint-and-typecheck-rules.md`
+- `docs/rules/handoff-and-timeline-rules.md`
 - `docs/rules/pydantic/README.md`
 
 Recommended reading order for normal code work:
@@ -41,6 +42,10 @@ Recommended reading order for normal code work:
 3. `docs/rules/pydantic/README.md`
 4. `docs/rules/naming-rules.md`
 5. `docs/rules/lint-and-typecheck-rules.md`
+
+Recommended reading for cross-contributor work:
+1. `docs/rules/handoff-and-timeline-rules.md`
+2. Then the normal code-work rules above for the touched domain.
 
 Rule ownership summary for agents:
 - `docs/rules/type-development-rules.md`
@@ -60,6 +65,10 @@ Rule ownership summary for agents:
 - `docs/rules/lint-and-typecheck-rules.md`
   - verification gates and lint/typecheck expectations
   - use this before final validation and when deciding whether a warning can be ignored
+- `docs/rules/handoff-and-timeline-rules.md`
+  - cross-contributor handoff content requirements
+  - `<project_name>/dev_timeline/<YYYY-MM-DD>.md` dated timeline routine
+  - feature/concept branch naming and PR expectations
 
 ## Architecture Direction
 
