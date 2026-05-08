@@ -1,8 +1,10 @@
 import asyncio
 import inspect
 
+import msgspec
 import pytest
-from pydantic import ValidationError
+
+import omx_remote.adapter_types.teamwork_types as teamwork_types
 
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
@@ -37,6 +39,17 @@ def test_read_team_api_list_tasks_is_async() -> None:
 def test_team_api_snapshot_uses_split_transport_and_normalizer_modules() -> None:
     assert hasattr(team_api_transport, "load_team_api_payload")
     assert hasattr(team_api_normalizers, "normalize_team_api_monitor_snapshot_result")
+
+
+def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None:
+    assert issubclass(teamwork_types.TeamApiListTasksDataSpec, msgspec.Struct)
+    assert issubclass(teamwork_types.TeamApiReadEventsDataSpec, msgspec.Struct)
+    assert issubclass(teamwork_types.TeamApiMailboxListDataSpec, msgspec.Struct)
+    assert issubclass(teamwork_types.TeamApiReadMonitorSnapshotDataSpec, msgspec.Struct)
+    assert hasattr(team_api_transport, "load_team_api_list_tasks_payload")
+    assert hasattr(team_api_transport, "load_team_api_read_events_payload")
+    assert hasattr(team_api_transport, "load_team_api_mailbox_list_payload")
+    assert hasattr(team_api_transport, "load_team_api_read_monitor_snapshot_payload")
 
 
 def test_team_api_normalizer_preserves_missing_monitor_snapshot_as_none() -> None:
@@ -98,7 +111,7 @@ def test_read_team_api_list_tasks_rejects_unparseable_json_transport(monkeypatch
         )
 
 
-def test_read_team_api_list_tasks_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_team_api_list_tasks_rejects_missing_tasks_at_transport_boundary(monkeypatch) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -107,7 +120,7 @@ def test_read_team_api_list_tasks_preserves_required_contract_validation(monkeyp
         ),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TeamworkSurfaceError):
         asyncio.run(
             team_api_snapshot.read_team_api_list_tasks(
                 TeamApiListTasksRequest(team_name="alpha")
@@ -350,16 +363,44 @@ def test_load_team_api_payload_rejects_non_object_data_payload() -> None:
         )
 
 
-def test_load_team_api_payload_drops_non_list_collection_fields() -> None:
-    result = team_api_transport.load_team_api_payload(
-        '{"ok":true,"data":{"count":1,"worker":"worker-1","tasks":{"id":"not-a-list"},"events":"not-a-list","messages":123}}',
-        "omx team api list-tasks",
+def test_load_team_api_list_tasks_payload_rejects_non_list_tasks() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_list_tasks_payload(
+            '{"ok":true,"data":{"count":1,"tasks":{"id":"not-a-list"}}}'
+        )
+
+
+def test_load_team_api_read_events_payload_rejects_non_list_events() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_read_events_payload(
+            '{"ok":true,"data":{"count":1,"cursor":"cursor-1","events":"not-a-list"}}'
+        )
+
+
+def test_load_team_api_mailbox_list_payload_rejects_non_list_messages() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_mailbox_list_payload(
+            '{"ok":true,"data":{"worker":"worker-1","count":1,"messages":123}}'
+        )
+
+
+def test_read_team_api_list_tasks_rejects_non_list_tasks_as_surface_error(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        team_api_snapshot,
+        "run_omx_command",
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{"count":1,"tasks":{"id":"not-a-list"}}}\n'
+        ),
     )
 
-    assert result == {
-        "count": 1,
-        "worker": "worker-1",
-    }
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_api_snapshot.read_team_api_list_tasks(
+                TeamApiListTasksRequest(team_name="alpha")
+            )
+        )
 
 
 def test_read_team_api_mailbox_list_is_async() -> None:
@@ -410,7 +451,7 @@ def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypat
         )
 
 
-def test_read_team_api_mailbox_list_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(monkeypatch) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -419,7 +460,7 @@ def test_read_team_api_mailbox_list_preserves_required_contract_validation(monke
         ),
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(TeamworkSurfaceError):
         asyncio.run(
             team_api_snapshot.read_team_api_mailbox_list(
                 TeamApiMailboxListRequest(team_name="alpha", worker="worker-1")

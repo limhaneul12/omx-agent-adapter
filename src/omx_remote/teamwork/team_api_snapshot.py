@@ -5,11 +5,16 @@ import orjson
 from omx_remote.adapter_types.teamwork_types import (
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
+    TeamApiListTasksTransportPayload,
     TeamApiMailboxListNormalizedPayload,
+    TeamApiMailboxListTransportPayload,
+    TeamApiReadConfigTransportPayload,
     TeamApiReadEventsNormalizedPayload,
+    TeamApiReadEventsTransportPayload,
+    TeamApiReadMonitorSnapshotTransportPayload,
+    TeamApiReadWorkerStatusTransportPayload,
     TeamApiTransportEventPayload,
     TeamApiTransportMailboxMessagePayload,
-    TeamApiTransportPayload,
     TeamApiTransportTaskPayload,
 )
 from omx_remote.execution.invoke import run_omx_command
@@ -43,7 +48,12 @@ from omx_remote.teamwork.team_api_normalizers import (
 )
 from omx_remote.teamwork.team_api_transport import (
     load_team_api_error_payload,
-    load_team_api_payload,
+    load_team_api_list_tasks_payload,
+    load_team_api_mailbox_list_payload,
+    load_team_api_read_config_payload,
+    load_team_api_read_events_payload,
+    load_team_api_read_monitor_snapshot_payload,
+    load_team_api_read_worker_status_payload,
 )
 
 
@@ -89,23 +99,16 @@ async def read_team_api_list_tasks(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api list-tasks",
+    data_payload: TeamApiListTasksTransportPayload = load_team_api_list_tasks_payload(
+        command_result.stdout.strip()
     )
-    raw_tasks: list[object] | None = data_payload.get("tasks")
-    count_value: int | None = data_payload.get("count")
-    if raw_tasks is None:
-        result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
-            {"count": 0 if count_value is None else count_value}
-        )
-        return result
-
+    raw_tasks: list[object] = data_payload["tasks"]
+    count_value: int = data_payload["count"]
     normalized_tasks: list[TeamApiTransportTaskPayload] = [
         normalize_team_api_task_payload(task_payload) for task_payload in raw_tasks
     ]
     normalized_payload = TeamApiListTasksNormalizedPayload(
-        count=0 if count_value is None else count_value,
+        count=count_value,
         tasks=normalized_tasks,
     )
     result: TeamApiListTasksSnapshot = TeamApiListTasksSnapshot.model_validate(
@@ -142,25 +145,18 @@ async def read_team_api_read_events(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api read-events",
+    data_payload: TeamApiReadEventsTransportPayload = load_team_api_read_events_payload(
+        command_result.stdout.strip()
     )
-    raw_events: list[object] | None = data_payload.get("events")
-    count_value: int | None = data_payload.get("count")
-    cursor_value: str | None = data_payload.get("cursor")
-    if raw_events is None:
-        result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
-            {"count": 0 if count_value is None else count_value, "cursor": "" if cursor_value is None else cursor_value}
-        )
-        return result
-
+    raw_events: list[object] = data_payload["events"]
+    count_value: int = data_payload["count"]
+    cursor_value: str = data_payload["cursor"]
     normalized_events: list[TeamApiTransportEventPayload] = [
         normalize_team_api_event_payload(event_payload) for event_payload in raw_events
     ]
     normalized_payload = TeamApiReadEventsNormalizedPayload(
-        count=0 if count_value is None else count_value,
-        cursor="" if cursor_value is None else cursor_value,
+        count=count_value,
+        cursor=cursor_value,
         events=normalized_events,
     )
     result: TeamApiReadEventsSnapshot = TeamApiReadEventsSnapshot.model_validate(
@@ -197,26 +193,19 @@ async def read_team_api_mailbox_list(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api mailbox-list",
+    data_payload: TeamApiMailboxListTransportPayload = load_team_api_mailbox_list_payload(
+        command_result.stdout.strip()
     )
-    raw_messages: list[object] | None = data_payload.get("messages")
-    worker_value: str | None = data_payload.get("worker")
-    count_value: int | None = data_payload.get("count")
-    if raw_messages is None:
-        result: TeamApiMailboxListSnapshot = TeamApiMailboxListSnapshot.model_validate(
-            {"worker": "" if worker_value is None else worker_value, "count": 0 if count_value is None else count_value}
-        )
-        return result
-
+    raw_messages: list[object] = data_payload["messages"]
+    worker_value: str = data_payload["worker"]
+    count_value: int = data_payload["count"]
     normalized_messages: list[TeamApiTransportMailboxMessagePayload] = [
         normalize_team_api_mailbox_message_payload(message_payload)
         for message_payload in raw_messages
     ]
     normalized_payload = TeamApiMailboxListNormalizedPayload(
-        worker="" if worker_value is None else worker_value,
-        count=0 if count_value is None else count_value,
+        worker=worker_value,
+        count=count_value,
         messages=normalized_messages,
     )
     result: TeamApiMailboxListSnapshot = TeamApiMailboxListSnapshot.model_validate(
@@ -253,9 +242,8 @@ async def read_team_api_read_monitor_snapshot(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api read-monitor-snapshot",
+    data_payload: TeamApiReadMonitorSnapshotTransportPayload = (
+        load_team_api_read_monitor_snapshot_payload(command_result.stdout.strip())
     )
     result: TeamApiReadMonitorSnapshot = normalize_team_api_monitor_snapshot_result(
         data_payload
@@ -317,9 +305,8 @@ async def read_team_api_read_config(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api read-config",
+    data_payload: TeamApiReadConfigTransportPayload = load_team_api_read_config_payload(
+        command_result.stdout.strip()
     )
     result: TeamApiReadConfigSnapshot = normalize_team_api_config_snapshot_result(
         data_payload
@@ -381,12 +368,11 @@ async def read_team_api_read_worker_status(
             "--json",
         ],
     )
-    data_payload: TeamApiTransportPayload = load_team_api_payload(
-        command_result.stdout.strip(),
-        "omx team api read-worker-status",
+    data_payload: TeamApiReadWorkerStatusTransportPayload = (
+        load_team_api_read_worker_status_payload(command_result.stdout.strip())
     )
     result: TeamApiWorkerStatusSnapshot = normalize_team_api_worker_status_payload(
-        data_payload.get("worker"),
-        data_payload.get("status"),
+        data_payload["worker"],
+        data_payload["status"],
     )
     return result

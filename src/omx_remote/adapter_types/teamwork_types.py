@@ -11,19 +11,46 @@ class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
     error: object = None
 
 
-class TeamApiDataSpec(msgspec.Struct, kw_only=True):
-    """Represents the decoded nested team-api data payload before stable subset normalization."""
+class TeamApiListTasksDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api list-tasks`."""
 
-    count: object = None
-    tasks: object = None
-    cursor: object = None
-    events: object = None
-    worker: object = None
-    messages: object = None
-    snapshot: object = None
-    status: object = None
-    config: object = None
-    manifest: object = None
+    tasks: list[object]
+    count: int = 0
+
+
+class TeamApiReadEventsDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api read-events`."""
+
+    events: list[object]
+    count: int = 0
+    cursor: str = ""
+
+
+class TeamApiMailboxListDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api mailbox-list`."""
+
+    worker: str
+    messages: list[object]
+    count: int = 0
+
+
+class TeamApiReadMonitorSnapshotDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api read-monitor-snapshot`."""
+
+    snapshot: object | None = None
+
+
+class TeamApiReadConfigDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api read-config`."""
+
+    config: dict[str, object] | None = None
+
+
+class TeamApiReadWorkerStatusDataSpec(msgspec.Struct, kw_only=True):
+    """Represents the decoded data payload for `omx team api read-worker-status`."""
+
+    worker: str
+    status: dict[str, object]
 
 
 class TeamApiErrorSpec(msgspec.Struct, kw_only=True):
@@ -60,6 +87,48 @@ class TeamApiTransportPayload(TypedDict, total=False):
     status: dict[str, object]
     config: dict[str, object]
     manifest: dict[str, object]
+
+
+class TeamApiListTasksTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api list-tasks`."""
+
+    count: int
+    tasks: list[object]
+
+
+class TeamApiReadEventsTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api read-events`."""
+
+    count: int
+    cursor: str
+    events: list[object]
+
+
+class TeamApiMailboxListTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api mailbox-list`."""
+
+    worker: str
+    count: int
+    messages: list[object]
+
+
+class TeamApiReadMonitorSnapshotTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api read-monitor-snapshot`."""
+
+    snapshot: object | None
+
+
+class TeamApiReadConfigTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api read-config`."""
+
+    config: dict[str, object] | None
+
+
+class TeamApiReadWorkerStatusTransportPayload(TypedDict):
+    """Represents the loaded data payload for `omx team api read-worker-status`."""
+
+    worker: str
+    status: dict[str, object]
 
 
 class TeamApiWorkerStatusNormalizedPayload(TypedDict):

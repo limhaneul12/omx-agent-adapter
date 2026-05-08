@@ -2,11 +2,22 @@ import msgspec
 import orjson
 
 from omx_remote.adapter_types.teamwork_types import (
-    TeamApiDataSpec,
     TeamApiEnvelopePayload,
     TeamApiEnvelopeSpec,
     TeamApiErrorSpec,
     TeamApiErrorTransportPayload,
+    TeamApiListTasksDataSpec,
+    TeamApiListTasksTransportPayload,
+    TeamApiMailboxListDataSpec,
+    TeamApiMailboxListTransportPayload,
+    TeamApiReadConfigDataSpec,
+    TeamApiReadConfigTransportPayload,
+    TeamApiReadEventsDataSpec,
+    TeamApiReadEventsTransportPayload,
+    TeamApiReadMonitorSnapshotDataSpec,
+    TeamApiReadMonitorSnapshotTransportPayload,
+    TeamApiReadWorkerStatusDataSpec,
+    TeamApiReadWorkerStatusTransportPayload,
     TeamApiTransportPayload,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
@@ -43,56 +54,15 @@ def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiEnvelo
     return envelope
 
 
-def _normalize_team_api_data_payload(
-    data_payload: dict[str, object],
-) -> TeamApiTransportPayload:
-    """Normalizes one decoded team-api data object into the stable adapter subset.
-
-    Args:
-        data_payload [dict[str, object]]: Nested successful `data` payload from a team-api envelope.
-
-    Returns:
-        TeamApiTransportPayload: Stable subset shared by typed team-api readers.
-    """
-    data_spec: TeamApiDataSpec = msgspec.convert(
-        data_payload,
-        TeamApiDataSpec,
-        strict=False,
-    )
-    result = TeamApiTransportPayload()
-
-    if isinstance(data_spec.count, int):
-        result["count"] = data_spec.count
-    if isinstance(data_spec.cursor, str):
-        result["cursor"] = data_spec.cursor
-    if isinstance(data_spec.worker, str):
-        result["worker"] = data_spec.worker
-    if isinstance(data_spec.tasks, list):
-        result["tasks"] = data_spec.tasks
-    if isinstance(data_spec.events, list):
-        result["events"] = data_spec.events
-    if isinstance(data_spec.messages, list):
-        result["messages"] = data_spec.messages
-    if data_spec.snapshot is not None:
-        result["snapshot"] = data_spec.snapshot
-    if isinstance(data_spec.status, dict):
-        result["status"] = data_spec.status
-    if isinstance(data_spec.config, dict):
-        result["config"] = data_spec.config
-    if isinstance(data_spec.manifest, dict):
-        result["manifest"] = data_spec.manifest
-    return result
-
-
-def load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportPayload:
-    """Loads one successful team-api nested data payload.
+def _load_team_api_data_object(stdout: str, operation_name: str) -> dict[str, object]:
+    """Loads the successful nested data object from one team-api envelope.
 
     Args:
         stdout [str]: Raw stdout text returned from one `omx team api ... --json` command.
         operation_name [str]: Human-readable team-api operation name used in error messages.
 
     Returns:
-        TeamApiTransportPayload: Nested `data` object normalized into the stable adapter subset.
+        dict[str, object]: Nested successful `data` object.
 
     Raises:
         TeamworkSurfaceError: Raised when the envelope is unsuccessful or omits a nested data object.
@@ -108,9 +78,217 @@ def load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportP
         )
 
     top_level_payload = TeamApiEnvelopePayload(ok=True, data=data_payload)
-    result: TeamApiTransportPayload = _normalize_team_api_data_payload(
-        top_level_payload["data"]
+    result: dict[str, object] = top_level_payload["data"]
+    return result
+
+
+def load_team_api_list_tasks_payload(stdout: str) -> TeamApiListTasksTransportPayload:
+    """Loads one list-tasks data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api list-tasks --json`.
+
+    Returns:
+        TeamApiListTasksTransportPayload: Loaded list-tasks data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api list-tasks"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiListTasksDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiListTasksDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiListTasksTransportPayload(
+        count=data_spec.count,
+        tasks=data_spec.tasks,
     )
+    return result
+
+
+def load_team_api_read_events_payload(stdout: str) -> TeamApiReadEventsTransportPayload:
+    """Loads one read-events data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api read-events --json`.
+
+    Returns:
+        TeamApiReadEventsTransportPayload: Loaded read-events data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api read-events"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiReadEventsDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiReadEventsDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiReadEventsTransportPayload(
+        count=data_spec.count,
+        cursor=data_spec.cursor,
+        events=data_spec.events,
+    )
+    return result
+
+
+def load_team_api_mailbox_list_payload(stdout: str) -> TeamApiMailboxListTransportPayload:
+    """Loads one mailbox-list data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api mailbox-list --json`.
+
+    Returns:
+        TeamApiMailboxListTransportPayload: Loaded mailbox-list data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api mailbox-list"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiMailboxListDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiMailboxListDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiMailboxListTransportPayload(
+        worker=data_spec.worker,
+        count=data_spec.count,
+        messages=data_spec.messages,
+    )
+    return result
+
+
+def load_team_api_read_monitor_snapshot_payload(
+    stdout: str,
+) -> TeamApiReadMonitorSnapshotTransportPayload:
+    """Loads one monitor-snapshot data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api read-monitor-snapshot --json`.
+
+    Returns:
+        TeamApiReadMonitorSnapshotTransportPayload: Loaded monitor-snapshot data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api read-monitor-snapshot"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiReadMonitorSnapshotDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiReadMonitorSnapshotDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiReadMonitorSnapshotTransportPayload(snapshot=data_spec.snapshot)
+    return result
+
+
+def load_team_api_read_config_payload(stdout: str) -> TeamApiReadConfigTransportPayload:
+    """Loads one read-config data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api read-config --json`.
+
+    Returns:
+        TeamApiReadConfigTransportPayload: Loaded config data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api read-config"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiReadConfigDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiReadConfigDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiReadConfigTransportPayload(config=data_spec.config)
+    return result
+
+
+def load_team_api_read_worker_status_payload(
+    stdout: str,
+) -> TeamApiReadWorkerStatusTransportPayload:
+    """Loads one read-worker-status data payload with an operation-specific msgspec contract.
+
+    Args:
+        stdout [str]: Raw stdout text returned from `omx team api read-worker-status --json`.
+
+    Returns:
+        TeamApiReadWorkerStatusTransportPayload: Loaded worker-status data payload.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the nested data payload is malformed.
+    """
+    operation_name = "omx team api read-worker-status"
+    data_payload: dict[str, object] = _load_team_api_data_object(stdout, operation_name)
+    try:
+        data_spec: TeamApiReadWorkerStatusDataSpec = msgspec.convert(
+            data_payload,
+            TeamApiReadWorkerStatusDataSpec,
+            strict=True,
+        )
+    except msgspec.ValidationError as error:
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        ) from error
+
+    result = TeamApiReadWorkerStatusTransportPayload(
+        worker=data_spec.worker,
+        status=data_spec.status,
+    )
+    return result
+
+
+def load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportPayload:
+    """Loads one successful team-api nested data object for legacy generic callers.
+
+    Args:
+        stdout [str]: Raw stdout text returned from one `omx team api ... --json` command.
+        operation_name [str]: Human-readable team-api operation name used in error messages.
+
+    Returns:
+        TeamApiTransportPayload: Empty generic transport subset after envelope/data validation.
+
+    Raises:
+        TeamworkSurfaceError: Raised when the envelope is unsuccessful or omits a nested data object.
+    """
+    _load_team_api_data_object(stdout, operation_name)
+    result = TeamApiTransportPayload()
     return result
 
 

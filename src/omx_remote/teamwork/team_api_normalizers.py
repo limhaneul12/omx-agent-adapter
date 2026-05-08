@@ -1,4 +1,6 @@
 from omx_remote.adapter_types.teamwork_types import (
+    TeamApiReadConfigTransportPayload,
+    TeamApiReadMonitorSnapshotTransportPayload,
     TeamApiTransportEventPayload,
     TeamApiTransportMailboxMessagePayload,
     TeamApiTransportPayload,
@@ -149,7 +151,7 @@ def normalize_team_api_worker_status_payload(
 
 
 def normalize_team_api_monitor_snapshot_result(
-    data_payload: TeamApiTransportPayload,
+    data_payload: TeamApiReadMonitorSnapshotTransportPayload | TeamApiTransportPayload,
 ) -> TeamApiReadMonitorSnapshot:
     """Normalizes one team-api monitor snapshot result from loaded data.
 
@@ -166,7 +168,7 @@ def normalize_team_api_monitor_snapshot_result(
 
 
 def normalize_team_api_config_snapshot_result(
-    data_payload: TeamApiTransportPayload,
+    data_payload: TeamApiReadConfigTransportPayload | TeamApiTransportPayload,
 ) -> TeamApiReadConfigSnapshot:
     """Normalizes one team-api config snapshot result from loaded data.
 
