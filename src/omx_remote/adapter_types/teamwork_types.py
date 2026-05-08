@@ -1,19 +1,23 @@
+from dataclasses import dataclass
 from typing import NotRequired
 
 import msgspec
 from typing_extensions import TypedDict
 
+from omx_remote.adapter_types.json_types import JsonObject, JsonValue
 
-class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
+
+@dataclass(frozen=True, slots=True)
+class TeamApiEnvelopeSpec:
     """Represents the decoded top-level team-api transport envelope."""
 
     ok: bool
     # The ok flag selects the operation-specific data/error loader that narrows this.
-    data: object = None
-    error: object = None
+    data: JsonValue = None
+    error: JsonValue = None
 
 
-class TeamApiRawTaskPayload(TypedDict, total=False, extra_items=object):
+class TeamApiRawTaskPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents one raw team-api task item with variable upstream metadata."""
 
     id: str
@@ -24,7 +28,7 @@ class TeamApiRawTaskPayload(TypedDict, total=False, extra_items=object):
     assignee: str
 
 
-class TeamApiRawEventPayload(TypedDict, total=False, extra_items=object):
+class TeamApiRawEventPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents one raw team-api event item with variable upstream metadata."""
 
     type: str
@@ -33,7 +37,7 @@ class TeamApiRawEventPayload(TypedDict, total=False, extra_items=object):
     message_id: str | None
 
 
-class TeamApiRawMailboxMessagePayload(TypedDict, total=False, extra_items=object):
+class TeamApiRawMailboxMessagePayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents one raw team-api mailbox message item with variable upstream metadata."""
 
     id: str
@@ -42,8 +46,8 @@ class TeamApiRawMailboxMessagePayload(TypedDict, total=False, extra_items=object
     delivered: bool
 
 
-class TeamApiRawWorkerStatusPayload(TypedDict, total=False, extra_items=object):
-    """Represents one raw worker-status object with variable upstream metadata."""
+class TeamApiRawWorkerStatusPayload(TypedDict, total=False, extra_items=JsonValue):
+    """Represents one raw worker-status mapping with variable upstream metadata."""
 
     state: str
     updated_at: str
@@ -75,15 +79,15 @@ class TeamApiMailboxListDataSpec(msgspec.Struct, kw_only=True):
 class TeamApiReadMonitorSnapshotDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-monitor-snapshot`."""
 
-    # Monitor snapshots are upstream-authored JSON objects with no stable subset yet.
-    snapshot: object | None = None
+    # Monitor snapshots are upstream-authored JSON values with no stable subset yet.
+    snapshot: JsonValue = None
 
 
 class TeamApiReadConfigDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-config`."""
 
-    # Config is a runtime-authored JSON object whose nested shape is not stable here.
-    config: dict[str, object] | None = None
+    # Config is a runtime-authored JSON mapping whose nested shape is not stable here.
+    config: JsonObject | None = None
 
 
 class TeamApiReadWorkerStatusDataSpec(msgspec.Struct, kw_only=True):
@@ -100,12 +104,12 @@ class TeamApiErrorSpec(msgspec.Struct, kw_only=True):
     message: str
 
 
-class TeamApiEnvelopePayload(TypedDict, extra_items=object):
+class TeamApiEnvelopePayload(TypedDict, extra_items=JsonValue):
     """Represents the stable top-level envelope subset for successful team-api payloads."""
 
     ok: bool
     # The nested operation payload is selected and narrowed by each concrete loader.
-    data: dict[str, object]
+    data: JsonObject
 
 
 class TeamApiErrorTransportPayload(TypedDict, closed=True):
@@ -115,7 +119,7 @@ class TeamApiErrorTransportPayload(TypedDict, closed=True):
     message: str
 
 
-class TeamApiTransportPayload(TypedDict, total=False, extra_items=object):
+class TeamApiTransportPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents the stable nested `data` subset shared by typed team-api reads."""
 
     count: int
@@ -124,11 +128,11 @@ class TeamApiTransportPayload(TypedDict, total=False, extra_items=object):
     events: list[TeamApiRawEventPayload]
     worker: str
     messages: list[TeamApiRawMailboxMessagePayload]
-    # Monitor/config/manifest bodies remain dynamic at the transport seam.
-    snapshot: object
+    # Monitor/config/manifest bodies remain dynamic JSON at the transport seam.
+    snapshot: JsonValue
     status: TeamApiRawWorkerStatusPayload
-    config: dict[str, object]
-    manifest: dict[str, object]
+    config: JsonObject
+    manifest: JsonObject
 
 
 class TeamApiListTasksTransportPayload(TypedDict, closed=True):
@@ -157,14 +161,14 @@ class TeamApiMailboxListTransportPayload(TypedDict, closed=True):
 class TeamApiReadMonitorSnapshotTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-monitor-snapshot`."""
 
-    snapshot: object | None
+    snapshot: JsonValue
 
 
 class TeamApiReadConfigTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-config`."""
 
     # Config is intentionally broad until the team-api config contract stabilizes.
-    config: dict[str, object] | None
+    config: JsonObject | None
 
 
 class TeamApiReadWorkerStatusTransportPayload(TypedDict, closed=True):

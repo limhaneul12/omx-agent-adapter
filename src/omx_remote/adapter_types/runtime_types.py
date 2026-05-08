@@ -2,11 +2,13 @@ from typing import NotRequired
 
 from typing_extensions import TypedDict
 
+from omx_remote.adapter_types.json_types import JsonValue
 
-class RuntimeModeStateDataPayload(TypedDict, extra_items=object):
-    """Represents a mode-owned runtime state object with string keys."""
 
-    # Mode state values stay broad because each OMX runtime mode owns its payload shape.
+class RuntimeModeStateDataPayload(TypedDict, extra_items=JsonValue):
+    """Represents a mode-owned runtime state mapping with string keys."""
+
+    # Mode state values stay JSON-shaped because each OMX runtime mode owns its payload shape.
 
 
 class RuntimeModeStatusDataPayload(TypedDict, total=False, closed=True):

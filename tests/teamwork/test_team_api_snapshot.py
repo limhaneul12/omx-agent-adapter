@@ -5,7 +5,8 @@ from typing import get_args
 import msgspec
 import pytest
 
-import omx_remote.adapter_types.teamwork_types as teamwork_types
+from omx_remote.adapter_types import teamwork_types
+from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
     TeamApiMailboxListRequest,
@@ -69,8 +70,8 @@ def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
     envelope_hints = teamwork_types.TeamApiEnvelopeSpec.__annotations__
 
     assert envelope_hints["ok"] is bool
-    assert getattr(teamwork_types.TeamApiEnvelopePayload, "__extra_items__", None) is object
-    assert getattr(teamwork_types.TeamApiTransportPayload, "__extra_items__", None) is object
+    assert getattr(teamwork_types.TeamApiEnvelopePayload, "__extra_items__", None) == JsonValue
+    assert getattr(teamwork_types.TeamApiTransportPayload, "__extra_items__", None) == JsonValue
     assert getattr(teamwork_types.TeamApiErrorTransportPayload, "__closed__", None) is True
     assert getattr(teamwork_types.TeamApiListTasksTransportPayload, "__closed__", None) is True
     assert getattr(teamwork_types.TeamApiReadEventsTransportPayload, "__closed__", None) is True

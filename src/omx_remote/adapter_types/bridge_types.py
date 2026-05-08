@@ -2,11 +2,13 @@ from typing import NotRequired
 
 from typing_extensions import TypedDict
 
+from omx_remote.adapter_types.json_types import JsonValue
 
-class AdapterRuntimeEvidencePayload(TypedDict, extra_items=object):
+
+class AdapterRuntimeEvidencePayload(TypedDict, extra_items=JsonValue):
     """Represents target-owned runtime evidence with target-specific keys."""
 
-    # Evidence values stay broad because adapter targets own nested evidence shapes.
+    # Evidence values stay JSON-shaped because adapter targets own nested evidence shapes.
 
 
 class AdapterCapabilityTransportPayload(TypedDict, closed=True):

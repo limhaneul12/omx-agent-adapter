@@ -1,7 +1,9 @@
 import asyncio
+from typing import cast
 
 import orjson
 
+from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStateDataPayload,
     RuntimeModeStateNormalizedPayload,
@@ -115,7 +117,7 @@ def _copy_runtime_mode_state_payload(
     for key, value in payload.items():
         if not isinstance(key, str):
             raise RuntimeSurfaceError("omx state read returned a non-string state key")
-        copied_payload[key] = value
+        copied_payload[key] = cast(JsonValue, value)
 
     return copied_payload
 

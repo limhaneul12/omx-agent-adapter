@@ -1,3 +1,4 @@
+from omx_remote.adapter_types.bridge_types import AdapterRuntimeEvidencePayload
 from omx_remote.adapter_types.execution_types import (
     ExecutionAgentMessageItemTransportPayload,
     ExecutionCommandExecutionItemTransportPayload,
@@ -7,8 +8,10 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionTurnCompletedTransportPayload,
     ExecutionUsageTransportPayload,
 )
+from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.adapter_types.runtime_types import (
     ActiveRuntimeModesTransportPayload,
+    RuntimeModeStateDataPayload,
     RuntimeModeStateNormalizedPayload,
     RuntimeModeStateTransportPayload,
     RuntimeModeStatusDataPayload,
@@ -119,7 +122,9 @@ def test_execution_transport_payload_types_keep_raw_passthrough_extras() -> None
     assert getattr(ExecutionUsageTransportPayload, "__closed__", False) is True
     assert getattr(ExecutionAgentMessageItemTransportPayload, "__closed__", False) is True
     assert getattr(ExecutionCommandExecutionItemTransportPayload, "__closed__", False) is True
-    assert getattr(ExecutionItemTransportPayload, "__extra_items__", None) is object
-    assert getattr(ExecutionTransportPayload, "__extra_items__", None) is object
+    assert getattr(RuntimeModeStateDataPayload, "__extra_items__", None) == JsonValue
+    assert getattr(AdapterRuntimeEvidencePayload, "__extra_items__", None) == JsonValue
+    assert getattr(ExecutionItemTransportPayload, "__extra_items__", None) == JsonValue
+    assert getattr(ExecutionTransportPayload, "__extra_items__", None) == JsonValue
     assert unknown_item_transport["payload"] == {"nested": True}
     assert unknown_event_transport["payload"] == {"mode": "agent"}

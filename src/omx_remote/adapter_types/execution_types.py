@@ -3,6 +3,7 @@ from typing import Literal
 import msgspec
 from typing_extensions import TypedDict
 
+from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.schemas.execution.event_schemas import (
     ExecCommandExecution,
     ExecMessage,
@@ -68,7 +69,7 @@ class ExecutionCommandExecutionItemTransportPayload(
     status: str
 
 
-class ExecutionItemTransportPayload(TypedDict, total=False, extra_items=object):
+class ExecutionItemTransportPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents the mixed execution-item subset with raw extras preserved."""
 
     id: str
@@ -98,12 +99,12 @@ class ExecutionItemCompletedTransportPayload(TypedDict, closed=True):
 
 
 # The upstream `extra` envelope is diagnostic metadata, so this leaf keeps
-# object-valued raw values while the field itself is narrowed to a mapping.
-class ExecutionExtraTransportPayload(TypedDict, total=False, extra_items=object):
+# JSON-shaped raw values while the field itself is narrowed to a mapping.
+class ExecutionExtraTransportPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents raw upstream diagnostic metadata attached to execution events."""
 
 
-class ExecutionTransportPayload(TypedDict, total=False, extra_items=object):
+class ExecutionTransportPayload(TypedDict, total=False, extra_items=JsonValue):
     """Represents the owned top-level execution transport subset before promotion."""
 
     type: str | None
