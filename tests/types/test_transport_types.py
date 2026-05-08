@@ -32,7 +32,7 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStateNormalizedPayload,
     RuntimeModeStateTransportPayload,
 )
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiEnvelopePayload,
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
@@ -40,6 +40,8 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiReadEventsNormalizedPayload,
     TeamApiTransportPayload,
     TeamApiWorkerStatusNormalizedPayload,
+)
+from omx_remote.adapter_types.teams_type.team_command_transport_payloads import (
     TeamAwaitNormalizedPayload,
     TeamAwaitTransportPayload,
     TeamStatusNormalizedPayload,

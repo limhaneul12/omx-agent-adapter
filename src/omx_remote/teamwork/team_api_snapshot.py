@@ -2,15 +2,17 @@ import asyncio
 
 import orjson
 
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_api_raw_payloads import (
+    TeamApiRawEventPayload,
+    TeamApiRawMailboxMessagePayload,
+    TeamApiRawTaskPayload,
+)
+from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
     TeamApiListTasksTransportPayload,
     TeamApiMailboxListNormalizedPayload,
     TeamApiMailboxListTransportPayload,
-    TeamApiRawEventPayload,
-    TeamApiRawMailboxMessagePayload,
-    TeamApiRawTaskPayload,
     TeamApiReadConfigTransportPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiReadEventsTransportPayload,

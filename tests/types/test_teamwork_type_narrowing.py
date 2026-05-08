@@ -1,4 +1,4 @@
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiEnvelopePayload,
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
@@ -10,6 +10,8 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiTransportTaskPayload,
     TeamApiTransportWorkerStatusPayload,
     TeamApiWorkerStatusNormalizedPayload,
+)
+from omx_remote.adapter_types.teams_type.team_command_transport_payloads import (
     TeamAwaitNormalizedPayload,
     TeamAwaitTransportEventPayload,
     TeamAwaitTransportPayload,

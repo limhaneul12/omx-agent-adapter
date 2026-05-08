@@ -1,4 +1,4 @@
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiReadConfigTransportPayload,
     TeamApiReadMonitorSnapshotTransportPayload,
     TeamApiTransportEventPayload,

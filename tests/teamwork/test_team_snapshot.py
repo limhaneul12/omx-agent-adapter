@@ -4,7 +4,7 @@ from typing import get_args
 
 import pytest
 
-import omx_remote.adapter_types.teamwork_types as teamwork_types
+import omx_remote.adapter_types.teams_type.team_command_transport_payloads as team_command_types
 from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
     TeamStatusRequest,
@@ -24,9 +24,9 @@ def test_read_team_status_is_async() -> None:
 
 
 def test_team_status_and_await_specs_use_stable_transport_field_types() -> None:
-    status_hints = teamwork_types.TeamStatusSpec.__annotations__
-    await_hints = teamwork_types.TeamAwaitSpec.__annotations__
-    event_hints = teamwork_types.TeamAwaitEventSpec.__annotations__
+    status_hints = team_command_types.TeamStatusSpec.__annotations__
+    await_hints = team_command_types.TeamAwaitSpec.__annotations__
+    event_hints = team_command_types.TeamAwaitEventSpec.__annotations__
 
     assert status_hints["team_name"] is str
     assert status_hints["status"] is str
@@ -35,7 +35,7 @@ def test_team_status_and_await_specs_use_stable_transport_field_types() -> None:
     assert await_hints["team_name"] is str
     assert await_hints["status"] is str
     assert get_args(await_hints["event"]) == (
-        teamwork_types.TeamAwaitEventSpec,
+        team_command_types.TeamAwaitEventSpec,
         type(None),
     )
     assert get_args(event_hints["type"]) == (str, type(None))

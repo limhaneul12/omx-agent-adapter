@@ -4,37 +4,39 @@ import msgspec
 import orjson
 
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
-from omx_remote.adapter_types.teamwork_types import (
-    TeamApiEnvelopePayload,
-    TeamApiEnvelopeSpec,
+from omx_remote.adapter_types.teams_type.team_api_data_specs import (
     TeamApiErrorSpec,
-    TeamApiErrorTransportPayload,
     TeamApiListTasksDataSpec,
-    TeamApiListTasksTransportPayload,
     TeamApiMailboxListDataSpec,
-    TeamApiMailboxListTransportPayload,
     TeamApiReadConfigDataSpec,
-    TeamApiReadConfigTransportPayload,
     TeamApiReadEventsDataSpec,
-    TeamApiReadEventsTransportPayload,
     TeamApiReadMonitorSnapshotDataSpec,
-    TeamApiReadMonitorSnapshotTransportPayload,
     TeamApiReadWorkerStatusDataSpec,
+)
+from omx_remote.adapter_types.teams_type.team_api_envelope import TeamApiDecodedEnvelope
+from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
+    TeamApiEnvelopePayload,
+    TeamApiErrorTransportPayload,
+    TeamApiListTasksTransportPayload,
+    TeamApiMailboxListTransportPayload,
+    TeamApiReadConfigTransportPayload,
+    TeamApiReadEventsTransportPayload,
+    TeamApiReadMonitorSnapshotTransportPayload,
     TeamApiReadWorkerStatusTransportPayload,
     TeamApiTransportPayload,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
 
 
-def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiEnvelopeSpec:
-    """Decodes one team-api JSON envelope with msgspec.
+def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiDecodedEnvelope:
+    """Decodes one team-api JSON envelope with manual JSON validation.
 
     Args:
         stdout [str]: Raw stdout text emitted by `omx team api ... --json`.
         operation_name [str]: Human-readable operation name used in error messages.
 
     Returns:
-        TeamApiEnvelopeSpec: Decoded top-level team-api envelope.
+        TeamApiDecodedEnvelope: Decoded top-level team-api envelope.
 
     Raises:
         TeamworkSurfaceError: Raised when stdout is empty, invalid JSON, or not a JSON object matching the envelope shape.
@@ -62,7 +64,7 @@ def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiEnvelo
 
     data_value = cast(JsonValue, parsed_payload.get("data"))
     error_value = cast(JsonValue, parsed_payload.get("error"))
-    envelope = TeamApiEnvelopeSpec(ok=ok_value, data=data_value, error=error_value)
+    envelope = TeamApiDecodedEnvelope(ok=ok_value, data=data_value, error=error_value)
 
     return envelope
 
@@ -80,7 +82,7 @@ def _load_team_api_data_object(stdout: str, operation_name: str) -> JsonObject:
     Raises:
         TeamworkSurfaceError: Raised when the envelope is unsuccessful or omits a nested data object.
     """
-    envelope: TeamApiEnvelopeSpec = _decode_team_api_envelope(stdout, operation_name)
+    envelope: TeamApiDecodedEnvelope = _decode_team_api_envelope(stdout, operation_name)
     if envelope.ok is not True:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
 
@@ -311,7 +313,7 @@ def load_team_api_error_payload(
     Raises:
         TeamworkSurfaceError: Raised when the envelope is successful or omits a typed nested error object.
     """
-    envelope: TeamApiEnvelopeSpec = _decode_team_api_envelope(stdout, operation_name)
+    envelope: TeamApiDecodedEnvelope = _decode_team_api_envelope(stdout, operation_name)
     if envelope.ok is not False:
         raise TeamworkSurfaceError(f"{operation_name} returned a successful payload")
 

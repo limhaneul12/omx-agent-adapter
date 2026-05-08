@@ -5,7 +5,10 @@ from typing import get_args
 import msgspec
 import pytest
 
-from omx_remote.adapter_types import teamwork_types
+import omx_remote.adapter_types.teams_type.team_api_data_specs as team_api_data_specs
+import omx_remote.adapter_types.teams_type.team_api_envelope as team_api_envelope
+import omx_remote.adapter_types.teams_type.team_api_raw_payloads as team_api_raw_payloads
+import omx_remote.adapter_types.teams_type.team_api_transport_payloads as team_api_transport_payloads
 from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
@@ -46,10 +49,10 @@ def test_team_api_snapshot_uses_split_transport_and_normalizer_modules() -> None
 
 
 def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None:
-    assert issubclass(teamwork_types.TeamApiListTasksDataSpec, msgspec.Struct)
-    assert issubclass(teamwork_types.TeamApiReadEventsDataSpec, msgspec.Struct)
-    assert issubclass(teamwork_types.TeamApiMailboxListDataSpec, msgspec.Struct)
-    assert issubclass(teamwork_types.TeamApiReadMonitorSnapshotDataSpec, msgspec.Struct)
+    assert issubclass(team_api_data_specs.TeamApiListTasksDataSpec, msgspec.Struct)
+    assert issubclass(team_api_data_specs.TeamApiReadEventsDataSpec, msgspec.Struct)
+    assert issubclass(team_api_data_specs.TeamApiMailboxListDataSpec, msgspec.Struct)
+    assert issubclass(team_api_data_specs.TeamApiReadMonitorSnapshotDataSpec, msgspec.Struct)
     assert hasattr(team_api_transport, "load_team_api_list_tasks_payload")
     assert hasattr(team_api_transport, "load_team_api_read_events_payload")
     assert hasattr(team_api_transport, "load_team_api_mailbox_list_payload")
@@ -57,35 +60,35 @@ def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None
 
 
 def test_team_api_data_specs_reject_scalar_collection_items_at_transport_boundary() -> None:
-    tasks_hint = teamwork_types.TeamApiListTasksDataSpec.__annotations__["tasks"]
-    events_hint = teamwork_types.TeamApiReadEventsDataSpec.__annotations__["events"]
-    messages_hint = teamwork_types.TeamApiMailboxListDataSpec.__annotations__["messages"]
+    tasks_hint = team_api_data_specs.TeamApiListTasksDataSpec.__annotations__["tasks"]
+    events_hint = team_api_data_specs.TeamApiReadEventsDataSpec.__annotations__["events"]
+    messages_hint = team_api_data_specs.TeamApiMailboxListDataSpec.__annotations__["messages"]
 
-    assert get_args(tasks_hint) == (teamwork_types.TeamApiRawTaskPayload,)
-    assert get_args(events_hint) == (teamwork_types.TeamApiRawEventPayload,)
-    assert get_args(messages_hint) == (teamwork_types.TeamApiRawMailboxMessagePayload,)
+    assert get_args(tasks_hint) == (team_api_raw_payloads.TeamApiRawTaskPayload,)
+    assert get_args(events_hint) == (team_api_raw_payloads.TeamApiRawEventPayload,)
+    assert get_args(messages_hint) == (team_api_raw_payloads.TeamApiRawMailboxMessagePayload,)
 
 
 def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
-    envelope_hints = teamwork_types.TeamApiEnvelopeSpec.__annotations__
+    envelope_hints = team_api_envelope.TeamApiDecodedEnvelope.__annotations__
 
     assert envelope_hints["ok"] is bool
-    assert getattr(teamwork_types.TeamApiEnvelopePayload, "__extra_items__", None) == JsonValue
-    assert getattr(teamwork_types.TeamApiTransportPayload, "__extra_items__", None) == JsonValue
-    assert getattr(teamwork_types.TeamApiErrorTransportPayload, "__closed__", None) is True
-    assert getattr(teamwork_types.TeamApiListTasksTransportPayload, "__closed__", None) is True
-    assert getattr(teamwork_types.TeamApiReadEventsTransportPayload, "__closed__", None) is True
-    assert getattr(teamwork_types.TeamApiMailboxListTransportPayload, "__closed__", None) is True
+    assert getattr(team_api_transport_payloads.TeamApiEnvelopePayload, "__extra_items__", None) == JsonValue
+    assert getattr(team_api_transport_payloads.TeamApiTransportPayload, "__extra_items__", None) == JsonValue
+    assert getattr(team_api_transport_payloads.TeamApiErrorTransportPayload, "__closed__", None) is True
+    assert getattr(team_api_transport_payloads.TeamApiListTasksTransportPayload, "__closed__", None) is True
+    assert getattr(team_api_transport_payloads.TeamApiReadEventsTransportPayload, "__closed__", None) is True
+    assert getattr(team_api_transport_payloads.TeamApiMailboxListTransportPayload, "__closed__", None) is True
     assert (
         getattr(
-            teamwork_types.TeamApiReadMonitorSnapshotTransportPayload,
+            team_api_transport_payloads.TeamApiReadMonitorSnapshotTransportPayload,
             "__closed__",
             None,
         )
         is True
     )
     assert (
-        getattr(teamwork_types.TeamApiReadWorkerStatusTransportPayload, "__closed__", None)
+        getattr(team_api_transport_payloads.TeamApiReadWorkerStatusTransportPayload, "__closed__", None)
         is True
     )
 

@@ -3,7 +3,7 @@ import asyncio
 import msgspec
 import orjson
 
-from omx_remote.adapter_types.teamwork_types import (
+from omx_remote.adapter_types.teams_type.team_command_transport_payloads import (
     TeamAwaitEventSpec,
     TeamAwaitNormalizedPayload,
     TeamAwaitSpec,
