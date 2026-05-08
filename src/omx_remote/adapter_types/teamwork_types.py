@@ -8,16 +8,52 @@ class TeamApiEnvelopeSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded top-level team-api transport envelope."""
 
     ok: bool
+    # The ok flag selects the operation-specific data/error loader that narrows this.
     data: object = None
     error: object = None
+
+
+class TeamApiRawTaskPayload(TypedDict, total=False, extra_items=object):
+    """Represents one raw team-api task item with variable upstream metadata."""
+
+    id: str
+    subject: str
+    title: str
+    status: str
+    owner: str
+    assignee: str
+
+
+class TeamApiRawEventPayload(TypedDict, total=False, extra_items=object):
+    """Represents one raw team-api event item with variable upstream metadata."""
+
+    type: str
+    worker: str
+    task_id: str
+    message_id: str | None
+
+
+class TeamApiRawMailboxMessagePayload(TypedDict, total=False, extra_items=object):
+    """Represents one raw team-api mailbox message item with variable upstream metadata."""
+
+    id: str
+    subject: str
+    body: str
+    delivered: bool
+
+
+class TeamApiRawWorkerStatusPayload(TypedDict, total=False, extra_items=object):
+    """Represents one raw worker-status object with variable upstream metadata."""
+
+    state: str
+    updated_at: str
 
 
 class TeamApiListTasksDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api list-tasks`."""
 
     count: int
-    # Task items carry variable upstream metadata and are narrowed by normalizers.
-    tasks: list[object]
+    tasks: list[TeamApiRawTaskPayload]
 
 
 class TeamApiReadEventsDataSpec(msgspec.Struct, kw_only=True):
@@ -25,8 +61,7 @@ class TeamApiReadEventsDataSpec(msgspec.Struct, kw_only=True):
 
     count: int
     cursor: str
-    # Event items carry operation-specific extras and are narrowed by normalizers.
-    events: list[object]
+    events: list[TeamApiRawEventPayload]
 
 
 class TeamApiMailboxListDataSpec(msgspec.Struct, kw_only=True):
@@ -34,19 +69,20 @@ class TeamApiMailboxListDataSpec(msgspec.Struct, kw_only=True):
 
     worker: str
     count: int
-    # Mailbox items carry upstream extras and are narrowed by normalizers.
-    messages: list[object]
+    messages: list[TeamApiRawMailboxMessagePayload]
 
 
 class TeamApiReadMonitorSnapshotDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-monitor-snapshot`."""
 
+    # Monitor snapshots are upstream-authored JSON objects with no stable subset yet.
     snapshot: object | None = None
 
 
 class TeamApiReadConfigDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-config`."""
 
+    # Config is a runtime-authored JSON object whose nested shape is not stable here.
     config: dict[str, object] | None = None
 
 
@@ -54,7 +90,7 @@ class TeamApiReadWorkerStatusDataSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded data payload for `omx team api read-worker-status`."""
 
     worker: str
-    status: dict[str, object]
+    status: TeamApiRawWorkerStatusPayload
 
 
 class TeamApiErrorSpec(msgspec.Struct, kw_only=True):
@@ -68,6 +104,7 @@ class TeamApiEnvelopePayload(TypedDict, extra_items=object):
     """Represents the stable top-level envelope subset for successful team-api payloads."""
 
     ok: bool
+    # The nested operation payload is selected and narrowed by each concrete loader.
     data: dict[str, object]
 
 
@@ -82,13 +119,14 @@ class TeamApiTransportPayload(TypedDict, total=False, extra_items=object):
     """Represents the stable nested `data` subset shared by typed team-api reads."""
 
     count: int
-    tasks: list[object]
+    tasks: list[TeamApiRawTaskPayload]
     cursor: str
-    events: list[object]
+    events: list[TeamApiRawEventPayload]
     worker: str
-    messages: list[object]
+    messages: list[TeamApiRawMailboxMessagePayload]
+    # Monitor/config/manifest bodies remain dynamic at the transport seam.
     snapshot: object
-    status: dict[str, object]
+    status: TeamApiRawWorkerStatusPayload
     config: dict[str, object]
     manifest: dict[str, object]
 
@@ -97,7 +135,7 @@ class TeamApiListTasksTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api list-tasks`."""
 
     count: int
-    tasks: list[object]
+    tasks: list[TeamApiRawTaskPayload]
 
 
 class TeamApiReadEventsTransportPayload(TypedDict, closed=True):
@@ -105,7 +143,7 @@ class TeamApiReadEventsTransportPayload(TypedDict, closed=True):
 
     count: int
     cursor: str
-    events: list[object]
+    events: list[TeamApiRawEventPayload]
 
 
 class TeamApiMailboxListTransportPayload(TypedDict, closed=True):
@@ -113,7 +151,7 @@ class TeamApiMailboxListTransportPayload(TypedDict, closed=True):
 
     worker: str
     count: int
-    messages: list[object]
+    messages: list[TeamApiRawMailboxMessagePayload]
 
 
 class TeamApiReadMonitorSnapshotTransportPayload(TypedDict, closed=True):
@@ -125,6 +163,7 @@ class TeamApiReadMonitorSnapshotTransportPayload(TypedDict, closed=True):
 class TeamApiReadConfigTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-config`."""
 
+    # Config is intentionally broad until the team-api config contract stabilizes.
     config: dict[str, object] | None
 
 
@@ -132,7 +171,7 @@ class TeamApiReadWorkerStatusTransportPayload(TypedDict, closed=True):
     """Represents the loaded data payload for `omx team api read-worker-status`."""
 
     worker: str
-    status: dict[str, object]
+    status: TeamApiRawWorkerStatusPayload
 
 
 class TeamApiWorkerStatusNormalizedPayload(TypedDict, closed=True):
@@ -205,29 +244,29 @@ class TeamApiMailboxListNormalizedPayload(TypedDict, closed=True):
 class TeamStatusSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded `omx team status` transport payload."""
 
-    team_name: object = None
-    status: object = None
-    phase: object = None
-    current_phase: object = None
-    dead_workers: object = None
-    non_reporting_workers: object = None
+    team_name: str
+    status: str
+    phase: str | None = None
+    current_phase: str | None = None
+    dead_workers: list[str] | None = None
+    non_reporting_workers: list[str] | None = None
 
 
 class TeamAwaitEventSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded nested `omx team await` event payload."""
 
-    type: object = None
-    worker: object = None
-    task_id: object = None
+    type: str | None = None
+    worker: str | None = None
+    task_id: str | None = None
 
 
 class TeamAwaitSpec(msgspec.Struct, kw_only=True):
     """Represents the decoded `omx team await` transport payload."""
 
-    team_name: object = None
-    status: object = None
-    cursor: object = None
-    event: object = None
+    team_name: str
+    status: str
+    cursor: str | None = None
+    event: TeamAwaitEventSpec | None = None
 
 
 class TeamStatusTransportPayload(TypedDict):

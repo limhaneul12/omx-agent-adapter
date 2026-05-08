@@ -8,6 +8,9 @@ from omx_remote.adapter_types.teamwork_types import (
     TeamApiListTasksTransportPayload,
     TeamApiMailboxListNormalizedPayload,
     TeamApiMailboxListTransportPayload,
+    TeamApiRawEventPayload,
+    TeamApiRawMailboxMessagePayload,
+    TeamApiRawTaskPayload,
     TeamApiReadConfigTransportPayload,
     TeamApiReadEventsNormalizedPayload,
     TeamApiReadEventsTransportPayload,
@@ -102,7 +105,7 @@ async def read_team_api_list_tasks(
     data_payload: TeamApiListTasksTransportPayload = load_team_api_list_tasks_payload(
         command_result.stdout.strip()
     )
-    raw_tasks: list[object] = data_payload["tasks"]
+    raw_tasks: list[TeamApiRawTaskPayload] = data_payload["tasks"]
     count_value: int = data_payload["count"]
     normalized_tasks: list[TeamApiTransportTaskPayload] = [
         normalize_team_api_task_payload(task_payload) for task_payload in raw_tasks
@@ -148,7 +151,7 @@ async def read_team_api_read_events(
     data_payload: TeamApiReadEventsTransportPayload = load_team_api_read_events_payload(
         command_result.stdout.strip()
     )
-    raw_events: list[object] = data_payload["events"]
+    raw_events: list[TeamApiRawEventPayload] = data_payload["events"]
     count_value: int = data_payload["count"]
     cursor_value: str = data_payload["cursor"]
     normalized_events: list[TeamApiTransportEventPayload] = [
@@ -196,7 +199,7 @@ async def read_team_api_mailbox_list(
     data_payload: TeamApiMailboxListTransportPayload = load_team_api_mailbox_list_payload(
         command_result.stdout.strip()
     )
-    raw_messages: list[object] = data_payload["messages"]
+    raw_messages: list[TeamApiRawMailboxMessagePayload] = data_payload["messages"]
     worker_value: str = data_payload["worker"]
     count_value: int = data_payload["count"]
     normalized_messages: list[TeamApiTransportMailboxMessagePayload] = [

@@ -1,9 +1,10 @@
 import asyncio
 import inspect
+from typing import get_args
 
 import pytest
-from pydantic import ValidationError
 
+import omx_remote.adapter_types.teamwork_types as teamwork_types
 from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
     TeamStatusRequest,
@@ -20,6 +21,26 @@ class DummyResult:
 
 def test_read_team_status_is_async() -> None:
     assert inspect.iscoroutinefunction(team_snapshot.read_team_status)
+
+
+def test_team_status_and_await_specs_use_stable_transport_field_types() -> None:
+    status_hints = teamwork_types.TeamStatusSpec.__annotations__
+    await_hints = teamwork_types.TeamAwaitSpec.__annotations__
+    event_hints = teamwork_types.TeamAwaitEventSpec.__annotations__
+
+    assert status_hints["team_name"] is str
+    assert status_hints["status"] is str
+    assert get_args(status_hints["dead_workers"]) == (list[str], type(None))
+    assert get_args(status_hints["non_reporting_workers"]) == (list[str], type(None))
+    assert await_hints["team_name"] is str
+    assert await_hints["status"] is str
+    assert get_args(await_hints["event"]) == (
+        teamwork_types.TeamAwaitEventSpec,
+        type(None),
+    )
+    assert get_args(event_hints["type"]) == (str, type(None))
+    assert get_args(event_hints["worker"]) == (str, type(None))
+    assert get_args(event_hints["task_id"]) == (str, type(None))
 
 
 def test_read_team_status_accepts_typed_request() -> None:
@@ -206,7 +227,7 @@ def test_await_team_status_normalizes_empty_cursor_to_none(monkeypatch) -> None:
     assert result.event_type is None
 
 
-def test_await_team_status_ignores_non_object_event_payload(monkeypatch) -> None:
+def test_await_team_status_rejects_non_object_event_payload(monkeypatch) -> None:
     monkeypatch.setattr(
         team_snapshot,
         "run_omx_command",
@@ -215,14 +236,10 @@ def test_await_team_status_ignores_non_object_event_payload(monkeypatch) -> None
         ),
     )
 
-    result = asyncio.run(
-        team_snapshot.await_team_status(TeamAwaitRequest(team_name="alpha"))
-    )
-
-    assert result.cursor == "cursor-1"
-    assert result.event_type is None
-    assert result.event_worker is None
-    assert result.event_task_id is None
+    with pytest.raises(TeamworkSurfaceError):
+        asyncio.run(
+            team_snapshot.await_team_status(TeamAwaitRequest(team_name="alpha"))
+        )
 
 
 def test_await_team_status_rejects_unparseable_json_transport(monkeypatch) -> None:

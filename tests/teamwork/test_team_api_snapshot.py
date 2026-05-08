@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+from typing import get_args
 
 import msgspec
 import pytest
@@ -52,6 +53,16 @@ def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None
     assert hasattr(team_api_transport, "load_team_api_read_events_payload")
     assert hasattr(team_api_transport, "load_team_api_mailbox_list_payload")
     assert hasattr(team_api_transport, "load_team_api_read_monitor_snapshot_payload")
+
+
+def test_team_api_data_specs_reject_scalar_collection_items_at_transport_boundary() -> None:
+    tasks_hint = teamwork_types.TeamApiListTasksDataSpec.__annotations__["tasks"]
+    events_hint = teamwork_types.TeamApiReadEventsDataSpec.__annotations__["events"]
+    messages_hint = teamwork_types.TeamApiMailboxListDataSpec.__annotations__["messages"]
+
+    assert get_args(tasks_hint) == (teamwork_types.TeamApiRawTaskPayload,)
+    assert get_args(events_hint) == (teamwork_types.TeamApiRawEventPayload,)
+    assert get_args(messages_hint) == (teamwork_types.TeamApiRawMailboxMessagePayload,)
 
 
 def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
@@ -411,6 +422,13 @@ def test_load_team_api_list_tasks_payload_rejects_non_list_tasks() -> None:
         )
 
 
+def test_load_team_api_list_tasks_payload_rejects_non_object_task_items() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_list_tasks_payload(
+            '{"ok":true,"data":{"count":1,"tasks":["not-a-task"]}}'
+        )
+
+
 def test_load_team_api_read_events_payload_rejects_missing_cursor() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_read_events_payload(
@@ -425,6 +443,13 @@ def test_load_team_api_read_events_payload_rejects_non_list_events() -> None:
         )
 
 
+def test_load_team_api_read_events_payload_rejects_non_object_event_items() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_read_events_payload(
+            '{"ok":true,"data":{"count":1,"cursor":"cursor-1","events":[123]}}'
+        )
+
+
 def test_load_team_api_mailbox_list_payload_rejects_missing_count() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_mailbox_list_payload(
@@ -436,6 +461,13 @@ def test_load_team_api_mailbox_list_payload_rejects_non_list_messages() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_mailbox_list_payload(
             '{"ok":true,"data":{"worker":"worker-1","count":1,"messages":123}}'
+        )
+
+
+def test_load_team_api_mailbox_list_payload_rejects_non_object_message_items() -> None:
+    with pytest.raises(TeamworkSurfaceError):
+        team_api_transport.load_team_api_mailbox_list_payload(
+            '{"ok":true,"data":{"worker":"worker-1","count":1,"messages":[false]}}'
         )
 
 
