@@ -372,3 +372,52 @@ def test_read_git_credential_token_disables_interactive_prompts(
     run_env = run_kwargs["env"]
     assert isinstance(run_env, dict)
     assert run_env["GIT_TERMINAL_PROMPT"] == "0"
+
+
+def test_read_github_pull_request_status_keeps_review_unknown_when_reviews_unavailable(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            ("remote", "get-url", "origin"): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs[arguments]
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/pulls?head=limhaneul12:feat/cockpit-pr-status-source&state=open":
+            return [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1":
+            return None
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1":
+            return [{"body": "Didn't find any major issues. Breezy!"}]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status":
+            return {"state": "success"}
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs":
+            return {
+                "check_runs": [
+                    {"name": "tests", "status": "completed", "conclusion": "success"}
+                ]
+            }
+        raise AssertionError(api_path)
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.review_state == "unknown"
+    assert "review_state=unknown" in observation.detail

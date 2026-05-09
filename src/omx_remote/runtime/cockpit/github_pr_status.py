@@ -410,20 +410,23 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
         str: Normalized review state summary.
     """
     reviews_array: JsonArray | None = _as_json_array(reviews_payload)
+    if reviews_array is None:
+        unknown_state: str = "unknown"
+        return unknown_state
+
     latest_decisions_by_reviewer: dict[str, str] = {}
-    if reviews_array is not None:
-        for review_index, review_value in enumerate(reviews_array):
-            review_object: JsonObject | None = _as_json_object(review_value)
-            if review_object is None:
-                continue
-            state_text: str | None = _as_non_empty_text(review_object.get("state"))
-            if state_text is None:
-                continue
-            normalized_state: str = state_text.lower()
-            if normalized_state not in {"approved", "changes_requested"}:
-                continue
-            reviewer_key: str = _reviewer_key(review_object, review_index)
-            latest_decisions_by_reviewer[reviewer_key] = normalized_state
+    for review_index, review_value in enumerate(reviews_array):
+        review_object: JsonObject | None = _as_json_object(review_value)
+        if review_object is None:
+            continue
+        state_text: str | None = _as_non_empty_text(review_object.get("state"))
+        if state_text is None:
+            continue
+        normalized_state: str = state_text.lower()
+        if normalized_state not in {"approved", "changes_requested"}:
+            continue
+        reviewer_key: str = _reviewer_key(review_object, review_index)
+        latest_decisions_by_reviewer[reviewer_key] = normalized_state
 
     for review_state in latest_decisions_by_reviewer.values():
         if review_state == "changes_requested":
@@ -447,10 +450,6 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
         if review_state == "approved":
             approved_state: str = "approved"
             return approved_state
-
-    if reviews_array is None:
-        unknown_state: str = "unknown"
-        return unknown_state
 
     pending_state: str = "pending_or_unreviewed"
     return pending_state
