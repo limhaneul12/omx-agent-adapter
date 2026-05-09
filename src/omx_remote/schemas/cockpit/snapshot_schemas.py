@@ -34,11 +34,30 @@ class CockpitLaneState(StrEnum):
     UNKNOWN = "unknown"
 
 
+class CockpitStatusSourceState(StrEnum):
+    """Normalized read status for a cockpit source surface."""
+
+    OBSERVED = "observed"
+    MISSING = "missing"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+    UNKNOWN = "unknown"
+
+
 class CockpitContradiction(StrictSchemaModel):
     """Represents one cross-surface state contradiction detected by cockpit."""
 
     category: NonEmptyString
     message: NonEmptyString
+
+
+class CockpitStatusSourceObservation(StrictSchemaModel):
+    """Represents one read-only source consulted for the cockpit snapshot."""
+
+    name: NonEmptyString
+    status: CockpitStatusSourceState
+    detail: NonEmptyString
+    evidence_path: NonEmptyString | None = None
 
 
 class CockpitTeamWorkerObservation(StrictSchemaModel):
@@ -86,7 +105,10 @@ class CockpitSnapshot(StrictSchemaModel):
     repo_root: NonEmptyString
     runtime_summary: str
     active_runtime_modes: tuple[NonEmptyString, ...]
+    discovered_teams: tuple[NonEmptyString, ...] = ()
+    status_sources: tuple[CockpitStatusSourceObservation, ...] = ()
     contradictions: tuple[CockpitContradiction, ...]
     lanes: tuple[CockpitLaneSnapshot, ...]
+    warnings: tuple[NonEmptyString, ...] = ()
     safe_to_mutate: bool
     recommended_next_action: NonEmptyString
