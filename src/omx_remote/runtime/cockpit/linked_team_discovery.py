@@ -19,6 +19,7 @@ class LinkedTeamDiscoveryResult:
     discovered_team_names: tuple[str, ...]
     inspected_sources: tuple[str, ...]
     warnings: tuple[str, ...]
+    goal_mirror_failure: str | None = None
 
 
 def discover_linked_team_names(repo_root: str | Path) -> LinkedTeamDiscoveryResult:
@@ -46,6 +47,7 @@ def discover_linked_team_names(repo_root: str | Path) -> LinkedTeamDiscoveryResu
             discovered_team_names=(),
             inspected_sources=inspected_sources,
             warnings=(payload_warning,),
+            goal_mirror_failure=payload_warning,
         )
         return warning_result
 
@@ -70,6 +72,7 @@ def discover_linked_team_names(repo_root: str | Path) -> LinkedTeamDiscoveryResu
             discovered_team_names=(),
             inspected_sources=inspected_sources,
             warnings=(validation_warning,),
+            goal_mirror_failure=validation_warning,
         )
         return invalid_result
 

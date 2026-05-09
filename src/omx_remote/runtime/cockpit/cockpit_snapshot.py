@@ -229,6 +229,10 @@ def _build_status_sources(
     Returns:
         tuple[CockpitStatusSourceObservation, ...]: Stable source status observations.
     """
+    first_team_discovery_source: str | None = None
+    if team_discovery.inspected_sources:
+        first_team_discovery_source = team_discovery.inspected_sources[0]
+
     goal_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
     goal_detail = "No adapter-owned Goal mirror state was found."
     goal_evidence_path: str | None = None
@@ -236,6 +240,10 @@ def _build_status_sources(
         goal_status = CockpitStatusSourceState.OBSERVED
         goal_detail = f"Goal mirror state for {goal_mirror_state.goal_id} was read."
         goal_evidence_path = f"{goal_mirror_state.working_directory}/.agent-remote/state/codex-goal.json"
+    elif team_discovery.goal_mirror_failure is not None:
+        goal_status = CockpitStatusSourceState.FAILED
+        goal_detail = team_discovery.goal_mirror_failure
+        goal_evidence_path = first_team_discovery_source
 
     team_discovery_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
     team_discovery_detail = "No exact linked Team names were discovered."
@@ -264,10 +272,6 @@ def _build_status_sources(
     if ultrawork_warnings:
         ultrawork_status = CockpitStatusSourceState.FAILED
         ultrawork_detail = "Ultrawork state was classified with warnings."
-
-    first_team_discovery_source: str | None = None
-    if team_discovery.inspected_sources:
-        first_team_discovery_source = team_discovery.inspected_sources[0]
 
     sources: tuple[CockpitStatusSourceObservation, ...] = (
         CockpitStatusSourceObservation(

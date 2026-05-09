@@ -297,6 +297,41 @@ def test_discovery_reports_invalid_goal_mirror_object_as_warning(
     )
 
 
+def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    state_path.parent.mkdir(parents=True)
+    state_path.write_text("{not-json", encoding="utf-8")
+
+    async def fake_read_runtime_status() -> RuntimeStatus:
+        return _idle_runtime_status()
+
+    async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
+        return ActiveRuntimeModes(active_modes=())
+
+    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        cockpit_snapshot,
+        "read_active_runtime_modes",
+        fake_read_active_runtime_modes,
+    )
+
+    snapshot = asyncio.run(
+        read_cockpit_snapshot(CockpitSnapshotRequest(repo_root=str(tmp_path)))
+    )
+
+    source_by_name = {source.name: source for source in snapshot.status_sources}
+    goal_source = source_by_name["goal_mirror_state"]
+
+    assert goal_source.status == CockpitStatusSourceState.FAILED
+    assert goal_source.evidence_path == str(state_path)
+    assert goal_source.detail.startswith(
+        f"Malformed Goal mirror state JSON at {state_path}:"
+    )
+
+
 def test_merge_team_names_keeps_explicit_order_and_dedupes() -> None:
     result = merge_explicit_and_discovered_team_names(
         explicit_team_names=("alpha", "beta", "alpha"),
