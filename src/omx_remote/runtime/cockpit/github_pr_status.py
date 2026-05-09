@@ -15,6 +15,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import CockpitPullRequestObserv
 GITHUB_API_ROOT = "https://api.github.com"
 CODEX_NO_MAJOR_ISSUES_MARKER = "didn't find any major issues"
 GITHUB_API_PAGE_SIZE = 100
+GITHUB_CREDENTIAL_TIMEOUT_SECONDS = 5
 
 
 def _run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
@@ -53,6 +54,18 @@ def _run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
     return command_output
 
 
+def _build_noninteractive_git_env() -> dict[str, str]:
+    """Build a git environment that forbids credential prompts.
+
+    Returns:
+        dict[str, str]: Environment variables for non-interactive git commands.
+    """
+    git_env: dict[str, str] = os.environ.copy()
+    git_env["GIT_TERMINAL_PROMPT"] = "0"
+    git_env["GCM_INTERACTIVE"] = "never"
+    return git_env
+
+
 def _read_git_credential_token(repo_root: str) -> str | None:
     """Read a GitHub credential token without logging or persisting it.
 
@@ -62,6 +75,7 @@ def _read_git_credential_token(repo_root: str) -> str | None:
     Returns:
         str | None: Credential password/token when available, otherwise None.
     """
+    credential_env: dict[str, str] = _build_noninteractive_git_env()
     try:
         completed_process: subprocess.CompletedProcess[str] = subprocess.run(
             ["git", "credential", "fill"],
@@ -70,8 +84,10 @@ def _read_git_credential_token(repo_root: str) -> str | None:
             text=True,
             capture_output=True,
             check=False,
+            env=credential_env,
+            timeout=GITHUB_CREDENTIAL_TIMEOUT_SECONDS,
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         missing_token: str | None = None
         return missing_token
 
@@ -677,7 +693,7 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
         repo_root,
         f"/repos/{owner}/{repo}/pulls/{pull_request_number}/reviews",
     )
-    comments_payload: JsonValue | None = _read_github_api_json(
+    comments_payload: JsonValue | None = _read_github_paginated_array_json(
         repo_root,
         f"/repos/{owner}/{repo}/issues/{pull_request_number}/comments",
     )
