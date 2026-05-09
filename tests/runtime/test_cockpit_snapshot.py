@@ -383,6 +383,40 @@ def test_cockpit_promotes_explicit_team_observation_into_ralph_team_lane(
     assert ralph_team_lane.recommended_next_action == "inspect_team_evidence"
 
 
+def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
+    tmp_path: Path,
+) -> None:
+    team_observation = CockpitTeamObservation(
+        team_name="alpha-team",
+        status="active",
+        phase="team-exec",
+        task_count=2,
+        event_count=3,
+        worker_statuses=(
+            CockpitTeamWorkerObservation(
+                worker="worker-1",
+                state="running",
+                updated_at="2026-05-08T00:00:00.000Z",
+            ),
+        ),
+        warnings=(),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=_idle_runtime_status(),
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=("alpha-team",),
+        team_observations=(team_observation,),
+    )
+
+    assert snapshot.safe_to_mutate is False
+    assert snapshot.recommended_next_action == "inspect_team_evidence"
+
+
 def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
     tmp_path: Path,
     monkeypatch,
@@ -542,3 +576,49 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
     assert ralph_team_lane.team_observations[0].team_name == "discovered-team"
     assert source_states["team_discovery"] == CockpitStatusSourceState.OBSERVED
     assert source_states["team_selection"] == CockpitStatusSourceState.OBSERVED
+
+
+def test_read_cockpit_snapshot_exposes_team_evidence_status_source(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    async def fake_read_runtime_status() -> RuntimeStatus:
+        return _idle_runtime_status()
+
+    async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
+        return ActiveRuntimeModes(active_modes=())
+
+    async def fake_read_team_status(request) -> TeamStatusSnapshot:
+        return TeamStatusSnapshot(
+            team_name=request.team_name,
+            status="active",
+            phase="team-exec",
+        )
+
+    async def fake_read_tasks(request) -> TeamApiListTasksSnapshot:
+        return TeamApiListTasksSnapshot(count=0, tasks=())
+
+    async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
+        return TeamApiReadEventsSnapshot(count=0, cursor="cursor-0", events=())
+
+    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        cockpit_snapshot,
+        "read_active_runtime_modes",
+        fake_read_active_runtime_modes,
+    )
+    monkeypatch.setattr(cockpit_snapshot, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(cockpit_snapshot, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(cockpit_snapshot, "read_team_api_read_events", fake_read_events)
+
+    snapshot = asyncio.run(
+        read_cockpit_snapshot(
+            CockpitSnapshotRequest(repo_root=str(tmp_path), team_names=("alpha-team",))
+        )
+    )
+
+    source_by_name = {source.name: source for source in snapshot.status_sources}
+    team_source = source_by_name["team_evidence"]
+
+    assert team_source.status == CockpitStatusSourceState.OBSERVED
+    assert team_source.detail == "Team evidence was read for: alpha-team."

@@ -98,6 +98,7 @@ async def read_cockpit_snapshot(
         goal_mirror_state=goal_mirror_state,
         team_discovery=team_discovery,
         selected_team_names=selected_team_names,
+        team_observations=team_observations,
         runtime_status=runtime_status,
         active_runtime_modes=active_runtime_modes,
         ultrawork_warnings=tuple(ultrawork_warnings),
@@ -168,11 +169,13 @@ def build_cockpit_snapshot(
         contradictions=contradictions,
         runtime_status=runtime_status,
         active_runtime_modes=active_runtime_modes,
+        team_observations=team_observations,
     )
     recommended_next_action: str = _derive_recommended_next_action(
         contradictions=contradictions,
         active_runtime_modes=active_runtime_modes,
         goal_mirror_state=goal_mirror_state,
+        team_observations=team_observations,
     )
     result: CockpitSnapshot = CockpitSnapshot(
         repo_root=repo_root,
@@ -212,6 +215,7 @@ def _build_status_sources(
     goal_mirror_state: CodexGoalMirrorState | None,
     team_discovery: LinkedTeamDiscoveryResult,
     selected_team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...],
     runtime_status: RuntimeStatus,
     active_runtime_modes: ActiveRuntimeModes,
     ultrawork_warnings: tuple[str, ...],
@@ -222,6 +226,7 @@ def _build_status_sources(
         goal_mirror_state [CodexGoalMirrorState | None]: Optional Goal mirror evidence.
         team_discovery [LinkedTeamDiscoveryResult]: Team-name discovery evidence.
         selected_team_names [tuple[str, ...]]: Team names selected for evidence reads.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
         runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
         active_runtime_modes [ActiveRuntimeModes]: Active runtime modes snapshot.
         ultrawork_warnings [tuple[str, ...]]: Ultrawork source warnings.
@@ -301,6 +306,10 @@ def _build_status_sources(
             status=team_selection_status,
             detail=team_selection_detail,
         ),
+        _build_team_evidence_source(
+            selected_team_names=selected_team_names,
+            team_observations=team_observations,
+        ),
         CockpitStatusSourceObservation(
             name="ultrawork_state",
             status=ultrawork_status,
@@ -308,6 +317,56 @@ def _build_status_sources(
         ),
     )
     return sources
+
+
+def _build_team_evidence_source(
+    selected_team_names: tuple[str, ...],
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> CockpitStatusSourceObservation:
+    """Build the Team evidence source observation.
+
+    Args:
+        selected_team_names [tuple[str, ...]]: Team names selected for evidence reads.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        CockpitStatusSourceObservation: Source status for Team evidence reads.
+    """
+    if not selected_team_names:
+        skipped_source = CockpitStatusSourceObservation(
+            name="team_evidence",
+            status=CockpitStatusSourceState.SKIPPED,
+            detail="No Team names were selected for evidence reads.",
+        )
+        return skipped_source
+
+    selected_team_text: str = ", ".join(selected_team_names)
+    if not team_observations:
+        failed_source = CockpitStatusSourceObservation(
+            name="team_evidence",
+            status=CockpitStatusSourceState.FAILED,
+            detail=f"Team names were selected but no Team evidence was read: {selected_team_text}.",
+        )
+        return failed_source
+
+    warnings: tuple[str, ...] = _collect_team_observation_warnings(team_observations)
+    if warnings:
+        warning_source = CockpitStatusSourceObservation(
+            name="team_evidence",
+            status=CockpitStatusSourceState.FAILED,
+            detail=f"Team evidence was read with warnings for: {selected_team_text}.",
+        )
+        return warning_source
+
+    observed_team_text: str = ", ".join(
+        observation.team_name for observation in team_observations
+    )
+    observed_source = CockpitStatusSourceObservation(
+        name="team_evidence",
+        status=CockpitStatusSourceState.OBSERVED,
+        detail=f"Team evidence was read for: {observed_team_text}.",
+    )
+    return observed_source
 
 
 def _build_top_level_warnings(
@@ -965,6 +1024,7 @@ def _derive_safe_to_mutate(
     contradictions: tuple[CockpitContradiction, ...],
     runtime_status: RuntimeStatus,
     active_runtime_modes: ActiveRuntimeModes,
+    team_observations: tuple[CockpitTeamObservation, ...],
 ) -> bool:
     """Derive whether cockpit observations are safe for mutation.
 
@@ -972,12 +1032,14 @@ def _derive_safe_to_mutate(
         contradictions [tuple[CockpitContradiction, ...]]: Cross-surface contradictions.
         runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
         active_runtime_modes [ActiveRuntimeModes]: Active runtime mode list.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
-        bool: ``True`` only when no active runtime or contradictions are visible.
+        bool: ``True`` only when no active runtime, active Team, or contradictions are visible.
     """
     has_active_runtime: bool = bool(active_runtime_modes.active_modes) or runtime_status.has_active_modes is True
-    safe_to_mutate: bool = not contradictions and not has_active_runtime
+    has_active_team: bool = _team_observations_include_active_runtime(team_observations)
+    safe_to_mutate: bool = not contradictions and not has_active_runtime and not has_active_team
     return safe_to_mutate
 
 
@@ -985,6 +1047,7 @@ def _derive_recommended_next_action(
     contradictions: tuple[CockpitContradiction, ...],
     active_runtime_modes: ActiveRuntimeModes,
     goal_mirror_state: CodexGoalMirrorState | None,
+    team_observations: tuple[CockpitTeamObservation, ...],
 ) -> str:
     """Derive one top-level next action from cockpit observations.
 
@@ -992,6 +1055,7 @@ def _derive_recommended_next_action(
         contradictions [tuple[CockpitContradiction, ...]]: Cross-surface contradictions.
         active_runtime_modes [ActiveRuntimeModes]: Active runtime mode list.
         goal_mirror_state [CodexGoalMirrorState | None]: Optional Goal mirror state.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
         str: Top-level recommended next action marker.
@@ -1002,9 +1066,30 @@ def _derive_recommended_next_action(
     if active_runtime_modes.active_modes:
         observe_action: str = "observe_active_runtime"
         return observe_action
+    if _team_observations_include_active_runtime(team_observations):
+        inspect_team_action: str = "inspect_team_evidence"
+        return inspect_team_action
     if goal_mirror_state and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH:
         prepare_action: str = "prepare_ralph"
         return prepare_action
 
     default_action: str = "observe"
     return default_action
+
+
+def _team_observations_include_active_runtime(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> bool:
+    """Detect whether Team observations show active Team runtime evidence.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        bool: ``True`` when at least one Team observation is not missing, inactive, or ended.
+    """
+    active_statuses: tuple[str, ...] = ("missing", "inactive", "ended")
+    has_active_team: bool = any(
+        observation.status not in active_statuses for observation in team_observations
+    )
+    return has_active_team
