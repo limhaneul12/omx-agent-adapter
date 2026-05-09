@@ -309,6 +309,31 @@ def _head_sha_from_pull(pull_request: JsonObject) -> str | None:
     return sha_text
 
 
+def _reviewer_key(review_object: JsonObject, review_index: int) -> str:
+    """Build a stable reviewer key for a GitHub review payload.
+
+    Args:
+        review_object [JsonObject]: Review object payload.
+        review_index [int]: Chronological review index used when no user login exists.
+
+    Returns:
+        str: Reviewer identity key for latest-decision tracking.
+    """
+    user_value: JsonValue | None = review_object.get("user")
+    user_object: JsonObject | None = _as_json_object(user_value)
+    if user_object is None:
+        fallback_key: str = f"anonymous-review-{review_index}"
+        return fallback_key
+
+    login_text: str | None = _as_non_empty_text(user_object.get("login"))
+    if login_text is None:
+        missing_login_key: str = f"anonymous-review-{review_index}"
+        return missing_login_key
+
+    reviewer_key: str = login_text
+    return reviewer_key
+
+
 def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: JsonValue | None) -> str:
     """Classify review state from GitHub reviews and Codex issue comments.
 
@@ -320,9 +345,9 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
         str: Normalized review state summary.
     """
     reviews_array: JsonArray | None = _as_json_array(reviews_payload)
-    saw_approved_review: bool = False
+    latest_decisions_by_reviewer: dict[str, str] = {}
     if reviews_array is not None:
-        for review_value in reviews_array:
+        for review_index, review_value in enumerate(reviews_array):
             review_object: JsonObject | None = _as_json_object(review_value)
             if review_object is None:
                 continue
@@ -330,11 +355,15 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
             if state_text is None:
                 continue
             normalized_state: str = state_text.lower()
-            if normalized_state == "changes_requested":
-                changes_requested_state: str = "changes_requested"
-                return changes_requested_state
-            if normalized_state == "approved":
-                saw_approved_review = True
+            if normalized_state not in {"approved", "changes_requested"}:
+                continue
+            reviewer_key: str = _reviewer_key(review_object, review_index)
+            latest_decisions_by_reviewer[reviewer_key] = normalized_state
+
+    for review_state in latest_decisions_by_reviewer.values():
+        if review_state == "changes_requested":
+            changes_requested_state: str = "changes_requested"
+            return changes_requested_state
 
     comments_array: JsonArray | None = _as_json_array(comments_payload)
     if comments_array is not None:
@@ -349,9 +378,10 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
                 codex_state: str = "codex_no_major_issues"
                 return codex_state
 
-    if saw_approved_review:
-        approved_state: str = "approved"
-        return approved_state
+    for review_state in latest_decisions_by_reviewer.values():
+        if review_state == "approved":
+            approved_state: str = "approved"
+            return approved_state
 
     if reviews_array is None:
         unknown_state: str = "unknown"
