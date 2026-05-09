@@ -219,6 +219,45 @@ def _read_github_paginated_array_json(repo_root: str, api_path: str) -> JsonValu
         page_number += 1
 
 
+def _read_github_paginated_object_array_json(
+    repo_root: str,
+    api_path: str,
+    array_key: str,
+) -> JsonValue | None:
+    """Read every page of a GitHub REST object-wrapped array payload.
+
+    Args:
+        repo_root [str]: Repository root used for token lookup.
+        api_path [str]: API path beginning with `/repos/...` and returning an object.
+        array_key [str]: Object key that contains the paginated array.
+
+    Returns:
+        JsonValue | None: Object with the combined array payload, or None on page failure.
+    """
+    combined_array: JsonArray = []
+    page_number: int = 1
+    while True:
+        page_path: str = _build_paginated_array_path(api_path, page_number)
+        page_payload: JsonValue | None = _read_github_api_json(repo_root, page_path)
+        page_object: JsonObject | None = _as_json_object(page_payload)
+        if page_object is None:
+            missing_page: JsonValue | None = None
+            return missing_page
+
+        page_array: JsonArray | None = _as_json_array(page_object.get(array_key))
+        if page_array is None:
+            malformed_page: JsonValue | None = None
+            return malformed_page
+
+        combined_array.extend(page_array)
+        if len(page_array) < GITHUB_API_PAGE_SIZE:
+            paginated_payload: JsonObject = {array_key: combined_array}
+            combined_payload: JsonValue | None = paginated_payload
+            return combined_payload
+
+        page_number += 1
+
+
 def _parse_github_owner_repo(remote_url: str) -> tuple[str, str] | None:
     """Parse a GitHub owner/repo pair from a git remote URL.
 
@@ -700,9 +739,10 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
         repo_root,
         f"/repos/{owner}/{repo}/commits/{head_sha}/status",
     )
-    check_runs_payload: JsonValue | None = _read_github_api_json(
+    check_runs_payload: JsonValue | None = _read_github_paginated_object_array_json(
         repo_root,
         f"/repos/{owner}/{repo}/commits/{head_sha}/check-runs",
+        "check_runs",
     )
     review_state: str = _classify_review_state(reviews_payload, comments_payload)
     check_state: str = _classify_check_state(status_payload, check_runs_payload)
