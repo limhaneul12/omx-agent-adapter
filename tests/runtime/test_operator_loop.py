@@ -52,10 +52,20 @@ def test_operate_ralph_resume_maps_missing_state_to_launch_hint(monkeypatch) -> 
 
 
 def test_operate_ralph_team_launch_maps_success_to_observe(monkeypatch) -> None:
+    observed_preflight_flags: list[bool] = []
+
+    def fake_build_ralph_team_launch_plan(
+        allow_non_tty: bool,
+        require_live_owner_preflight: bool = False,
+    ):
+        _ = allow_non_tty
+        observed_preflight_flags.append(require_live_owner_preflight)
+        return ["team", "3:executor", "Ship feature"], []
+
     monkeypatch.setattr(
         operator_loop,
         "build_ralph_team_launch_plan",
-        lambda allow_non_tty: (["team", "3:executor", "Ship feature"], []),
+        fake_build_ralph_team_launch_plan,
     )
     monkeypatch.setattr(
         operator_loop,
@@ -69,6 +79,42 @@ def test_operate_ralph_team_launch_maps_success_to_observe(monkeypatch) -> None:
     assert result.action == "launch"
     assert result.loop_state == "success"
     assert result.next_action == "observe"
+    assert observed_preflight_flags == [True]
+
+
+
+def test_operate_ralph_team_launch_blocks_owner_unsafe_runtime_before_omx(monkeypatch) -> None:
+    observed_commands: list[list[str]] = []
+
+    def fake_build_ralph_team_launch_plan(
+        allow_non_tty: bool,
+        require_live_owner_preflight: bool = False,
+    ):
+        _ = allow_non_tty
+        if require_live_owner_preflight:
+            raise ValueError("installed OMX does not support preserving Team DAG node.owner")
+        return ["team", "3", "Ship feature"], []
+
+    def fake_run_omx_command(command: list[str]) -> OmxCommandResult:
+        observed_commands.append(command)
+        return OmxCommandResult(exit_code=0, stdout="should-not-run", stderr="")
+
+    monkeypatch.setattr(
+        operator_loop,
+        "build_ralph_team_launch_plan",
+        fake_build_ralph_team_launch_plan,
+    )
+    monkeypatch.setattr(operator_loop, "run_omx_command", fake_run_omx_command)
+
+    result = operator_loop.operate_ralph_team_launch(allow_non_tty=True)
+
+    assert result.lane == "team"
+    assert result.action == "launch"
+    assert result.loop_state == "terminal_failure"
+    assert result.next_action == "escalate"
+    assert result.command_result is not None
+    assert "does not support preserving Team DAG node.owner" in result.command_result.stderr
+    assert observed_commands == []
 
 
 

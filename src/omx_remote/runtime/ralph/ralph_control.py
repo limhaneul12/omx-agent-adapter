@@ -15,6 +15,9 @@ from omx_remote.runtime.ralph.ralph_state import (
 from omx_remote.runtime.ralph.ralph_team_handoff import (
     write_ralph_team_dag_handoff_artifacts,
 )
+from omx_remote.runtime.ralph.ralph_team_owner_preflight import (
+    require_ralph_team_live_launch_owner_support,
+)
 from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.shared.omx_enums.ralph_enums import RalphStateClassification
@@ -90,11 +93,15 @@ def build_ralph_launch_plan(
 
 def build_ralph_team_launch_plan(
     allow_non_tty: bool,
+    require_live_owner_preflight: bool = False,
+    omx_dist_root: Path | None = None,
 ) -> tuple[list[str], list[str]]:
     """Builds Team launch command from the typed Ralph PRD artifact.
 
     Args:
         allow_non_tty [bool]: Whether non-interactive Team launch is explicitly allowed.
+        require_live_owner_preflight [bool]: Whether to block live launch unless OMX preserves DAG owners.
+        omx_dist_root [Path | None]: Optional OMX distribution root override for capability checks.
 
     Returns:
         tuple[list[str], list[str]]: Team launch command plus preflight warnings.
@@ -109,6 +116,8 @@ def build_ralph_team_launch_plan(
     canonical_launch_task, team_worker_count = resolve_ralph_team_launch_task_from_prd(
         ralph_prd_artifact=ralph_prd_artifact,
     )
+    if require_live_owner_preflight:
+        require_ralph_team_live_launch_owner_support(omx_dist_root=omx_dist_root)
     write_ralph_team_dag_handoff_artifacts(
         ralph_prd_artifact=ralph_prd_artifact,
         canonical_launch_task=canonical_launch_task,
