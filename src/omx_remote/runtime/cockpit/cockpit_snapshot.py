@@ -59,6 +59,8 @@ from omx_remote.teamwork.team_api_snapshot import (
 )
 from omx_remote.teamwork.team_snapshot import read_team_status
 
+_ACTIVE_TEAM_STATUSES: tuple[str, ...] = ("active",)
+
 
 async def read_cockpit_snapshot(
     request: CockpitSnapshotRequest,
@@ -891,10 +893,7 @@ def _derive_ralph_team_lane_state(
     Returns:
         CockpitLaneState: Aggregate Ralph -> Team lane state.
     """
-    has_active_team: bool = any(
-        observation.status not in ("missing", "inactive", "ended")
-        for observation in team_observations
-    )
+    has_active_team: bool = _team_observations_include_active_runtime(team_observations)
     if has_active_team:
         active_state: CockpitLaneState = CockpitLaneState.ACTIVE
         return active_state
@@ -1086,10 +1085,9 @@ def _team_observations_include_active_runtime(
         team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
 
     Returns:
-        bool: ``True`` when at least one Team observation is not missing, inactive, or ended.
+        bool: ``True`` when at least one Team observation has an explicit active status.
     """
-    active_statuses: tuple[str, ...] = ("missing", "inactive", "ended")
     has_active_team: bool = any(
-        observation.status not in active_statuses for observation in team_observations
+        observation.status in _ACTIVE_TEAM_STATUSES for observation in team_observations
     )
     return has_active_team

@@ -417,6 +417,37 @@ def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
     assert snapshot.recommended_next_action == "inspect_team_evidence"
 
 
+def test_cockpit_treats_unknown_team_status_as_degraded_not_active(
+    tmp_path: Path,
+) -> None:
+    team_observation = CockpitTeamObservation(
+        team_name="alpha-team",
+        status="unknown",
+        phase=None,
+        task_count=0,
+        event_count=0,
+        worker_statuses=(),
+        warnings=("team status read failed for alpha-team: transient failure",),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=_idle_runtime_status(),
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=("alpha-team",),
+        team_observations=(team_observation,),
+    )
+
+    lane_by_name = {lane.name: lane for lane in snapshot.lanes}
+
+    assert lane_by_name[CockpitLaneName.RALPH_TEAM].state == CockpitLaneState.UNKNOWN
+    assert snapshot.safe_to_mutate is True
+    assert snapshot.recommended_next_action == "observe"
+
+
 def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
     tmp_path: Path,
     monkeypatch,
