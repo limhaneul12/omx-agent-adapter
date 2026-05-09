@@ -68,6 +68,21 @@ class CockpitStatusSourceObservation(StrictSchemaModel):
     evidence_path: NonEmptyString | None = None
 
 
+class CockpitPullRequestObservation(StrictSchemaModel):
+    """Represents read-only PR/review/check evidence for a cockpit snapshot."""
+
+    provider: NonEmptyString
+    branch: NonEmptyString
+    status: NonEmptyString
+    pull_request_number: int | None = Field(default=None, ge=1)
+    mergeable_state: NonEmptyString | None = None
+    review_state: NonEmptyString
+    check_state: NonEmptyString
+    detail: NonEmptyString
+    url: NonEmptyString | None = None
+    warnings: tuple[NonEmptyString, ...] = ()
+
+
 class CockpitTeamWorkerObservation(StrictSchemaModel):
     """Represents one Team worker status observed by cockpit."""
 
@@ -115,6 +130,7 @@ class CockpitSnapshot(StrictSchemaModel):
     active_runtime_modes: tuple[NonEmptyString, ...]
     discovered_teams: tuple[NonEmptyString, ...] = ()
     status_sources: tuple[CockpitStatusSourceObservation, ...] = ()
+    pull_request_status: CockpitPullRequestObservation | None = None
     contradictions: tuple[CockpitContradiction, ...]
     lanes: tuple[CockpitLaneSnapshot, ...]
     warnings: tuple[NonEmptyString, ...] = ()

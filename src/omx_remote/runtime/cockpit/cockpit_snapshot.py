@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from omx_remote.runtime.cockpit.github_pr_status import read_github_pull_request_status
 from omx_remote.runtime.cockpit.linked_team_discovery import (
     LinkedTeamDiscoveryResult,
     discover_linked_team_names,
@@ -22,6 +23,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitLaneName,
     CockpitLaneSnapshot,
     CockpitLaneState,
+    CockpitPullRequestObservation,
     CockpitSnapshot,
     CockpitSnapshotRequest,
     CockpitStatusSourceObservation,
@@ -90,10 +92,14 @@ async def read_cockpit_snapshot(
     team_observations_task = asyncio.create_task(
         _read_team_observations(selected_team_names)
     )
+    pull_request_status_task = asyncio.create_task(
+        read_github_pull_request_status(request.repo_root)
+    )
 
     runtime_status: RuntimeStatus = await runtime_status_task
     active_runtime_modes: ActiveRuntimeModes = await active_modes_task
     team_observations: tuple[CockpitTeamObservation, ...] = await team_observations_task
+    pull_request_status: CockpitPullRequestObservation = await pull_request_status_task
     ultrawork_state_classification, ultrawork_warnings = _read_ultrawork_state(
         Path(request.repo_root)
     )
@@ -105,6 +111,7 @@ async def read_cockpit_snapshot(
         runtime_status=runtime_status,
         active_runtime_modes=active_runtime_modes,
         ultrawork_warnings=tuple(ultrawork_warnings),
+        pull_request_status=pull_request_status,
     )
     warnings: tuple[str, ...] = _build_top_level_warnings(
         warnings=team_discovery.warnings,
@@ -123,6 +130,7 @@ async def read_cockpit_snapshot(
         team_observations=team_observations,
         discovered_team_names=team_discovery.discovered_team_names,
         status_sources=status_sources,
+        pull_request_status=pull_request_status,
         warnings=warnings,
     )
     return result
@@ -139,6 +147,7 @@ def build_cockpit_snapshot(
     team_observations: tuple[CockpitTeamObservation, ...] = (),
     discovered_team_names: tuple[str, ...] = (),
     status_sources: tuple[CockpitStatusSourceObservation, ...] = (),
+    pull_request_status: CockpitPullRequestObservation | None = None,
     warnings: tuple[str, ...] = (),
 ) -> CockpitSnapshot:
     """Build a read-only cockpit snapshot from normalized surface observations.
@@ -152,6 +161,10 @@ def build_cockpit_snapshot(
         ultrawork_warnings [tuple[str, ...]]: Ultrawork status warnings.
         team_names [tuple[str, ...]]: Explicit Team names included in this cockpit read.
         team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+        discovered_team_names [tuple[str, ...]]: Exact Team names discovered from durable artifacts.
+        status_sources [tuple[CockpitStatusSourceObservation, ...]]: Source observations read by the cockpit.
+        pull_request_status [CockpitPullRequestObservation | None]: Optional PR/review/check evidence.
+        warnings [tuple[str, ...]]: Top-level degraded evidence warnings.
 
     Returns:
         CockpitSnapshot: Aggregated cockpit snapshot with lane states and top-level guidance.
@@ -194,6 +207,7 @@ def build_cockpit_snapshot(
         active_runtime_modes=active_runtime_modes.active_modes,
         discovered_teams=discovered_team_names,
         status_sources=status_sources,
+        pull_request_status=pull_request_status,
         contradictions=contradictions,
         lanes=lanes,
         warnings=warnings,
@@ -231,6 +245,7 @@ def _build_status_sources(
     runtime_status: RuntimeStatus,
     active_runtime_modes: ActiveRuntimeModes,
     ultrawork_warnings: tuple[str, ...],
+    pull_request_status: CockpitPullRequestObservation,
 ) -> tuple[CockpitStatusSourceObservation, ...]:
     """Build read-only source observations for the all-status cockpit.
 
@@ -242,6 +257,7 @@ def _build_status_sources(
         runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
         active_runtime_modes [ActiveRuntimeModes]: Active runtime modes snapshot.
         ultrawork_warnings [tuple[str, ...]]: Ultrawork source warnings.
+        pull_request_status [CockpitPullRequestObservation]: GitHub PR/review/check evidence.
 
     Returns:
         tuple[CockpitStatusSourceObservation, ...]: Stable source status observations.
@@ -326,6 +342,7 @@ def _build_status_sources(
             selected_team_names=selected_team_names,
             team_observations=team_observations,
         ),
+        _build_github_pull_request_source(pull_request_status),
         CockpitStatusSourceObservation(
             name="ultrawork_state",
             status=ultrawork_status,
@@ -333,6 +350,34 @@ def _build_status_sources(
         ),
     )
     return sources
+
+
+def _build_github_pull_request_source(
+    pull_request_status: CockpitPullRequestObservation,
+) -> CockpitStatusSourceObservation:
+    """Build the GitHub PR/review/check source observation.
+
+    Args:
+        pull_request_status [CockpitPullRequestObservation]: Pull request evidence.
+
+    Returns:
+        CockpitStatusSourceObservation: Source status for PR/review/check evidence.
+    """
+    source_status: CockpitStatusSourceState = CockpitStatusSourceState.OBSERVED
+    if pull_request_status.status == "no_open_pull_request":
+        source_status = CockpitStatusSourceState.MISSING
+    elif pull_request_status.status == "unavailable":
+        source_status = CockpitStatusSourceState.SKIPPED
+    elif pull_request_status.warnings:
+        source_status = CockpitStatusSourceState.FAILED
+
+    source = CockpitStatusSourceObservation(
+        name="github_pr_status",
+        status=source_status,
+        detail=pull_request_status.detail,
+        evidence_path=pull_request_status.url,
+    )
+    return source
 
 
 def _build_team_evidence_source(
