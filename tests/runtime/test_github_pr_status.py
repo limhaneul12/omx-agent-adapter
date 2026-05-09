@@ -19,7 +19,7 @@ def test_read_github_pull_request_status_reports_open_pr_review_and_checks(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         assert repo_root == str(tmp_path)
@@ -86,7 +86,7 @@ def test_read_github_pull_request_status_reports_missing_open_pr(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "main",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         assert (
@@ -126,7 +126,7 @@ def test_read_github_pull_request_status_reports_api_unavailable(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         return None
@@ -162,7 +162,7 @@ def test_read_github_pull_request_status_prioritizes_blocking_reviews(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         payloads = {
@@ -221,7 +221,7 @@ def test_read_github_pull_request_status_uses_latest_reviewer_decision(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         payloads = {
@@ -278,7 +278,7 @@ def test_read_github_pull_request_status_uses_later_review_pages(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         requested_paths.append(api_path)
@@ -357,7 +357,7 @@ def test_read_github_pull_request_status_uses_later_issue_comment_pages(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         requested_paths.append(api_path)
@@ -470,7 +470,7 @@ def test_read_github_pull_request_status_keeps_review_unknown_when_reviews_unava
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -542,7 +542,7 @@ def test_read_github_pull_request_status_uses_later_check_run_pages(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         requested_paths.append(api_path)
@@ -629,7 +629,7 @@ def test_read_github_pull_request_status_clears_dismissed_change_request(
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -697,7 +697,7 @@ def test_read_github_pull_request_status_ignores_non_codex_clean_marker_comments
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -767,7 +767,7 @@ def test_read_github_pull_request_status_keeps_check_state_unknown_when_check_ru
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -861,7 +861,7 @@ def test_read_github_pull_request_status_reports_no_checks_when_no_statuses_or_c
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -922,7 +922,7 @@ def test_read_github_pull_request_status_ignores_stale_codex_clean_marker_commen
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -992,7 +992,7 @@ def test_read_github_pull_request_status_keeps_check_state_unknown_for_stale_che
             ): "https://github.com/limhaneul12/omx-agent-adapter.git",
             ("branch", "--show-current"): "feat/cockpit-pr-status-source",
         }
-        return outputs[arguments]
+        return outputs.get(arguments)
 
     def fake_read_github_api_json(repo_root: str, api_path: str):
         if (
@@ -1043,3 +1043,67 @@ def test_read_github_pull_request_status_keeps_check_state_unknown_for_stale_che
 
     assert observation.check_state == "unknown"
     assert "check_state=unknown" in observation.detail
+
+
+def test_read_github_pull_request_status_queries_upstream_repo_for_fork_origin(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    requested_paths: list[str] = []
+
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            (
+                "remote",
+                "get-url",
+                "origin",
+            ): "https://github.com/contributor/omx-agent-adapter.git",
+            (
+                "remote",
+                "get-url",
+                "upstream",
+            ): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs.get(arguments)
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        requested_paths.append(api_path)
+        payloads = {
+            "/repos/limhaneul12/omx-agent-adapter/pulls?head=contributor:feat/cockpit-pr-status-source&state=open": [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ],
+            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1": [],
+            "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1": [],
+            "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status": {
+                "state": "success"
+            },
+            "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs?per_page=100&page=1": {
+                "check_runs": [
+                    {"name": "tests", "status": "completed", "conclusion": "success"}
+                ]
+            },
+        }
+        return payloads[api_path]
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.status == "open"
+    assert observation.url == "https://github.com/limhaneul12/omx-agent-adapter/pull/10"
+    assert (
+        "/repos/limhaneul12/omx-agent-adapter/pulls?head=contributor:feat/cockpit-pr-status-source&state=open"
+        in requested_paths
+    )

@@ -713,19 +713,61 @@ def _classify_check_state(
     return unknown_state
 
 
-def _build_pull_request_query_path(owner: str, repo: str, branch: str) -> str:
+def _select_pull_request_target_repo(
+    repo_root: str,
+    origin_owner_repo: tuple[str, str],
+) -> tuple[str, str]:
+    """Select the repository that owns the PR list to query.
+
+    Args:
+        repo_root [str]: Repository root used to read optional remotes.
+        origin_owner_repo [tuple[str, str]]: Parsed owner/repo from origin.
+
+    Returns:
+        tuple[str, str]: Owner/repo that should receive the pull-request query.
+    """
+    origin_owner, origin_repo = origin_owner_repo
+    upstream_url: str | None = _run_git_command(
+        repo_root,
+        ("remote", "get-url", "upstream"),
+    )
+    if upstream_url is None:
+        target_repo: tuple[str, str] = (origin_owner, origin_repo)
+        return target_repo
+
+    upstream_owner_repo: tuple[str, str] | None = _parse_github_owner_repo(upstream_url)
+    if upstream_owner_repo is None:
+        target_repo = (origin_owner, origin_repo)
+        return target_repo
+
+    upstream_owner, upstream_repo = upstream_owner_repo
+    if upstream_repo != origin_repo:
+        target_repo = (origin_owner, origin_repo)
+        return target_repo
+
+    target_repo = (upstream_owner, upstream_repo)
+    return target_repo
+
+
+def _build_pull_request_query_path(
+    target_owner: str,
+    repo: str,
+    head_owner: str,
+    branch: str,
+) -> str:
     """Build the open pull request query path for one branch.
 
     Args:
-        owner [str]: GitHub repository owner.
+        target_owner [str]: GitHub repository owner whose PR list should be queried.
         repo [str]: GitHub repository name.
+        head_owner [str]: GitHub owner for the branch head.
         branch [str]: Current branch name.
 
     Returns:
         str: GitHub REST API path and query string.
     """
-    encoded_head: str = urllib.parse.quote(f"{owner}:{branch}", safe=":/")
-    path: str = f"/repos/{owner}/{repo}/pulls?head={encoded_head}&state=open"
+    encoded_head: str = urllib.parse.quote(f"{head_owner}:{branch}", safe=":/")
+    path: str = f"/repos/{target_owner}/{repo}/pulls?head={encoded_head}&state=open"
     return path
 
 
@@ -812,8 +854,14 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
         )
         return observation
 
-    owner, repo = owner_repo
-    pulls_path: str = _build_pull_request_query_path(owner, repo, branch)
+    origin_owner, _origin_repo = owner_repo
+    target_owner, target_repo = _select_pull_request_target_repo(repo_root, owner_repo)
+    pulls_path: str = _build_pull_request_query_path(
+        target_owner,
+        target_repo,
+        origin_owner,
+        branch,
+    )
     pulls_payload: JsonValue | None = _read_github_api_json(repo_root, pulls_path)
     if pulls_payload is None:
         observation = CockpitPullRequestObservation(
@@ -873,19 +921,19 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
 
     reviews_payload: JsonValue | None = _read_github_paginated_array_json(
         repo_root,
-        f"/repos/{owner}/{repo}/pulls/{pull_request_number}/reviews",
+        f"/repos/{target_owner}/{target_repo}/pulls/{pull_request_number}/reviews",
     )
     comments_payload: JsonValue | None = _read_github_paginated_array_json(
         repo_root,
-        f"/repos/{owner}/{repo}/issues/{pull_request_number}/comments",
+        f"/repos/{target_owner}/{target_repo}/issues/{pull_request_number}/comments",
     )
     status_payload: JsonValue | None = _read_github_api_json(
         repo_root,
-        f"/repos/{owner}/{repo}/commits/{head_sha}/status",
+        f"/repos/{target_owner}/{target_repo}/commits/{head_sha}/status",
     )
     check_runs_payload: JsonValue | None = _read_github_paginated_object_array_json(
         repo_root,
-        f"/repos/{owner}/{repo}/commits/{head_sha}/check-runs",
+        f"/repos/{target_owner}/{target_repo}/commits/{head_sha}/check-runs",
         "check_runs",
     )
     review_state: str = _classify_review_state(
