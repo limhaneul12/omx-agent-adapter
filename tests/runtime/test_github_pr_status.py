@@ -427,10 +427,10 @@ def test_read_git_credential_token_disables_interactive_prompts(
     monkeypatch,
     tmp_path,
 ) -> None:
-    recorded_kwargs: list[object] = []
+    recorded_calls: list[tuple[object, object]] = []
 
     def fake_run(command_arguments, **kwargs):
-        recorded_kwargs.append(kwargs)
+        recorded_calls.append((command_arguments, kwargs))
         return subprocess.CompletedProcess(
             args=command_arguments,
             returncode=1,
@@ -443,8 +443,13 @@ def test_read_git_credential_token_disables_interactive_prompts(
     token = github_pr_status._read_git_credential_token(str(tmp_path))
 
     assert token is None
-    assert recorded_kwargs
-    run_kwargs = recorded_kwargs[0]
+    credential_calls = [
+        call_kwargs
+        for command_arguments, call_kwargs in recorded_calls
+        if command_arguments == ["git", "credential", "fill"]
+    ]
+    assert credential_calls
+    run_kwargs = credential_calls[0]
     assert isinstance(run_kwargs, dict)
     assert run_kwargs["timeout"] == github_pr_status.GITHUB_CREDENTIAL_TIMEOUT_SECONDS
     run_env = run_kwargs["env"]
@@ -747,3 +752,97 @@ def test_read_github_pull_request_status_ignores_non_codex_clean_marker_comments
 
     assert observation.review_state == "pending_or_unreviewed"
     assert "codex_no_major_issues" not in observation.detail
+
+
+def test_read_github_pull_request_status_keeps_check_state_unknown_when_check_runs_unavailable(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            (
+                "remote",
+                "get-url",
+                "origin",
+            ): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs[arguments]
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls?head=limhaneul12:feat/cockpit-pr-status-source&state=open"
+        ):
+            return [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ]
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1"
+        ):
+            return []
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1"
+        ):
+            return []
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status":
+            return {"state": "success"}
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs?per_page=100&page=1"
+        ):
+            return None
+        raise AssertionError(api_path)
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.check_state == "unknown"
+    assert "check_state=unknown" in observation.detail
+
+
+def test_read_git_credential_token_includes_repository_path(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    recorded_kwargs: list[object] = []
+
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        assert arguments == ("remote", "get-url", "origin")
+        return "https://github.com/limhaneul12/omx-agent-adapter.git"
+
+    def fake_run(command_arguments, **kwargs):
+        recorded_kwargs.append(kwargs)
+        return subprocess.CompletedProcess(
+            args=command_arguments,
+            returncode=0,
+            stdout="password=redacted-token\n",
+            stderr="",
+        )
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(github_pr_status.subprocess, "run", fake_run)
+
+    token = github_pr_status._read_git_credential_token(str(tmp_path))
+
+    assert token == "redacted-token"
+    assert recorded_kwargs
+    run_kwargs = recorded_kwargs[0]
+    assert isinstance(run_kwargs, dict)
+    assert run_kwargs["input"] == (
+        "protocol=https\nhost=github.com\npath=limhaneul12/omx-agent-adapter.git\n\n"
+    )

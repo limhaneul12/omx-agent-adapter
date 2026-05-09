@@ -67,6 +67,29 @@ def _build_noninteractive_git_env() -> dict[str, str]:
     return git_env
 
 
+def _build_git_credential_fill_input(repo_root: str) -> str:
+    """Build the credential lookup request for GitHub credentials.
+
+    Args:
+        repo_root [str]: Repository root used to read the origin remote.
+
+    Returns:
+        str: Credential description passed to `git credential fill`.
+    """
+    credential_lines: list[str] = ["protocol=https", "host=github.com"]
+    remote_url: str | None = _run_git_command(
+        repo_root, ("remote", "get-url", "origin")
+    )
+    if remote_url is not None:
+        owner_repo: tuple[str, str] | None = _parse_github_owner_repo(remote_url)
+        if owner_repo is not None:
+            owner, repo = owner_repo
+            credential_lines.append(f"path={owner}/{repo}.git")
+
+    credential_query: str = "\n".join(credential_lines) + "\n\n"
+    return credential_query
+
+
 def _read_git_credential_token(repo_root: str) -> str | None:
     """Read a GitHub credential token without logging or persisting it.
 
@@ -77,11 +100,12 @@ def _read_git_credential_token(repo_root: str) -> str | None:
         str | None: Credential password/token when available, otherwise None.
     """
     credential_env: dict[str, str] = _build_noninteractive_git_env()
+    credential_input: str = _build_git_credential_fill_input(repo_root)
     try:
         completed_process: subprocess.CompletedProcess[str] = subprocess.run(
             ["git", "credential", "fill"],
             cwd=repo_root,
-            input="protocol=https\nhost=github.com\n\n",
+            input=credential_input,
             text=True,
             capture_output=True,
             check=False,
@@ -612,6 +636,9 @@ def _classify_check_state(
     if status_state == "pending" or check_runs_state == "pending":
         pending_state: str = "pending"
         return pending_state
+    if status_state is None or check_runs_state == "unknown":
+        unknown_state: str = "unknown"
+        return unknown_state
     if status_state == "success" or check_runs_state == "success":
         success_state: str = "success"
         return success_state
