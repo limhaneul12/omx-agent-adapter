@@ -13,7 +13,6 @@ from omx_remote.adapter_types.json_types import JsonArray, JsonObject, JsonValue
 from omx_remote.schemas.cockpit.snapshot_schemas import CockpitPullRequestObservation
 
 GITHUB_API_ROOT = "https://api.github.com"
-GITHUB_DEFAULT_BASE_BRANCH = "main"
 CODEX_NO_MAJOR_ISSUES_MARKER = "didn't find any major issues"
 
 
@@ -320,6 +319,23 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
     Returns:
         str: Normalized review state summary.
     """
+    reviews_array: JsonArray | None = _as_json_array(reviews_payload)
+    saw_approved_review: bool = False
+    if reviews_array is not None:
+        for review_value in reviews_array:
+            review_object: JsonObject | None = _as_json_object(review_value)
+            if review_object is None:
+                continue
+            state_text: str | None = _as_non_empty_text(review_object.get("state"))
+            if state_text is None:
+                continue
+            normalized_state: str = state_text.lower()
+            if normalized_state == "changes_requested":
+                changes_requested_state: str = "changes_requested"
+                return changes_requested_state
+            if normalized_state == "approved":
+                saw_approved_review = True
+
     comments_array: JsonArray | None = _as_json_array(comments_payload)
     if comments_array is not None:
         for comment_value in comments_array:
@@ -333,29 +349,13 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
                 codex_state: str = "codex_no_major_issues"
                 return codex_state
 
-    reviews_array: JsonArray | None = _as_json_array(reviews_payload)
-    if reviews_array is None:
-        unknown_state: str = "unknown"
-        return unknown_state
-
-    saw_approved_review: bool = False
-    for review_value in reviews_array:
-        review_object: JsonObject | None = _as_json_object(review_value)
-        if review_object is None:
-            continue
-        state_text: str | None = _as_non_empty_text(review_object.get("state"))
-        if state_text is None:
-            continue
-        normalized_state: str = state_text.lower()
-        if normalized_state == "changes_requested":
-            changes_requested_state: str = "changes_requested"
-            return changes_requested_state
-        if normalized_state == "approved":
-            saw_approved_review = True
-
     if saw_approved_review:
         approved_state: str = "approved"
         return approved_state
+
+    if reviews_array is None:
+        unknown_state: str = "unknown"
+        return unknown_state
 
     pending_state: str = "pending_or_unreviewed"
     return pending_state
@@ -452,10 +452,7 @@ def _build_pull_request_query_path(owner: str, repo: str, branch: str) -> str:
         str: GitHub REST API path and query string.
     """
     encoded_head: str = urllib.parse.quote(f"{owner}:{branch}", safe=":/")
-    path: str = (
-        f"/repos/{owner}/{repo}/pulls?head={encoded_head}"
-        f"&base={GITHUB_DEFAULT_BASE_BRANCH}&state=open"
-    )
+    path: str = f"/repos/{owner}/{repo}/pulls?head={encoded_head}&state=open"
     return path
 
 
