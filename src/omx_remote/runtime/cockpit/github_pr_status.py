@@ -459,14 +459,39 @@ def _comment_author_login(comment_object: JsonObject) -> str | None:
     return login_text
 
 
-def _is_codex_no_major_issues_comment(comment_object: JsonObject) -> bool:
-    """Check whether an issue comment is an authenticated Codex clean-review marker.
+def _body_mentions_head_sha(body_text: str, head_sha: str) -> bool:
+    """Check whether text names the current head commit.
+
+    Args:
+        body_text [str]: Text to inspect.
+        head_sha [str]: Current PR head SHA.
+
+    Returns:
+        bool: True when body text contains the full or short head SHA.
+    """
+    normalized_body: str = body_text.lower()
+    normalized_head_sha: str = head_sha.lower()
+    short_head_sha: str = normalized_head_sha[:10]
+    if normalized_head_sha in normalized_body or short_head_sha in normalized_body:
+        mentions_head_sha: bool = True
+        return mentions_head_sha
+
+    mentions_head_sha = False
+    return mentions_head_sha
+
+
+def _is_codex_no_major_issues_comment(
+    comment_object: JsonObject,
+    head_sha: str,
+) -> bool:
+    """Check whether an issue comment is a current Codex clean-review marker.
 
     Args:
         comment_object [JsonObject]: Issue comment payload.
+        head_sha [str]: Current PR head SHA.
 
     Returns:
-        bool: True when the Codex bot authored a no-major-issues marker.
+        bool: True when the Codex bot authored a no-major-issues marker for head.
     """
     author_login: str | None = _comment_author_login(comment_object)
     if author_login != CODEX_REVIEW_BOT_LOGIN:
@@ -478,11 +503,15 @@ def _is_codex_no_major_issues_comment(comment_object: JsonObject) -> bool:
         is_codex_marker = False
         return is_codex_marker
 
-    if CODEX_NO_MAJOR_ISSUES_MARKER in body_text.lower():
-        is_codex_marker = True
+    if CODEX_NO_MAJOR_ISSUES_MARKER not in body_text.lower():
+        is_codex_marker = False
         return is_codex_marker
 
-    is_codex_marker = False
+    if not _body_mentions_head_sha(body_text, head_sha):
+        is_codex_marker = False
+        return is_codex_marker
+
+    is_codex_marker = True
     return is_codex_marker
 
 
@@ -512,13 +541,16 @@ def _reviewer_key(review_object: JsonObject, review_index: int) -> str:
 
 
 def _classify_review_state(
-    reviews_payload: JsonValue | None, comments_payload: JsonValue | None
+    reviews_payload: JsonValue | None,
+    comments_payload: JsonValue | None,
+    head_sha: str,
 ) -> str:
     """Classify review state from GitHub reviews and Codex issue comments.
 
     Args:
         reviews_payload [JsonValue | None]: Pull request reviews API payload.
         comments_payload [JsonValue | None]: Issue comments API payload.
+        head_sha [str]: Current PR head SHA.
 
     Returns:
         str: Normalized review state summary.
@@ -556,7 +588,7 @@ def _classify_review_state(
             comment_object: JsonObject | None = _as_json_object(comment_value)
             if comment_object is None:
                 continue
-            if _is_codex_no_major_issues_comment(comment_object):
+            if _is_codex_no_major_issues_comment(comment_object, head_sha):
                 codex_state: str = "codex_no_major_issues"
                 return codex_state
 
@@ -603,6 +635,9 @@ def _classify_check_runs(check_runs_payload: JsonValue | None) -> str:
             return failure_state
         if conclusion_text in {"success", "skipped", "neutral"}:
             saw_success_like_run = True
+            continue
+        unknown_state: str = "unknown"
+        return unknown_state
 
     if saw_success_like_run:
         success_state: str = "success"
@@ -853,7 +888,11 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
         f"/repos/{owner}/{repo}/commits/{head_sha}/check-runs",
         "check_runs",
     )
-    review_state: str = _classify_review_state(reviews_payload, comments_payload)
+    review_state: str = _classify_review_state(
+        reviews_payload,
+        comments_payload,
+        head_sha,
+    )
     check_state: str = _classify_check_state(status_payload, check_runs_payload)
     detail: str = _build_observation_detail(
         pull_request_number=pull_request_number,

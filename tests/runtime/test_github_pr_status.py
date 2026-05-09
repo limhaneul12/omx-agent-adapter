@@ -36,7 +36,7 @@ def test_read_github_pull_request_status_reports_open_pr_review_and_checks(
             "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1": [],
             "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1": [
                 {
-                    "body": "Didn't find any major issues. Breezy!",
+                    "body": "Didn't find any major issues. Breezy! Reviewed commit: `abc123`",
                     "user": {"login": "chatgpt-codex-connector[bot]"},
                 }
             ],
@@ -180,7 +180,7 @@ def test_read_github_pull_request_status_prioritizes_blocking_reviews(
             ],
             "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1": [
                 {
-                    "body": "Didn't find any major issues. Breezy!",
+                    "body": "Didn't find any major issues. Breezy! Reviewed commit: `abc123`",
                     "user": {"login": "chatgpt-codex-connector[bot]"},
                 }
             ],
@@ -390,7 +390,7 @@ def test_read_github_pull_request_status_uses_later_issue_comment_pages(
         ):
             return [
                 {
-                    "body": "Didn't find any major issues. Breezy!",
+                    "body": "Didn't find any major issues. Breezy! Reviewed commit: `abc123`",
                     "user": {"login": "chatgpt-codex-connector[bot]"},
                 }
             ]
@@ -497,7 +497,7 @@ def test_read_github_pull_request_status_keeps_review_unknown_when_reviews_unava
         ):
             return [
                 {
-                    "body": "Didn't find any major issues. Breezy!",
+                    "body": "Didn't find any major issues. Breezy! Reviewed commit: `abc123`",
                     "user": {"login": "chatgpt-codex-connector[bot]"},
                 }
             ]
@@ -907,3 +907,139 @@ def test_read_github_pull_request_status_reports_no_checks_when_no_statuses_or_c
 
     assert observation.check_state == "no_checks"
     assert "check_state=no_checks" in observation.detail
+
+
+def test_read_github_pull_request_status_ignores_stale_codex_clean_marker_comments(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            (
+                "remote",
+                "get-url",
+                "origin",
+            ): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs[arguments]
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls?head=limhaneul12:feat/cockpit-pr-status-source&state=open"
+        ):
+            return [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ]
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1"
+        ):
+            return []
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1"
+        ):
+            return [
+                {
+                    "body": "Didn't find any major issues. Breezy! Reviewed commit: `oldsha0000`",
+                    "user": {"login": "chatgpt-codex-connector[bot]"},
+                }
+            ]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status":
+            return {"state": "success"}
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs?per_page=100&page=1"
+        ):
+            return {
+                "check_runs": [
+                    {"name": "tests", "status": "completed", "conclusion": "success"}
+                ]
+            }
+        raise AssertionError(api_path)
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.review_state == "pending_or_unreviewed"
+    assert "codex_no_major_issues" not in observation.detail
+
+
+def test_read_github_pull_request_status_keeps_check_state_unknown_for_stale_check_runs(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            (
+                "remote",
+                "get-url",
+                "origin",
+            ): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs[arguments]
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls?head=limhaneul12:feat/cockpit-pr-status-source&state=open"
+        ):
+            return [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ]
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1"
+        ):
+            return []
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/issues/10/comments?per_page=100&page=1"
+        ):
+            return []
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status":
+            return {"state": "success"}
+        if (
+            api_path
+            == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs?per_page=100&page=1"
+        ):
+            return {
+                "check_runs": [
+                    {"name": "tests", "status": "completed", "conclusion": "success"},
+                    {"name": "old-tests", "status": "completed", "conclusion": "stale"},
+                ]
+            }
+        raise AssertionError(api_path)
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.check_state == "unknown"
+    assert "check_state=unknown" in observation.detail
