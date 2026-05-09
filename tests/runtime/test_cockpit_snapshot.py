@@ -415,6 +415,9 @@ def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
 
     assert snapshot.safe_to_mutate is False
     assert snapshot.recommended_next_action == "inspect_team_evidence"
+    assert snapshot.decision_reasons[0].category == "active_team_evidence"
+    assert "alpha-team" in snapshot.decision_reasons[0].detail
+    assert snapshot.decision_reasons[0].source_names == ("team_evidence",)
 
 
 def test_cockpit_treats_unknown_team_status_as_degraded_not_active(

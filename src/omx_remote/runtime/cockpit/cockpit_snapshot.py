@@ -18,6 +18,7 @@ from omx_remote.runtime.ultrawork.ultrawork_control import (
 )
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitContradiction,
+    CockpitDecisionReason,
     CockpitLaneName,
     CockpitLaneSnapshot,
     CockpitLaneState,
@@ -179,6 +180,13 @@ def build_cockpit_snapshot(
         goal_mirror_state=goal_mirror_state,
         team_observations=team_observations,
     )
+    decision_reasons: tuple[CockpitDecisionReason, ...] = _build_decision_reasons(
+        contradictions=contradictions,
+        runtime_status=runtime_status,
+        active_runtime_modes=active_runtime_modes,
+        goal_mirror_state=goal_mirror_state,
+        team_observations=team_observations,
+    )
     result: CockpitSnapshot = CockpitSnapshot(
         repo_root=repo_root,
         runtime_summary=runtime_status.summary,
@@ -190,6 +198,7 @@ def build_cockpit_snapshot(
         warnings=warnings,
         safe_to_mutate=safe_to_mutate,
         recommended_next_action=recommended_next_action,
+        decision_reasons=decision_reasons,
     )
     return result
 
@@ -1074,6 +1083,105 @@ def _derive_recommended_next_action(
 
     default_action: str = "observe"
     return default_action
+
+
+def _build_decision_reasons(
+    contradictions: tuple[CockpitContradiction, ...],
+    runtime_status: RuntimeStatus,
+    active_runtime_modes: ActiveRuntimeModes,
+    goal_mirror_state: CodexGoalMirrorState | None,
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> tuple[CockpitDecisionReason, ...]:
+    """Build evidence-backed explanations for top-level cockpit guidance.
+
+    Args:
+        contradictions [tuple[CockpitContradiction, ...]]: Cross-surface contradictions.
+        runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
+        active_runtime_modes [ActiveRuntimeModes]: Active runtime mode list.
+        goal_mirror_state [CodexGoalMirrorState | None]: Optional Goal mirror state.
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        tuple[CockpitDecisionReason, ...]: Ordered reasons matching top-level cockpit guidance.
+    """
+    reasons: list[CockpitDecisionReason] = [
+        CockpitDecisionReason(
+            category="runtime_contradiction",
+            detail=contradiction.message,
+            source_names=("runtime_status", "active_runtime_modes"),
+        )
+        for contradiction in contradictions
+    ]
+
+    if active_runtime_modes.active_modes:
+        active_modes_text: str = ", ".join(active_runtime_modes.active_modes)
+        reasons.append(
+            CockpitDecisionReason(
+                category="active_runtime_evidence",
+                detail=f"Active runtime modes are present: {active_modes_text}.",
+                source_names=("active_runtime_modes",),
+            )
+        )
+    elif runtime_status.has_active_modes is True:
+        reasons.append(
+            CockpitDecisionReason(
+                category="active_runtime_evidence",
+                detail="Runtime status reports active modes without a parsed active-mode list.",
+                source_names=("runtime_status",),
+            )
+        )
+
+    active_team_names: tuple[str, ...] = _collect_active_team_names(team_observations)
+    if active_team_names:
+        active_team_text: str = ", ".join(active_team_names)
+        reasons.append(
+            CockpitDecisionReason(
+                category="active_team_evidence",
+                detail=f"Active Team evidence is present for: {active_team_text}.",
+                source_names=("team_evidence",),
+            )
+        )
+
+    if goal_mirror_state and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH:
+        reasons.append(
+            CockpitDecisionReason(
+                category="goal_awaiting_ralph",
+                detail=f"Goal {goal_mirror_state.goal_id} is awaiting Ralph handoff.",
+                source_names=("goal_mirror_state",),
+            )
+        )
+
+    if not reasons:
+        reasons.append(
+            CockpitDecisionReason(
+                category="no_blocking_evidence",
+                detail="No active runtime, active Team, contradiction, or pending Goal handoff evidence was found.",
+                source_names=("runtime_status", "active_runtime_modes"),
+            )
+        )
+
+    result: tuple[CockpitDecisionReason, ...] = tuple(reasons)
+    return result
+
+
+def _collect_active_team_names(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> tuple[str, ...]:
+    """Collect Team names whose observations show explicit active evidence.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        tuple[str, ...]: Team names with explicit active status.
+    """
+    active_team_names: list[str] = [
+        observation.team_name
+        for observation in team_observations
+        if observation.status in _ACTIVE_TEAM_STATUSES
+    ]
+    result: tuple[str, ...] = tuple(active_team_names)
+    return result
 
 
 def _team_observations_include_active_runtime(
