@@ -106,6 +106,7 @@ def test_ralph_team_dag_payload_types_expose_stable_contract_keys() -> None:
             "subject",
             "description",
             "role",
+            "owner",
             "lane",
             "filePaths",
             "depends_on",
@@ -238,6 +239,48 @@ def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_co
 
     assert command == ["team", "3", "Ship feature"]
     assert "allow-non-tty is enabled" in "\n".join(warnings)
+
+
+def test_build_ralph_team_launch_plan_preserves_assignment_worker_ids_as_node_owners(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    _write_valid_prd_artifact(
+        tmp_path,
+        objective="Ship four-lane feature",
+        requires_team_fanout=True,
+        team_worker_count=4,
+        team_worker_assignments=[
+            _team_assignment("worker-1", lane_name="Backend lane", owned_file="backend/api.py"),
+            _team_assignment("worker-2", lane_name="Frontend API lane", owned_file="frontend/api.ts"),
+            _team_assignment("worker-3", lane_name="Frontend UI lane", owned_file="frontend/App.tsx"),
+            _team_assignment("worker-4", lane_name="Docs lane", owned_file="docs/smoke.md"),
+        ],
+    )
+
+    build_ralph_team_launch_plan(allow_non_tty=True)
+
+    dag_path = next((tmp_path / ".omx" / "plans").glob("team-dag-*-ralph-team.json"))
+    dag_payload = json.loads(dag_path.read_text(encoding="utf-8"))
+    assert [node["id"] for node in dag_payload["nodes"]] == [
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "worker-4",
+    ]
+    assert [node["owner"] for node in dag_payload["nodes"]] == [
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "worker-4",
+    ]
+    assert [node["role"] for node in dag_payload["nodes"]] == [
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "worker-4",
+    ]
 
 
 def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts(

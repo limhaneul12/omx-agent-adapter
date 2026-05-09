@@ -33,6 +33,7 @@ class RalphTeamDagNodePayload(TypedDict):
     subject: str
     description: str
     role: str
+    owner: str
     lane: str
     filePaths: list[str]
     depends_on: list[str]

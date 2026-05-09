@@ -297,6 +297,7 @@ def write_ralph_team_dag_handoff_artifacts(
             subject=assignment.lane_name,
             description=allocator_task_description(assignment),
             role=allocator_task_role(assignment),
+            owner=assignment.worker_id,
             lane=assignment.lane_name,
             filePaths=allocator_hint_file_paths(assignment),
             depends_on=[],

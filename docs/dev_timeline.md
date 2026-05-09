@@ -96,6 +96,29 @@
   - `uv build --wheel` → built `dist/agent_remote-0.1.0-py3-none-any.whl`
   - installed wheel smoke: `agent-remote goal prepare-prd-prompt` and `agent-remote prd validate` both passed
 
+## 2026-05-09 21:37 KST — PRD Team owner assignment slice started
+
+- PR #11 was pushed and squash-merged into main as `9961b62 feat: add goal-scoped PRD capture surface (#11)`.
+- Started branch `fix/prd-team-owner-assignment` from synced main.
+- Scope recorded in `docs/jobs/prd-team-owner-assignment.md`.
+- Dogfood target: PRD `team_worker_assignments` must survive as explicit Team DAG node `owner` values, not only as allocator `role` hints.
+
+## 2026-05-09 21:44 KST — PRD Team owner assignment implemented
+
+- Added RED regression for a 4-worker PRD Team plan:
+  - expected `RalphTeamDagNodePayload.__required_keys__` to include `owner`
+  - expected generated DAG nodes to preserve `owner=[worker-1, worker-2, worker-3, worker-4]`
+  - RED output: missing `owner` required key and `KeyError: 'owner'`
+- Implemented explicit `owner` in `RalphTeamDagNodePayload` and populated it from `TeamWorkerAssignment.worker_id`.
+- Verification:
+  - RED focused tests failed as expected before implementation
+  - owner regression focused rerun → `2 passed`
+  - `uv run pytest tests/runtime/test_ralph_control.py -q` → `22 passed`
+  - `uv run ruff check src tests` → pass
+  - `uv run pyrefly check src` → `0 errors`
+  - `uv run pytest -q` → `736 passed`
+  - CLI plan-only smoke generated a 4-node DAG with `owners=worker-1,worker-2,worker-3,worker-4`
+
 ## 2026-05-09 22:05 KST — Start adapter runtime structure refactor
 
 - Branch: `refactor/adapter-type-runtime-structure` from synced main `9961b62`.
