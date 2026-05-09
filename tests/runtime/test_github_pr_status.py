@@ -1,8 +1,8 @@
 import asyncio
 import subprocess
 
-from omx_remote.runtime.cockpit import github_pr_status
-from omx_remote.runtime.cockpit.github_pr_status import read_github_pull_request_status
+import omx_remote.runtime.cockpit.sources.github_pr_status as github_pr_status
+from omx_remote.runtime.cockpit.sources.github_pr_status import read_github_pull_request_status
 
 
 def test_read_github_pull_request_status_reports_open_pr_review_and_checks(

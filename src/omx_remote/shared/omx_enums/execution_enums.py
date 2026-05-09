@@ -10,6 +10,41 @@ class ExecutionEventKind(StrEnum):
     TURN_COMPLETED = "turn.completed"
 
 
+class ExecutionItemStableFieldKey(StrEnum):
+    """Stable execution item field keys promoted by the adapter."""
+
+    ID = "id"
+    TYPE = "type"
+    TEXT = "text"
+    TOOL_NAME = "tool_name"
+    CALL_ID = "call_id"
+    ARGUMENTS = "arguments"
+    COMMAND = "command"
+    AGGREGATED_OUTPUT = "aggregated_output"
+    EXIT_CODE = "exit_code"
+    STATUS = "status"
+
+
+class ExecutionTransportStableFieldKey(StrEnum):
+    """Stable top-level execution transport field keys promoted by the adapter."""
+
+    TYPE = "type"
+    TEXT = "text"
+    ITEM = "item"
+    TOOL_NAME = "tool_name"
+    CALL_ID = "call_id"
+    ARGUMENTS = "arguments"
+    COMMAND = "command"
+    AGGREGATED_OUTPUT = "aggregated_output"
+    EXIT_CODE = "exit_code"
+    STATUS = "status"
+    ID = "id"
+    EXTRA = "extra"
+    KIND = "kind"
+    THREAD_ID = "thread_id"
+    USAGE = "usage"
+
+
 class KnownExecutionEventType(StrEnum):
     """Execution event types recognized by the adapter execution stream layer."""
 

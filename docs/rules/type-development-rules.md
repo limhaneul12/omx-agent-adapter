@@ -85,6 +85,16 @@ Examples that should usually remain sync:
 - anomaly assembly
 - small parsing helpers with no external wait state
 
+## Module and Class Cohesion Rule
+
+- Runtime files should be split by concept/responsibility before they become omnibus control surfaces.
+- A runtime module that grows past roughly 430 lines should be treated as a refactor trigger unless it is generated code or a deliberately documented transport table.
+- Do not keep thin compatibility facades for unused internal modules. Move callers to the concept-owned module path in the same slice and delete the wrapper so cleanup is not done twice.
+- Move source reads, builders, classifiers, decisions, and summaries into concept-specific modules or subfolders when a folder becomes crowded.
+- Classes should group one cohesive behavior and normally expose no more than 6 methods. Split token normalization, snapshot classification, builders, and orchestration into separate classes/modules instead of making one manager class absorb everything.
+- Stable field-name sets, runtime marker tables, enum-like string markers, and dispatch registries belong in `adapter_types/type_contract/` or shared enum classes, not inline in runtime/control modules.
+- Do not create re-export bucket packages or marker-only `__init__.py` files to hide large modules; split the actual implementation files.
+
 ## Design Principle
 
 This repository should prefer one explicit, strongly typed contract language and a predictable static type discipline.
