@@ -612,6 +612,34 @@ def _classify_check_runs(check_runs_payload: JsonValue | None) -> str:
     return unknown_state
 
 
+def _classify_combined_status(status_payload: JsonValue | None) -> str:
+    """Classify GitHub combined status evidence.
+
+    Args:
+        status_payload [JsonValue | None]: Combined status API payload.
+
+    Returns:
+        str: Normalized combined status evidence state.
+    """
+    status_object: JsonObject | None = _as_json_object(status_payload)
+    if status_object is None:
+        unknown_state: str = "unknown"
+        return unknown_state
+
+    statuses_array: JsonArray | None = _as_json_array(status_object.get("statuses"))
+    if statuses_array is not None and len(statuses_array) == 0:
+        no_statuses_state: str = "no_statuses"
+        return no_statuses_state
+
+    status_text: str | None = _as_non_empty_text(status_object.get("state"))
+    if status_text is None:
+        unknown_state = "unknown"
+        return unknown_state
+
+    status_state: str = status_text
+    return status_state
+
+
 def _classify_check_state(
     status_payload: JsonValue | None, check_runs_payload: JsonValue | None
 ) -> str:
@@ -624,28 +652,25 @@ def _classify_check_state(
     Returns:
         str: Normalized check state.
     """
-    status_object: JsonObject | None = _as_json_object(status_payload)
-    status_state: str | None = None
-    if status_object is not None:
-        status_state = _as_non_empty_text(status_object.get("state"))
+    status_state: str = _classify_combined_status(status_payload)
 
     check_runs_state: str = _classify_check_runs(check_runs_payload)
     if status_state in {"failure", "error"} or check_runs_state == "failure":
         failed_state: str = "failure"
         return failed_state
+    if status_state == "no_statuses" and check_runs_state == "no_check_runs":
+        no_checks_state: str = "no_checks"
+        return no_checks_state
     if status_state == "pending" or check_runs_state == "pending":
         pending_state: str = "pending"
         return pending_state
-    if status_state is None or check_runs_state == "unknown":
+    if status_state == "unknown" or check_runs_state == "unknown":
         unknown_state: str = "unknown"
         return unknown_state
     if status_state == "success" or check_runs_state == "success":
         success_state: str = "success"
         return success_state
-    if check_runs_state == "no_check_runs" and status_state is None:
-        no_checks_state: str = "no_checks"
-        return no_checks_state
-    if status_state is not None:
+    if status_state not in {"no_statuses", "unknown"}:
         observed_status_state: str = status_state
         return observed_status_state
 
