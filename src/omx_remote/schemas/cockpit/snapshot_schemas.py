@@ -51,6 +51,14 @@ class CockpitContradiction(StrictSchemaModel):
     message: NonEmptyString
 
 
+class CockpitDecisionReason(StrictSchemaModel):
+    """Represents one evidence-backed reason for cockpit top-level guidance."""
+
+    category: NonEmptyString
+    detail: NonEmptyString
+    source_names: tuple[NonEmptyString, ...] = ()
+
+
 class CockpitStatusSourceObservation(StrictSchemaModel):
     """Represents one read-only source consulted for the cockpit snapshot."""
 
@@ -112,3 +120,4 @@ class CockpitSnapshot(StrictSchemaModel):
     warnings: tuple[NonEmptyString, ...] = ()
     safe_to_mutate: bool
     recommended_next_action: NonEmptyString
+    decision_reasons: tuple[CockpitDecisionReason, ...] = ()
