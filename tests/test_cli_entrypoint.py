@@ -193,6 +193,7 @@ def test_package_entrypoint_runs_help() -> None:
     assert "history" in completed_process.stdout
     assert "adapt" in completed_process.stdout
     assert "goal" in completed_process.stdout
+    assert "prd" in completed_process.stdout
     assert "hypergoal" in completed_process.stdout
     assert "ralph" in completed_process.stdout
     assert "ultrawork" in completed_process.stdout
@@ -413,6 +414,7 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert "start" in completed_process.stdout
     assert "status" in completed_process.stdout
     assert "template" in completed_process.stdout
+    assert "prepare-prd-prompt" in completed_process.stdout
     assert "prepare-ralph" in completed_process.stdout
     assert "launch-ralph" not in completed_process.stdout
     assert "restore-lifecycle" in completed_process.stdout
@@ -445,6 +447,67 @@ def test_package_entrypoint_runs_goal_template() -> None:
     assert "Goal → Ultrawork" not in completed_process.stdout
 
 
+def test_package_entrypoint_runs_prd_help() -> None:
+    completed_process = _run_agent_remote_command(["prd", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "validate" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_prd_validate_help() -> None:
+    completed_process = _run_agent_remote_command(["prd", "validate", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--input-path" in completed_process.stdout
+    assert "--output-path" in completed_process.stdout
+
+
+def test_prd_validate_outputs_and_captures_valid_artifact(tmp_path: Path) -> None:
+    input_path = _write_team_admin_prd_artifact(tmp_path)
+    output_path = tmp_path / "captured" / "prd.json"
+
+    completed_process = _run_agent_remote_command(
+        [
+            "prd",
+            "validate",
+            "--input-path",
+            str(input_path),
+            "--output-path",
+            str(output_path),
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["valid"] is True
+    assert output["objective"] == "Collect Team Admin results from CLI."
+    assert output["requires_team_fanout"] is True
+    assert output["team_worker_count"] == 1
+    assert output["assignment_worker_ids"] == ["worker-1"]
+    assert orjson.loads(output_path.read_bytes())["objective"] == output["objective"]
+
+
+def test_ralph_launch_missing_prd_guides_goal_prd_generation(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "ralph",
+            "launch",
+            "--task",
+            "Build Editorial Studio.",
+            "--allow-non-tty",
+        ],
+    )
+
+    assert result.exit_code == 2
+    output = orjson.loads(result.stdout)
+    assert "Ralph consumes an approved PRD" in output["stderr"]
+    assert "agent-remote goal prepare-prd-prompt" in output["stderr"]
+    assert "agent-remote prd validate" in output["stderr"]
+
+
 def test_package_entrypoint_runs_hypergoal_help() -> None:
     completed_process = _run_agent_remote_command(["hypergoal", "--help"])
 
@@ -462,8 +525,8 @@ def test_package_entrypoint_runs_hypergoal_template() -> None:
     assert "Goal → Ultrawork" not in completed_process.stdout
 
 
-def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
-    completed_process = _run_agent_remote_command(["goal", "prepare-ralph", "--help"])
+def test_package_entrypoint_runs_goal_prepare_prd_prompt_help() -> None:
+    completed_process = _run_agent_remote_command(["goal", "prepare-prd-prompt", "--help"])
 
     assert completed_process.returncode == 0
     assert "--source-path" in completed_process.stdout
@@ -492,7 +555,38 @@ def test_package_entrypoint_runs_goal_prepare_ralph_help() -> None:
 
 
 
-def test_package_entrypoint_runs_goal_prepare_ralph_without_constraints(
+def test_package_entrypoint_runs_goal_prepare_prd_prompt_without_constraints(
+    tmp_path: Path,
+) -> None:
+    _write_codex_goal_mirror_state(tmp_path)
+
+    completed_process = _run_agent_remote_command(
+        [
+            "goal",
+            "prepare-prd-prompt",
+            "--cwd",
+            str(tmp_path),
+            "--source-path",
+            "AGENTS.md",
+            "--requested-slice",
+            "schema config and root base",
+            "--verification-expectation",
+            "targeted tests pass",
+        ]
+    )
+
+    assert completed_process.returncode == 0, completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["prompt_request"]["source_paths"] == ["AGENTS.md"]
+    assert output["prompt_request"]["constraints"] == []
+    assert output["prompt_request"]["verification_expectations"] == [
+        "targeted tests pass"
+    ]
+    assert "Goal-scoped PRD authoring agent" in output["prompt"]
+    assert "Return ONLY JSON matching RalphPrdArtifact" in output["prompt"]
+
+
+def test_package_entrypoint_runs_goal_prepare_ralph_alias_without_constraints(
     tmp_path: Path,
 ) -> None:
     _write_codex_goal_mirror_state(tmp_path)
@@ -514,11 +608,7 @@ def test_package_entrypoint_runs_goal_prepare_ralph_without_constraints(
 
     assert completed_process.returncode == 0, completed_process.stdout
     output = orjson.loads(completed_process.stdout)
-    assert output["prompt_request"]["source_paths"] == ["AGENTS.md"]
-    assert output["prompt_request"]["constraints"] == []
-    assert output["prompt_request"]["verification_expectations"] == [
-        "targeted tests pass"
-    ]
+    assert "Goal-scoped PRD authoring agent" in output["prompt"]
 
 
 def test_package_entrypoint_rejects_removed_goal_launch_ralph_help() -> None:

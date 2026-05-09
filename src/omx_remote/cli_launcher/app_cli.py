@@ -5,6 +5,7 @@ from omx_remote.cli_launcher.cockpit_cli import cockpit_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
 from omx_remote.cli_launcher.hypergoal_cli import hypergoal_app
+from omx_remote.cli_launcher.prd_cli import prd_app
 from omx_remote.cli_launcher.ralph_cli import ralph_app
 from omx_remote.cli_launcher.runtime_cli import runtime_app
 from omx_remote.cli_launcher.team_cli import team_app
@@ -23,6 +24,7 @@ app.add_typer(team_app, name="team")
 app.add_typer(history_app, name="history")
 app.add_typer(adapt_app, name="adapt")
 app.add_typer(goal_app, name="goal")
+app.add_typer(prd_app, name="prd")
 app.add_typer(hypergoal_app, name="hypergoal")
 app.add_typer(ralph_app, name="ralph")
 app.add_typer(ultrawork_app, name="ultrawork")

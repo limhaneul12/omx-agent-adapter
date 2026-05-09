@@ -58,3 +58,40 @@
   - then Goal advance/watch only after truthful repo/flow snapshot prerequisites exist
   - native OMX startup reliability hardening outside cockpit mutation
 - Recorded the dependency decision: do not start a broad Pydantic upgrade; use `typing_extensions.TypedDict` only when a concrete PEP 728 transport-hardening slice needs it.
+
+## 2026-05-09 21:10 KST — Goal-scoped PRD generation/capture slice started
+
+- Branch: `feat/goal-prd-generation-capture`
+- Dogfood source: `test_project` Run 5 showed Goal mirror existed but `.omx/prd.json` did not, so Ralph correctly could not launch.
+- Corrected boundary:
+  - Goal prompt/objective drives a PRD-authoring pass.
+  - The PRD-authoring pass emits typed `RalphPrdArtifact` JSON.
+  - `agent-remote` validates/captures that JSON as `.omx/prd.json`.
+  - Ralph consumes the validated PRD and drives execution/Team fanout.
+- Scope recorded in `docs/jobs/goal-prd-generation-capture.md`.
+- Non-goals: no automatic LLM invocation yet, no Team owner assignment fix in this PR, no product-code implementation.
+
+## 2026-05-09 21:29 KST — Goal-scoped PRD generation/capture MVP implemented
+
+- Added `agent-remote goal prepare-prd-prompt`:
+  - reads the tracked Goal mirror
+  - renders a Goal-scoped PRD authoring prompt
+  - instructs the authoring agent to return only JSON matching `RalphPrdArtifact`
+  - explicitly says not to act as Ralph, not to launch Ralph, and not to launch Team
+- Kept `goal prepare-ralph` as a legacy alias path, but it now emits the corrected Goal-scoped PRD authoring prompt language.
+- Added top-level `agent-remote prd validate`:
+  - validates a generated PRD JSON file as `RalphPrdArtifact`
+  - optionally captures it to `.omx/prd.json` for Ralph consumption
+  - reports objective, fanout flag, worker count, and assignment worker IDs
+- Improved Ralph missing-PRD preflight guidance:
+  - Ralph consumes an approved PRD; it does not author one
+  - next commands point to `goal prepare-prd-prompt` and `prd validate`
+- Verification:
+  - RED observed first: focused tests failed on missing `build_goal_prd_authoring_prompt`
+  - `uv run pytest tests/runtime/test_codex_goal_supervisor.py tests/test_cli_entrypoint.py -q` → `79 passed`
+  - `uv run pytest tests/runtime/test_codex_goal_supervisor.py tests/runtime/test_ralph_control.py tests/test_cli_entrypoint.py -q` → `100 passed`
+  - `uv run ruff check src tests` → pass
+  - `uv run pyrefly check src` → `0 errors`
+  - `uv run pytest -q` → `735 passed`
+  - `uv build --wheel` → built `dist/agent_remote-0.1.0-py3-none-any.whl`
+  - installed wheel smoke: `agent-remote goal prepare-prd-prompt` and `agent-remote prd validate` both passed
