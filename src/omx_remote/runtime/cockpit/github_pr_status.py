@@ -14,6 +14,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import CockpitPullRequestObserv
 
 GITHUB_API_ROOT = "https://api.github.com"
 CODEX_NO_MAJOR_ISSUES_MARKER = "didn't find any major issues"
+GITHUB_API_PAGE_SIZE = 100
 
 
 def _run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
@@ -152,6 +153,54 @@ def _read_github_api_json(repo_root: str, api_path: str) -> JsonValue | None:
 
     payload: JsonValue | None = parsed_payload
     return payload
+
+
+def _build_paginated_array_path(api_path: str, page_number: int) -> str:
+    """Build a GitHub API path with explicit array pagination.
+
+    Args:
+        api_path [str]: Base API path to read.
+        page_number [int]: One-indexed page number to request.
+
+    Returns:
+        str: API path with `per_page` and `page` query parameters.
+    """
+    separator: str = "?"
+    if "?" in api_path:
+        separator = "&"
+
+    paginated_path: str = (
+        f"{api_path}{separator}per_page={GITHUB_API_PAGE_SIZE}&page={page_number}"
+    )
+    return paginated_path
+
+
+def _read_github_paginated_array_json(repo_root: str, api_path: str) -> JsonValue | None:
+    """Read every page of a GitHub REST array payload.
+
+    Args:
+        repo_root [str]: Repository root used for token lookup.
+        api_path [str]: API path beginning with `/repos/...` and returning an array.
+
+    Returns:
+        JsonValue | None: Combined array payload, or None if any required page fails.
+    """
+    combined_array: JsonArray = []
+    page_number: int = 1
+    while True:
+        page_path: str = _build_paginated_array_path(api_path, page_number)
+        page_payload: JsonValue | None = _read_github_api_json(repo_root, page_path)
+        page_array: JsonArray | None = _as_json_array(page_payload)
+        if page_array is None:
+            missing_page: JsonValue | None = None
+            return missing_page
+
+        combined_array.extend(page_array)
+        if len(page_array) < GITHUB_API_PAGE_SIZE:
+            paginated_payload: JsonValue | None = combined_array
+            return paginated_payload
+
+        page_number += 1
 
 
 def _parse_github_owner_repo(remote_url: str) -> tuple[str, str] | None:
@@ -624,7 +673,7 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
     if mergeable_state is not None:
         normalized_mergeable_state = mergeable_state
 
-    reviews_payload: JsonValue | None = _read_github_api_json(
+    reviews_payload: JsonValue | None = _read_github_paginated_array_json(
         repo_root,
         f"/repos/{owner}/{repo}/pulls/{pull_request_number}/reviews",
     )

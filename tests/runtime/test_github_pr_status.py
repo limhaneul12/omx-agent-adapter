@@ -28,7 +28,7 @@ def test_read_github_pull_request_status_reports_open_pr_review_and_checks(
                     "head": {"sha": "abc123"},
                 }
             ],
-            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews": [],
+            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1": [],
             "/repos/limhaneul12/omx-agent-adapter/issues/10/comments": [
                 {"body": "Didn't find any major issues. Breezy!"}
             ],
@@ -152,7 +152,7 @@ def test_read_github_pull_request_status_prioritizes_blocking_reviews(
                     "head": {"sha": "abc123"},
                 }
             ],
-            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews": [
+            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1": [
                 {"state": "CHANGES_REQUESTED"}
             ],
             "/repos/limhaneul12/omx-agent-adapter/issues/10/comments": [
@@ -204,7 +204,7 @@ def test_read_github_pull_request_status_uses_latest_reviewer_decision(
                     "head": {"sha": "abc123"},
                 }
             ],
-            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews": [
+            "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1": [
                 {"state": "CHANGES_REQUESTED", "user": {"login": "reviewer-a"}},
                 {"state": "APPROVED", "user": {"login": "reviewer-a"}},
             ],
@@ -231,3 +231,60 @@ def test_read_github_pull_request_status_uses_latest_reviewer_decision(
 
     assert observation.review_state == "approved"
     assert "approved" in observation.detail
+
+
+def test_read_github_pull_request_status_uses_later_review_pages(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    requested_paths: list[str] = []
+
+    def fake_run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
+        outputs: dict[tuple[str, ...], str] = {
+            ("remote", "get-url", "origin"): "https://github.com/limhaneul12/omx-agent-adapter.git",
+            ("branch", "--show-current"): "feat/cockpit-pr-status-source",
+        }
+        return outputs[arguments]
+
+    def fake_read_github_api_json(repo_root: str, api_path: str):
+        requested_paths.append(api_path)
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/pulls?head=limhaneul12:feat/cockpit-pr-status-source&state=open":
+            return [
+                {
+                    "number": 10,
+                    "state": "open",
+                    "html_url": "https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+                    "mergeable_state": "clean",
+                    "head": {"sha": "abc123"},
+                }
+            ]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=1":
+            return [
+                {"state": "CHANGES_REQUESTED", "user": {"login": "reviewer-a"}}
+                for _index in range(100)
+            ]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=2":
+            return [{"state": "APPROVED", "user": {"login": "reviewer-a"}}]
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/issues/10/comments":
+            return []
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/status":
+            return {"state": "success"}
+        if api_path == "/repos/limhaneul12/omx-agent-adapter/commits/abc123/check-runs":
+            return {
+                "check_runs": [
+                    {"name": "tests", "status": "completed", "conclusion": "success"}
+                ]
+            }
+        raise AssertionError(api_path)
+
+    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(
+        github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+
+    observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
+
+    assert observation.review_state == "approved"
+    assert "/repos/limhaneul12/omx-agent-adapter/pulls/10/reviews?per_page=100&page=2" in requested_paths
