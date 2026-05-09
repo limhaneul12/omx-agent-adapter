@@ -420,6 +420,43 @@ def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
     assert snapshot.decision_reasons[0].source_names == ("team_evidence",)
 
 
+def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
+    tmp_path: Path,
+) -> None:
+    runtime_status = RuntimeStatus(
+        summary="run: active (phase: running)",
+        has_active_modes=True,
+        active_mode_names=("run",),
+        mode_snapshots=(),
+        anomalies=(),
+    )
+    team_observation = CockpitTeamObservation(
+        team_name="alpha-team",
+        status="active",
+        phase="team-exec",
+        task_count=2,
+        event_count=3,
+        worker_statuses=(),
+        warnings=(),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=runtime_status,
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=("alpha-team",),
+        team_observations=(team_observation,),
+    )
+
+    assert snapshot.safe_to_mutate is False
+    assert snapshot.recommended_next_action == "observe_active_runtime"
+    assert snapshot.decision_reasons[0].category == "active_runtime_evidence"
+    assert snapshot.decision_reasons[1].category == "active_team_evidence"
+
+
 def test_cockpit_treats_unknown_team_status_as_degraded_not_active(
     tmp_path: Path,
 ) -> None:

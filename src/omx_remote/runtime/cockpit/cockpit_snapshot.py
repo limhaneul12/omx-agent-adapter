@@ -176,6 +176,7 @@ def build_cockpit_snapshot(
     )
     recommended_next_action: str = _derive_recommended_next_action(
         contradictions=contradictions,
+        runtime_status=runtime_status,
         active_runtime_modes=active_runtime_modes,
         goal_mirror_state=goal_mirror_state,
         team_observations=team_observations,
@@ -1053,6 +1054,7 @@ def _derive_safe_to_mutate(
 
 def _derive_recommended_next_action(
     contradictions: tuple[CockpitContradiction, ...],
+    runtime_status: RuntimeStatus,
     active_runtime_modes: ActiveRuntimeModes,
     goal_mirror_state: CodexGoalMirrorState | None,
     team_observations: tuple[CockpitTeamObservation, ...],
@@ -1061,6 +1063,7 @@ def _derive_recommended_next_action(
 
     Args:
         contradictions [tuple[CockpitContradiction, ...]]: Cross-surface contradictions.
+        runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
         active_runtime_modes [ActiveRuntimeModes]: Active runtime mode list.
         goal_mirror_state [CodexGoalMirrorState | None]: Optional Goal mirror state.
         team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
@@ -1071,7 +1074,7 @@ def _derive_recommended_next_action(
     if contradictions:
         contradiction_action: str = "inspect_runtime_contradiction"
         return contradiction_action
-    if active_runtime_modes.active_modes:
+    if active_runtime_modes.active_modes or runtime_status.has_active_modes is True:
         observe_action: str = "observe_active_runtime"
         return observe_action
     if _team_observations_include_active_runtime(team_observations):
