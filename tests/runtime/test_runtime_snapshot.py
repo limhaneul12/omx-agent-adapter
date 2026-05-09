@@ -162,6 +162,29 @@ def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomali
     assert result.anomalies == ()
 
 
+def test_read_runtime_status_treats_inactive_only_phase_lines_as_idle(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(
+            stdout="native-stop: inactive (phase: n/a)\nralph: inactive (phase: cancelled)\ntmux-hook: inactive (phase: n/a)\n"
+        ),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.has_active_modes is False
+    assert result.active_mode_names == ()
+    assert result.mode_statuses == {
+        "native-stop": "idle",
+        "ralph": "idle",
+        "tmux-hook": "idle",
+    }
+    assert result.anomalies == ()
+
+
 def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:
     monkeypatch.setattr(
         runtime_snapshot,

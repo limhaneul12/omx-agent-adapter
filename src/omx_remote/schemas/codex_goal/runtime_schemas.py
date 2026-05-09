@@ -62,6 +62,7 @@ class CodexGoalMirrorState(StrictSchemaModel):
     execution_shape: CodexGoalExecutionShape
     review_policy: CodexGoalReviewPolicy
     team_worker_count: int | None = Field(default=None, ge=1)
+    linked_team_names: NonEmptyStrings = ()
     working_directory: NonEmptyString
     codex_command: NonEmptyStrings = Field(min_length=1)
     session_locator: NonEmptyString

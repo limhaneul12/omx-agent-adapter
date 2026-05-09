@@ -210,27 +210,30 @@ def _write_goal_mirror_state(
     repo_root: Path,
     *,
     team_worker_count: int | None,
+    linked_team_names: tuple[str, ...] = (),
 ) -> Path:
     state_path = repo_root / ".agent-remote" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
+    payload = {
+        "goal_id": "goal-cockpit-discovery",
+        "objective_text": "Discover linked Teams for cockpit.",
+        "source": "codex_goal",
+        "execution_shape": "ralph_pipeline",
+        "review_policy": "review_required",
+        "team_worker_count": team_worker_count,
+        "working_directory": str(repo_root),
+        "codex_command": ["codex", "--enable", "goals"],
+        "session_locator": "agent-remote-goal-goal-cockpit-discovery",
+        "process_id": 1234,
+        "launched_at": "2026-05-08T00:00:00+00:00",
+        "handoff_state": "awaiting_ralph",
+        "tracking_state": "active",
+    }
+    if linked_team_names:
+        payload["linked_team_names"] = list(linked_team_names)
+
     state_path.write_text(
-        json.dumps(
-            {
-                "goal_id": "goal-cockpit-discovery",
-                "objective_text": "Discover linked Teams for cockpit.",
-                "source": "codex_goal",
-                "execution_shape": "ralph_pipeline",
-                "review_policy": "review_required",
-                "team_worker_count": team_worker_count,
-                "working_directory": str(repo_root),
-                "codex_command": ["codex", "--enable", "goals"],
-                "session_locator": "agent-remote-goal-goal-cockpit-discovery",
-                "process_id": 1234,
-                "launched_at": "2026-05-08T00:00:00+00:00",
-                "handoff_state": "awaiting_ralph",
-                "tracking_state": "active",
-            }
-        ),
+        json.dumps(payload),
         encoding="utf-8",
     )
     return state_path
@@ -245,6 +248,22 @@ def test_discovery_treats_missing_goal_mirror_as_empty_evidence(
 
     assert result.discovered_team_names == ()
     assert result.inspected_sources == (str(expected_source),)
+    assert result.warnings == ()
+
+
+def test_discovery_discovers_exact_team_names_from_goal_mirror_state(
+    tmp_path: Path,
+) -> None:
+    state_path = _write_goal_mirror_state(
+        tmp_path,
+        team_worker_count=2,
+        linked_team_names=("alpha-team", "beta-team"),
+    )
+
+    result = discover_linked_team_names(tmp_path)
+
+    assert result.discovered_team_names == ("alpha-team", "beta-team")
+    assert result.inspected_sources == (str(state_path),)
     assert result.warnings == ()
 
 
