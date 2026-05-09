@@ -99,8 +99,8 @@ class GoalDelegationDispatchResult(StrictSchemaModel):
     operator_result: OperatorActionResult | None = None
 
 
-class GoalToRalphHandoffPromptRequest(StrictSchemaModel):
-    """Represents the typed prompt contract for a Goal-owned Ralph handoff."""
+class GoalPrdAuthoringPromptRequest(StrictSchemaModel):
+    """Represents the typed prompt contract for Goal-scoped PRD authoring."""
 
     goal_id: NonEmptyString
     goal_objective_text: NonEmptyString
@@ -112,8 +112,20 @@ class GoalToRalphHandoffPromptRequest(StrictSchemaModel):
     team_worker_count: int | None = Field(ge=1)
 
 
+class GoalPrdAuthoringPromptResult(StrictSchemaModel):
+    """Represents one prepared Goal-scoped PRD authoring prompt."""
+
+    mirror_state: CodexGoalMirrorState
+    prompt_request: GoalPrdAuthoringPromptRequest
+    prompt: NonEmptyString
+
+
+class GoalToRalphHandoffPromptRequest(GoalPrdAuthoringPromptRequest):
+    """Legacy request name for the Goal-scoped PRD authoring prompt."""
+
+
 class GoalToRalphHandoffPromptResult(StrictSchemaModel):
-    """Represents one prepared Ralph handoff prompt for a tracked Codex Goal."""
+    """Legacy result name for the Goal-scoped PRD authoring prompt."""
 
     mirror_state: CodexGoalMirrorState
     prompt_request: GoalToRalphHandoffPromptRequest

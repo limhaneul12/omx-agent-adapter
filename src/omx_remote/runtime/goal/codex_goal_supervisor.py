@@ -19,7 +19,9 @@ from omx_remote.runtime.goal.goal_operating_decision import (
     build_goal_operating_decision,
 )
 from omx_remote.runtime.goal.ralph_handoff_prompt import (
+    GoalPrdAuthoringPromptRenderer,
     GoalToRalphHandoffPromptRenderer,
+    build_goal_prd_authoring_prompt,
     build_goal_to_ralph_handoff_prompt,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import (
@@ -36,6 +38,8 @@ from omx_remote.schemas.codex_goal.supervisor_schemas import (
     GoalDelegationDecision,
     GoalDelegationDispatchResult,
     GoalExecutionPolicy,
+    GoalPrdAuthoringPromptRequest,
+    GoalPrdAuthoringPromptResult,
     GoalToRalphHandoffPromptRequest,
     GoalToRalphHandoffPromptResult,
 )
@@ -46,14 +50,17 @@ from omx_remote.schemas.multi_operator.snapshot_schemas import (
 from omx_remote.schemas.operator.action_schemas import OperatorActionResult
 
 __all__ = (
+    "GoalPrdAuthoringPromptRenderer",
     "GoalToRalphHandoffPromptRenderer",
     "advance_tracked_codex_goal",
     "build_codex_goal_snapshot",
     "build_goal_lifecycle_decision",
     "build_goal_operating_decision",
+    "build_goal_prd_authoring_prompt",
     "build_goal_to_ralph_handoff_prompt",
     "dispatch_goal_delegation",
     "prepare_tracked_codex_goal_ralph_handoff_prompt",
+    "prepare_tracked_goal_prd_authoring_prompt",
     "restore_goal_lifecycle_state",
     "select_goal_delegation",
 )
@@ -129,20 +136,57 @@ def prepare_tracked_codex_goal_ralph_handoff_prompt(
     verification_expectations: tuple[str, ...],
     working_directory: str | None = None,
 ) -> GoalToRalphHandoffPromptResult:
-    """Prepare a read-only Ralph PRD handoff prompt from tracked Goal mirror state.
+    """Prepare a legacy-named Goal-scoped PRD authoring prompt.
 
     Args:
-        source_paths [tuple[str, ...]]: Source-of-truth files or directories Ralph must read.
-        requested_slice [str]: One implementation slice Ralph should structure.
-        constraints [tuple[str, ...]]: Handoff constraints Ralph must preserve.
-        verification_expectations [tuple[str, ...]]: Verification gates Ralph must include.
+        source_paths [tuple[str, ...]]: Source-of-truth files or directories the authoring agent must read.
+        requested_slice [str]: One implementation slice the PRD should cover.
+        constraints [tuple[str, ...]]: Constraints the PRD must preserve.
+        verification_expectations [tuple[str, ...]]: Verification gates the PRD must include.
         working_directory [str | None]: Optional workspace whose Goal mirror state should be read.
 
     Returns:
-        GoalToRalphHandoffPromptResult: Mirror state plus rendered Ralph prompt.
+        GoalToRalphHandoffPromptResult: Mirror state plus rendered PRD authoring prompt.
+    """
+    prd_result: GoalPrdAuthoringPromptResult = prepare_tracked_goal_prd_authoring_prompt(
+        working_directory=working_directory,
+        source_paths=source_paths,
+        requested_slice=requested_slice,
+        constraints=constraints,
+        verification_expectations=verification_expectations,
+    )
+    legacy_request = GoalToRalphHandoffPromptRequest.model_validate(
+        prd_result.prompt_request.model_dump(mode="json")
+    )
+    legacy_result = GoalToRalphHandoffPromptResult(
+        mirror_state=prd_result.mirror_state,
+        prompt_request=legacy_request,
+        prompt=prd_result.prompt,
+    )
+    return legacy_result
+
+
+def prepare_tracked_goal_prd_authoring_prompt(
+    source_paths: tuple[str, ...],
+    requested_slice: str,
+    constraints: tuple[str, ...],
+    verification_expectations: tuple[str, ...],
+    working_directory: str | None = None,
+) -> GoalPrdAuthoringPromptResult:
+    """Prepare a Goal-scoped PRD authoring prompt from tracked Goal mirror state.
+
+    Args:
+        source_paths [tuple[str, ...]]: Source-of-truth files or directories the authoring agent must read.
+        requested_slice [str]: One implementation slice the PRD should cover.
+        constraints [tuple[str, ...]]: Constraints the PRD must preserve.
+        verification_expectations [tuple[str, ...]]: Verification gates the PRD must include.
+        working_directory [str | None]: Optional workspace whose Goal mirror state should be read.
+
+    Returns:
+        GoalPrdAuthoringPromptResult: Mirror state plus rendered PRD authoring prompt.
     """
     mirror_state: CodexGoalMirrorState = read_codex_goal_status(working_directory)
-    prompt_request = GoalToRalphHandoffPromptRequest(
+    prompt_request = GoalPrdAuthoringPromptRequest(
         goal_id=mirror_state.goal_id,
         goal_objective_text=mirror_state.objective_text,
         source_paths=source_paths,
@@ -152,8 +196,8 @@ def prepare_tracked_codex_goal_ralph_handoff_prompt(
         review_policy=mirror_state.review_policy,
         team_worker_count=mirror_state.team_worker_count,
     )
-    prompt: str = build_goal_to_ralph_handoff_prompt(prompt_request)
-    result = GoalToRalphHandoffPromptResult(
+    prompt: str = build_goal_prd_authoring_prompt(prompt_request)
+    result = GoalPrdAuthoringPromptResult(
         mirror_state=mirror_state,
         prompt_request=prompt_request,
         prompt=prompt,

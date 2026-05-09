@@ -155,7 +155,10 @@ def validate_ralph_prd_gate() -> RalphPrdArtifact:
     prd_path: Path = Path.cwd() / ".omx" / "prd.json"
     if not prd_path.exists():
         raise ValueError(
-            "Missing required PRD.json at .omx/prd.json. Create the file before running `agent-remote ralph launch`."
+            "Missing required PRD.json at .omx/prd.json. Ralph consumes an approved PRD; it does not author one. "
+            "Prepare a Goal-scoped PRD authoring prompt with `agent-remote goal prepare-prd-prompt`, "
+            "run that prompt with a Goal-scoped PRD authoring agent, then capture the generated JSON with "
+            "`agent-remote prd validate --input-path <generated-prd.json> --output-path .omx/prd.json` before running Ralph."
         )
 
     artifact: RalphPrdArtifact = read_ralph_prd_artifact(prd_path)

@@ -9,9 +9,11 @@ from omx_remote.runtime.goal.codex_goal_supervisor import (
     GoalToRalphHandoffPromptRenderer,
     advance_tracked_codex_goal,
     build_codex_goal_snapshot,
+    build_goal_prd_authoring_prompt,
     build_goal_to_ralph_handoff_prompt,
     dispatch_goal_delegation,
     prepare_tracked_codex_goal_ralph_handoff_prompt,
+    prepare_tracked_goal_prd_authoring_prompt,
     select_goal_delegation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
@@ -22,6 +24,7 @@ from omx_remote.schemas.codex_goal.supervisor_schemas import (
     GoalDelegationDecision,
     GoalDelegationDispatchResult,
     GoalExecutionPolicy,
+    GoalPrdAuthoringPromptRequest,
     GoalToRalphHandoffPromptRequest,
 )
 from omx_remote.schemas.multi_operator.snapshot_schemas import (
@@ -386,7 +389,9 @@ def test_build_goal_to_ralph_handoff_prompt_renders_prd_contract() -> None:
 
     prompt = build_goal_to_ralph_handoff_prompt(request)
 
-    assert "You are Ralph" in prompt
+    assert "You are the Goal-scoped PRD authoring agent" in prompt
+    assert "You are Ralph" not in prompt
+    assert "Do not act as Ralph" in prompt
     assert "Goal ID: goal-1" in prompt
     assert "Use docs/jobs/schema-type-refactor-hardening" in prompt
     assert "docs/rules/schema-boundary-rules.md" in prompt
@@ -400,7 +405,34 @@ def test_build_goal_to_ralph_handoff_prompt_renders_prd_contract() -> None:
     assert "aggregation_policy" in prompt
     assert "Do not implement code" in prompt
     assert "Do not launch Team" in prompt
-    assert "Stop after creating or validating the PRD artifact" in prompt
+    assert "Return ONLY JSON matching RalphPrdArtifact" in prompt
+    assert "Stop after producing the PRD JSON artifact" in prompt
+
+
+def test_build_goal_prd_authoring_prompt_renders_goal_scoped_contract() -> None:
+    request = GoalPrdAuthoringPromptRequest(
+        goal_id="goal-prd",
+        goal_objective_text="Build a local editorial studio.",
+        source_paths=("README.md", "docs/editorial-studio-goal.md"),
+        requested_slice="draft preview publish workflow",
+        constraints=("local-only sandbox",),
+        verification_expectations=("backend and frontend tests pass",),
+        review_policy="review_required",
+        team_worker_count=4,
+    )
+
+    prompt = build_goal_prd_authoring_prompt(request)
+
+    assert "You are the Goal-scoped PRD authoring agent" in prompt
+    assert "Goal ID: goal-prd" in prompt
+    assert "Build a local editorial studio." in prompt
+    assert "draft preview publish workflow" in prompt
+    assert "README.md" in prompt
+    assert "RalphPrdArtifact" in prompt
+    assert "Return ONLY JSON matching RalphPrdArtifact" in prompt
+    assert "Do not act as Ralph" in prompt
+    assert "Do not launch Ralph" in prompt
+    assert "Do not launch Team" in prompt
 
 
 def test_goal_to_ralph_handoff_prompt_renderer_matches_public_function() -> None:
@@ -447,8 +479,33 @@ def test_prepare_tracked_codex_goal_ralph_handoff_prompt_uses_mirror_state(
     assert result.prompt_request.review_policy == "review_required"
     assert result.prompt_request.team_worker_count == 2
     assert "schema config and root base" in result.prompt
-    assert "Stop after creating or validating the PRD artifact" in result.prompt
+    assert "Stop after producing the PRD JSON artifact" in result.prompt
 
+
+def test_prepare_tracked_goal_prd_authoring_prompt_uses_mirror_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mirror_state = _build_codex_goal_mirror_state()
+    monkeypatch.setattr(
+        codex_goal_supervisor,
+        "read_codex_goal_status",
+        lambda working_directory: mirror_state,
+    )
+
+    result = prepare_tracked_goal_prd_authoring_prompt(
+        working_directory="/tmp/repo-a",
+        source_paths=("README.md", "docs/editorial-studio-goal.md"),
+        requested_slice="editorial studio PRD",
+        constraints=("local-only sandbox",),
+        verification_expectations=("backend and frontend tests pass",),
+    )
+
+    assert result.mirror_state.goal_id == "goal-1"
+    assert result.prompt_request.goal_objective_text == mirror_state.objective_text
+    assert result.prompt_request.review_policy == "review_required"
+    assert result.prompt_request.team_worker_count == 2
+    assert "You are the Goal-scoped PRD authoring agent" in result.prompt
+    assert "editorial studio PRD" in result.prompt
 
 
 def test_goal_delegation_decision_requires_team_worker_count_for_team_fanout() -> None:

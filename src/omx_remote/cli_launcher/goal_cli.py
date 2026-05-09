@@ -11,6 +11,7 @@ from omx_remote.runtime.goal.codex_goal_runtime import (
 from omx_remote.runtime.goal.codex_goal_supervisor import (
     build_goal_operating_decision,
     prepare_tracked_codex_goal_ralph_handoff_prompt,
+    prepare_tracked_goal_prd_authoring_prompt,
     restore_goal_lifecycle_state,
 )
 from omx_remote.runtime.goal.goal_lifecycle_artifacts import (
@@ -202,6 +203,58 @@ def goal_status(
 def goal_template() -> None:
     """Print a lightweight Codex /goal prompt scaffold."""
     typer.echo(GOAL_TEMPLATE_TEXT)
+
+
+@goal_app.command("prepare-prd-prompt")
+def goal_prepare_prd_prompt(
+    source_paths: list[str] = typer.Option(
+        ...,
+        "--source-path",
+        help="Source path the Goal-scoped PRD authoring agent must read. Pass multiple times for multiple paths.",
+    ),
+    requested_slice: str = typer.Option(
+        ...,
+        "--requested-slice",
+        help="One implementation slice the PRD artifact should cover.",
+    ),
+    constraints: list[str] | None = typer.Option(
+        None,
+        "--constraint",
+        help="Constraint the PRD authoring agent must preserve. Pass multiple times for multiple constraints.",
+    ),
+    verification_expectations: list[str] = typer.Option(
+        ...,
+        "--verification-expectation",
+        help="Verification gate the PRD artifact must include. Pass multiple times for multiple gates.",
+    ),
+    cwd: str | None = typer.Option(
+        None,
+        "--cwd",
+        help="Optional working directory whose adapter-owned goal mirror state should be read.",
+    ),
+) -> None:
+    """Prepare a Goal-scoped PRD authoring prompt from the tracked Goal.
+
+    Args:
+        source_paths [list[str]]: Source paths the authoring agent must read.
+        requested_slice [str]: One implementation slice the PRD should cover.
+        constraints [list[str] | None]: Optional PRD constraints.
+        verification_expectations [list[str]]: Verification gates the PRD must include.
+        cwd [str | None]: Optional Goal mirror workspace.
+    """
+    try:
+        result = prepare_tracked_goal_prd_authoring_prompt(
+            working_directory=cwd,
+            source_paths=tuple(source_paths),
+            requested_slice=requested_slice,
+            constraints=tuple([] if constraints is None else constraints),
+            verification_expectations=tuple(verification_expectations),
+        )
+    except (ValidationError, ValueError) as error:
+        typer.echo(str(error))
+        raise typer.Exit(code=2) from error
+
+    typer.echo(result.model_dump_json(indent=2))
 
 
 @goal_app.command("prepare-ralph")
