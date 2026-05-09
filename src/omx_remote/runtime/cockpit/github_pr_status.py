@@ -14,6 +14,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import CockpitPullRequestObserv
 
 GITHUB_API_ROOT = "https://api.github.com"
 CODEX_NO_MAJOR_ISSUES_MARKER = "didn't find any major issues"
+CODEX_REVIEW_BOT_LOGIN = "chatgpt-codex-connector[bot]"
 GITHUB_API_PAGE_SIZE = 100
 GITHUB_CREDENTIAL_TIMEOUT_SECONDS = 5
 
@@ -191,7 +192,9 @@ def _build_paginated_array_path(api_path: str, page_number: int) -> str:
     return paginated_path
 
 
-def _read_github_paginated_array_json(repo_root: str, api_path: str) -> JsonValue | None:
+def _read_github_paginated_array_json(
+    repo_root: str, api_path: str
+) -> JsonValue | None:
     """Read every page of a GitHub REST array payload.
 
     Args:
@@ -413,6 +416,52 @@ def _head_sha_from_pull(pull_request: JsonObject) -> str | None:
     return sha_text
 
 
+def _comment_author_login(comment_object: JsonObject) -> str | None:
+    """Extract an issue comment author login.
+
+    Args:
+        comment_object [JsonObject]: Issue comment payload.
+
+    Returns:
+        str | None: Author login when available, otherwise None.
+    """
+    user_value: JsonValue | None = comment_object.get("user")
+    user_object: JsonObject | None = _as_json_object(user_value)
+    if user_object is None:
+        missing_login: str | None = None
+        return missing_login
+
+    login_text: str | None = _as_non_empty_text(user_object.get("login"))
+    return login_text
+
+
+def _is_codex_no_major_issues_comment(comment_object: JsonObject) -> bool:
+    """Check whether an issue comment is an authenticated Codex clean-review marker.
+
+    Args:
+        comment_object [JsonObject]: Issue comment payload.
+
+    Returns:
+        bool: True when the Codex bot authored a no-major-issues marker.
+    """
+    author_login: str | None = _comment_author_login(comment_object)
+    if author_login != CODEX_REVIEW_BOT_LOGIN:
+        is_codex_marker: bool = False
+        return is_codex_marker
+
+    body_text: str | None = _as_non_empty_text(comment_object.get("body"))
+    if body_text is None:
+        is_codex_marker = False
+        return is_codex_marker
+
+    if CODEX_NO_MAJOR_ISSUES_MARKER in body_text.lower():
+        is_codex_marker = True
+        return is_codex_marker
+
+    is_codex_marker = False
+    return is_codex_marker
+
+
 def _reviewer_key(review_object: JsonObject, review_index: int) -> str:
     """Build a stable reviewer key for a GitHub review payload.
 
@@ -438,7 +487,9 @@ def _reviewer_key(review_object: JsonObject, review_index: int) -> str:
     return reviewer_key
 
 
-def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: JsonValue | None) -> str:
+def _classify_review_state(
+    reviews_payload: JsonValue | None, comments_payload: JsonValue | None
+) -> str:
     """Classify review state from GitHub reviews and Codex issue comments.
 
     Args:
@@ -462,9 +513,12 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
         if state_text is None:
             continue
         normalized_state: str = state_text.lower()
+        reviewer_key: str = _reviewer_key(review_object, review_index)
+        if normalized_state == "dismissed":
+            latest_decisions_by_reviewer.pop(reviewer_key, None)
+            continue
         if normalized_state not in {"approved", "changes_requested"}:
             continue
-        reviewer_key: str = _reviewer_key(review_object, review_index)
         latest_decisions_by_reviewer[reviewer_key] = normalized_state
 
     for review_state in latest_decisions_by_reviewer.values():
@@ -478,10 +532,7 @@ def _classify_review_state(reviews_payload: JsonValue | None, comments_payload: 
             comment_object: JsonObject | None = _as_json_object(comment_value)
             if comment_object is None:
                 continue
-            body_text: str | None = _as_non_empty_text(comment_object.get("body"))
-            if body_text is None:
-                continue
-            if CODEX_NO_MAJOR_ISSUES_MARKER in body_text.lower():
+            if _is_codex_no_major_issues_comment(comment_object):
                 codex_state: str = "codex_no_major_issues"
                 return codex_state
 
@@ -537,7 +588,9 @@ def _classify_check_runs(check_runs_payload: JsonValue | None) -> str:
     return unknown_state
 
 
-def _classify_check_state(status_payload: JsonValue | None, check_runs_payload: JsonValue | None) -> str:
+def _classify_check_state(
+    status_payload: JsonValue | None, check_runs_payload: JsonValue | None
+) -> str:
     """Classify combined GitHub commit status and check-runs state.
 
     Args:
@@ -622,7 +675,9 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
     Returns:
         CockpitPullRequestObservation: Read-only PR status evidence.
     """
-    remote_url: str | None = _run_git_command(repo_root, ("remote", "get-url", "origin"))
+    remote_url: str | None = _run_git_command(
+        repo_root, ("remote", "get-url", "origin")
+    )
     if remote_url is None:
         observation = CockpitPullRequestObservation(
             provider="github",
@@ -706,7 +761,9 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
     pull_request_number: int | None = _as_positive_int(pull_request.get("number"))
     pull_request_url: str | None = _as_non_empty_text(pull_request.get("html_url"))
     pull_request_state: str | None = _as_non_empty_text(pull_request.get("state"))
-    mergeable_state: str | None = _as_non_empty_text(pull_request.get("mergeable_state"))
+    mergeable_state: str | None = _as_non_empty_text(
+        pull_request.get("mergeable_state")
+    )
     head_sha: str | None = _head_sha_from_pull(pull_request)
     if pull_request_number is None or pull_request_state is None or head_sha is None:
         observation = CockpitPullRequestObservation(
@@ -766,7 +823,9 @@ def _read_pull_request_status_sync(repo_root: str) -> CockpitPullRequestObservat
     return observation
 
 
-async def read_github_pull_request_status(repo_root: str) -> CockpitPullRequestObservation:
+async def read_github_pull_request_status(
+    repo_root: str,
+) -> CockpitPullRequestObservation:
     """Read optional GitHub PR/review/check evidence for a repo.
 
     Args:
