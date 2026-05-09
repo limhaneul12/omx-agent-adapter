@@ -79,10 +79,12 @@ A lane is not done because a prompt or schema exists. It is done when the route 
 
 Detailed current feature scope lives in `docs/current-feature-development-scope.md`.
 
-1. Keep the new cockpit read-only status surface as the merge-ready baseline before expanding automation.
-2. Harden typed transport contracts next, starting with Teamwork adapter types that still carry broad `object`, `dict[str, object]`, or unclear `str | None` seams.
-3. Keep the Pydantic dependency posture stable unless a concrete TypedDict hardening slice requires a tighter minimum; if PEP 728 `TypedDict` features are adopted, use `typing_extensions.TypedDict` rather than stdlib `typing.TypedDict`.
-4. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
-5. Improve launch/status UX so agents can distinguish Team DAG/assignment success from Codex worker readiness/dispatch success.
-6. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
-7. Preserve `Ralph → Team` as a separate lane in docs and help text.
+1. Treat the merged cockpit all-status baseline and Team evidence action hardening as the current read-only baseline before expanding automation.
+2. Use the next cockpit slice to stitch existing evidence rows into clearer operating-decision reasons, not to add launch, cleanup, or implicit advance behavior.
+3. Improve Team identity discovery only from durable Goal/Ralph/Team artifacts that actually persist launched Team names; do not infer Team names from `team_worker_count`, worker IDs, goal IDs, or broad `.omx` scans.
+4. Consider PR/CI/review status as cockpit status sources only when a real merge-safety workflow needs that evidence.
+5. Keep the Pydantic dependency posture stable unless a concrete TypedDict hardening slice requires a tighter minimum; if PEP 728 `TypedDict` features are adopted, use `typing_extensions.TypedDict` rather than stdlib `typing.TypedDict`.
+6. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
+7. Improve launch/status UX so agents can distinguish Team DAG/assignment success from Codex worker readiness/dispatch success.
+8. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.
+9. Preserve `Ralph → Team` as a separate lane in docs and help text.
