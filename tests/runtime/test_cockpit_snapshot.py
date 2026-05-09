@@ -26,7 +26,11 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.runtime.status_schemas import (
+    ActiveRuntimeModes,
+    RuntimeStatus,
+    RuntimeStatusAnomaly,
+)
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiReadWorkerStatusRequest,
 )
@@ -210,27 +214,30 @@ def _write_goal_mirror_state(
     repo_root: Path,
     *,
     team_worker_count: int | None,
+    linked_team_names: tuple[str, ...] = (),
 ) -> Path:
     state_path = repo_root / ".agent-remote" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
+    payload = {
+        "goal_id": "goal-cockpit-discovery",
+        "objective_text": "Discover linked Teams for cockpit.",
+        "source": "codex_goal",
+        "execution_shape": "ralph_pipeline",
+        "review_policy": "review_required",
+        "team_worker_count": team_worker_count,
+        "working_directory": str(repo_root),
+        "codex_command": ["codex", "--enable", "goals"],
+        "session_locator": "agent-remote-goal-goal-cockpit-discovery",
+        "process_id": 1234,
+        "launched_at": "2026-05-08T00:00:00+00:00",
+        "handoff_state": "awaiting_ralph",
+        "tracking_state": "active",
+    }
+    if linked_team_names:
+        payload["linked_team_names"] = list(linked_team_names)
+
     state_path.write_text(
-        json.dumps(
-            {
-                "goal_id": "goal-cockpit-discovery",
-                "objective_text": "Discover linked Teams for cockpit.",
-                "source": "codex_goal",
-                "execution_shape": "ralph_pipeline",
-                "review_policy": "review_required",
-                "team_worker_count": team_worker_count,
-                "working_directory": str(repo_root),
-                "codex_command": ["codex", "--enable", "goals"],
-                "session_locator": "agent-remote-goal-goal-cockpit-discovery",
-                "process_id": 1234,
-                "launched_at": "2026-05-08T00:00:00+00:00",
-                "handoff_state": "awaiting_ralph",
-                "tracking_state": "active",
-            }
-        ),
+        json.dumps(payload),
         encoding="utf-8",
     )
     return state_path
@@ -245,6 +252,22 @@ def test_discovery_treats_missing_goal_mirror_as_empty_evidence(
 
     assert result.discovered_team_names == ()
     assert result.inspected_sources == (str(expected_source),)
+    assert result.warnings == ()
+
+
+def test_discovery_discovers_exact_team_names_from_goal_mirror_state(
+    tmp_path: Path,
+) -> None:
+    state_path = _write_goal_mirror_state(
+        tmp_path,
+        team_worker_count=2,
+        linked_team_names=("alpha-team", "beta-team"),
+    )
+
+    result = discover_linked_team_names(tmp_path)
+
+    assert result.discovered_team_names == ("alpha-team", "beta-team")
+    assert result.inspected_sources == (str(state_path),)
     assert result.warnings == ()
 
 
@@ -455,6 +478,40 @@ def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
     assert snapshot.recommended_next_action == "observe_active_runtime"
     assert snapshot.decision_reasons[0].category == "active_runtime_evidence"
     assert snapshot.decision_reasons[1].category == "active_team_evidence"
+
+
+def test_cockpit_treats_uncertain_runtime_status_as_mutation_blocker(
+    tmp_path: Path,
+) -> None:
+    runtime_status = RuntimeStatus(
+        summary="run: spinning",
+        has_active_modes=None,
+        active_mode_names=(),
+        mode_snapshots=(),
+        mode_statuses={"run": "unknown"},
+        anomalies=(
+            RuntimeStatusAnomaly(
+                category="unknown_mode_status",
+                message="spinning",
+                mode_name="run",
+            ),
+        ),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=runtime_status,
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=(),
+    )
+
+    assert snapshot.safe_to_mutate is False
+    assert snapshot.recommended_next_action == "inspect_runtime_status"
+    assert snapshot.decision_reasons[0].category == "runtime_status_uncertain"
+    assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
 
 
 def test_cockpit_treats_unknown_team_status_as_degraded_not_active(

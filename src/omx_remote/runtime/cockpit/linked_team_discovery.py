@@ -81,7 +81,7 @@ def discover_linked_team_names(repo_root: str | Path) -> LinkedTeamDiscoveryResu
         goal_mirror_state,
     )
     result = LinkedTeamDiscoveryResult(
-        discovered_team_names=(),
+        discovered_team_names=goal_mirror_state.linked_team_names,
         inspected_sources=inspected_sources,
         warnings=warnings,
     )
@@ -216,6 +216,10 @@ def _build_goal_mirror_discovery_warnings(
     """
     if goal_mirror_state.team_worker_count is None:
         no_warnings: tuple[str, ...] = ()
+        return no_warnings
+
+    if goal_mirror_state.linked_team_names:
+        no_warnings = ()
         return no_warnings
 
     warning: str = (

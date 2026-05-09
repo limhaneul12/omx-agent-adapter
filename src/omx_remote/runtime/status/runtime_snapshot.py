@@ -51,9 +51,13 @@ async def read_runtime_status(
         summary = stdout
     else:
         summary = stderr
-    has_active_modes: bool | None = _infer_has_active_modes(stdout, summary)
-    active_mode_names: list[str] = _extract_active_mode_names(stdout)
     mode_statuses: dict[str, RuntimeModeStatus] = _extract_mode_statuses(stdout)
+    has_active_modes: bool | None = _infer_has_active_modes(
+        stdout=stdout,
+        summary=summary,
+        mode_statuses=mode_statuses,
+    )
+    active_mode_names: list[str] = _extract_active_mode_names(stdout)
     mode_snapshots: list[RuntimeModeSnapshot] = _build_mode_snapshots(stdout)
     anomalies: list[RuntimeStatusAnomaly] = _build_runtime_status_anomalies(
         stdout=stdout,
@@ -77,17 +81,34 @@ async def read_runtime_status(
     return result
 
 
-def _infer_has_active_modes(stdout: str, summary: str) -> bool | None:
+def _infer_has_active_modes(
+    stdout: str,
+    summary: str,
+    mode_statuses: dict[str, RuntimeModeStatus],
+) -> bool | None:
     """Infers whether OMX currently reports active modes.
 
     Args:
         stdout [str]: Normalized stdout text returned from `omx status`.
         summary [str]: Summary text selected for the runtime status surface.
+        mode_statuses [dict[str, RuntimeModeStatus]]: Parsed per-mode status tokens from stdout.
 
     Returns:
         bool | None: Boolean activity signal when stdout is available, otherwise `None` when the state cannot be inferred.
     """
     has_active_modes: bool | None
+    if stdout and mode_statuses:
+        if any(mode_status is ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()):
+            has_active_modes = True
+            return has_active_modes
+        if any(
+            mode_status is RuntimeModeStatus.UNKNOWN
+            for mode_status in mode_statuses.values()
+        ):
+            has_active_modes = None
+            return has_active_modes
+        has_active_modes = False
+        return has_active_modes
     if stdout:
         has_active_modes = summary != IDLE_RUNTIME_SUMMARY
         return has_active_modes

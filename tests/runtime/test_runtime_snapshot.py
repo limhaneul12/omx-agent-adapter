@@ -162,6 +162,29 @@ def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomali
     assert result.anomalies == ()
 
 
+def test_read_runtime_status_treats_inactive_only_phase_lines_as_idle(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(
+            stdout="native-stop: inactive (phase: n/a)\nralph: inactive (phase: cancelled)\ntmux-hook: inactive (phase: n/a)\n"
+        ),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.has_active_modes is False
+    assert result.active_mode_names == ()
+    assert result.mode_statuses == {
+        "native-stop": "idle",
+        "ralph": "idle",
+        "tmux-hook": "idle",
+    }
+    assert result.anomalies == ()
+
+
 def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> None:
     monkeypatch.setattr(
         runtime_snapshot,
@@ -182,6 +205,24 @@ def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> N
     assert result.mode_snapshots[1].status == "unknown"
     assert result.mode_snapshots[1].raw_status_text == "spinning"
     assert result.mode_snapshots[1].has_uncertainty is True
+
+
+def test_read_runtime_status_preserves_uncertainty_for_unknown_only_modes(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="run: spinning\nteam: idle\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.has_active_modes is None
+    assert result.active_mode_names == ()
+    assert result.mode_statuses == {"run": "unknown", "team": "idle"}
+    assert result.anomalies[0].category == "unknown_mode_status"
+    assert result.anomalies[0].mode_name == "run"
 
 
 def test_read_runtime_status_reports_empty_transport_output(monkeypatch) -> None:

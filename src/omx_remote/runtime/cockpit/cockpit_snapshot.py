@@ -279,6 +279,10 @@ def _build_status_sources(
         selected_text: str = ", ".join(selected_team_names)
         team_selection_detail = f"Selected Team names for evidence reads: {selected_text}."
 
+    runtime_status_source_state: CockpitStatusSourceState = CockpitStatusSourceState.OBSERVED
+    if _runtime_status_has_uncertain_activity(runtime_status):
+        runtime_status_source_state = CockpitStatusSourceState.UNKNOWN
+
     active_modes_detail = "No active runtime modes were reported."
     if active_runtime_modes.active_modes:
         active_modes_text: str = ", ".join(active_runtime_modes.active_modes)
@@ -293,7 +297,7 @@ def _build_status_sources(
     sources: tuple[CockpitStatusSourceObservation, ...] = (
         CockpitStatusSourceObservation(
             name="runtime_status",
-            status=CockpitStatusSourceState.OBSERVED,
+            status=runtime_status_source_state,
             detail=runtime_status.summary or "Runtime status was read.",
         ),
         CockpitStatusSourceObservation(
@@ -1029,6 +1033,19 @@ def _map_ultrawork_state(
     return state
 
 
+def _runtime_status_has_uncertain_activity(runtime_status: RuntimeStatus) -> bool:
+    """Return whether runtime activity is unknown enough to require inspection.
+
+    Args:
+        runtime_status [RuntimeStatus]: Normalized runtime status snapshot.
+
+    Returns:
+        bool: ``True`` when `omx status` did not produce a definitive activity signal.
+    """
+    has_uncertain_activity: bool = runtime_status.has_active_modes is None
+    return has_uncertain_activity
+
+
 def _derive_safe_to_mutate(
     contradictions: tuple[CockpitContradiction, ...],
     runtime_status: RuntimeStatus,
@@ -1047,8 +1064,14 @@ def _derive_safe_to_mutate(
         bool: ``True`` only when no active runtime, active Team, or contradictions are visible.
     """
     has_active_runtime: bool = bool(active_runtime_modes.active_modes) or runtime_status.has_active_modes is True
+    has_uncertain_runtime: bool = _runtime_status_has_uncertain_activity(runtime_status)
     has_active_team: bool = _team_observations_include_active_runtime(team_observations)
-    safe_to_mutate: bool = not contradictions and not has_active_runtime and not has_active_team
+    safe_to_mutate: bool = (
+        not contradictions
+        and not has_active_runtime
+        and not has_uncertain_runtime
+        and not has_active_team
+    )
     return safe_to_mutate
 
 
@@ -1077,6 +1100,9 @@ def _derive_recommended_next_action(
     if active_runtime_modes.active_modes or runtime_status.has_active_modes is True:
         observe_action: str = "observe_active_runtime"
         return observe_action
+    if _runtime_status_has_uncertain_activity(runtime_status):
+        inspect_runtime_action: str = "inspect_runtime_status"
+        return inspect_runtime_action
     if _team_observations_include_active_runtime(team_observations):
         inspect_team_action: str = "inspect_team_evidence"
         return inspect_team_action
@@ -1130,6 +1156,14 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="active_runtime_evidence",
                 detail="Runtime status reports active modes without a parsed active-mode list.",
+                source_names=("runtime_status",),
+            )
+        )
+    elif _runtime_status_has_uncertain_activity(runtime_status):
+        reasons.append(
+            CockpitDecisionReason(
+                category="runtime_status_uncertain",
+                detail="Runtime status could not determine whether modes are active.",
                 source_names=("runtime_status",),
             )
         )
