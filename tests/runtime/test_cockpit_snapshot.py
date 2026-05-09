@@ -5,12 +5,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.cockpit import cockpit_snapshot
-from omx_remote.runtime.cockpit.cockpit_snapshot import (
-    build_cockpit_snapshot,
-    read_cockpit_snapshot,
-)
-from omx_remote.runtime.cockpit.linked_team_discovery import (
+import omx_remote.runtime.cockpit.snapshot.reader as snapshot_reader
+import omx_remote.runtime.cockpit.team_evidence.reader as team_observation_reader
+from omx_remote.runtime.cockpit.snapshot.builder import build_cockpit_snapshot
+from omx_remote.runtime.cockpit.snapshot.reader import read_cockpit_snapshot
+from omx_remote.runtime.cockpit.team_evidence.discovery import (
     LinkedTeamDiscoveryResult,
     discover_linked_team_names,
     merge_explicit_and_discovered_team_names,
@@ -375,14 +374,14 @@ def test_read_cockpit_snapshot_includes_github_pr_status_source(
         assert repo_root == str(tmp_path)
         return pull_request_status
 
-    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_github_pull_request_status",
         fake_read_github_pull_request_status,
         raising=False,
@@ -417,9 +416,9 @@ def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
     async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
         return ActiveRuntimeModes(active_modes=())
 
-    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
@@ -683,17 +682,17 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
             updated_at="2026-05-08T00:00:00.000Z",
         )
 
-    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
-    monkeypatch.setattr(cockpit_snapshot, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        team_observation_reader,
         "read_team_api_read_worker_status",
         fake_read_worker_status,
     )
@@ -757,20 +756,20 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
     async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
         return TeamApiReadEventsSnapshot(count=0, cursor="cursor-0", events=())
 
-    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "discover_linked_team_names",
         fake_discover_linked_team_names,
     )
-    monkeypatch.setattr(cockpit_snapshot, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
 
     snapshot = asyncio.run(
         read_cockpit_snapshot(CockpitSnapshotRequest(repo_root=str(tmp_path)))
@@ -812,15 +811,15 @@ def test_read_cockpit_snapshot_exposes_team_evidence_status_source(
     async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
         return TeamApiReadEventsSnapshot(count=0, cursor="cursor-0", events=())
 
-    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
     monkeypatch.setattr(
-        cockpit_snapshot,
+        snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
-    monkeypatch.setattr(cockpit_snapshot, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(cockpit_snapshot, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
 
     snapshot = asyncio.run(
         read_cockpit_snapshot(

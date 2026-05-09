@@ -1,5 +1,4 @@
-from collections.abc import Callable
-from typing import Final, cast
+from typing import cast
 
 import msgspec
 
@@ -16,45 +15,18 @@ from omx_remote.adapter_types.execution_types import (
     ExecutionUsageSpec,
     ExecutionUsageTransportPayload,
 )
+from omx_remote.adapter_types.type_contract import (
+    execution_payload_normalizer_contract_type,
+    execution_transport_contract_type,
+)
 from omx_remote.adapter_types.type_contract.execution_contract_type import (
     KNOWN_EXECUTION_EVENT_TYPES,
 )
+from omx_remote.adapter_types.type_contract.execution_payload_normalizer_contract_type import (
+    ExecutionEventPayloadNormalizer,
+)
 from omx_remote.shared.exceptions import UnsupportedExecutionPayloadError
 from omx_remote.shared.omx_enums.execution_enums import ExecutionEventKind
-
-EXECUTION_ITEM_STABLE_FIELD_KEYS: Final[frozenset[str]] = frozenset(
-    {
-        "id",
-        "type",
-        "text",
-        "tool_name",
-        "call_id",
-        "arguments",
-        "command",
-        "aggregated_output",
-        "exit_code",
-        "status",
-    }
-)
-EXECUTION_TRANSPORT_STABLE_FIELD_KEYS: Final[frozenset[str]] = frozenset(
-    {
-        "type",
-        "text",
-        "item",
-        "tool_name",
-        "call_id",
-        "arguments",
-        "command",
-        "aggregated_output",
-        "exit_code",
-        "status",
-        "id",
-        "extra",
-        "kind",
-        "thread_id",
-        "usage",
-    }
-)
 
 
 def _copy_passthrough_fields(
@@ -240,7 +212,7 @@ def _normalize_execution_item_payload(item_payload: object) -> ExecutionItemTran
 
     passthrough_fields: dict[str, object] = _copy_passthrough_fields(
         item_mapping,
-        EXECUTION_ITEM_STABLE_FIELD_KEYS,
+        execution_transport_contract_type.EXECUTION_ITEM_STABLE_FIELD_KEYS,
     )
     item_spec = ExecutionItemSpec(
         id=_convert_msgspec_optional_str(item_mapping.get("id")),
@@ -376,75 +348,6 @@ def _normalize_execution_item_completed_payload(
     return normalized_payload
 
 
-type ExecutionEventPayloadNormalizer = Callable[
-    [ExecutionTransportPayload], ExecutionTransportPayload
-]
-
-
-def _merge_thread_started_payload(
-    payload: ExecutionTransportPayload,
-) -> ExecutionTransportPayload:
-    """Builds a top-level thread-started merge payload.
-
-    Args:
-        payload [ExecutionTransportPayload]: Normalized top-level execution payload inspected for thread state.
-
-    Returns:
-        ExecutionTransportPayload: Merge payload carrying the thread-started stable fields.
-    """
-    thread_started_payload: ExecutionThreadStartedTransportPayload = (
-        _normalize_execution_thread_started_payload(payload)
-    )
-    result = ExecutionTransportPayload(thread_id=thread_started_payload["thread_id"])
-    return result
-
-
-def _merge_turn_completed_payload(
-    payload: ExecutionTransportPayload,
-) -> ExecutionTransportPayload:
-    """Builds a top-level turn-completed merge payload.
-
-    Args:
-        payload [ExecutionTransportPayload]: Normalized top-level execution payload inspected for usage state.
-
-    Returns:
-        ExecutionTransportPayload: Merge payload carrying the turn-completed stable fields.
-    """
-    turn_completed_payload: ExecutionTurnCompletedTransportPayload = (
-        _normalize_execution_turn_completed_payload(payload)
-    )
-    result = ExecutionTransportPayload(usage=turn_completed_payload["usage"])
-    return result
-
-
-def _merge_item_completed_payload(
-    payload: ExecutionTransportPayload,
-) -> ExecutionTransportPayload:
-    """Builds a top-level item-completed merge payload.
-
-    Args:
-        payload [ExecutionTransportPayload]: Normalized top-level execution payload inspected for nested item state.
-
-    Returns:
-        ExecutionTransportPayload: Merge payload carrying the item-completed stable fields.
-    """
-    item_completed_payload: ExecutionItemCompletedTransportPayload = (
-        _normalize_execution_item_completed_payload(payload)
-    )
-    result = ExecutionTransportPayload(item=item_completed_payload["item"])
-    return result
-
-
-EXECUTION_EVENT_PAYLOAD_NORMALIZERS: dict[
-    ExecutionEventKind,
-    ExecutionEventPayloadNormalizer,
-] = {
-    ExecutionEventKind.THREAD_STARTED: _merge_thread_started_payload,
-    ExecutionEventKind.TURN_COMPLETED: _merge_turn_completed_payload,
-    ExecutionEventKind.ITEM_COMPLETED: _merge_item_completed_payload,
-}
-
-
 def _select_execution_event_payload_normalizer(
     event_type: str | None,
 ) -> ExecutionEventPayloadNormalizer | None:
@@ -467,7 +370,7 @@ def _select_execution_event_payload_normalizer(
         return missing_normalizer
 
     normalizer: ExecutionEventPayloadNormalizer | None = (
-        EXECUTION_EVENT_PAYLOAD_NORMALIZERS.get(event_kind)
+        execution_payload_normalizer_contract_type.EXECUTION_EVENT_PAYLOAD_NORMALIZERS.get(event_kind)
     )
     return normalizer
 
@@ -519,7 +422,7 @@ def _load_execution_transport_payload(payload: object) -> ExecutionTransportPayl
 
     passthrough_fields: dict[str, object] = _copy_passthrough_fields(
         payload_mapping,
-        EXECUTION_TRANSPORT_STABLE_FIELD_KEYS,
+        execution_transport_contract_type.EXECUTION_TRANSPORT_STABLE_FIELD_KEYS,
     )
     item_mapping: dict[str, object] | None = _convert_msgspec_optional_mapping(
         payload_mapping.get("item")

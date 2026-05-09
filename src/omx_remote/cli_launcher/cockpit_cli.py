@@ -4,7 +4,7 @@ from pathlib import Path
 
 import typer
 
-from omx_remote.runtime.cockpit.cockpit_snapshot import read_cockpit_snapshot
+from omx_remote.runtime.cockpit.snapshot.reader import read_cockpit_snapshot
 from omx_remote.schemas.cockpit.snapshot_schemas import CockpitSnapshotRequest
 
 cockpit_app = typer.Typer(

@@ -1,3 +1,11 @@
+"""Read-only GitHub PR evidence source for cockpit operating decisions.
+
+The cockpit uses this module to answer whether the current branch already has
+PR/review/check evidence that affects agent/OMX next-action decisions. It stays
+separate from snapshot aggregation because it owns GitHub REST access,
+non-interactive credential lookup, pagination, and Codex review classification.
+"""
+
 from __future__ import annotations
 
 import asyncio

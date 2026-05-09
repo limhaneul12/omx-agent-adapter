@@ -40,6 +40,77 @@ def test_ralph_control_surface_is_split_by_responsibility() -> None:
     assert len((ralph_root / "ralph_control.py").read_text().splitlines()) < 430
 
 
+
+def test_cockpit_snapshot_surface_is_grouped_by_concept_packages() -> None:
+    cockpit_root = SOURCE_ROOT / "runtime" / "cockpit"
+    grouped_modules = [
+        cockpit_root / "snapshot" / "reader.py",
+        cockpit_root / "snapshot" / "builder.py",
+        cockpit_root / "snapshot" / "lanes.py",
+        cockpit_root / "snapshot" / "decisions.py",
+        cockpit_root / "sources" / "status.py",
+        cockpit_root / "sources" / "goal_mirror.py",
+        cockpit_root / "sources" / "ultrawork.py",
+        cockpit_root / "sources" / "github_pr_status.py",
+        cockpit_root / "team_evidence" / "reader.py",
+        cockpit_root / "team_evidence" / "summary.py",
+        cockpit_root / "team_evidence" / "discovery.py",
+    ]
+    removed_flat_modules = [
+        "cockpit_snapshot.py",
+        "snapshot_reader.py",
+        "snapshot_builder.py",
+        "status_sources.py",
+        "team_observation_reader.py",
+        "lane_snapshots.py",
+        "decisions.py",
+        "ultrawork_observation.py",
+        "goal_mirror_state.py",
+        "team_summary.py",
+        "linked_team_discovery.py",
+        "github_pr_status.py",
+    ]
+
+    line_limited_modules = [
+        module_path
+        for module_path in grouped_modules
+        if module_path.name != "github_pr_status.py"
+    ]
+
+    for module_path in grouped_modules:
+        assert module_path.exists()
+
+    for module_path in line_limited_modules:
+        assert len(module_path.read_text().splitlines()) < 430
+
+    for module_name in removed_flat_modules:
+        assert not (cockpit_root / module_name).exists()
+
+    assert list(cockpit_root.glob("*.py")) == []
+
+
+def test_ultrawork_control_surface_is_split_by_responsibility() -> None:
+    ultrawork_root = SOURCE_ROOT / "runtime" / "ultrawork"
+
+    assert (ultrawork_root / "ultrawork_state_classifier.py").exists()
+    assert len((ultrawork_root / "ultrawork_control.py").read_text().splitlines()) < 430
+
+
+def test_runtime_classes_keep_small_cohesive_method_sets() -> None:
+    inspected_paths = [
+        SOURCE_ROOT / "runtime" / "ultrawork" / "ultrawork_state_classifier.py",
+    ]
+    for inspected_path in inspected_paths:
+        module_tree = ast.parse(inspected_path.read_text(), filename=str(inspected_path))
+        for node in module_tree.body:
+            if not isinstance(node, ast.ClassDef):
+                continue
+            method_count = sum(
+                isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
+                for child in node.body
+            )
+            assert method_count <= 6, f"{inspected_path}:{node.name} has {method_count} methods"
+
 def test_no_reexport_or_marker_init_files_remain() -> None:
     unnecessary_init_files: list[str] = []
     for init_path in SOURCE_ROOT.rglob("__init__.py"):

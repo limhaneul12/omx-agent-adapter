@@ -2,6 +2,7 @@
 
 import asyncio
 
+from omx_remote.adapter_types.type_contract import runtime_status_contract_type
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeSnapshot,
@@ -9,21 +10,6 @@ from omx_remote.schemas.runtime.status_schemas import (
     RuntimeStatus,
     RuntimeStatusAnomaly,
     RuntimeStatusRequest,
-)
-
-IDLE_RUNTIME_SUMMARY = "No active modes."
-ACTIVE_MODE_MARKER = RuntimeModeStatus.ACTIVE
-KNOWN_MODE_STATUS_MARKERS: tuple[RuntimeModeStatus, ...] = (
-    RuntimeModeStatus.ACTIVE,
-    RuntimeModeStatus.PAUSED,
-    RuntimeModeStatus.IDLE,
-    RuntimeModeStatus.UNKNOWN,
-)
-RUNTIME_STATUS_PREFIXES: tuple[tuple[str, RuntimeModeStatus], ...] = (
-    ("active", RuntimeModeStatus.ACTIVE),
-    ("paused", RuntimeModeStatus.PAUSED),
-    ("idle", RuntimeModeStatus.IDLE),
-    ("inactive", RuntimeModeStatus.IDLE),
 )
 
 
@@ -98,7 +84,7 @@ def _infer_has_active_modes(
     """
     has_active_modes: bool | None
     if stdout and mode_statuses:
-        if any(mode_status is ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()):
+        if any(mode_status is runtime_status_contract_type.ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()):
             has_active_modes = True
             return has_active_modes
         if any(
@@ -110,7 +96,7 @@ def _infer_has_active_modes(
         has_active_modes = False
         return has_active_modes
     if stdout:
-        has_active_modes = summary != IDLE_RUNTIME_SUMMARY
+        has_active_modes = summary != runtime_status_contract_type.IDLE_RUNTIME_SUMMARY
         return has_active_modes
     has_active_modes = None
     return has_active_modes
@@ -129,7 +115,7 @@ def _extract_active_mode_names(stdout: str) -> list[str]:
     active_mode_names: list[str] = [
         mode_name
         for mode_name, status_text in mode_statuses.items()
-        if status_text is ACTIVE_MODE_MARKER
+        if status_text is runtime_status_contract_type.ACTIVE_MODE_MARKER
     ]
     return active_mode_names
 
@@ -145,7 +131,7 @@ def _extract_mode_status_entries(
     Returns:
         list[tuple[str, RuntimeModeStatus, str]]: Ordered runtime mode entries containing mode name, normalized status token, and raw status text.
     """
-    if not stdout or stdout == IDLE_RUNTIME_SUMMARY:
+    if not stdout or stdout == runtime_status_contract_type.IDLE_RUNTIME_SUMMARY:
         empty_mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = []
         return empty_mode_status_entries
 
@@ -242,7 +228,7 @@ def _build_runtime_status_anomalies(
         return anomalies
 
     mode_statuses: dict[str, RuntimeModeStatus] = _extract_mode_statuses(stdout)
-    if not mode_statuses and stdout != IDLE_RUNTIME_SUMMARY:
+    if not mode_statuses and stdout != runtime_status_contract_type.IDLE_RUNTIME_SUMMARY:
         anomalies.append(
             RuntimeStatusAnomaly(
                 category="unparseable_stdout",
@@ -300,7 +286,7 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
 
     status_prefix: str
     normalized_status: RuntimeModeStatus
-    for status_prefix, normalized_status in RUNTIME_STATUS_PREFIXES:
+    for status_prefix, normalized_status in runtime_status_contract_type.RUNTIME_STATUS_PREFIXES:
         if normalized_status_text == status_prefix:
             parsed_mode_status_entry = (
                 normalized_mode_name,

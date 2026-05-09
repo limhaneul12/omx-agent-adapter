@@ -95,3 +95,32 @@
   - `uv run pytest -q` → `735 passed`
   - `uv build --wheel` → built `dist/agent_remote-0.1.0-py3-none-any.whl`
   - installed wheel smoke: `agent-remote goal prepare-prd-prompt` and `agent-remote prd validate` both passed
+
+## 2026-05-09 22:05 KST — Start adapter runtime structure refactor
+
+- Branch: `refactor/adapter-type-runtime-structure` from synced main `9961b62`.
+- Job doc: `docs/jobs/adapter-runtime-structure-refactor.md`.
+- Scope:
+  - move execution stable field keys and event normalizer registry into enum/type-contract surfaces,
+  - move runtime status marker tables into adapter type contracts,
+  - split cockpit snapshot aggregation by reader/builder/source/lane/decision/team/ultrawork responsibilities,
+  - split Ultrawork state classification out of the control CLI/runtime module,
+  - add explicit module/class cohesion development rules.
+- Note: `fix/prd-team-owner-assignment` remains a separate local branch/commit and is not included in this refactor branch.
+
+## 2026-05-09 22:08 KST — Adapter runtime structure refactor verified
+
+- Split results:
+  - `runtime/cockpit/` no longer keeps a thin `cockpit_snapshot.py` compatibility facade; callers import the direct concept modules under `snapshot/`, `sources/`, and `team_evidence/`.
+  - `runtime/ultrawork/ultrawork_control.py` delegates state classification to `ultrawork_state_classifier.py`.
+  - execution stable field keys and event payload normalizers now live under enum/type-contract modules.
+  - runtime status marker constants now live under `adapter_types/type_contract/runtime_status_contract_type.py`.
+  - `docs/rules/type-development-rules.md` now records module/class cohesion and adapter-type contract placement rules.
+- `github_pr_status.py` rationale recorded: it is a dedicated read-only cockpit evidence source for branch PR/review/check operating decisions.
+- Verification:
+  - focused structure/runtime tests → `131 passed`
+  - `uv run ruff check src tests` → pass
+  - `uv run pyrefly check src` → `0 errors`
+  - `uv run pytest -q` → `739 passed`
+  - `uv build --wheel` → built `dist/agent_remote-0.1.0-py3-none-any.whl`
+  - installed wheel smoke: `agent-remote version` and `agent-remote cockpit snapshot --help` passed
