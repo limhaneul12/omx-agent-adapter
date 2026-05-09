@@ -207,6 +207,24 @@ def test_read_runtime_status_surfaces_unknown_status_anomalies(monkeypatch) -> N
     assert result.mode_snapshots[1].has_uncertainty is True
 
 
+def test_read_runtime_status_preserves_uncertainty_for_unknown_only_modes(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_snapshot,
+        "run_omx_command",
+        lambda args: DummyResult(stdout="run: spinning\nteam: idle\n"),
+    )
+
+    result = asyncio.run(runtime_snapshot.read_runtime_status())
+
+    assert result.has_active_modes is None
+    assert result.active_mode_names == ()
+    assert result.mode_statuses == {"run": "unknown", "team": "idle"}
+    assert result.anomalies[0].category == "unknown_mode_status"
+    assert result.anomalies[0].mode_name == "run"
+
+
 def test_read_runtime_status_reports_empty_transport_output(monkeypatch) -> None:
     monkeypatch.setattr(
         runtime_snapshot,

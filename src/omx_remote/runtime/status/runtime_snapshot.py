@@ -98,9 +98,16 @@ def _infer_has_active_modes(
     """
     has_active_modes: bool | None
     if stdout and mode_statuses:
-        has_active_modes = any(
-            mode_status is ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()
-        )
+        if any(mode_status is ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()):
+            has_active_modes = True
+            return has_active_modes
+        if any(
+            mode_status is RuntimeModeStatus.UNKNOWN
+            for mode_status in mode_statuses.values()
+        ):
+            has_active_modes = None
+            return has_active_modes
+        has_active_modes = False
         return has_active_modes
     if stdout:
         has_active_modes = summary != IDLE_RUNTIME_SUMMARY

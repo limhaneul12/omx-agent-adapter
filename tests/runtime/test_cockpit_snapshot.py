@@ -26,7 +26,11 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.runtime.status_schemas import (
+    ActiveRuntimeModes,
+    RuntimeStatus,
+    RuntimeStatusAnomaly,
+)
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiReadWorkerStatusRequest,
 )
@@ -474,6 +478,40 @@ def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
     assert snapshot.recommended_next_action == "observe_active_runtime"
     assert snapshot.decision_reasons[0].category == "active_runtime_evidence"
     assert snapshot.decision_reasons[1].category == "active_team_evidence"
+
+
+def test_cockpit_treats_uncertain_runtime_status_as_mutation_blocker(
+    tmp_path: Path,
+) -> None:
+    runtime_status = RuntimeStatus(
+        summary="run: spinning",
+        has_active_modes=None,
+        active_mode_names=(),
+        mode_snapshots=(),
+        mode_statuses={"run": "unknown"},
+        anomalies=(
+            RuntimeStatusAnomaly(
+                category="unknown_mode_status",
+                message="spinning",
+                mode_name="run",
+            ),
+        ),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=runtime_status,
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=(),
+    )
+
+    assert snapshot.safe_to_mutate is False
+    assert snapshot.recommended_next_action == "inspect_runtime_status"
+    assert snapshot.decision_reasons[0].category == "runtime_status_uncertain"
+    assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
 
 
 def test_cockpit_treats_unknown_team_status_as_degraded_not_active(
