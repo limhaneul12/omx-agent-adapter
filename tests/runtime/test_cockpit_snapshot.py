@@ -18,6 +18,7 @@ from omx_remote.runtime.cockpit.linked_team_discovery import (
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitLaneName,
     CockpitLaneState,
+    CockpitPullRequestObservation,
     CockpitSnapshot,
     CockpitSnapshotRequest,
     CockpitStatusSourceObservation,
@@ -179,12 +180,24 @@ def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path
         detail="Team status was read.",
         evidence_path=str(tmp_path / ".omx" / "teams" / "alpha-team"),
     )
+    pull_request_status = CockpitPullRequestObservation(
+        provider="github",
+        branch="feat/cockpit-pr-status-source",
+        status="open",
+        pull_request_number=10,
+        mergeable_state="clean",
+        review_state="approved",
+        check_state="success",
+        detail="PR #10 is open, mergeable clean, reviewed, and checks are successful.",
+        url="https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+    )
     snapshot = CockpitSnapshot(
         repo_root=str(tmp_path),
         runtime_summary="No active modes.",
         active_runtime_modes=(),
         discovered_teams=("alpha-team",),
         status_sources=(status_source,),
+        pull_request_status=pull_request_status,
         contradictions=(),
         lanes=(),
         warnings=("team probe degraded",),
@@ -196,7 +209,9 @@ def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path
 
     assert snapshot.discovered_teams == ("alpha-team",)
     assert snapshot.status_sources == (status_source,)
+    assert snapshot.pull_request_status == pull_request_status
     assert dumped_snapshot["status_sources"][0]["status"] == "observed"
+    assert dumped_snapshot["pull_request_status"]["pull_request_number"] == 10
 
     with pytest.raises(ValidationError):
         CockpitStatusSourceObservation(
@@ -204,6 +219,18 @@ def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path
             status=CockpitStatusSourceState.OBSERVED,
             detail="Team status was read.",
             unexpected="closed contract",
+        )
+
+    with pytest.raises(ValidationError):
+        CockpitPullRequestObservation(
+            provider="github",
+            branch="feat/cockpit-pr-status-source",
+            status="open",
+            pull_request_number=0,
+            mergeable_state="clean",
+            review_state="approved",
+            check_state="success",
+            detail="Invalid PR number should fail.",
         )
 
     with pytest.raises(ValidationError):
@@ -318,6 +345,62 @@ def test_discovery_reports_invalid_goal_mirror_object_as_warning(
     assert result.warnings[0].startswith(
         f"Malformed Goal mirror state at {state_path}:"
     )
+
+
+def test_read_cockpit_snapshot_includes_github_pr_status_source(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    pull_request_status = CockpitPullRequestObservation(
+        provider="github",
+        branch="feat/cockpit-pr-status-source",
+        status="open",
+        pull_request_number=10,
+        mergeable_state="clean",
+        review_state="approved",
+        check_state="success",
+        detail="PR #10 is open, mergeable clean, reviewed, and checks are successful.",
+        url="https://github.com/limhaneul12/omx-agent-adapter/pull/10",
+    )
+
+    async def fake_read_runtime_status() -> RuntimeStatus:
+        return _idle_runtime_status()
+
+    async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
+        return ActiveRuntimeModes(active_modes=())
+
+    async def fake_read_github_pull_request_status(
+        repo_root: str,
+    ) -> CockpitPullRequestObservation:
+        assert repo_root == str(tmp_path)
+        return pull_request_status
+
+    monkeypatch.setattr(cockpit_snapshot, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        cockpit_snapshot,
+        "read_active_runtime_modes",
+        fake_read_active_runtime_modes,
+    )
+    monkeypatch.setattr(
+        cockpit_snapshot,
+        "read_github_pull_request_status",
+        fake_read_github_pull_request_status,
+        raising=False,
+    )
+
+    snapshot = asyncio.run(
+        read_cockpit_snapshot(CockpitSnapshotRequest(repo_root=str(tmp_path)))
+    )
+
+    source_by_name = {source.name: source for source in snapshot.status_sources}
+    github_pr_source = source_by_name["github_pr_status"]
+
+    assert snapshot.pull_request_status == pull_request_status
+    assert github_pr_source.status == CockpitStatusSourceState.OBSERVED
+    assert github_pr_source.detail == pull_request_status.detail
+    assert github_pr_source.evidence_path == pull_request_status.url
+    assert snapshot.safe_to_mutate is True
+    assert snapshot.recommended_next_action == "observe"
 
 
 def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
