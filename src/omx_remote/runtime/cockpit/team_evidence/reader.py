@@ -1,7 +1,11 @@
 import asyncio
 
+from omx_remote.runtime.cockpit.team_evidence.proof_layers import (
+    _build_team_proof_layers,
+)
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
+    CockpitTeamProofLayerObservation,
     CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.teamwork.api_request_schemas import (
@@ -108,6 +112,14 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
     if events_snapshot is not None:
         event_count = events_snapshot.count
 
+    proof_layers: tuple[CockpitTeamProofLayerObservation, ...] = _build_team_proof_layers(
+        tasks_snapshot,
+        events_snapshot,
+        worker_names,
+        worker_statuses,
+        tuple(warnings),
+    )
+
     observation = CockpitTeamObservation(
         team_name=team_name,
         status=status_value,
@@ -115,9 +127,12 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
         task_count=task_count,
         event_count=event_count,
         worker_statuses=worker_statuses,
+        proof_layers=proof_layers,
         warnings=tuple(warnings),
     )
     return observation
+
+
 
 def _derive_observed_worker_names(
     status_snapshot: TeamStatusSnapshot | None,

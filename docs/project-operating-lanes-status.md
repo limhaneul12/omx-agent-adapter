@@ -80,7 +80,7 @@ A lane is not done because a prompt or schema exists. It is done when the route 
 Detailed current feature scope lives in `docs/current-feature-development-scope.md`.
 
 1. Land the cockpit operating-decision reason stitching slice, which adds typed `decision_reasons` for the top-level mutation-safety and next-action choice while keeping cockpit read-only.
-2. Improve launch/status UX so agents can distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
+2. Land the Team proof-layer UX slice, which distinguishes task owner assignment, worker readiness, dispatch, and completion evidence without claiming adapter-owned Team repair.
 3. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
 4. Keep the Pydantic dependency posture stable unless a concrete TypedDict hardening slice requires a tighter minimum; if PEP 728 `TypedDict` features are adopted, use `typing_extensions.TypedDict` rather than stdlib `typing.TypedDict`.
 5. Keep Hypergoal as planned/template-only until dogfood proves a deeper lifecycle is needed.

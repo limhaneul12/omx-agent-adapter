@@ -93,6 +93,24 @@ class CockpitTeamWorkerObservation(StrictSchemaModel):
     updated_at: NonEmptyString
 
 
+class CockpitTeamProofLayerName(StrEnum):
+    """Proof layers for distinguishing Team launch/status evidence."""
+
+    ASSIGNMENT_IMPORT = "assignment_import"
+    WORKER_READINESS = "worker_readiness"
+    DISPATCH = "dispatch"
+    COMPLETION = "completion"
+
+
+class CockpitTeamProofLayerObservation(StrictSchemaModel):
+    """Represents one read-only Team proof-layer classification."""
+
+    layer: CockpitTeamProofLayerName
+    state: CockpitStatusSourceState
+    detail: NonEmptyString
+    source_names: tuple[NonEmptyString, ...] = ()
+
+
 class CockpitTeamObservation(StrictSchemaModel):
     """Represents read-only Team evidence included in the cockpit."""
 
@@ -102,6 +120,7 @@ class CockpitTeamObservation(StrictSchemaModel):
     task_count: int = Field(ge=0)
     event_count: int = Field(ge=0)
     worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = ()
+    proof_layers: tuple[CockpitTeamProofLayerObservation, ...] = ()
     warnings: tuple[NonEmptyString, ...] = ()
 
 

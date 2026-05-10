@@ -23,6 +23,8 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitStatusSourceObservation,
     CockpitStatusSourceState,
     CockpitTeamObservation,
+    CockpitTeamProofLayerName,
+    CockpitTeamProofLayerObservation,
     CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
@@ -42,6 +44,7 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.schemas.teamwork.status_schemas import TeamStatusSnapshot
+from omx_remote.shared.exceptions import TeamworkSurfaceError
 from omx_remote.shared.omx_enums.codex_goal_enums import (
     CodexGoalExecutionShape,
     CodexGoalHandoffState,
@@ -276,6 +279,61 @@ def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path
 
     with pytest.raises(ValidationError):
         snapshot.warnings = ()
+
+
+def test_cockpit_team_proof_layer_schema_is_strict_and_frozen() -> None:
+    proof_layer = CockpitTeamProofLayerObservation(
+        layer=CockpitTeamProofLayerName.ASSIGNMENT_IMPORT,
+        state=CockpitStatusSourceState.OBSERVED,
+        detail="Team task owner evidence was observed.",
+        source_names=("team_api.list_tasks",),
+    )
+
+    assert proof_layer.model_dump() == {
+        "layer": "assignment_import",
+        "state": "observed",
+        "detail": "Team task owner evidence was observed.",
+        "source_names": ("team_api.list_tasks",),
+    }
+
+    with pytest.raises(ValidationError):
+        CockpitTeamProofLayerObservation(
+            layer=CockpitTeamProofLayerName.ASSIGNMENT_IMPORT,
+            state=CockpitStatusSourceState.OBSERVED,
+            detail="Team task owner evidence was observed.",
+            source_names=("team_api.list_tasks",),
+            unexpected="closed contract",
+        )
+
+    with pytest.raises(ValidationError):
+        proof_layer.detail = "mutated"
+
+
+def test_cockpit_team_proof_layer_event_contracts_are_enum_backed() -> None:
+    from omx_remote.adapter_types.type_contract.teamwork_contract_type import (
+        TEAM_COMPLETION_EVENT_TYPES,
+        TEAM_DISPATCH_EVENT_TYPES,
+    )
+    from omx_remote.runtime.cockpit.team_evidence import proof_layers
+    from omx_remote.shared.omx_enums.teamwork_enums import TeamEventType
+
+    assert TEAM_DISPATCH_EVENT_TYPES == frozenset(
+        {
+            TeamEventType.DISPATCH_QUEUED,
+            TeamEventType.HANDOFF_SUBMITTED,
+            TeamEventType.HOOK_RECEIPT,
+            TeamEventType.MESSAGE_RECEIVED,
+            TeamEventType.TASK_CREATED,
+        }
+    )
+    assert TEAM_COMPLETION_EVENT_TYPES == frozenset({TeamEventType.TASK_COMPLETED})
+
+    proof_layer_source = Path(proof_layers.__file__).read_text(encoding="utf-8")
+    assert '"dispatch_queued"' not in proof_layer_source
+    assert '"handoff_submitted"' not in proof_layer_source
+    assert '"hook_receipt"' not in proof_layer_source
+    assert '"message_received"' not in proof_layer_source
+    assert '"task_created"' not in proof_layer_source
 
 
 def _write_goal_mirror_state(
@@ -704,7 +762,7 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
                 TeamApiTaskSnapshot(
                     id="task-1",
                     subject="Implement Team cockpit evidence.",
-                    status="completed",
+                    status="succeeded",
                     owner="worker-1",
                 ),
             ),
@@ -712,9 +770,14 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
 
     async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
         return TeamApiReadEventsSnapshot(
-            count=1,
+            count=2,
             cursor="cursor-1",
             events=(
+                TeamApiEventSnapshot(
+                    type="handoff_submitted",
+                    worker="worker-1",
+                    task_id="task-1",
+                ),
                 TeamApiEventSnapshot(
                     type="task_completed",
                     worker="worker-2",
@@ -762,15 +825,136 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
     assert observation.team_name == "alpha-team"
     assert observation.status == "active"
     assert observation.task_count == 1
-    assert observation.event_count == 1
+    assert observation.event_count == 2
+    proof_layers = {layer.layer: layer for layer in observation.proof_layers}
+    assert tuple(proof_layers) == (
+        CockpitTeamProofLayerName.ASSIGNMENT_IMPORT,
+        CockpitTeamProofLayerName.WORKER_READINESS,
+        CockpitTeamProofLayerName.DISPATCH,
+        CockpitTeamProofLayerName.COMPLETION,
+    )
+    assert proof_layers[CockpitTeamProofLayerName.ASSIGNMENT_IMPORT].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.ASSIGNMENT_IMPORT].source_names == (
+        "team_api.list_tasks",
+    )
+    assert proof_layers[CockpitTeamProofLayerName.WORKER_READINESS].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.WORKER_READINESS].source_names == (
+        "team_api.read_worker_status",
+    )
+    assert proof_layers[CockpitTeamProofLayerName.DISPATCH].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.DISPATCH].source_names == (
+        "team_api.read_events",
+    )
+    assert proof_layers[CockpitTeamProofLayerName.COMPLETION].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.COMPLETION].source_names == (
+        "team_api.list_tasks",
+        "team_api.read_events",
+    )
     assert tuple(worker.worker for worker in observation.worker_statuses) == (
         "worker-1",
         "worker-2",
     )
+    assert "task_owner_assignment=observed" in ralph_team_lane.summary
+    assert "worker_readiness=observed" in ralph_team_lane.summary
+    assert "dispatch=observed" in ralph_team_lane.summary
+    assert "completion=observed" in ralph_team_lane.summary
     assert worker_status_calls == [
         ("alpha-team", "worker-1"),
         ("alpha-team", "worker-2"),
     ]
+
+
+def test_cockpit_team_proof_layers_degrade_independently_when_event_read_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    async def fake_read_runtime_status() -> RuntimeStatus:
+        return _idle_runtime_status()
+
+    async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
+        return ActiveRuntimeModes(active_modes=())
+
+    async def fake_read_team_status(request) -> TeamStatusSnapshot:
+        return TeamStatusSnapshot(
+            team_name=request.team_name,
+            status="active",
+            phase="team-exec",
+        )
+
+    async def fake_read_tasks(request) -> TeamApiListTasksSnapshot:
+        return TeamApiListTasksSnapshot(
+            count=1,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="Implement Team cockpit evidence.",
+                    status="pending",
+                    owner="worker-1",
+                ),
+            ),
+        )
+
+    async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
+        raise TeamworkSurfaceError("event stream unavailable")
+
+    async def fake_read_worker_status(
+        request: TeamApiReadWorkerStatusRequest,
+    ) -> TeamApiWorkerStatusSnapshot:
+        return TeamApiWorkerStatusSnapshot(
+            worker=request.worker,
+            state="running",
+            updated_at="2026-05-08T00:00:00.000Z",
+        )
+
+    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader,
+        "read_active_runtime_modes",
+        fake_read_active_runtime_modes,
+    )
+    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
+    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_observation_reader,
+        "read_team_api_read_worker_status",
+        fake_read_worker_status,
+    )
+
+    snapshot = asyncio.run(
+        read_cockpit_snapshot(
+            CockpitSnapshotRequest(repo_root=str(tmp_path), team_names=("alpha-team",))
+        )
+    )
+
+    observation = next(
+        lane for lane in snapshot.lanes if lane.name == CockpitLaneName.RALPH_TEAM
+    ).team_observations[0]
+    proof_layers = {layer.layer: layer for layer in observation.proof_layers}
+
+    assert proof_layers[CockpitTeamProofLayerName.ASSIGNMENT_IMPORT].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.WORKER_READINESS].state == (
+        CockpitStatusSourceState.OBSERVED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.DISPATCH].state == (
+        CockpitStatusSourceState.FAILED
+    )
+    assert proof_layers[CockpitTeamProofLayerName.COMPLETION].state == (
+        CockpitStatusSourceState.FAILED
+    )
+    assert observation.warnings == (
+        "team event read failed for alpha-team: event stream unavailable",
+    )
 
 
 def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(

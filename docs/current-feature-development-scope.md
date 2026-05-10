@@ -1,8 +1,8 @@
 # Current Feature Development Scope
 
-Last updated: 2026-05-10 12:16 KST
+Last updated: 2026-05-10 13:46 KST
 
-This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, and cockpit decision-reason stitching slices.
+This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, cockpit decision-reason stitching, and Team proof-layer UX slices.
 
 ## Product framing
 
@@ -54,21 +54,26 @@ The cockpit baseline now includes:
    - Reasons carry their own `recommended_next_action`, `blocks_mutation`, and evidence `source_names` so future agents do not need to re-derive decisions from scattered status fields.
    - The surface remains evidence-backed and read-only; cockpit still does not launch, cleanup, or implicitly advance runtime state.
 
-8. **Python support boundary**
+8. **Team launch/status proof-layer UX**
+   - Team observations now expose typed `proof_layers` so agents can distinguish task owner assignment, worker readiness, dispatch, and completion evidence.
+   - The proof layers are read-only classifications over existing Team status/task/event/worker-status surfaces and degrade independently to `missing` or `failed` when a source is unavailable.
+   - Lane summary text uses `task_owner_assignment` for the assignment/import layer to avoid overstating DAG/import proof when only task owner evidence is present.
+
+9. **Python support boundary**
    - Project support remains `Python >=3.13,<3.15`.
    - `.python-version` remains on the lower-bound development target.
    - 3.14-only stdlib imports and syntax remain off-limits while Python 3.13 is supported.
 
 ## Current verified stopping point
 
-Latest verified cockpit state on `feat/cockpit-decision-reason-stitching`:
+Latest verified cockpit state on `feat/team-proof-layer-status`:
 
 - `git diff --check` passed.
 - `uv run ruff check src tests` passed.
 - `uv run pyrefly check src` passed with `0 errors`.
-- `uv run pytest -q` passed with `747 passed`.
-- `uv run agent-remote cockpit snapshot --cwd .` passed after rebuilding the local `oh-my-codex` `dist/` artifact and reinstalling the adapter worktree package with `uv sync --reinstall-package agent-remote`.
-- Smoke output included typed `decision_reasons` with `recommended_next_action`, `blocks_mutation`, and `source_names`.
+- `uv run pytest -q` passed with `749 passed`.
+- `uv run agent-remote cockpit snapshot --cwd . --team-name alpha` passed after reinstalling the adapter worktree package with `uv sync --reinstall-package agent-remote`; the missing Team degraded to read-only proof-layer evidence.
+- Team observations now include typed `proof_layers` for assignment, readiness, dispatch, and completion evidence.
 
 ## Next feature direction
 
@@ -76,16 +81,16 @@ The next work should stay evidence-first and should not broaden cockpit into an 
 
 Recommended near-term sequence:
 
-1. **Team launch/status proof-layer UX**
-   - Make it easier for agents to distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
-   - Prefer read-only status and explanation surfaces; do not add adapter-owned pane relaunch or worker redispatch.
-
-2. **Native OMX startup reliability hardening**
+1. **Native OMX startup reliability hardening**
    - The adapter should continue surfacing `ready_prompt_timeout` and startup issues as evidence.
    - Actual pane relaunch, same-assignment redispatch, and deeper startup repair belong in native OMX/runtime hardening, not cockpit mutation.
 
-3. **Dependency/transport hardening only when needed**
+2. **Dependency/transport hardening only when needed**
    - Keep Python support and Pydantic dependency posture stable unless a concrete transport-hardening slice requires a tighter minimum.
+
+3. **Further cockpit UX only from concrete dogfood evidence**
+   - Keep cockpit read-only and evidence-first.
+   - Add no broad dashboards or automation surfaces without a specific agent-operating decision they improve.
 
 ## Explicit non-goals for the next slice
 

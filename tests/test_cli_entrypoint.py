@@ -234,6 +234,10 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
         CockpitLaneSnapshot,
         CockpitLaneState,
         CockpitSnapshot,
+        CockpitStatusSourceState,
+        CockpitTeamObservation,
+        CockpitTeamProofLayerName,
+        CockpitTeamProofLayerObservation,
     )
 
     async def fake_read_cockpit_snapshot(request):
@@ -246,10 +250,27 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
             contradictions=(),
             lanes=(
                 CockpitLaneSnapshot(
-                    name=CockpitLaneName.HYPERGOAL,
-                    state=CockpitLaneState.PLANNED_ONLY,
-                    summary="Hypergoal is template-only.",
-                    recommended_next_action="use_hypergoal_template_only",
+                    name=CockpitLaneName.RALPH_TEAM,
+                    state=CockpitLaneState.ACTIVE,
+                    summary="team-alpha: active (team-exec), proof layers observed.",
+                    team_observations=(
+                        CockpitTeamObservation(
+                            team_name="team-alpha",
+                            status="active",
+                            phase="team-exec",
+                            task_count=1,
+                            event_count=1,
+                            proof_layers=(
+                                CockpitTeamProofLayerObservation(
+                                    layer=CockpitTeamProofLayerName.ASSIGNMENT_IMPORT,
+                                    state=CockpitStatusSourceState.OBSERVED,
+                                    detail="Observed 1 Team task owner assignment(s).",
+                                    source_names=("team_api.list_tasks",),
+                                ),
+                            ),
+                        ),
+                    ),
+                    recommended_next_action="monitor_team",
                 ),
             ),
             safe_to_mutate=True,
@@ -275,7 +296,10 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
     assert result.exit_code == 0
     output = orjson.loads(result.stdout)
     assert output["repo_root"] == str(tmp_path.resolve())
-    assert output["lanes"][0]["name"] == "hypergoal"
+    assert output["lanes"][0]["name"] == "ralph_to_team"
+    team_observation = output["lanes"][0]["team_observations"][0]
+    assert team_observation["proof_layers"][0]["layer"] == "assignment_import"
+    assert team_observation["proof_layers"][0]["state"] == "observed"
     assert output["decision_reasons"][0]["recommended_next_action"] == "observe"
     assert output["decision_reasons"][0]["blocks_mutation"] is False
 
