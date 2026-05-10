@@ -143,6 +143,8 @@ def _build_decision_reasons(
         CockpitDecisionReason(
             category="runtime_contradiction",
             detail=contradiction.message,
+            recommended_next_action="inspect_runtime_contradiction",
+            blocks_mutation=True,
             source_names=("runtime_status", "active_runtime_modes"),
         )
         for contradiction in contradictions
@@ -154,6 +156,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="active_runtime_evidence",
                 detail=f"Active runtime modes are present: {active_modes_text}.",
+                recommended_next_action="observe_active_runtime",
+                blocks_mutation=True,
                 source_names=("active_runtime_modes",),
             )
         )
@@ -162,6 +166,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="active_runtime_evidence",
                 detail="Runtime status reports active modes without a parsed active-mode list.",
+                recommended_next_action="observe_active_runtime",
+                blocks_mutation=True,
                 source_names=("runtime_status",),
             )
         )
@@ -170,6 +176,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="runtime_status_uncertain",
                 detail="Runtime status could not determine whether modes are active.",
+                recommended_next_action="inspect_runtime_status",
+                blocks_mutation=True,
                 source_names=("runtime_status",),
             )
         )
@@ -181,6 +189,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="active_team_evidence",
                 detail=f"Active Team evidence is present for: {active_team_text}.",
+                recommended_next_action="inspect_team_evidence",
+                blocks_mutation=True,
                 source_names=("team_evidence",),
             )
         )
@@ -190,6 +200,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="goal_awaiting_ralph",
                 detail=f"Goal {goal_mirror_state.goal_id} is awaiting Ralph handoff.",
+                recommended_next_action="prepare_ralph",
+                blocks_mutation=False,
                 source_names=("goal_mirror_state",),
             )
         )
@@ -199,6 +211,8 @@ def _build_decision_reasons(
             CockpitDecisionReason(
                 category="no_blocking_evidence",
                 detail="No active runtime, active Team, contradiction, or pending Goal handoff evidence was found.",
+                recommended_next_action="observe",
+                blocks_mutation=False,
                 source_names=("runtime_status", "active_runtime_modes"),
             )
         )
