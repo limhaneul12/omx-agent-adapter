@@ -213,6 +213,7 @@ def ralph_launch_team(
     try:
         command, preflight_warnings = build_ralph_team_launch_plan(
             allow_non_tty=allow_non_tty,
+            require_live_owner_preflight=not plan_only,
         )
     except ValueError as error:
         command_result = format_preflight_failure(str(error))

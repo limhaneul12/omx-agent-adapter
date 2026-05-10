@@ -389,7 +389,10 @@ def operate_ralph_team_launch(allow_non_tty: bool) -> OperatorActionResult:
         OperatorActionResult: Function return value.
     """
     try:
-        command, _warnings = build_ralph_team_launch_plan(allow_non_tty=allow_non_tty)
+        command, _warnings = build_ralph_team_launch_plan(
+            allow_non_tty=allow_non_tty,
+            require_live_owner_preflight=True,
+        )
     except ValueError as error:
         command_result = format_ralph_preflight_failure(str(error))
         result: OperatorActionResult = _normalize_runtime_command_result(

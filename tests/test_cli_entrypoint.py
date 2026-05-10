@@ -229,6 +229,7 @@ def test_package_entrypoint_runs_cockpit_snapshot_help() -> None:
 def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) -> None:
     from omx_remote.cli_launcher import cockpit_cli
     from omx_remote.schemas.cockpit.snapshot_schemas import (
+        CockpitDecisionReason,
         CockpitLaneName,
         CockpitLaneSnapshot,
         CockpitLaneState,
@@ -253,6 +254,15 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
             ),
             safe_to_mutate=True,
             recommended_next_action="observe",
+            decision_reasons=(
+                CockpitDecisionReason(
+                    category="no_blocking_evidence",
+                    detail="No blocking evidence was found.",
+                    recommended_next_action="observe",
+                    blocks_mutation=False,
+                    source_names=("runtime_status", "active_runtime_modes"),
+                ),
+            ),
         )
 
     monkeypatch.setattr(cockpit_cli, "read_cockpit_snapshot", fake_read_cockpit_snapshot)
@@ -266,6 +276,8 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
     output = orjson.loads(result.stdout)
     assert output["repo_root"] == str(tmp_path.resolve())
     assert output["lanes"][0]["name"] == "hypergoal"
+    assert output["decision_reasons"][0]["recommended_next_action"] == "observe"
+    assert output["decision_reasons"][0]["blocks_mutation"] is False
 
 
 def test_team_cli_is_split_into_feature_launcher_modules() -> None:

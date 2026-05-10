@@ -56,6 +56,8 @@ class CockpitDecisionReason(StrictSchemaModel):
 
     category: NonEmptyString
     detail: NonEmptyString
+    recommended_next_action: NonEmptyString
+    blocks_mutation: bool
     source_names: tuple[NonEmptyString, ...] = ()
 
 

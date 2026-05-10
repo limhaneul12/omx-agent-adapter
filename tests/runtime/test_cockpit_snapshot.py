@@ -95,6 +95,20 @@ def test_cockpit_flags_conflicting_runtime_activity_sources(tmp_path: Path) -> N
     assert snapshot.recommended_next_action == "inspect_runtime_contradiction"
     assert snapshot.contradictions[0].category == "runtime_activity_conflict"
     assert "run" in snapshot.contradictions[0].message
+    assert snapshot.decision_reasons[0].category == "runtime_contradiction"
+    assert (
+        snapshot.decision_reasons[0].recommended_next_action
+        == "inspect_runtime_contradiction"
+    )
+    assert snapshot.decision_reasons[0].blocks_mutation is True
+    assert snapshot.decision_reasons[0].source_names == (
+        "runtime_status",
+        "active_runtime_modes",
+    )
+    assert snapshot.decision_reasons[1].category == "active_runtime_evidence"
+    assert snapshot.decision_reasons[1].recommended_next_action == "observe_active_runtime"
+    assert snapshot.decision_reasons[1].blocks_mutation is True
+    assert snapshot.decision_reasons[1].source_names == ("active_runtime_modes",)
 
 
 def test_cockpit_flags_empty_parsed_runtime_with_active_state_list(tmp_path: Path) -> None:
@@ -151,6 +165,27 @@ def test_cockpit_reports_all_operating_lanes_with_honest_baseline_states(tmp_pat
     assert lane_states[CockpitLaneName.RALPH_TEAM] == CockpitLaneState.NEEDS_TEAM_NAME
 
 
+def test_cockpit_goal_awaiting_ralph_reason_supports_prepare_ralph(
+    tmp_path: Path,
+) -> None:
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=_idle_runtime_status(),
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=_goal_mirror_state(tmp_path),
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=(),
+    )
+
+    assert snapshot.safe_to_mutate is True
+    assert snapshot.recommended_next_action == "prepare_ralph"
+    assert snapshot.decision_reasons[0].category == "goal_awaiting_ralph"
+    assert snapshot.decision_reasons[0].recommended_next_action == "prepare_ralph"
+    assert snapshot.decision_reasons[0].blocks_mutation is False
+    assert snapshot.decision_reasons[0].source_names == ("goal_mirror_state",)
+
+
 def test_cockpit_snapshot_exposes_all_status_contract_defaults(tmp_path: Path) -> None:
     snapshot = build_cockpit_snapshot(
         repo_root=str(tmp_path),
@@ -170,6 +205,13 @@ def test_cockpit_snapshot_exposes_all_status_contract_defaults(tmp_path: Path) -
     assert dumped_snapshot["discovered_teams"] == ()
     assert dumped_snapshot["status_sources"] == ()
     assert dumped_snapshot["warnings"] == ()
+    assert snapshot.decision_reasons[0].category == "no_blocking_evidence"
+    assert snapshot.decision_reasons[0].recommended_next_action == "observe"
+    assert snapshot.decision_reasons[0].blocks_mutation is False
+    assert snapshot.decision_reasons[0].source_names == (
+        "runtime_status",
+        "active_runtime_modes",
+    )
 
 
 def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path) -> None:
@@ -522,6 +564,8 @@ def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
     assert snapshot.recommended_next_action == "inspect_team_evidence"
     assert snapshot.decision_reasons[0].category == "active_team_evidence"
     assert "alpha-team" in snapshot.decision_reasons[0].detail
+    assert snapshot.decision_reasons[0].recommended_next_action == "inspect_team_evidence"
+    assert snapshot.decision_reasons[0].blocks_mutation is True
     assert snapshot.decision_reasons[0].source_names == ("team_evidence",)
 
 
@@ -559,7 +603,12 @@ def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
     assert snapshot.safe_to_mutate is False
     assert snapshot.recommended_next_action == "observe_active_runtime"
     assert snapshot.decision_reasons[0].category == "active_runtime_evidence"
+    assert snapshot.decision_reasons[0].recommended_next_action == "observe_active_runtime"
+    assert snapshot.decision_reasons[0].blocks_mutation is True
+    assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
     assert snapshot.decision_reasons[1].category == "active_team_evidence"
+    assert snapshot.decision_reasons[1].recommended_next_action == "inspect_team_evidence"
+    assert snapshot.decision_reasons[1].blocks_mutation is True
 
 
 def test_cockpit_treats_uncertain_runtime_status_as_mutation_blocker(
@@ -593,6 +642,8 @@ def test_cockpit_treats_uncertain_runtime_status_as_mutation_blocker(
     assert snapshot.safe_to_mutate is False
     assert snapshot.recommended_next_action == "inspect_runtime_status"
     assert snapshot.decision_reasons[0].category == "runtime_status_uncertain"
+    assert snapshot.decision_reasons[0].recommended_next_action == "inspect_runtime_status"
+    assert snapshot.decision_reasons[0].blocks_mutation is True
     assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
 
 
