@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-10 12:16 KST
 
-This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, and cockpit decision-reason stitching slices.
+This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, and cockpit decision-reason stitching slices.
 
 ## Product framing
 
@@ -40,12 +40,21 @@ The cockpit baseline now includes:
    - Explicit active Team evidence drives top-level `recommended_next_action="inspect_team_evidence"` unless a higher-priority contradiction or active runtime mode is present.
    - `unknown` Team status remains degraded/unknown evidence and is not treated as active runtime evidence.
 
-5. **Cockpit operating-decision reason stitching**
+5. **Evidence-backed Team identity discovery**
+   - Cockpit discovers Team names from adapter-owned persisted Goal mirror state when `linked_team_names` contains exact Team identities.
+   - A bare `team_worker_count` remains fanout intent only and produces a warning rather than invented Team names.
+   - Missing, malformed, or invalid Goal mirror state degrades into empty discovery evidence or warnings without blocking the whole snapshot.
+
+6. **GitHub PR/review/check status source**
+   - Cockpit can expose read-only GitHub pull-request evidence for the current branch.
+   - The PR source normalizes open/missing/unavailable status, mergeability, review state, and check state while keeping credential handling non-printing and fallback-safe.
+
+7. **Cockpit operating-decision reason stitching**
    - Snapshot output now includes typed `decision_reasons` that explain why `safe_to_mutate` and `recommended_next_action` were chosen.
    - Reasons carry their own `recommended_next_action`, `blocks_mutation`, and evidence `source_names` so future agents do not need to re-derive decisions from scattered status fields.
    - The surface remains evidence-backed and read-only; cockpit still does not launch, cleanup, or implicitly advance runtime state.
 
-6. **Python support boundary**
+8. **Python support boundary**
    - Project support remains `Python >=3.13,<3.15`.
    - `.python-version` remains on the lower-bound development target.
    - 3.14-only stdlib imports and syntax remain off-limits while Python 3.13 is supported.
@@ -67,18 +76,16 @@ The next work should stay evidence-first and should not broaden cockpit into an 
 
 Recommended near-term sequence:
 
-1. **Evidence-backed Team identity discovery**
-   - Improve discovery only when a persisted Goal/Ralph/Team artifact actually contains launched Team identity.
-   - Do not invent Team names from `team_worker_count`, worker IDs, goal IDs, or broad `.omx` scans.
-   - Treat missing persisted Team identity as useful absence evidence, not as a reason to infer a name.
+1. **Team launch/status proof-layer UX**
+   - Make it easier for agents to distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
+   - Prefer read-only status and explanation surfaces; do not add adapter-owned pane relaunch or worker redispatch.
 
-2. **PR/CI/review cockpit status**
-   - Consider adding current branch PR state, review state, and CI state as status sources when a real workflow needs merge-safety evidence.
-   - Keep GitHub credential handling non-printing and fallback-safe.
-
-3. **Native OMX startup reliability hardening**
+2. **Native OMX startup reliability hardening**
    - The adapter should continue surfacing `ready_prompt_timeout` and startup issues as evidence.
    - Actual pane relaunch, same-assignment redispatch, and deeper startup repair belong in native OMX/runtime hardening, not cockpit mutation.
+
+3. **Dependency/transport hardening only when needed**
+   - Keep Python support and Pydantic dependency posture stable unless a concrete transport-hardening slice requires a tighter minimum.
 
 ## Explicit non-goals for the next slice
 
