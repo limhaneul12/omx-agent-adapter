@@ -51,7 +51,11 @@ def test_cockpit_snapshot_surface_is_grouped_by_concept_packages() -> None:
         cockpit_root / "sources" / "status.py",
         cockpit_root / "sources" / "goal_mirror.py",
         cockpit_root / "sources" / "ultrawork.py",
-        cockpit_root / "sources" / "github_pr_status.py",
+        cockpit_root / "sources" / "github_pr_status" / "api_client.py",
+        cockpit_root / "sources" / "github_pr_status" / "classification.py",
+        cockpit_root / "sources" / "github_pr_status" / "credentials.py",
+        cockpit_root / "sources" / "github_pr_status" / "git_repo.py",
+        cockpit_root / "sources" / "github_pr_status" / "reader.py",
         cockpit_root / "team_evidence" / "reader.py",
         cockpit_root / "team_evidence" / "summary.py",
         cockpit_root / "team_evidence" / "discovery.py",
@@ -69,13 +73,10 @@ def test_cockpit_snapshot_surface_is_grouped_by_concept_packages() -> None:
         "team_summary.py",
         "linked_team_discovery.py",
         "github_pr_status.py",
+        "sources/github_pr_status.py",
     ]
 
-    line_limited_modules = [
-        module_path
-        for module_path in grouped_modules
-        if module_path.name != "github_pr_status.py"
-    ]
+    line_limited_modules = grouped_modules
 
     for module_path in grouped_modules:
         assert module_path.exists()

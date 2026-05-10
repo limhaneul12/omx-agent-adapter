@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 
 from omx_remote.runtime.cockpit.snapshot.builder import build_cockpit_snapshot
-from omx_remote.runtime.cockpit.sources.github_pr_status import (
+from omx_remote.runtime.cockpit.sources.github_pr_status.reader import (
     read_github_pull_request_status,
 )
 from omx_remote.runtime.cockpit.sources.goal_mirror import (
