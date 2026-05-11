@@ -72,6 +72,8 @@ instance/
 docs/_build/
 docs/jobs/
 docs/reviews/
+docs/review/
+dev_timeline/
 .agent-remote/
 
 # PyBuilder
