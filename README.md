@@ -29,6 +29,7 @@ Current practical strengths:
 - Team Admin aggregation / Ralph post-Team review / Goal lifecycle contract surfaces
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 - native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
+- repo-local TOML subagent config validation/list/show via `agent-remote agents`
 
 ## Installation for other agents
 
@@ -87,6 +88,7 @@ agent-remote version
 agent-remote runtime --help
 agent-remote team --help
 agent-remote adapt --help
+agent-remote agents --help
 agent-remote ralph --help
 agent-remote ultrawork --help
 agent-remote ultragoal --help

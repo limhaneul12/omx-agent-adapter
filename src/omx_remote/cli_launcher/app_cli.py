@@ -1,6 +1,7 @@
 import typer
 
 from omx_remote.cli_launcher.adapt_cli import adapt_app
+from omx_remote.cli_launcher.agents_cli import agents_app
 from omx_remote.cli_launcher.cockpit_cli import cockpit_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
@@ -23,6 +24,7 @@ app.add_typer(cockpit_app, name="cockpit")
 app.add_typer(team_app, name="team")
 app.add_typer(history_app, name="history")
 app.add_typer(adapt_app, name="adapt")
+app.add_typer(agents_app, name="agents")
 app.add_typer(goal_app, name="goal")
 app.add_typer(prd_app, name="prd")
 app.add_typer(ultragoal_app, name="ultragoal")
