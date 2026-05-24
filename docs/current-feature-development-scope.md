@@ -66,8 +66,8 @@ Latest verified cockpit state on `feat/cockpit-decision-reason-stitching`:
 - `git diff --check` passed.
 - `uv run ruff check src tests` passed.
 - `uv run pyrefly check src` passed with `0 errors`.
-- `uv run pytest -q` passed with `747 passed`.
-- `uv run agent-remote cockpit snapshot --cwd .` passed after rebuilding the local `oh-my-codex` `dist/` artifact and reinstalling the adapter worktree package with `uv sync --reinstall-package agent-remote`.
+- `uv run pytest -q` passed with `750 passed`.
+- `uv run agent-remote cockpit snapshot --cwd .` passed in an environment with global `omx` installed after reinstalling the adapter worktree package with `uv sync --reinstall-package agent-remote`.
 - Smoke output included typed `decision_reasons` with `recommended_next_action`, `blocks_mutation`, and `source_names`.
 
 ## Next feature direction

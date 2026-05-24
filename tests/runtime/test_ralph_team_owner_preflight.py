@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -121,8 +122,62 @@ def test_ralph_team_live_launch_owner_preflight_rejects_unsupported_omx_dist(tmp
     omx_dist_root = tmp_path / "omx-dist"
     _write_unsupported_omx_dist(omx_dist_root)
 
-    with pytest.raises(ValueError, match="does not support preserving Team DAG node.owner"):
+    with pytest.raises(
+        ValueError,
+        match=r"does not support preserving Team DAG node\.owner.*Unsupported markers:.*dag-schema.d.ts",
+    ):
         require_ralph_team_live_launch_owner_support(omx_dist_root=omx_dist_root)
+
+
+def test_ralph_team_live_launch_owner_preflight_reports_missing_explicit_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    missing_root = tmp_path / "missing-omx-dist"
+
+    with pytest.raises(ValueError) as exc_info:
+        require_ralph_team_live_launch_owner_support(omx_dist_root=missing_root)
+
+    assert (
+        "explicit `omx_dist_root` argument was provided but missing" in str(exc_info.value)
+    )
+    assert str(missing_root) in str(exc_info.value)
+
+
+def test_ralph_team_live_launch_owner_preflight_reports_missing_env_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    missing_env_root = tmp_path / "missing-env-dist"
+    monkeypatch.setenv("AGENT_REMOTE_OMX_DIST_ROOT", str(missing_env_root))
+    monkeypatch.setenv("PATH", "")
+
+    with pytest.raises(ValueError) as exc_info:
+        require_ralph_team_live_launch_owner_support()
+
+    assert (
+        "AGENT_REMOTE_OMX_DIST_ROOT was set but path did not exist" in str(exc_info.value)
+    )
+
+
+def test_ralph_team_live_launch_owner_preflight_auto_detects_global_omx_from_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    omx_dist_root = tmp_path / "mock-omx" / "dist"
+    _write_supported_omx_dist(omx_dist_root)
+    (omx_dist_root / "cli").mkdir(parents=True)
+    (omx_dist_root / "cli" / "omx.js").write_text("console.log('fake omx');", encoding="utf-8")
+
+    fake_omx_bin_dir = tmp_path / "bin"
+    fake_omx_bin_dir.mkdir()
+    fake_omx_binary = fake_omx_bin_dir / "omx"
+    fake_omx_binary.write_text(
+        f"#!/usr/bin/env node\nrequire('{omx_dist_root / 'cli' / 'omx.js'}')\n",
+        encoding="utf-8",
+    )
+    fake_omx_binary.chmod(0o755)
+
+    current_path = os.environ.get("PATH", "")
+    monkeypatch.setenv("PATH", f"{fake_omx_bin_dir}:{current_path}")
+    monkeypatch.delenv("AGENT_REMOTE_OMX_DIST_ROOT", raising=False)
+
+    require_ralph_team_live_launch_owner_support()
 
 
 def test_build_ralph_team_launch_plan_blocks_live_owner_unsafe_runtime(
@@ -134,7 +189,7 @@ def test_build_ralph_team_launch_plan_blocks_live_owner_unsafe_runtime(
     _write_unsupported_omx_dist(omx_dist_root)
     _write_valid_team_prd_artifact(tmp_path)
 
-    with pytest.raises(ValueError, match="does not support preserving Team DAG node.owner"):
+    with pytest.raises(ValueError, match=r"does not support preserving Team DAG node\.owner"):
         build_ralph_team_launch_plan(
             allow_non_tty=True,
             require_live_owner_preflight=True,
