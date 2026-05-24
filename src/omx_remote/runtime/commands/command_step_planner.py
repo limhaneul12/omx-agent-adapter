@@ -1,0 +1,320 @@
+from hashlib import sha256
+from pathlib import Path
+
+from omx_remote.runtime.agents.agent_config_loader import load_agent_config
+from omx_remote.schemas.agents.agent_config_schemas import AgentConfigSet
+from omx_remote.schemas.commands.command_recipe_schemas import (
+    CommandExecutionPlan,
+    CommandPlanStep,
+    CommandRecipe,
+    CommandRisk,
+    CommandSource,
+    CommandStep,
+    CommandStepCommand,
+)
+
+
+def _resolve_path(cwd: str | Path | None, path_text: str) -> Path:
+    """Resolve a command-owned path.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        path_text [str]: Path text from a recipe.
+
+    Returns:
+        Path: Resolved path.
+    """
+    candidate_path = Path(path_text)
+    if candidate_path.is_absolute():
+        resolved_path: Path = candidate_path
+        return resolved_path
+
+    root_path: Path = Path.cwd() if cwd is None else Path(cwd)
+    resolved_path = root_path / candidate_path
+    return resolved_path
+
+
+def _prompt_hash(prompt_path: Path) -> str | None:
+    """Hash a prompt file when it exists.
+
+    Args:
+        prompt_path [Path]: Prompt file path.
+
+    Returns:
+        str | None: SHA-256 hex digest when the file exists.
+    """
+    if not prompt_path.exists():
+        missing_hash: None = None
+        return missing_hash
+
+    digest: str = sha256(prompt_path.read_bytes()).hexdigest()
+    return digest
+
+
+def _resolve_expected_artifacts(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+    """Resolve expected artifact paths from one step.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative artifact paths.
+        step [CommandStep]: Step containing artifact declarations.
+
+    Returns:
+        tuple[str, ...]: Resolved artifact paths.
+    """
+    artifacts: list[str] = []
+    if step.output_last_message is not None:
+        artifacts.append(str(_resolve_path(cwd, step.output_last_message)))
+    artifacts.extend(str(_resolve_path(cwd, artifact)) for artifact in step.expected_artifacts)
+    resolved_artifacts: tuple[str, ...] = tuple(artifacts)
+    return resolved_artifacts
+
+
+def _build_codex_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+    """Build inspectable native argv for a Codex exec step.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Step to render.
+
+    Returns:
+        tuple[str, ...]: Native argv preview.
+    """
+    argv: list[str] = ["codex", "exec", "--json"]
+    if step.output_last_message is not None:
+        argv.extend(["--output-last-message", str(_resolve_path(cwd, step.output_last_message))])
+    if step.prompt_file is not None:
+        argv.append(str(_resolve_path(cwd, step.prompt_file)))
+    if step.inline_prompt is not None:
+        argv.append(step.inline_prompt)
+    native_argv: tuple[str, ...] = tuple(argv)
+    return native_argv
+
+
+def _build_omx_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+    """Build inspectable native argv for an OMX step.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Step to render.
+
+    Returns:
+        tuple[str, ...]: Native argv preview.
+    """
+    if step.command == CommandStepCommand.OMX_ULTRAGOAL:
+        brief_path_text: str | None = step.brief_file or step.prompt_file
+        if brief_path_text is not None:
+            native_argv = (
+                "omx",
+                "ultragoal",
+                "create-goals",
+                "--brief-file",
+                str(_resolve_path(cwd, brief_path_text)),
+                "--json",
+            )
+            return native_argv
+        native_argv = ("omx", "ultragoal", "--help")
+        return native_argv
+    if step.command == CommandStepCommand.OMX_TEAM:
+        native_argv = ("omx", "team", "--help")
+        return native_argv
+    if step.command == CommandStepCommand.OMX_RALPH:
+        native_argv = ("omx", "ralph", "--help")
+        return native_argv
+
+    native_argv = ("omx", "exec", "--json")
+    return native_argv
+
+
+def _native_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+    """Build inspectable native argv for one step.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Step to render.
+
+    Returns:
+        tuple[str, ...]: Native argv preview.
+    """
+    if step.command == CommandStepCommand.CODEX_EXEC:
+        native_argv = _build_codex_argv(cwd, step)
+        return native_argv
+    if step.command in {
+        CommandStepCommand.OMX_EXEC,
+        CommandStepCommand.OMX_ULTRAGOAL,
+        CommandStepCommand.OMX_TEAM,
+        CommandStepCommand.OMX_RALPH,
+    }:
+        native_argv = _build_omx_argv(cwd, step)
+        return native_argv
+    if step.command == CommandStepCommand.LOCAL:
+        native_argv = step.argv
+        return native_argv
+
+    native_argv = ("prompt-only",)
+    return native_argv
+
+
+def _agent_blockers(step: CommandStep, agent_config: AgentConfigSet) -> tuple[str, ...]:
+    """Detect agent-reference blockers for one step.
+
+    Args:
+        step [CommandStep]: Step to inspect.
+        agent_config [AgentConfigSet]: Loaded repo agent config.
+
+    Returns:
+        tuple[str, ...]: Agent-related blockers.
+    """
+    if step.agent is None:
+        no_blockers: tuple[str, ...] = ()
+        return no_blockers
+
+    agent = agent_config.find_agent(step.agent)
+    if agent is None:
+        missing_agent_blockers = (f"No agent named {step.agent} is configured.",)
+        return missing_agent_blockers
+    if not agent.enabled:
+        disabled_agent_blockers = (f"Agent {step.agent} is disabled.",)
+        return disabled_agent_blockers
+
+    no_blockers = ()
+    return no_blockers
+
+
+def _prompt_file_metadata(
+    cwd: str | Path | None,
+    step: CommandStep,
+) -> tuple[str | None, bool | None, str | None, tuple[str, ...]]:
+    """Resolve prompt-file metadata for one step.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Step to inspect.
+
+    Returns:
+        tuple[str | None, bool | None, str | None, tuple[str, ...]]: Prompt path, existence, hash, blockers.
+    """
+    prompt_path_text: str | None = step.prompt_file or step.brief_file
+    if prompt_path_text is None:
+        metadata = (None, None, None, ())
+        return metadata
+
+    prompt_path: Path = _resolve_path(cwd, prompt_path_text)
+    prompt_exists: bool = prompt_path.exists()
+    prompt_sha256: str | None = _prompt_hash(prompt_path)
+    blockers: tuple[str, ...] = ()
+    if not prompt_exists:
+        blockers = (f"Prompt file does not exist: {prompt_path}",)
+
+    metadata = (str(prompt_path), prompt_exists, prompt_sha256, blockers)
+    return metadata
+
+
+def _build_plan_step(
+    index: int,
+    cwd: str | Path | None,
+    step: CommandStep,
+    recipe_risk: CommandRisk,
+    agent_config: AgentConfigSet,
+) -> CommandPlanStep:
+    """Build one dry-run plan step.
+
+    Args:
+        index [int]: One-based step index.
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Recipe step to render.
+        recipe_risk [CommandRisk]: Parent recipe risk.
+        agent_config [AgentConfigSet]: Loaded repo agent config.
+
+    Returns:
+        CommandPlanStep: Dry-run plan step.
+    """
+    prompt_file, prompt_exists, prompt_sha256, prompt_blockers = _prompt_file_metadata(
+        cwd,
+        step,
+    )
+    blockers: tuple[str, ...] = (*prompt_blockers, *_agent_blockers(step, agent_config))
+    plan_step = CommandPlanStep(
+        index=index,
+        command=step.command,
+        agent=step.agent,
+        native_argv=_native_argv(cwd, step),
+        prompt_file=prompt_file,
+        prompt_exists=prompt_exists,
+        prompt_sha256=prompt_sha256,
+        inline_prompt=step.inline_prompt,
+        expected_artifacts=_resolve_expected_artifacts(cwd, step),
+        risk=recipe_risk,
+        blocked_reasons=blockers,
+    )
+    return plan_step
+
+
+def build_command_execution_plan(
+    recipe: CommandRecipe,
+    cwd: str | Path | None = None,
+    dry_run: bool = True,
+) -> CommandExecutionPlan:
+    """Build an inspectable command execution plan.
+
+    Args:
+        recipe [CommandRecipe]: Command recipe to plan.
+        cwd [str | Path | None]: Base working directory for relative paths.
+        dry_run [bool]: Whether the plan is dry-run only.
+
+    Returns:
+        CommandExecutionPlan: Typed dry-run execution plan.
+    """
+    agent_config: AgentConfigSet = load_agent_config(cwd=cwd)
+    steps: tuple[CommandPlanStep, ...] = tuple(
+        _build_plan_step(index, cwd, step, recipe.risk, agent_config)
+        for index, step in enumerate(recipe.steps, start=1)
+    )
+    blocked_reasons: tuple[str, ...] = tuple(
+        reason for step in steps for reason in step.blocked_reasons
+    )
+    plan = CommandExecutionPlan(
+        command_id=recipe.id,
+        qualified_id=recipe.qualified_id,
+        source=recipe.source,
+        description=recipe.description,
+        risk=recipe.risk,
+        dry_run=dry_run,
+        steps=steps,
+        blocked_reasons=blocked_reasons,
+    )
+    return plan
+
+
+def build_one_off_prompt_recipe(
+    provider: str,
+    prompt_file: str | Path | None,
+    inline_prompt: str | None,
+) -> CommandRecipe:
+    """Build a one-off prompt recipe from CLI inputs.
+
+    Args:
+        provider [str]: Provider selected by the caller.
+        prompt_file [str | Path | None]: Optional prompt file path.
+        inline_prompt [str | None]: Optional inline prompt text.
+
+    Returns:
+        CommandRecipe: One-off recipe suitable for dry-run planning.
+    """
+    if provider != "codex":
+        raise ValueError("one-off prompt dry-run currently supports provider=codex only")
+    if prompt_file is None and inline_prompt is None:
+        raise ValueError("one-off prompt dry-run requires --prompt-file or --inline-prompt")
+
+    step = CommandStep(
+        command=CommandStepCommand.CODEX_EXEC,
+        prompt_file=None if prompt_file is None else str(prompt_file),
+        inline_prompt=inline_prompt,
+    )
+    recipe = CommandRecipe(
+        id="one-off-prompt",
+        source=CommandSource.ONE_OFF,
+        description="One-off prompt dry-run command.",
+        risk=CommandRisk.READ_ONLY,
+        steps=(step,),
+    )
+    return recipe

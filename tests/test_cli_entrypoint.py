@@ -193,12 +193,14 @@ def test_package_entrypoint_runs_help() -> None:
     assert "history" in completed_process.stdout
     assert "adapt" in completed_process.stdout
     assert "agents" in completed_process.stdout
+    assert "commands" in completed_process.stdout
     assert "goal" in completed_process.stdout
     assert "prd" in completed_process.stdout
     assert "ultragoal" in completed_process.stdout
     assert "hypergoal" not in completed_process.stdout
     assert "ralph" in completed_process.stdout
     assert "ultrawork" in completed_process.stdout
+    assert "run" in completed_process.stdout
     assert "version" in completed_process.stdout
 
 

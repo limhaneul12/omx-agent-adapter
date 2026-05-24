@@ -30,6 +30,7 @@ Current practical strengths:
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 - native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
 - repo-local TOML subagent config validation/list/show via `agent-remote agents`
+- typed project-owned command catalog and dry-run planning via `agent-remote commands` / `agent-remote run --dry-run`
 
 ## Installation for other agents
 
@@ -89,6 +90,8 @@ agent-remote runtime --help
 agent-remote team --help
 agent-remote adapt --help
 agent-remote agents --help
+agent-remote commands --help
+agent-remote run --help
 agent-remote ralph --help
 agent-remote ultrawork --help
 agent-remote ultragoal --help
