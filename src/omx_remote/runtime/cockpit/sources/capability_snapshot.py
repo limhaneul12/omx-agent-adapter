@@ -7,6 +7,10 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCapabilityCommand,
     CockpitRuntimeCapability,
 )
+from omx_remote.schemas.probes.upstream_probe_schemas import (
+    ProbeSupportStatus,
+    UpstreamProbeSuiteResult,
+)
 
 type CommandProbe = tuple[int, str, str]
 
@@ -171,3 +175,35 @@ def read_cockpit_capabilities() -> CockpitCapabilitiesSnapshot:
         omx=_runtime_capability("omx", _OMX_COMMANDS),
     )
     return capabilities
+
+
+def runtime_capability_from_probe_suite(
+    name: str,
+    suite_result: UpstreamProbeSuiteResult,
+) -> CockpitRuntimeCapability:
+    """Build a cockpit runtime capability snapshot from probe evidence.
+
+    Args:
+        name [str]: Runtime name.
+        suite_result [UpstreamProbeSuiteResult]: Probe suite evidence.
+
+    Returns:
+        CockpitRuntimeCapability: Capability snapshot derived from probes.
+    """
+    commands: tuple[CockpitCapabilityCommand, ...] = tuple(
+        CockpitCapabilityCommand(
+            name=result.capability,
+            available=result.support_status == ProbeSupportStatus.SUPPORTED,
+            detail=result.stdout_summary or result.stderr_summary or "no probe output",
+        )
+        for result in suite_result.results
+    )
+    runtime_capability = CockpitRuntimeCapability(
+        name=name,
+        available=any(command.available for command in commands),
+        executable_path=None,
+        version=None,
+        commands=commands,
+        warnings=(),
+    )
+    return runtime_capability

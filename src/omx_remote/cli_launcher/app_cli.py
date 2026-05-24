@@ -8,6 +8,7 @@ from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
 from omx_remote.cli_launcher.prd_cli import prd_app
 from omx_remote.cli_launcher.preflight_cli import preflight_app
+from omx_remote.cli_launcher.probes_cli import probes_app
 from omx_remote.cli_launcher.ralph_cli import ralph_app
 from omx_remote.cli_launcher.route_cli import route_app
 from omx_remote.cli_launcher.run_cli import run_command
@@ -32,6 +33,7 @@ app.add_typer(adapt_app, name="adapt")
 app.add_typer(agents_app, name="agents")
 app.add_typer(commands_app, name="commands")
 app.add_typer(preflight_app, name="preflight")
+app.add_typer(probes_app, name="probes")
 app.add_typer(route_app, name="route")
 app.add_typer(runs_app, name="runs")
 app.add_typer(goal_app, name="goal")
