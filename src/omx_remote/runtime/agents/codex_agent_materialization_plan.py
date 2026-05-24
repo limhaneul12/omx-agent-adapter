@@ -25,7 +25,10 @@ def _target_path(cwd: str | Path, agent_id: str) -> Path:
     Returns:
         Path: Target generated TOML path.
     """
-    target: Path = Path(cwd).resolve() / ".codex" / "agents" / f"{agent_id}.toml"
+    agents_root: Path = Path(cwd).resolve() / ".codex" / "agents"
+    target: Path = (agents_root / f"{agent_id}.toml").resolve()
+    if target.parent != agents_root:
+        raise ValueError(f"agent id is not safe for materialization: {agent_id}")
     return target
 
 

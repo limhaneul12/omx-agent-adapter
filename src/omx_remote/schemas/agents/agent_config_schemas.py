@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 
@@ -31,6 +31,28 @@ class AgentConfig(StrictSchemaModel):
     effort: AgentEffort
     persona: NonEmptyString
     routing_hints: tuple[NonEmptyString, ...] = ()
+
+    @field_validator("id")
+    @classmethod
+    def _validate_filesystem_safe_id(cls, value: str) -> str:
+        """Validate that agent ids are safe generated-file names.
+
+        Args:
+            value [str]: Agent id from TOML.
+
+        Returns:
+            str: Filesystem-safe agent id.
+        """
+        allowed_characters: set[str] = {"-", "_"}
+        if not value[0].isalnum() or not all(
+            character.isalnum() or character in allowed_characters
+            for character in value
+        ):
+            raise ValueError(
+                "agent id must be filesystem-safe: start with a letter or digit "
+                "and use only letters, digits, '-' or '_'"
+            )
+        return value
 
 
 class AgentConfigSet(StrictSchemaModel):

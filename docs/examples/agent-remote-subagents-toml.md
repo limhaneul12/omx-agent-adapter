@@ -5,16 +5,17 @@ Use `agent-remote agents` to validate repo-local TOML subagent configuration and
 Minimal `.agent-remote.toml` shape:
 
 ```toml
-[[agents]]
-id = "reviewer"
-role = "code-reviewer"
-provider = "codex"
-model = "gpt-5.5"
-reasoning_effort = "high"
+[agents.reviewer]
 enabled = true
-description = "Review the current diff against repository rules."
-instructions = "Focus on correctness, tests, type safety, and repository conventions."
+provider = "codex"
+role = "code-reviewer"
+model = "gpt-5.5"
+effort = "high"
+persona = "Review the current diff against repository rules."
+routing_hints = ["review", "current-diff"]
 ```
+
+Agent ids become generated filenames during Codex materialization. Keep them filesystem-safe: start with a letter or digit and use only letters, digits, `-`, or `_`.
 
 Human flow:
 

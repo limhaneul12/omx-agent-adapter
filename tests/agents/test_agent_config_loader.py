@@ -127,6 +127,24 @@ persona = "Design typed boundaries."
         load_agent_config(cwd=tmp_path)
 
 
+def test_agent_id_rejects_path_traversal_segments(tmp_path: Path) -> None:
+    config_path = tmp_path / ".agent-remote.toml"
+    config_path.write_text(
+        """
+[agents."../escape"]
+enabled = true
+provider = "codex"
+role = "architect"
+model = "gpt-5.5"
+effort = "high"
+persona = "Design typed boundaries."
+""".strip()
+    )
+
+    with pytest.raises(ValidationError, match="filesystem-safe"):
+        load_agent_config(cwd=tmp_path)
+
+
 def test_missing_config_returns_empty_config_with_warning(tmp_path: Path) -> None:
     result = load_agent_config(cwd=tmp_path)
 
