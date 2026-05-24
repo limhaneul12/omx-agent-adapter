@@ -26,7 +26,7 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | 2 | Goal → Ralph | Partial, usable by handoff | `agent-remote goal prepare-ralph`, typed Goal mirror/handoff prompt, Ralph PRD artifact contract, Ralph launch/resume/cleanup guardrails. The misleading public `agent-remote goal launch-ralph` command has been removed. | Keep Goal→Ralph as read-only handoff plus Ralph-owned control; add no new broad launcher without dogfood evidence. |
 | 3 | Goal → Ralph → Team(s) | Implemented baseline, dogfood-proven with follow-up wave | Goal/Ralph handoff prompt, Ralph PRD Team fanout fields, Team worker assignments, Team Admin policy, Team Admin aggregation report/read command, Ralph post-Team review command, Goal lifecycle decision/restore/operating-decision contracts, Ralph-owned Team launch handoff, worker allocation hint cleanup, and startup readiness issue surfacing through `startup_issue_workers`. | Continue dogfood. Remaining hardening is mostly native OMX worker startup reliability: `ready_prompt_timeout` forensics, pane relaunch, and same-assignment redispatch. Keep treating startup failures as follow-up evidence rather than ambiguous completion. |
 | 4 | Ultrawork only | Implemented baseline | `agent-remote ultrawork launch`, `ultrawork resume`, `ultrawork cleanup-stale`, state preflight, stale/resumable/terminal guards. | Keep dogfooding; improve only from concrete OMX evidence. |
-| 5 | UltraGoal | Native OMX baseline | `agent-remote ultragoal status` exposes native OMX UltraGoal capability/status evidence. | Add command-recipe orchestration and richer cockpit route evidence before claiming full roadmap automation. |
+| 5 | UltraGoal | Native OMX + composition baseline | `agent-remote ultragoal status` exposes native OMX UltraGoal capability/status evidence. Command recipes, route policy, cockpit capability evidence, run records, and upstream probes now make UltraGoal-oriented composition inspectable before launch. | Keep actual durable roadmap execution in native OMX UltraGoal. Do not claim adapter-owned non-dry-run roadmap automation until it has explicit execution, replay, and dogfood evidence. |
 | 6 | Ralph → Team | Implemented baseline for handoff and review surfaces | Ralph PRD `requires_team_fanout` validation, `team_worker_assignments`, `team_admin`, Ralph Team DAG/handoff artifact helpers, guarded Team launch path, Team Admin aggregation, Ralph post-Team review, and startup issue follow-up classification. | Clean single-wave live proof still depends on native OMX worker startup reliability. Improve Team launch readiness/status UX and add deeper runtime reconnect only in OMX, not as adapter-owned pane control. |
 
 ## Deprecated or misleading surfaces
@@ -37,6 +37,7 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | Treating `Ralph → Team` as only an implementation detail | Deprecated wording | The current product definition recognizes `Ralph → Team` as its own Ralph-owned operating lane, separate from Goal-supervised `Goal → Ralph → Team(s)`. | Keep both lanes in docs/help/status tables. |
 | `Goal → Ultrawork` as a route label | Deprecated wording | Durable long-roadmap work should use native OMX UltraGoal or a future project-owned command recipe, not a Goal→Ultrawork label. | Use `UltraGoal` when the native durable multi-goal workflow is intended. |
 | `agent-remote` as only a type-safe OMX wrapper | Deprecated wording | The project definition changed to helping agents use OMX + Codex strongly, not just wrapping commands. | Prefer “agent-facing control layer for OMX + Codex.” |
+| Project-owned `HyperGoal` lane or command | Removed public surface | OMX now owns durable multi-goal execution as native UltraGoal, while adapter-owned composition is generalized under recipes, route recommendations, preflight, and run records. | Use `agent-remote ultragoal status` for native UltraGoal evidence and `agent-remote commands` / `agent-remote run --dry-run` for project-owned composition. |
 
 ## Folder-level documentation status
 
@@ -47,6 +48,7 @@ Documentation retention policy lives in `docs/README.md`. In short: commit durab
 | `docs/README.md` | New source-of-truth policy | Explains what docs belong in git, what stays local, and how to mark done/deferred/deprecated work. |
 | `docs/agent-remote-goal-operating-loop.md` | Updated | Now uses the six-lane map and marks partial/planned/deprecated pieces. |
 | `docs/project-operating-lanes-status.md` | New source-of-truth summary | This document is the quick status index for route/lane claims. |
+| `docs/examples/` | New operator and agent examples | Documents command recipes, route recommendations, run records, TOML subagents, and native UltraGoal JSON surfaces. JSON fenced blocks are parsed by tests to reduce stale examples. |
 | `docs/future-runtime-readiness.md` | Current enough | Still useful as runtime-expansion guardrails; it should not override the OMX + Codex product definition. |
 | `docs/rules/` | Current enough | These are development rules, not roadmap status docs. Keep them stable unless code conventions change. |
 | `docs/jobs/` | Local planning, gitignored | Update for local handoff/status, but do not treat as push-bound documentation unless explicitly requested. |
@@ -79,9 +81,9 @@ A lane is not done because a prompt or schema exists. It is done when the route 
 
 Detailed current feature scope lives in `docs/current-feature-development-scope.md`.
 
-1. Land the cockpit operating-decision reason stitching slice, which adds typed `decision_reasons` for the top-level mutation-safety and next-action choice while keeping cockpit read-only.
-2. Improve launch/status UX so agents can distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
-3. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
+1. Improve launch/status UX so agents can distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
+2. Add native OMX runtime hardening for worker startup reliability outside the adapter: timeout forensics, worker pane relaunch, and same-assignment redispatch.
+3. Keep command composition evidence-first: route recommendation → preflight → dry-run plan → optional run record/handoff before any native mutation.
 4. Keep the Pydantic dependency posture stable unless a concrete TypedDict hardening slice requires a tighter minimum; if PEP 728 `TypedDict` features are adopted, use `typing_extensions.TypedDict` rather than stdlib `typing.TypedDict`.
 5. Keep UltraGoal mapped to native OMX and put project-owned composition behavior under command recipes rather than reviving HyperGoal.
 6. Preserve `Ralph → Team` as a separate lane in docs and help text.

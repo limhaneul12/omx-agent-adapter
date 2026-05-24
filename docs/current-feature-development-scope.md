@@ -1,14 +1,34 @@
 # Current Feature Development Scope
 
-Last updated: 2026-05-10 12:16 KST
+Last updated: 2026-05-25 KST
 
-This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, and cockpit decision-reason stitching slices.
+This document records the current cockpit/status and command-composition feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, cockpit decision-reason stitching, and UltraGoal command-composition control-plane slices.
 
 ## Product framing
 
 `agent-remote` is an agent-facing control layer for OMX + Codex. It helps agents operate repo-scoped OMX/Codex flows through typed contracts, status observation, evidence collection, guardrails, and lifecycle decisions.
 
 It should not replace OMX, Codex, Ralph, Team, or Ultrawork.
+
+## Completed command-composition baseline
+
+Merged scope:
+
+- Native OMX UltraGoal status/capability exposure through `agent-remote ultragoal status`.
+- Repo-local TOML subagent config validation/list/show plus Codex-native materialization planning/status through `agent-remote agents`.
+- Project-owned command catalog and dry-run plans through `agent-remote commands` and `agent-remote run --dry-run`.
+- Reusable command/route/prompt preflight reports through `agent-remote preflight`.
+- Cockpit capability, configured-agent, command-recipe, and route-policy evidence.
+- Task classification and route recommendation through `agent-remote route recommend`.
+- Recorded dry-run plans, handoff artifacts, and replay plans through `agent-remote runs`.
+- Upstream Codex/OMX command contract probes through `agent-remote probes`.
+- Operator/agent examples under `docs/examples/` with parseable JSON blocks.
+
+Current boundary:
+
+- `agent-remote` can choose, inspect, plan, preflight, and record composed command intent.
+- Actual durable roadmap execution remains native OMX UltraGoal.
+- The removed project-owned HyperGoal lane must not be revived; project-owned composition belongs under recipes, route recommendations, preflight, run records, and cockpit evidence.
 
 ## Completed cockpit baseline
 

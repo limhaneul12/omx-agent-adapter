@@ -14,7 +14,7 @@ The intended top-level operating lanes are intentionally small and fixed:
 | Goal → Ralph | Partially implemented / usable by handoff | Goal prepares Ralph-owned PRD context through `goal prepare-ralph`; Ralph launch/control exists separately under `agent-remote ralph`. The misleading public `goal launch-ralph` surface has been removed. |
 | Goal → Ralph → Team(s) | Partially implemented contracts, not end-to-end done | Goal-supervised lane where Ralph owns PRD/team split and Team Admin aggregation feeds Ralph/Goal lifecycle decisions. Contracts exist; full CLI/lifecycle stitching and live dogfood proof remain. |
 | Ultrawork only | Implemented baseline | Guarded launch/resume/cleanup for focused OMX Team/Ultrawork execution without wrapping it in Goal. |
-| UltraGoal | Native OMX baseline | Native OMX UltraGoal status/capability is exposed through `agent-remote ultragoal status`; broader command composition lives under recipes, not a project-owned HyperGoal lane. |
+| UltraGoal | Native OMX + composition baseline | Native OMX UltraGoal status/capability is exposed through `agent-remote ultragoal status`; broader command composition lives under recipes, not a project-owned HyperGoal lane. |
 | Ralph → Team | Partially implemented / Ralph-owned fanout | Ralph PRD Team fanout contracts, DAG handoff artifacts, Team Admin policy, and guarded launch surfaces exist; needs clean live proof without Goal wrapping. |
 
 Current practical strengths:
@@ -22,6 +22,7 @@ Current practical strengths:
 - typed team status / await / team-api reads
 - typed adapter probe / status / envelope reads
 - execution transport normalization for OMX JSON and JSONL surfaces
+- repo-scoped cockpit snapshots with capability, route, recipe, PR, and runtime evidence
 - adapter-tracked native Codex Goal start/status/template surfaces
 - read-only Goal → Ralph handoff prompt generation
 - guarded Ralph launch/resume/cleanup state control for OMX runtime workflows
@@ -29,9 +30,12 @@ Current practical strengths:
 - Team Admin aggregation / Ralph post-Team review / Goal lifecycle contract surfaces
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 - native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
-- repo-local TOML subagent config validation/list/show via `agent-remote agents`
+- repo-local TOML subagent config validation/list/show and Codex native-agent materialization planning via `agent-remote agents`
 - typed project-owned command catalog and dry-run planning via `agent-remote commands` / `agent-remote run --dry-run`
 - reusable preflight reports for command/route/prompt safety via `agent-remote preflight`
+- route recommendations and blocked alternatives via `agent-remote route`
+- recorded dry-run plans and handoff artifacts via `agent-remote runs`
+- upstream Codex/OMX command contract probes via `agent-remote probes`
 
 ## Installation for other agents
 
@@ -80,6 +84,40 @@ uv tool install omx-agent-adapter
 
 Do not publish to PyPI until wheel build/install checks pass cleanly and the operating loop has been exercised by real agents.
 
+## Command composition quickstart
+
+Use this flow when a human or agent needs to choose, inspect, plan, and record a composed Codex/OMX command:
+
+```bash
+agent-remote agents validate --cwd .
+agent-remote cockpit snapshot --cwd .
+agent-remote route recommend --task "review current diff" --cwd .
+agent-remote commands list --cwd .
+agent-remote preflight run review-diff --cwd .
+agent-remote run review-diff --cwd . --dry-run
+agent-remote run review-diff --cwd . --dry-run --json --record-run
+agent-remote runs handoff <run-id> --cwd .
+```
+
+Useful adjacent surfaces:
+
+```bash
+agent-remote probes run omx-basic --cwd . --json
+agent-remote agents plan-apply-codex --cwd . --json
+agent-remote agents codex-status --cwd . --json
+agent-remote ultragoal status --cwd . --json
+```
+
+The human-readable commands explain the route and risk. The `--json` surfaces provide typed fields, stable enums, artifact paths, warnings, blockers, and exit codes for automated agents.
+
+Tracked examples:
+
+- [`docs/examples/agent-remote-command-recipes.md`](docs/examples/agent-remote-command-recipes.md)
+- [`docs/examples/agent-remote-route-recommendations.md`](docs/examples/agent-remote-route-recommendations.md)
+- [`docs/examples/agent-remote-run-records.md`](docs/examples/agent-remote-run-records.md)
+- [`docs/examples/agent-remote-subagents-toml.md`](docs/examples/agent-remote-subagents-toml.md)
+- [`docs/examples/agent-remote-ultragoal.md`](docs/examples/agent-remote-ultragoal.md)
+
 ## CLI quick help
 
 For installed users and other agents:
@@ -88,12 +126,18 @@ For installed users and other agents:
 agent-remote --help
 agent-remote version
 agent-remote runtime --help
+agent-remote cockpit --help
 agent-remote team --help
+agent-remote history --help
 agent-remote adapt --help
 agent-remote agents --help
 agent-remote commands --help
 agent-remote preflight --help
+agent-remote probes --help
+agent-remote route --help
+agent-remote runs --help
 agent-remote run --help
+agent-remote prd --help
 agent-remote ralph --help
 agent-remote ultrawork --help
 agent-remote ultragoal --help
@@ -140,8 +184,8 @@ Choose one of the six top-level lanes before acting. The distinction between `Go
 
 5. UltraGoal
    Use native OMX UltraGoal for durable multi-goal roadmaps instead of the removed project-owned HyperGoal scaffold.
-   Done baseline: `agent-remote ultragoal status` reads native OMX capability/status.
-   Not done: full command-recipe orchestration around UltraGoal roadmaps.
+   Done baseline: `agent-remote ultragoal status` reads native OMX capability/status; command recipes, route policy, cockpit capability evidence, and run records make UltraGoal-oriented command composition discoverable.
+   Not done: automatic non-dry-run roadmap execution from `agent-remote`; durable execution remains native OMX UltraGoal.
 
 6. Ralph → Team
    Use when Ralph already owns the task and needs Team fanout directly, without a Goal lifecycle envelope.
@@ -158,6 +202,9 @@ omx state list-active --json
 omx team status missing-team --json
 omx team api read-monitor-snapshot --input '{"team_name":"missing-team"}' --json
 omx adapt hermes probe --json
+agent-remote cockpit snapshot --cwd . --json
+agent-remote route recommend --task "review current diff" --cwd . --json
+agent-remote run review-diff --cwd . --dry-run --json
 ```
 
 ## Development

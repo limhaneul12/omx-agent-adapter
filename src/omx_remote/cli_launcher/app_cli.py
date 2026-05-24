@@ -21,6 +21,7 @@ from omx_remote.cli_launcher.ultrawork_cli import ultrawork_app
 HELP_TEXT = """Agent-facing control layer for using OMX + Codex strongly.
 
 AI-friendly route guidance, typed state, evidence, and guardrails for Codex/OMX development lanes.
+Composition flow: validate agents, inspect cockpit, recommend a route, preflight, dry-run, record, then hand off.
 Use subcommand --help to see available operations for each domain.
 """
 

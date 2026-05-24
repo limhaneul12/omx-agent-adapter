@@ -186,6 +186,7 @@ def test_package_entrypoint_runs_help() -> None:
 
     assert completed_process.returncode == 0
     assert "AI-friendly route guidance" in completed_process.stdout
+    assert "Composition flow" in completed_process.stdout
     assert "Agent-facing control layer" in completed_process.stdout
     assert "runtime" in completed_process.stdout
     assert "cockpit" in completed_process.stdout

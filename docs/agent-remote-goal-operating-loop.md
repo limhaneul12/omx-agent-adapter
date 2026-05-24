@@ -127,7 +127,7 @@ It also includes a short route guide for:
 
 This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
 
-Use native OMX UltraGoal for durable multi-goal roadmaps when a normal Goal-only loop is too small. The adapter exposes a read-only `agent-remote ultragoal status` surface; project-owned composition should live in command recipes instead of a HyperGoal lane.
+Use native OMX UltraGoal for durable multi-goal roadmaps when a normal Goal-only loop is too small. The adapter exposes a read-only `agent-remote ultragoal status` surface and project-owned command composition under `commands`, `run`, `route`, `preflight`, and `runs` instead of a HyperGoal lane.
 
 ## 2.3 Operating lane map
 
@@ -173,9 +173,12 @@ Choose one of the six top-level lanes before acting. The point is not to replace
    Native OMX durable multi-goal workflow for roadmap-sized work.
    Implemented baseline:
    - `agent-remote ultragoal status`
+   - `agent-remote commands show ultragoal-roadmap`
+   - `agent-remote run ultragoal-roadmap --dry-run`
+   - cockpit capability/route evidence for native UltraGoal availability
+   - run records for dry-run handoff/replay planning
    Not complete yet:
-   - project-owned command recipes around UltraGoal roadmap prompts
-   - richer cockpit capability/route evidence
+   - adapter-owned non-dry-run roadmap execution; durable execution remains native OMX UltraGoal
 
 6. Ralph → Team
    Use when Ralph already owns the PRD/task and needs direct Team fanout without Goal lifecycle wrapping.
