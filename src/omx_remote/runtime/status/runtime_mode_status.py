@@ -1,5 +1,3 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.runtime_types import (
@@ -9,6 +7,7 @@ from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStatusResultNormalizedPayload,
     RuntimeModeStatusTransportPayload,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeStatusRequest,
@@ -30,7 +29,7 @@ async def read_runtime_mode_status(
         RuntimeModeStatusResult: Function return value.
     """
 
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "state",

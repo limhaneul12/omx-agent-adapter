@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import urllib.parse
 
 from omx_remote.adapter_types.json_types import JsonArray, JsonObject, JsonValue
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.runtime.cockpit.sources.github_pr_status.api_client import (
     _as_json_array,
     _as_json_object,
@@ -329,7 +329,7 @@ async def read_github_pull_request_status(
     Returns:
         CockpitPullRequestObservation: Read-only PR status evidence, or unavailable evidence.
     """
-    observation: CockpitPullRequestObservation = await asyncio.to_thread(
+    observation: CockpitPullRequestObservation = await run_blocking_call(
         _read_pull_request_status_sync,
         repo_root,
     )

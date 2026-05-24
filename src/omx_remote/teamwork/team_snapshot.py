@@ -1,5 +1,3 @@
-import asyncio
-
 import msgspec
 import orjson
 
@@ -13,6 +11,7 @@ from omx_remote.adapter_types.teams_type.team_command_transport_payloads import 
     TeamStatusSpec,
     TeamStatusTransportPayload,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork.status_schemas import (
     TeamAwaitRequest,
@@ -33,7 +32,7 @@ async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
         TeamStatusSnapshot: Function return value.
     """
 
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         ["team", "status", request.team_name, "--json"],
     )
@@ -145,7 +144,7 @@ async def await_team_status(request: TeamAwaitRequest) -> TeamAwaitSnapshot:
         TeamAwaitSnapshot: Function return value.
     """
 
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",

@@ -5,6 +5,7 @@ description = "Agent-facing adapter layer for operating OMX as a stateful runtim
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
+  "asyncer>=0.0.17,<0.1.0",
   "msgspec>=0.19,<1.0",
   "orjson>=3.10,<4.0",
   "pydantic>=2.11,<3.0",

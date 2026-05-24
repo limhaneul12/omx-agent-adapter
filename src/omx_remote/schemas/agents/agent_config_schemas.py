@@ -42,7 +42,11 @@ class AgentConfigSet(StrictSchemaModel):
 
     @property
     def enabled_agents(self) -> tuple[AgentConfig, ...]:
-        """Return enabled agents in config order."""
+        """Return enabled agents in config order.
+
+        Returns:
+            tuple[AgentConfig, ...]: Enabled agents preserving source order.
+        """
         enabled_agents: tuple[AgentConfig, ...] = tuple(
             agent for agent in self.agents if agent.enabled
         )

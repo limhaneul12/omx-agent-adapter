@@ -46,7 +46,11 @@ class CommandRecipe(StrictSchemaModel):
 
     @property
     def qualified_id(self) -> str:
-        """Return source-qualified command id."""
+        """Return source-qualified command id.
+
+        Returns:
+            str: Command id prefixed by its recipe source.
+        """
         qualified_id: str = f"{self.source}:{self.id}"
         return qualified_id
 
@@ -88,6 +92,11 @@ class CommandCatalog(StrictSchemaModel):
 
     @model_validator(mode="after")
     def _validate_duplicate_source_ids(self) -> "CommandCatalog":
+        """Reject duplicate command ids from the same source.
+
+        Returns:
+            CommandCatalog: Validated command catalog.
+        """
         seen_ids: set[tuple[CommandSource, str]] = set()
         for recipe in self.commands:
             key = (recipe.source, recipe.id)

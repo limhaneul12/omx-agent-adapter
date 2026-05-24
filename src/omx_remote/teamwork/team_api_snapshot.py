@@ -1,5 +1,3 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.teams_type.team_api_raw_payloads import (
@@ -22,6 +20,7 @@ from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiTransportMailboxMessagePayload,
     TeamApiTransportTaskPayload,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiListTasksRequest,
@@ -93,7 +92,7 @@ async def read_team_api_list_tasks(
     Returns:
         TeamApiListTasksSnapshot: Normalized list-tasks snapshot built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -139,7 +138,7 @@ async def read_team_api_read_events(
     Returns:
         TeamApiReadEventsSnapshot: Normalized read-events snapshot built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -187,7 +186,7 @@ async def read_team_api_mailbox_list(
     Returns:
         TeamApiMailboxListSnapshot: Normalized mailbox-list snapshot built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -236,7 +235,7 @@ async def read_team_api_read_monitor_snapshot(
     Returns:
         TeamApiReadMonitorSnapshot: Normalized read-monitor-snapshot result built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -267,7 +266,7 @@ async def read_team_api_read_config_error(
     Returns:
         TeamApiReadConfigError: Normalized error envelope built from the nested unsuccessful `error` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -299,7 +298,7 @@ async def read_team_api_read_config(
     Returns:
         TeamApiReadConfigSnapshot: Normalized config snapshot built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -330,7 +329,7 @@ async def read_team_api_read_manifest_error(
     Returns:
         TeamApiReadManifestError: Normalized error envelope built from the nested unsuccessful `error` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",
@@ -362,7 +361,7 @@ async def read_team_api_read_worker_status(
     Returns:
         TeamApiWorkerStatusSnapshot: Normalized worker-status snapshot built from the nested successful `data` payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         [
             "team",

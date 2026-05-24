@@ -1,8 +1,7 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.execution_types import ExecutionPayload
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.contract_promotion import split_event_payloads
 from omx_remote.execution.payload_transport import load_execution_payload
 from omx_remote.schemas.execution.request_schemas import ExecutionEventDecodeRequest
@@ -25,7 +24,7 @@ async def decode_event_lines(
     else:
         normalized_request = ExecutionEventDecodeRequest(payload=request)
 
-    events: list[ExecutionPayload] = await asyncio.to_thread(
+    events: list[ExecutionPayload] = await run_blocking_call(
         _decode_event_lines_sync,
         normalized_request.payload,
     )
