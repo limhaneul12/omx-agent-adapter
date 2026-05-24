@@ -31,6 +31,7 @@ Current practical strengths:
 - native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
 - repo-local TOML subagent config validation/list/show via `agent-remote agents`
 - typed project-owned command catalog and dry-run planning via `agent-remote commands` / `agent-remote run --dry-run`
+- reusable preflight reports for command/route/prompt safety via `agent-remote preflight`
 
 ## Installation for other agents
 
@@ -91,6 +92,7 @@ agent-remote team --help
 agent-remote adapt --help
 agent-remote agents --help
 agent-remote commands --help
+agent-remote preflight --help
 agent-remote run --help
 agent-remote ralph --help
 agent-remote ultrawork --help
