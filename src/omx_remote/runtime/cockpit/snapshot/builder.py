@@ -5,6 +5,12 @@ from omx_remote.runtime.cockpit.snapshot.decisions import (
     _derive_safe_to_mutate,
 )
 from omx_remote.runtime.cockpit.snapshot.lanes import _build_lane_snapshots
+from omx_remote.runtime.routes.route_policy_engine import build_route_policy_result
+from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
+    CockpitAgentConfigSummary,
+    CockpitCapabilitiesSnapshot,
+    CockpitCommandRecipeSummary,
+)
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitContradiction,
     CockpitDecisionReason,
@@ -15,6 +21,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
+from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
 from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
 from omx_remote.shared.omx_enums.ultrawork_enums import UltraworkStateClassification
 
@@ -31,6 +38,11 @@ def build_cockpit_snapshot(
     discovered_team_names: tuple[str, ...] = (),
     status_sources: tuple[CockpitStatusSourceObservation, ...] = (),
     pull_request_status: CockpitPullRequestObservation | None = None,
+    capabilities: CockpitCapabilitiesSnapshot | None = None,
+    configured_agents: CockpitAgentConfigSummary | None = None,
+    command_recipes: CockpitCommandRecipeSummary | None = None,
+    route_recommendations: tuple[RouteRecommendation, ...] = (),
+    blocked_route_alternatives: tuple[RouteRecommendation, ...] = (),
     warnings: tuple[str, ...] = (),
 ) -> CockpitSnapshot:
     """Build a read-only cockpit snapshot from normalized surface observations.
@@ -47,6 +59,11 @@ def build_cockpit_snapshot(
         discovered_team_names [tuple[str, ...]]: Exact Team names discovered from durable artifacts.
         status_sources [tuple[CockpitStatusSourceObservation, ...]]: Source observations read by the cockpit.
         pull_request_status [CockpitPullRequestObservation | None]: Optional PR/review/check evidence.
+        capabilities [CockpitCapabilitiesSnapshot | None]: Optional native capability snapshot.
+        configured_agents [CockpitAgentConfigSummary | None]: Optional configured-agent summary.
+        command_recipes [CockpitCommandRecipeSummary | None]: Optional command recipe summary.
+        route_recommendations [tuple[RouteRecommendation, ...]]: Optional route recommendations.
+        blocked_route_alternatives [tuple[RouteRecommendation, ...]]: Optional blocked route alternatives.
         warnings [tuple[str, ...]]: Top-level degraded evidence warnings.
 
     Returns:
@@ -84,6 +101,25 @@ def build_cockpit_snapshot(
         goal_mirror_state=goal_mirror_state,
         team_observations=team_observations,
     )
+    resolved_route_recommendations: tuple[RouteRecommendation, ...] = route_recommendations
+    resolved_blocked_route_alternatives: tuple[RouteRecommendation, ...] = blocked_route_alternatives
+    if (
+        capabilities is not None
+        and configured_agents is not None
+        and command_recipes is not None
+        and not route_recommendations
+    ):
+        route_policy = build_route_policy_result(
+            task="execute a durable multi-goal roadmap",
+            cwd=repo_root,
+            capabilities=capabilities,
+            agent_summary=configured_agents,
+            recipe_summary=command_recipes,
+            safe_to_mutate=safe_to_mutate,
+            active_runtime_modes=active_runtime_modes.active_modes,
+        )
+        resolved_route_recommendations = route_policy.recommendations
+        resolved_blocked_route_alternatives = route_policy.blocked_alternatives
     result: CockpitSnapshot = CockpitSnapshot(
         repo_root=repo_root,
         runtime_summary=runtime_status.summary,
@@ -91,6 +127,11 @@ def build_cockpit_snapshot(
         discovered_teams=discovered_team_names,
         status_sources=status_sources,
         pull_request_status=pull_request_status,
+        capabilities=capabilities,
+        configured_agents=configured_agents,
+        command_recipes=command_recipes,
+        route_recommendations=resolved_route_recommendations,
+        blocked_route_alternatives=resolved_blocked_route_alternatives,
         contradictions=contradictions,
         lanes=lanes,
         warnings=warnings,

@@ -22,12 +22,14 @@ def cockpit_snapshot(
         "--team-name",
         help="Optional explicit Team name to include in the Ralph -> Team lane.",
     ),
+    json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Read the repo-scoped cockpit snapshot as JSON.
 
     Args:
         cwd [str]: Workspace root to inspect.
         team_names [list[str] | None]: Optional explicit Team names to include in the snapshot.
+        json_output [bool]: Accepted for consistency; cockpit snapshots are JSON output.
     """
     repo_root: str = str(Path(cwd).resolve())
     normalized_team_names: tuple[str, ...]

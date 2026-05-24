@@ -2,7 +2,13 @@ from enum import StrEnum
 
 from pydantic import Field
 
+from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
+    CockpitAgentConfigSummary,
+    CockpitCapabilitiesSnapshot,
+    CockpitCommandRecipeSummary,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
 
 
 class CockpitLaneName(StrEnum):
@@ -133,6 +139,11 @@ class CockpitSnapshot(StrictSchemaModel):
     discovered_teams: tuple[NonEmptyString, ...] = ()
     status_sources: tuple[CockpitStatusSourceObservation, ...] = ()
     pull_request_status: CockpitPullRequestObservation | None = None
+    capabilities: CockpitCapabilitiesSnapshot | None = None
+    configured_agents: CockpitAgentConfigSummary | None = None
+    command_recipes: CockpitCommandRecipeSummary | None = None
+    route_recommendations: tuple[RouteRecommendation, ...] = ()
+    blocked_route_alternatives: tuple[RouteRecommendation, ...] = ()
     contradictions: tuple[CockpitContradiction, ...]
     lanes: tuple[CockpitLaneSnapshot, ...]
     warnings: tuple[NonEmptyString, ...] = ()

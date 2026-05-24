@@ -25,7 +25,20 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
     CockpitTeamWorkerObservation,
 )
+from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
+    CockpitAgentConfigSummary,
+    CockpitCapabilitiesSnapshot,
+    CockpitCapabilityCommand,
+    CockpitCommandRecipeSummary,
+    CockpitRuntimeCapability,
+)
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
+from omx_remote.schemas.routes.route_policy_schemas import (
+    RouteConfidence,
+    RouteName,
+    RouteRecommendation,
+    RouteRecommendationStatus,
+)
 from omx_remote.schemas.runtime.status_schemas import (
     ActiveRuntimeModes,
     RuntimeStatus,
@@ -77,6 +90,69 @@ def _goal_mirror_state(repo_root: Path) -> CodexGoalMirrorState:
         launched_at="2026-05-08T00:00:00+00:00",
         handoff_state=CodexGoalHandoffState.AWAITING_RALPH,
         tracking_state=CodexGoalTrackingState.ENDED,
+    )
+
+
+def _patch_snapshot_capability_sources(monkeypatch, tmp_path: Path) -> None:
+    capabilities = CockpitCapabilitiesSnapshot(
+        codex=CockpitRuntimeCapability(
+            name="codex",
+            available=True,
+            executable_path="/usr/bin/codex",
+            version="codex 0.133.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="exec_json",
+                    available=True,
+                    detail="codex exec --json is available.",
+                ),
+            ),
+        ),
+        omx=CockpitRuntimeCapability(
+            name="omx",
+            available=True,
+            executable_path="/usr/bin/omx",
+            version="omx 0.18.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="ultragoal",
+                    available=True,
+                    detail="omx ultragoal --help succeeded.",
+                ),
+                CockpitCapabilityCommand(
+                    name="team",
+                    available=True,
+                    detail="omx team --help succeeded.",
+                ),
+            ),
+        ),
+    )
+    configured_agents = CockpitAgentConfigSummary(
+        config_path=str(tmp_path / ".agent-remote.toml"),
+        total_count=0,
+        enabled_count=0,
+        disabled_count=0,
+        enabled_agent_ids=(),
+        warnings=(),
+    )
+    command_recipes = CockpitCommandRecipeSummary(
+        available_count=2,
+        builtin_count=2,
+        repo_count=0,
+        qualified_ids=("builtin:review-diff", "builtin:verify-handoff"),
+        warnings=(),
+    )
+
+    monkeypatch.setattr(snapshot_reader, "read_cockpit_capabilities", lambda: capabilities)
+    monkeypatch.setattr(
+        snapshot_reader,
+        "summarize_cockpit_agent_config",
+        lambda repo_root: configured_agents,
+    )
+    monkeypatch.setattr(
+        snapshot_reader,
+        "summarize_cockpit_command_recipes",
+        lambda repo_root: command_recipes,
     )
 
 
@@ -212,6 +288,150 @@ def test_cockpit_snapshot_exposes_all_status_contract_defaults(tmp_path: Path) -
         "runtime_status",
         "active_runtime_modes",
     )
+
+
+def test_cockpit_snapshot_exposes_capabilities_config_recipes_and_routes(
+    tmp_path: Path,
+) -> None:
+    capabilities = CockpitCapabilitiesSnapshot(
+        codex=CockpitRuntimeCapability(
+            name="codex",
+            available=True,
+            executable_path="/usr/bin/codex",
+            version="codex 0.133.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="exec_json",
+                    available=True,
+                    detail="codex exec --json is available.",
+                ),
+            ),
+        ),
+        omx=CockpitRuntimeCapability(
+            name="omx",
+            available=True,
+            executable_path="/usr/bin/omx",
+            version="omx 0.18.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="ultragoal",
+                    available=True,
+                    detail="omx ultragoal --help succeeded.",
+                ),
+            ),
+        ),
+    )
+    configured_agents = CockpitAgentConfigSummary(
+        config_path=str(tmp_path / ".agent-remote.toml"),
+        total_count=2,
+        enabled_count=1,
+        disabled_count=1,
+        enabled_agent_ids=("implementer",),
+        warnings=(),
+    )
+    command_recipes = CockpitCommandRecipeSummary(
+        available_count=3,
+        builtin_count=2,
+        repo_count=1,
+        qualified_ids=("builtin:review-diff", "repo:implement-with-review"),
+        warnings=(),
+    )
+    route_recommendation = RouteRecommendation(
+        route=RouteName.OMX_ULTRAGOAL,
+        status=RouteRecommendationStatus.RECOMMENDED,
+        confidence=RouteConfidence.MEDIUM,
+        reason="Native UltraGoal is available for durable multi-goal roadmap work.",
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=_idle_runtime_status(),
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=(),
+        capabilities=capabilities,
+        configured_agents=configured_agents,
+        command_recipes=command_recipes,
+        route_recommendations=(route_recommendation,),
+    )
+
+    assert snapshot.capabilities == capabilities
+    assert snapshot.configured_agents == configured_agents
+    assert snapshot.command_recipes == command_recipes
+    assert snapshot.route_recommendations == (route_recommendation,)
+    assert snapshot.configured_agents.enabled_count == 1
+    assert snapshot.command_recipes.available_count == 3
+
+
+def test_cockpit_snapshot_derives_ultragoal_route_when_capability_is_available(
+    tmp_path: Path,
+) -> None:
+    capabilities = CockpitCapabilitiesSnapshot(
+        codex=CockpitRuntimeCapability(
+            name="codex",
+            available=True,
+            executable_path="/usr/bin/codex",
+            version="codex 0.133.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="exec_json",
+                    available=True,
+                    detail="codex exec --json is available.",
+                ),
+            ),
+        ),
+        omx=CockpitRuntimeCapability(
+            name="omx",
+            available=True,
+            executable_path="/usr/bin/omx",
+            version="omx 0.18.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="ultragoal",
+                    available=True,
+                    detail="omx ultragoal --help succeeded.",
+                ),
+                CockpitCapabilityCommand(
+                    name="team",
+                    available=True,
+                    detail="omx team --help succeeded.",
+                ),
+            ),
+        ),
+    )
+    configured_agents = CockpitAgentConfigSummary(
+        config_path=str(tmp_path / ".agent-remote.toml"),
+        total_count=0,
+        enabled_count=0,
+        disabled_count=0,
+        enabled_agent_ids=(),
+        warnings=(),
+    )
+    command_recipes = CockpitCommandRecipeSummary(
+        available_count=2,
+        builtin_count=2,
+        repo_count=0,
+        qualified_ids=("builtin:review-diff", "builtin:verify-handoff"),
+        warnings=(),
+    )
+
+    snapshot = build_cockpit_snapshot(
+        repo_root=str(tmp_path),
+        runtime_status=_idle_runtime_status(),
+        active_runtime_modes=ActiveRuntimeModes(active_modes=()),
+        goal_mirror_state=None,
+        ultrawork_state_classification=UltraworkStateClassification.CLEAN,
+        ultrawork_warnings=(),
+        team_names=(),
+        capabilities=capabilities,
+        configured_agents=configured_agents,
+        command_recipes=command_recipes,
+    )
+
+    assert snapshot.route_recommendations[0].route == RouteName.OMX_ULTRAGOAL
+    assert "durable" in snapshot.route_recommendations[0].reason
 
 
 def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path) -> None:
@@ -392,6 +612,7 @@ def test_read_cockpit_snapshot_includes_github_pr_status_source(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    _patch_snapshot_capability_sources(monkeypatch, tmp_path)
     pull_request_status = CockpitPullRequestObservation(
         provider="github",
         branch="feat/cockpit-pr-status-source",
@@ -448,6 +669,7 @@ def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    _patch_snapshot_capability_sources(monkeypatch, tmp_path)
     state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
     state_path.write_text("{not-json", encoding="utf-8")
@@ -682,6 +904,7 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    _patch_snapshot_capability_sources(monkeypatch, tmp_path)
     worker_status_calls: list[tuple[str, str]] = []
 
     async def fake_read_runtime_status() -> RuntimeStatus:
@@ -777,6 +1000,7 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    _patch_snapshot_capability_sources(monkeypatch, tmp_path)
     team_status_calls: list[str] = []
 
     async def fake_read_runtime_status() -> RuntimeStatus:
@@ -843,6 +1067,7 @@ def test_read_cockpit_snapshot_exposes_team_evidence_status_source(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    _patch_snapshot_capability_sources(monkeypatch, tmp_path)
     async def fake_read_runtime_status() -> RuntimeStatus:
         return _idle_runtime_status()
 
