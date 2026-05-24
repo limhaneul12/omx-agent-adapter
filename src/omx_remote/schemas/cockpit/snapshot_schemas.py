@@ -12,7 +12,7 @@ class CockpitLaneName(StrEnum):
     GOAL_RALPH = "goal_to_ralph"
     GOAL_RALPH_TEAMS = "goal_to_ralph_to_teams"
     ULTRAWORK_ONLY = "ultrawork_only"
-    HYPERGOAL = "hypergoal"
+    ULTRAGOAL = "ultragoal"
     RALPH_TEAM = "ralph_to_team"
 
 

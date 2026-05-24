@@ -194,7 +194,8 @@ def test_package_entrypoint_runs_help() -> None:
     assert "adapt" in completed_process.stdout
     assert "goal" in completed_process.stdout
     assert "prd" in completed_process.stdout
-    assert "hypergoal" in completed_process.stdout
+    assert "ultragoal" in completed_process.stdout
+    assert "hypergoal" not in completed_process.stdout
     assert "ralph" in completed_process.stdout
     assert "ultrawork" in completed_process.stdout
     assert "version" in completed_process.stdout
@@ -246,10 +247,10 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
             contradictions=(),
             lanes=(
                 CockpitLaneSnapshot(
-                    name=CockpitLaneName.HYPERGOAL,
-                    state=CockpitLaneState.PLANNED_ONLY,
-                    summary="Hypergoal is template-only.",
-                    recommended_next_action="use_hypergoal_template_only",
+                    name=CockpitLaneName.ULTRAGOAL,
+                    state=CockpitLaneState.UNKNOWN,
+                    summary="UltraGoal is native OMX.",
+                    recommended_next_action="inspect_ultragoal_status",
                 ),
             ),
             safe_to_mutate=True,
@@ -275,7 +276,7 @@ def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) 
     assert result.exit_code == 0
     output = orjson.loads(result.stdout)
     assert output["repo_root"] == str(tmp_path.resolve())
-    assert output["lanes"][0]["name"] == "hypergoal"
+    assert output["lanes"][0]["name"] == "ultragoal"
     assert output["decision_reasons"][0]["recommended_next_action"] == "observe"
     assert output["decision_reasons"][0]["blocks_mutation"] is False
 
@@ -422,7 +423,8 @@ def test_package_entrypoint_runs_goal_help() -> None:
     assert "Ultrawork only" in completed_process.stdout
     assert "Goal → Team" not in completed_process.stdout
     assert "Goal → Ultrawork" not in completed_process.stdout
-    assert "Hypergoal" in completed_process.stdout
+    assert "UltraGoal" in completed_process.stdout
+    assert "Hypergoal" not in completed_process.stdout
     assert "start" in completed_process.stdout
     assert "status" in completed_process.stdout
     assert "template" in completed_process.stdout
@@ -455,7 +457,8 @@ def test_package_entrypoint_runs_goal_template() -> None:
     assert "Goal → Ralph → Team" in completed_process.stdout
     assert "Ralph → Team" in completed_process.stdout
     assert "Ultrawork only" in completed_process.stdout
-    assert "Hypergoal" in completed_process.stdout
+    assert "UltraGoal" in completed_process.stdout
+    assert "Hypergoal" not in completed_process.stdout
     assert "Goal → Ultrawork" not in completed_process.stdout
 
 
@@ -520,21 +523,26 @@ def test_ralph_launch_missing_prd_guides_goal_prd_generation(tmp_path: Path, mon
     assert "agent-remote prd validate" in output["stderr"]
 
 
-def test_package_entrypoint_runs_hypergoal_help() -> None:
+def test_package_entrypoint_does_not_register_hypergoal() -> None:
     completed_process = _run_agent_remote_command(["hypergoal", "--help"])
 
+    assert completed_process.returncode != 0
+
+
+def test_package_entrypoint_runs_ultragoal_help() -> None:
+    completed_process = _run_agent_remote_command(["ultragoal", "--help"])
+
     assert completed_process.returncode == 0
-    assert "template" in completed_process.stdout
+    assert "status" in completed_process.stdout
 
 
-def test_package_entrypoint_runs_hypergoal_template() -> None:
-    completed_process = _run_agent_remote_command(["hypergoal", "template"])
+def test_package_entrypoint_runs_ultragoal_status() -> None:
+    completed_process = _run_agent_remote_command(["ultragoal", "status", "--json"])
 
     assert completed_process.returncode == 0
-    assert "# Hypergoal Deep-Work Scaffold" in completed_process.stdout
-    assert "Focus window:" in completed_process.stdout
-    assert "Recovery checklist:" in completed_process.stdout
-    assert "Goal → Ultrawork" not in completed_process.stdout
+    output = orjson.loads(completed_process.stdout)
+    assert output["capability_command"] == ["ultragoal", "--help"]
+    assert output["supported"] in {True, False}
 
 
 def test_package_entrypoint_runs_goal_prepare_prd_prompt_help() -> None:

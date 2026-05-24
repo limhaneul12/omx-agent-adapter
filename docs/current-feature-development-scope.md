@@ -95,7 +95,7 @@ Recommended near-term sequence:
 - Do not add direct Goal→Team as a public lane.
 - Do not make cockpit perform launch, cleanup, or implicit advance.
 - Do not treat `unknown` Team evidence as active execution.
-- Do not claim Hypergoal runtime support; Hypergoal remains planned/template-only.
+- Do not revive a project-owned HyperGoal runtime; use native OMX UltraGoal and put project-owned composition under command recipes.
 
 ## Current dependency decision
 

@@ -32,7 +32,7 @@ from omx_remote.schemas.codex_goal.runtime_schemas import (
 
 GOAL_HELP_TEXT = """Start and inspect adapter-tracked native Codex Goal sessions.
 
-Lanes: Goal only; Goal → Ralph; Goal → Ralph → Team(s); Ultrawork only; Hypergoal planned-only; Ralph → Team. Use explicit lane status docs before treating a route as complete.
+Lanes: Goal only; Goal → Ralph; Goal → Ralph → Team(s); Ultrawork only; UltraGoal via native OMX; Ralph → Team. Use explicit lane status docs before treating a route as complete.
 """
 
 GOAL_TEMPLATE_TEXT = """# Codex /goal Prompt Template
@@ -55,7 +55,7 @@ Route guide:
   - Goal → Ralph → Team: Ralph can split independent worker ownership for real fanout.
   - Ralph → Team: Ralph-owned team fanout without wrapping it as a Goal route.
   - Ultrawork only: focused deep-work executor by itself.
-  - Hypergoal: future Goal + Ultrawork deep-work concept; not an executor in this template.
+  - UltraGoal: native OMX durable multi-goal workflow; inspect `agent-remote ultragoal status`.
 
 Verification checklist:
   - Targeted tests pass.

@@ -154,14 +154,14 @@ def test_cockpit_reports_all_operating_lanes_with_honest_baseline_states(tmp_pat
         CockpitLaneName.GOAL_RALPH,
         CockpitLaneName.GOAL_RALPH_TEAMS,
         CockpitLaneName.ULTRAWORK_ONLY,
-        CockpitLaneName.HYPERGOAL,
+        CockpitLaneName.ULTRAGOAL,
         CockpitLaneName.RALPH_TEAM,
     )
     assert lane_states[CockpitLaneName.GOAL_ONLY] == CockpitLaneState.ENDED
     assert lane_states[CockpitLaneName.GOAL_RALPH] == CockpitLaneState.AWAITING_RALPH
     assert lane_states[CockpitLaneName.GOAL_RALPH_TEAMS] == CockpitLaneState.AWAITING_RALPH
     assert lane_states[CockpitLaneName.ULTRAWORK_ONLY] == CockpitLaneState.CLEAN
-    assert lane_states[CockpitLaneName.HYPERGOAL] == CockpitLaneState.PLANNED_ONLY
+    assert lane_states[CockpitLaneName.ULTRAGOAL] == CockpitLaneState.UNKNOWN
     assert lane_states[CockpitLaneName.RALPH_TEAM] == CockpitLaneState.NEEDS_TEAM_NAME
 
 

@@ -14,7 +14,7 @@ The intended top-level operating lanes are intentionally small and fixed:
 | Goal → Ralph | Partially implemented / usable by handoff | Goal prepares Ralph-owned PRD context through `goal prepare-ralph`; Ralph launch/control exists separately under `agent-remote ralph`. The misleading public `goal launch-ralph` surface has been removed. |
 | Goal → Ralph → Team(s) | Partially implemented contracts, not end-to-end done | Goal-supervised lane where Ralph owns PRD/team split and Team Admin aggregation feeds Ralph/Goal lifecycle decisions. Contracts exist; full CLI/lifecycle stitching and live dogfood proof remain. |
 | Ultrawork only | Implemented baseline | Guarded launch/resume/cleanup for focused OMX Team/Ultrawork execution without wrapping it in Goal. |
-| Hypergoal | Planned only | Static scaffold/template exists, but no executor or operating loop should be claimed yet. |
+| UltraGoal | Native OMX baseline | Native OMX UltraGoal status/capability is exposed through `agent-remote ultragoal status`; broader command composition lives under recipes, not a project-owned HyperGoal lane. |
 | Ralph → Team | Partially implemented / Ralph-owned fanout | Ralph PRD Team fanout contracts, DAG handoff artifacts, Team Admin policy, and guarded launch surfaces exist; needs clean live proof without Goal wrapping. |
 
 Current practical strengths:
@@ -28,6 +28,7 @@ Current practical strengths:
 - typed Ralph PRD contracts for both non-Team and Team fanout paths
 - Team Admin aggregation / Ralph post-Team review / Goal lifecycle contract surfaces
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
+- native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
 
 ## Installation for other agents
 
@@ -88,6 +89,7 @@ agent-remote team --help
 agent-remote adapt --help
 agent-remote ralph --help
 agent-remote ultrawork --help
+agent-remote ultragoal --help
 agent-remote goal --help
 agent-remote goal template
 agent-remote goal restore-lifecycle --help
@@ -129,10 +131,10 @@ Choose one of the six top-level lanes before acting. The distinction between `Go
    Use for focused deep-work execution through OMX Team/Ultrawork without wrapping the task in Goal.
    Done baseline: guarded `ultrawork launch`, `ultrawork resume`, and `ultrawork cleanup-stale` exist.
 
-5. Hypergoal
-   Future long-work concept that may combine Goal-level objective management with Ultrawork-style deep checkpoints.
-   Done baseline: static `hypergoal template` only.
-   Not done: executor, runtime state, or lifecycle loop.
+5. UltraGoal
+   Use native OMX UltraGoal for durable multi-goal roadmaps instead of the removed project-owned HyperGoal scaffold.
+   Done baseline: `agent-remote ultragoal status` reads native OMX capability/status.
+   Not done: full command-recipe orchestration around UltraGoal roadmaps.
 
 6. Ralph → Team
    Use when Ralph already owns the task and needs Team fanout directly, without a Goal lifecycle envelope.
