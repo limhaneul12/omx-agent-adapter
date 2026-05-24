@@ -130,3 +130,105 @@ effort = "high"
     payload = orjson.loads(result.stdout)
     assert payload["valid"] is False
     assert "persona" in payload["error"]
+
+
+def _write_codex_contract(codex_home: Path) -> None:
+    agents_dir = codex_home / "agents"
+    agents_dir.mkdir(parents=True)
+    (agents_dir / "sample.toml").write_text(
+        '''
+name = "sample"
+description = "Sample agent"
+model = "gpt-5.5"
+model_reasoning_effort = "medium"
+developer_instructions = """Act as sample."""
+'''.strip(),
+        encoding="utf-8",
+    )
+
+
+def test_agents_plan_apply_codex_outputs_materialization_plan(tmp_path: Path) -> None:
+    _write_agent_config(tmp_path / ".agent-remote.toml")
+    codex_home = tmp_path / "codex-home"
+    _write_codex_contract(codex_home)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "plan-apply-codex",
+            "--cwd",
+            str(tmp_path),
+            "--codex-home",
+            str(codex_home),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["supported"] is True
+    assert [file["agent_id"] for file in payload["files"]] == ["architect"]
+
+
+def test_agents_apply_codex_dry_run_does_not_write(tmp_path: Path) -> None:
+    _write_agent_config(tmp_path / ".agent-remote.toml")
+    codex_home = tmp_path / "codex-home"
+    _write_codex_contract(codex_home)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "apply-codex",
+            "--cwd",
+            str(tmp_path),
+            "--codex-home",
+            str(codex_home),
+            "--dry-run",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["dry_run"] is True
+    assert payload["written_files"] == []
+    assert not (tmp_path / ".codex" / "agents" / "architect.toml").exists()
+
+
+def test_agents_codex_status_reports_generated_artifact_match(tmp_path: Path) -> None:
+    _write_agent_config(tmp_path / ".agent-remote.toml")
+    codex_home = tmp_path / "codex-home"
+    _write_codex_contract(codex_home)
+
+    apply_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "apply-codex",
+            "--cwd",
+            str(tmp_path),
+            "--codex-home",
+            str(codex_home),
+            "--json",
+        ],
+    )
+    status_result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "codex-status",
+            "--cwd",
+            str(tmp_path),
+            "--codex-home",
+            str(codex_home),
+            "--json",
+        ],
+    )
+
+    assert apply_result.exit_code == 0
+    assert status_result.exit_code == 0
+    payload = orjson.loads(status_result.stdout)
+    assert payload["up_to_date"] is True
+    assert payload["files"][0]["matches"] is True

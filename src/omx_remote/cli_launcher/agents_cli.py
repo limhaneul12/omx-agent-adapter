@@ -8,12 +8,24 @@ from omx_remote.runtime.agents.agent_config_loader import (
     AgentConfigLoadError,
     load_agent_config,
 )
+from omx_remote.runtime.agents.codex_agent_materialization_plan import (
+    build_codex_agent_materialization_plan,
+)
+from omx_remote.runtime.agents.codex_agent_materializer import (
+    apply_codex_agent_materialization,
+    read_codex_agent_materialization_status,
+)
 from omx_remote.schemas.agents.agent_config_schemas import (
     AgentConfig,
     AgentConfigSet,
     AgentListResult,
     AgentShowResult,
     AgentValidationResult,
+)
+from omx_remote.schemas.agents.codex_agent_materialization_schemas import (
+    CodexAgentMaterializationApplyResult,
+    CodexAgentMaterializationPlan,
+    CodexAgentMaterializationStatus,
 )
 
 agents_app = typer.Typer(
@@ -240,4 +252,125 @@ def agents_validate(
     typer.echo(f"valid: {result.valid}")
     typer.echo(f"agent_count: {result.agent_count}")
     for warning in result.warnings:
+        typer.echo(f"warning: {warning}")
+
+
+@agents_app.command("plan-apply-codex")
+def agents_plan_apply_codex(
+    cwd: Path = typer.Option(
+        Path("."),
+        "--cwd",
+        help="Repository root used to resolve .agent-remote.toml.",
+    ),
+    codex_home: Path | None = typer.Option(
+        None,
+        "--codex-home",
+        help="Codex home used to verify native agent TOML support.",
+    ),
+    include_disabled: bool = typer.Option(
+        False,
+        "--include-disabled",
+        help="Include disabled agents in the audit plan.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
+) -> None:
+    """Plan Codex-native agent materialization.
+
+    Args:
+        cwd [Path]: Repository root used for config resolution.
+        codex_home [Path | None]: Optional Codex home override.
+        include_disabled [bool]: Whether disabled agents should be included.
+        json_output [bool]: Whether to print JSON.
+    """
+    plan: CodexAgentMaterializationPlan = build_codex_agent_materialization_plan(
+        cwd,
+        codex_home=codex_home,
+        include_disabled=include_disabled,
+    )
+    if json_output:
+        typer.echo(plan.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"supported: {plan.supported}")
+    for planned_file in plan.files:
+        typer.echo(f"{planned_file.agent_id}\t{planned_file.target_path}")
+    for warning in plan.warnings:
+        typer.echo(f"warning: {warning}")
+
+
+@agents_app.command("apply-codex")
+def agents_apply_codex(
+    cwd: Path = typer.Option(
+        Path("."),
+        "--cwd",
+        help="Repository root used to resolve .agent-remote.toml.",
+    ),
+    codex_home: Path | None = typer.Option(
+        None,
+        "--codex-home",
+        help="Codex home used to verify native agent TOML support.",
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Plan without writing files."),
+    json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
+) -> None:
+    """Apply Codex-native agent materialization.
+
+    Args:
+        cwd [Path]: Repository root used for config resolution.
+        codex_home [Path | None]: Optional Codex home override.
+        dry_run [bool]: Whether to avoid writing files.
+        json_output [bool]: Whether to print JSON.
+    """
+    plan: CodexAgentMaterializationPlan = build_codex_agent_materialization_plan(
+        cwd,
+        codex_home=codex_home,
+    )
+    result: CodexAgentMaterializationApplyResult = apply_codex_agent_materialization(
+        plan,
+        dry_run=dry_run,
+    )
+    if json_output:
+        typer.echo(result.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"dry_run: {result.dry_run}")
+    for written_file in result.written_files:
+        typer.echo(f"wrote: {written_file}")
+    for warning in result.warnings:
+        typer.echo(f"warning: {warning}")
+
+
+@agents_app.command("codex-status")
+def agents_codex_status(
+    cwd: Path = typer.Option(
+        Path("."),
+        "--cwd",
+        help="Repository root used to resolve .agent-remote.toml.",
+    ),
+    codex_home: Path | None = typer.Option(
+        None,
+        "--codex-home",
+        help="Codex home used to verify native agent TOML support.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
+) -> None:
+    """Report generated Codex-native agent file status.
+
+    Args:
+        cwd [Path]: Repository root used for config resolution.
+        codex_home [Path | None]: Optional Codex home override.
+        json_output [bool]: Whether to print JSON.
+    """
+    status: CodexAgentMaterializationStatus = read_codex_agent_materialization_status(
+        cwd,
+        codex_home=codex_home,
+    )
+    if json_output:
+        typer.echo(status.model_dump_json(indent=2))
+        return
+
+    typer.echo(f"up_to_date: {status.up_to_date}")
+    for file_status in status.files:
+        typer.echo(f"{file_status.agent_id}\t{file_status.matches}\t{file_status.target_path}")
+    for warning in status.warnings:
         typer.echo(f"warning: {warning}")
