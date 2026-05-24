@@ -14,10 +14,15 @@ from omx_remote.runtime.commands.command_step_planner import (
     build_command_execution_plan,
     build_one_off_prompt_recipe,
 )
+from omx_remote.runtime.runs.run_record_writer import write_dry_run_record
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandCatalog,
     CommandExecutionPlan,
     CommandRecipe,
+)
+from omx_remote.schemas.runs.run_record_schemas import (
+    RunCommandRecordResult,
+    RunRecord,
 )
 
 
@@ -95,6 +100,11 @@ def run_command(
         "--json",
         help="Print the command plan as JSON.",
     ),
+    record_run: bool = typer.Option(
+        False,
+        "--record-run",
+        help="Write a dry-run record under .agent-remote/runs.",
+    ),
 ) -> None:
     """Dry-run a project-owned command recipe or one-off prompt.
 
@@ -107,7 +117,9 @@ def run_command(
         prompt_file [Path | None]: Optional one-off prompt file.
         inline_prompt [str | None]: Optional one-off inline prompt.
         json_output [bool]: Whether to print JSON.
+        record_run [bool]: Whether to write a run record.
     """
+    run_record: RunRecord | None = None
     try:
         if not dry_run:
             raise ValueError("Only --dry-run planning is supported in this slice.")
@@ -131,6 +143,8 @@ def run_command(
             cwd=cwd,
             dry_run=True,
         )
+        if record_run:
+            run_record = write_dry_run_record(plan, cwd=cwd)
     except (
         CommandCatalogResolutionError,
         CommandRecipeLoadError,
@@ -144,7 +158,14 @@ def run_command(
         raise typer.Exit(code=2) from error
 
     if json_output:
+        if run_record is not None:
+            result = RunCommandRecordResult(plan=plan, run_record=run_record)
+            typer.echo(result.model_dump_json(indent=2))
+            return
         typer.echo(plan.model_dump_json(indent=2))
         return
 
-    typer.echo(_format_plan_human(plan))
+    output_text: str = _format_plan_human(plan)
+    if run_record is not None:
+        output_text = f"{output_text}\nrecorded_run: {run_record.run_id}"
+    typer.echo(output_text)
