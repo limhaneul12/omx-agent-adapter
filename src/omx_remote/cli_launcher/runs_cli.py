@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import orjson
 import typer
+from pydantic import ValidationError
 
 from omx_remote.runtime.runs.run_record_reader import (
     build_run_replay_plan,
@@ -41,6 +43,34 @@ def _format_run_list_human(result: RunListResult) -> str:
     return rendered_text
 
 
+def _format_error_payload(error: Exception) -> str:
+    """Format one runs CLI error as JSON.
+
+    Args:
+        error [Exception]: Error to render.
+
+    Returns:
+        str: JSON error payload.
+    """
+    payload: dict[str, object] = {"ok": False, "error": str(error)}
+    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
+    return error_payload
+
+
+def _raise_runs_error(error: Exception, json_output: bool) -> None:
+    """Render a runs CLI error and exit without a traceback.
+
+    Args:
+        error [Exception]: Error to render.
+        json_output [bool]: Whether to print JSON.
+    """
+    if json_output:
+        typer.echo(_format_error_payload(error))
+    else:
+        typer.echo(str(error))
+    raise typer.Exit(code=2) from error
+
+
 @runs_app.command("list")
 def runs_list(
     cwd: Path = typer.Option(Path("."), "--cwd", help="Repository root to inspect."),
@@ -52,7 +82,12 @@ def runs_list(
         cwd [Path]: Repository root to inspect.
         json_output [bool]: Whether to print JSON output.
     """
-    result: RunListResult = list_run_records(cwd)
+    try:
+        result: RunListResult = list_run_records(cwd)
+    except (OSError, ValueError, ValidationError, orjson.JSONDecodeError) as error:
+        _raise_runs_error(error, json_output)
+        return
+
     if json_output:
         typer.echo(result.model_dump_json(indent=2))
         return
@@ -73,7 +108,12 @@ def runs_show(
         cwd [Path]: Repository root to inspect.
         json_output [bool]: Whether to print JSON output.
     """
-    record: RunRecord = read_run_record(cwd, run_id)
+    try:
+        record: RunRecord = read_run_record(cwd, run_id)
+    except (OSError, ValueError, ValidationError, orjson.JSONDecodeError) as error:
+        _raise_runs_error(error, json_output)
+        return
+
     if json_output:
         typer.echo(record.model_dump_json(indent=2))
         return
@@ -92,7 +132,13 @@ def runs_handoff(
         run_id [str]: Run id to render.
         cwd [Path]: Repository root to inspect.
     """
-    typer.echo(read_run_handoff(cwd, run_id))
+    try:
+        handoff_text: str = read_run_handoff(cwd, run_id)
+    except (OSError, ValueError, ValidationError, orjson.JSONDecodeError) as error:
+        _raise_runs_error(error, json_output=False)
+        return
+
+    typer.echo(handoff_text)
 
 
 @runs_app.command("replay-plan")
@@ -113,7 +159,12 @@ def runs_replay_plan(
     if not dry_run:
         raise typer.BadParameter("replay-plan requires --dry-run")
 
-    replay: RunReplayPlan = build_run_replay_plan(cwd, run_id)
+    try:
+        replay: RunReplayPlan = build_run_replay_plan(cwd, run_id)
+    except (OSError, ValueError, ValidationError, orjson.JSONDecodeError) as error:
+        _raise_runs_error(error, json_output)
+        return
+
     if json_output:
         typer.echo(replay.model_dump_json(indent=2))
         return

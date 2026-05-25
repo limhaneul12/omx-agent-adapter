@@ -69,3 +69,21 @@ def test_runs_cli_lists_shows_handoff_and_replay_plan(tmp_path: Path) -> None:
     assert f"Run {run_id}" in handoff_result.stdout
     assert replay_payload["run_id"] == run_id
     assert replay_payload["plan"]["qualified_id"] == "builtin:review-diff"
+
+
+def test_runs_list_json_reports_corrupted_record_without_traceback(tmp_path: Path) -> None:
+    corrupt_run_dir = tmp_path / ".agent-remote" / "runs" / "9999-corrupt"
+    corrupt_run_dir.mkdir(parents=True)
+    (corrupt_run_dir / "run.json").write_text("{not-json", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["runs", "list", "--cwd", str(tmp_path), "--json"],
+    )
+
+    assert result.exit_code == 2
+    payload = orjson.loads(result.stdout)
+    assert payload["ok"] is False
+    assert "error" in payload
+    assert "Traceback" not in result.stdout
+    assert "Traceback" not in (result.stderr or "")
