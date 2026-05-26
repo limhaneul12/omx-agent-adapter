@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from omx_remote.runtime.comx.control_surface_inventory import (
     build_comx_control_surface_inventory,
 )
+from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
 from omx_remote.runtime.comx.tui_interaction import (
     format_tui_slash_command_help,
     is_known_tui_slash_command,
@@ -32,14 +33,13 @@ from omx_remote.runtime.comx.tui_session_store import (
     resolve_session_root,
     start_or_resume_tui_session,
 )
-from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
 from omx_remote.runtime.next.next_action_reader import read_next_action
 from omx_remote.schemas.comx.control_surface_schemas import ComxControlSurfaceInventory
 from omx_remote.schemas.comx.session_schemas import (
     ComxTuiSessionListResult,
     ComxTuiSessionRecord,
 )
-from omx_remote.schemas.mcp.client_schemas import McpServerListResult
+from omx_remote.schemas.comx.tui_schemas import ComxTuiCommandResult
 from omx_remote.schemas.next.next_action_schemas import (
     NextActionRequest,
     NextActionResult,
@@ -207,49 +207,36 @@ def _run_tui_loop(
         if normalized_command in {"/quit", "/exit"}:
             closed_session = close_tui_session(cwd, current_session, "user quit")
             return closed_session
-        if normalized_command == "/help":
-            typer.echo(_interactive_help_text())
-            continue
-        if normalized_command == "/surface":
-            inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(
-                cwd=cwd,
-            )
-            typer.echo(
-                f"native={inventory.native_count} composed={inventory.composed_count}"
-            )
-            continue
-        if normalized_command == "/mcp servers":
-            registry: McpServerListResult = read_mcp_servers(cwd=cwd)
-            typer.echo(
-                f"mcp_servers={len(registry.servers)} enabled={registry.enabled_count}"
-            )
-            continue
-        if normalized_command == "/session":
-            typer.echo(
-                f"session={current_session.session_id} "
-                f"status={current_session.status} "
-                f"commands={len(current_session.command_history)}"
-            )
-            continue
-        if normalized_command == "/next":
-            typer.echo(next_action.summary)
-            continue
         if normalized_command == "/clear":
             clear()
             typer.echo(frame_text)
             continue
-        if normalized_command.startswith("/") and not is_known_tui_slash_command(
-            normalized_command
-        ):
-            typer.echo(f"unknown slash command: {normalized_command}")
-            typer.echo("Type '/' to open completions or /help to list commands.")
+        if normalized_command.startswith("/"):
+            if not is_known_tui_slash_command(normalized_command):
+                typer.echo(f"unknown slash command: {normalized_command}")
+                typer.echo("Type '/' to open completions or /help to list commands.")
+                continue
+            try:
+                command_result: ComxTuiCommandResult = route_tui_slash_command(
+                    normalized_command,
+                    cwd=cwd,
+                    next_action=next_action,
+                    current_session=current_session,
+                )
+            except ValueError as error:
+                typer.echo(str(error))
+                continue
+            typer.echo(f"## {command_result.title}")
+            typer.echo(command_result.body)
+            for warning in command_result.warnings:
+                typer.echo(f"warning: {warning}")
             continue
 
         typer.echo(f"prompt captured: {normalized_command}")
         typer.echo(f"recommended next action: {next_action.summary}")
         typer.echo(
             "This TUI captured the prompt in the session. "
-            "Use /next, /surface, or composed commands for execution routing."
+            "Use /next, /status, /mcp, /surface, or /research for execution routing."
         )
 
 

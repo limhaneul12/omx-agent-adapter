@@ -22,6 +22,9 @@ class ComxTuiSnapshot(StrictSchemaModel):
     prompt: NonEmptyString
     tips: tuple[NonEmptyString, ...]
     warnings: tuple[NonEmptyString, ...] = ()
+    slash_command_count: int = 0
+    mcp_server_count: int = 0
+    composed_command_count: int = 0
 
 
 class ComxTuiSlashCommand(StrictSchemaModel):
@@ -30,3 +33,20 @@ class ComxTuiSlashCommand(StrictSchemaModel):
     name: NonEmptyString
     description: NonEmptyString
     aliases: tuple[NonEmptyString, ...] = ()
+    handler_key: NonEmptyString = "unhandled"
+    group: NonEmptyString = "general"
+    supports_inline_args: bool = False
+    available_during_task: bool = True
+    mutates_runtime: bool = False
+    usage: NonEmptyString | None = None
+
+
+class ComxTuiCommandResult(StrictSchemaModel):
+    """Represents a rendered result from a TUI slash command."""
+
+    command: NonEmptyString
+    title: NonEmptyString
+    body: NonEmptyString
+    read_only: bool = True
+    artifact_path: NonEmptyString | None = None
+    warnings: tuple[NonEmptyString, ...] = ()

@@ -1,7 +1,14 @@
 import os
 from pathlib import Path
 
+from omx_remote.runtime.comx.control_surface_inventory import (
+    build_comx_control_surface_inventory,
+)
+from omx_remote.runtime.comx.tui_command_catalog import list_tui_slash_commands
+from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
+from omx_remote.schemas.comx.control_surface_schemas import ComxControlSurfaceInventory
 from omx_remote.schemas.comx.tui_schemas import ComxTuiSnapshot, ComxTuiStatusLine
+from omx_remote.schemas.mcp.client_schemas import McpServerListResult
 from omx_remote.schemas.next.next_action_schemas import NextActionResult
 
 
@@ -37,16 +44,28 @@ def build_tui_snapshot(
     Returns:
         ComxTuiSnapshot: Typed TUI frame data.
     """
-    workspace: str = str(Path(cwd).resolve())
+    cwd_path: Path = Path(cwd)
+    workspace: str = str(cwd_path.resolve())
     runtime_label: str = "runtime: read-only"
     goal_label: str = "goal: idle"
     ralph_label: str = "Ralph idle"
     teams_label: str = "Teams 0/0"
-    warnings: tuple[str, ...] = ()
+    warning_items: list[str] = []
     if next_action is not None:
         runtime_label = next_action.recommended_action
         goal_label = "safe" if next_action.safe_to_mutate else "blocked"
-        warnings = next_action.blocked_actions
+        warning_items.extend(next_action.blocked_actions)
+
+    inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(cwd=cwd_path)
+    mcp_server_count = 0
+    try:
+        registry: McpServerListResult = read_mcp_servers(cwd=cwd_path)
+        mcp_server_count = len(registry.servers)
+        warning_items.extend(registry.warnings)
+    except ValueError as error:
+        warning_items.append(str(error))
+
+    warnings: tuple[str, ...] = tuple(warning_items)
 
     status_line = ComxTuiStatusLine(
         model_label=os.environ.get("COMX_AGENT_MODEL", "gpt-5.5 xhigh"),
@@ -63,12 +82,15 @@ def build_tui_snapshot(
         status_line=status_line,
         prompt=prompt or "Run /help for commands",
         tips=(
-            "Use /surface to separate native support from composed recipes.",
-            "Use comx-agent daemon start to keep this TUI running in tmux.",
-            "Use /mcp servers to inspect MCP servers comx-agent can consume.",
-            "Use /next before mutating runtime state.",
+            "Use /status for the Codex/OMX cockpit snapshot.",
+            "Use /surface and /commands to separate native support from recipes.",
+            "Use /mcp to inspect MCP servers and /mcp tools <server> for tools.",
+            "Use /research <objective> to create a staged evidence plan.",
         ),
         warnings=warnings,
+        slash_command_count=len(list_tui_slash_commands()),
+        mcp_server_count=mcp_server_count,
+        composed_command_count=inventory.composed_count,
     )
     return snapshot
 
@@ -110,6 +132,11 @@ def render_tui_frame(snapshot: ComxTuiSnapshot) -> str:
             f"{snapshot.status_line.goal_label} · "
             f"{snapshot.status_line.ralph_label} · "
             f"{snapshot.status_line.teams_label}"
+        ),
+        (
+            f"commands {snapshot.slash_command_count} · "
+            f"recipes {snapshot.composed_command_count} · "
+            f"mcp servers {snapshot.mcp_server_count}"
         ),
     ]
     body_lines.extend(f"warning: {warning}" for warning in snapshot.warnings)

@@ -260,7 +260,6 @@ def _remove_server_blocks_from_text(text: str, server_name: str) -> tuple[str, b
 
 def remove_repo_mcp_server(
     server_name: str,
-    *,
     cwd: str | Path | None = None,
     config_path: str | Path | None = None,
 ) -> McpServerRemovalResult:
@@ -306,7 +305,6 @@ def remove_repo_mcp_server(
 def register_repo_mcp_server(
     server_name: str,
     definition: RepoMcpServerDefinition,
-    *,
     cwd: str | Path | None = None,
     config_path: str | Path | None = None,
     force: bool = False,
@@ -383,7 +381,6 @@ def register_repo_mcp_server(
 
 def repo_definition_from_server(
     server: McpServerConfig,
-    *,
     enabled: bool | None = None,
 ) -> RepoMcpServerDefinition:
     """Convert a discovered MCP server into a repo-local definition.
@@ -434,7 +431,6 @@ def repo_definition_from_server(
 
 def import_codex_mcp_server(
     server_name: str,
-    *,
     cwd: str | Path | None = None,
     config_path: str | Path | None = None,
     force: bool = False,
