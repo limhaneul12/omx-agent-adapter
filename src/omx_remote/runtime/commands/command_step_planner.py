@@ -149,6 +149,11 @@ def _native_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
     if step.command == CommandStepCommand.LOCAL:
         native_argv = step.argv
         return native_argv
+    if step.command == CommandStepCommand.MCP_TOOL:
+        server_name: str = "<server>" if step.mcp_server is None else step.mcp_server
+        tool_name: str = "<tool>" if step.mcp_tool is None else step.mcp_tool
+        native_argv = ("comx-agent", "mcp", "call", server_name, tool_name)
+        return native_argv
 
     native_argv = ("prompt-only",)
     return native_argv
@@ -178,6 +183,29 @@ def _agent_blockers(step: CommandStep, agent_config: AgentConfigSet) -> tuple[st
 
     no_blockers = ()
     return no_blockers
+
+
+def _mcp_blockers(step: CommandStep) -> tuple[str, ...]:
+    """Detect missing MCP tool references for one step.
+
+    Args:
+        step [CommandStep]: Step to inspect.
+
+    Returns:
+        tuple[str, ...]: MCP-related blockers.
+    """
+    if step.command != CommandStepCommand.MCP_TOOL:
+        no_blockers: tuple[str, ...] = ()
+        return no_blockers
+
+    blockers: list[str] = []
+    if step.mcp_server is None:
+        blockers.append("MCP tool step requires mcp_server.")
+    if step.mcp_tool is None:
+        blockers.append("MCP tool step requires mcp_tool.")
+
+    mcp_blockers: tuple[str, ...] = tuple(blockers)
+    return mcp_blockers
 
 
 def _prompt_file_metadata(
@@ -232,7 +260,11 @@ def _build_plan_step(
         cwd,
         step,
     )
-    blockers: tuple[str, ...] = (*prompt_blockers, *_agent_blockers(step, agent_config))
+    blockers: tuple[str, ...] = (
+        *prompt_blockers,
+        *_agent_blockers(step, agent_config),
+        *_mcp_blockers(step),
+    )
     plan_step = CommandPlanStep(
         index=index,
         command=step.command,
@@ -242,6 +274,9 @@ def _build_plan_step(
         prompt_exists=prompt_exists,
         prompt_sha256=prompt_sha256,
         inline_prompt=step.inline_prompt,
+        mcp_server=step.mcp_server,
+        mcp_tool=step.mcp_tool,
+        mcp_arguments=step.mcp_arguments,
         expected_artifacts=_resolve_expected_artifacts(cwd, step),
         risk=recipe_risk,
         blocked_reasons=blockers,

@@ -2,6 +2,7 @@ from enum import StrEnum
 
 from pydantic import Field, model_validator
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 
 
@@ -31,6 +32,7 @@ class CommandStepCommand(StrEnum):
     OMX_ULTRAGOAL = "omx_ultragoal"
     OMX_TEAM = "omx_team"
     OMX_RALPH = "omx_ralph"
+    MCP_TOOL = "mcp_tool"
     LOCAL = "local"
     PROMPT_ONLY = "prompt_only"
 
@@ -64,6 +66,9 @@ class CommandStep(StrictSchemaModel):
     prompt_file: NonEmptyString | None = None
     inline_prompt: NonEmptyString | None = None
     brief_file: NonEmptyString | None = None
+    mcp_server: NonEmptyString | None = None
+    mcp_tool: NonEmptyString | None = None
+    mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
 
@@ -81,6 +86,9 @@ class RepoCommandDefinition(StrictSchemaModel):
     prompt_file: NonEmptyString | None = None
     inline_prompt: NonEmptyString | None = None
     brief_file: NonEmptyString | None = None
+    mcp_server: NonEmptyString | None = None
+    mcp_tool: NonEmptyString | None = None
+    mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
 
@@ -170,6 +178,9 @@ class CommandPlanStep(StrictSchemaModel):
     prompt_exists: bool | None = None
     prompt_sha256: NonEmptyString | None = None
     inline_prompt: NonEmptyString | None = None
+    mcp_server: NonEmptyString | None = None
+    mcp_tool: NonEmptyString | None = None
+    mcp_arguments: JsonObject = Field(default_factory=dict)
     expected_artifacts: tuple[NonEmptyString, ...] = ()
     risk: CommandRisk
     blocked_reasons: tuple[NonEmptyString, ...] = ()

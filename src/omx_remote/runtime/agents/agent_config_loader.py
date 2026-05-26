@@ -10,7 +10,7 @@ from omx_remote.schemas.agents.agent_config_schemas import (
 DEFAULT_AGENT_CONFIG_FILENAME: Final[str] = ".agent-remote.toml"
 AGENT_CONFIG_TOP_LEVEL_SECTION: Final[str] = "agents"
 RESERVED_TOP_LEVEL_SECTIONS: Final[frozenset[str]] = frozenset(
-    {AGENT_CONFIG_TOP_LEVEL_SECTION, "commands", "routes"}
+    {AGENT_CONFIG_TOP_LEVEL_SECTION, "commands", "routes", "mcp", "mcp_servers"}
 )
 
 

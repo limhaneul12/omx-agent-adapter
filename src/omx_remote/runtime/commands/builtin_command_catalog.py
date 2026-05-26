@@ -68,7 +68,19 @@ def build_builtin_command_catalog() -> CommandCatalog:
             ),
         ),
     )
+    mcp_registry_inspect = CommandRecipe(
+        id="mcp-registry-inspect",
+        source=CommandSource.BUILTIN,
+        description="Inspect MCP servers available to comx-agent through Codex/repo config.",
+        risk=CommandRisk.READ_ONLY,
+        steps=(
+            CommandStep(
+                command=CommandStepCommand.LOCAL,
+                argv=("comx-agent", "mcp", "servers", "--json"),
+            ),
+        ),
+    )
     catalog = CommandCatalog(
-        commands=(review_diff, verify_handoff, ultragoal_roadmap),
+        commands=(review_diff, verify_handoff, ultragoal_roadmap, mcp_registry_inspect),
     )
     return catalog

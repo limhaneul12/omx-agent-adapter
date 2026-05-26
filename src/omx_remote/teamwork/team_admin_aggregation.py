@@ -24,12 +24,18 @@ from omx_remote.teamwork.team_api_snapshot import (
     read_team_api_read_events,
     read_team_api_read_worker_status,
 )
+from omx_remote.teamwork.team_proof_layers import build_team_proof_layers
 
 COMPLETED_TASK_STATES: frozenset[str] = frozenset({"complete", "completed", "done", "success", "succeeded"})
 BLOCKED_TASK_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
 BLOCKED_WORKER_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
 STARTUP_ISSUE_WORKER_STATES: frozenset[str] = frozenset(
-    {"ready_prompt_timeout", "startup_prompt_timeout", "startup_timeout"}
+    {
+        "ready_prompt_timeout",
+        "startup_prompt_timeout",
+        "startup_timeout",
+        "worker_startup_timeout",
+    }
 )
 STARTUP_ISSUE_EVENT_TYPES: frozenset[str] = frozenset(
     {"ready_prompt_timeout", "startup_prompt_timeout", "worker_startup_timeout"}
@@ -345,7 +351,7 @@ def build_team_admin_aggregation_report(
         aggregation_state,
     )
 
-    report: TeamAdminAggregationReport = TeamAdminAggregationReport.model_validate(
+    initial_report: TeamAdminAggregationReport = TeamAdminAggregationReport.model_validate(
         {
             "admin_id": team_admin.admin_id,
             "aggregation_state": aggregation_state,
@@ -362,6 +368,10 @@ def build_team_admin_aggregation_report(
             "event_count": event_snapshot.count,
             "summary": summary,
         }
+    )
+    proof_layers = build_team_proof_layers(initial_report)
+    report: TeamAdminAggregationReport = initial_report.model_copy(
+        update={"proof_layers": proof_layers}
     )
     return report
 

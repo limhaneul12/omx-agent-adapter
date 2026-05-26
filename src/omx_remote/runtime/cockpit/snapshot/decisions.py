@@ -1,3 +1,6 @@
+from omx_remote.runtime.cockpit.team_evidence.proof_layers import (
+    collect_blocking_team_proof_layer_source_names,
+)
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitContradiction,
     CockpitDecisionReason,
@@ -185,13 +188,16 @@ def _build_decision_reasons(
     active_team_names: tuple[str, ...] = _collect_active_team_names(team_observations)
     if active_team_names:
         active_team_text: str = ", ".join(active_team_names)
+        active_team_source_names: tuple[str, ...] = _collect_active_team_source_names(
+            team_observations
+        )
         reasons.append(
             CockpitDecisionReason(
                 category="active_team_evidence",
                 detail=f"Active Team evidence is present for: {active_team_text}.",
                 recommended_next_action="inspect_team_evidence",
                 blocks_mutation=True,
-                source_names=("team_evidence",),
+                source_names=active_team_source_names,
             )
         )
 
@@ -237,6 +243,31 @@ def _collect_active_team_names(
         if observation.status in _ACTIVE_TEAM_STATUSES
     ]
     result: tuple[str, ...] = tuple(active_team_names)
+    return result
+
+def _collect_active_team_source_names(
+    team_observations: tuple[CockpitTeamObservation, ...],
+) -> tuple[str, ...]:
+    """Collect decision source names for active Team evidence.
+
+    Args:
+        team_observations [tuple[CockpitTeamObservation, ...]]: Team evidence read from Team surfaces.
+
+    Returns:
+        tuple[str, ...]: Ordered source names, including blocking proof-layer evidence when present.
+    """
+    source_names: list[str] = ["team_evidence"]
+    seen_source_names: set[str] = {"team_evidence"}
+    for observation in team_observations:
+        if observation.status not in _ACTIVE_TEAM_STATUSES:
+            continue
+        for proof_source_name in collect_blocking_team_proof_layer_source_names(observation):
+            if proof_source_name in seen_source_names:
+                continue
+            seen_source_names.add(proof_source_name)
+            source_names.append(proof_source_name)
+
+    result: tuple[str, ...] = tuple(source_names)
     return result
 
 def _team_observations_include_active_runtime(

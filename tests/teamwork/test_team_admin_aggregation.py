@@ -125,6 +125,14 @@ def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review()
     assert report.requires_human_review is False
     assert report.requires_llm_review is True
     assert report.summary == "Team Admin collected 3/3 completed worker results; ready for Ralph review."
+    assert tuple(layer.name for layer in report.proof_layers) == (
+        "prd_dag_import",
+        "assignment",
+        "worker_readiness",
+        "dispatch",
+        "completion",
+    )
+    assert {layer.state for layer in report.proof_layers} == {"passed"}
 
 
 def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_workers() -> None:
@@ -220,6 +228,64 @@ def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_u
     assert report.incomplete_workers == ("worker-3",)
     assert report.requires_human_review is False
     assert "1 startup issue" in report.summary
+    worker_readiness_layer = next(
+        layer for layer in report.proof_layers if layer.name == "worker_readiness"
+    )
+    assert worker_readiness_layer.state == "failed"
+    assert worker_readiness_layer.blocking is True
+    assert "worker-3" in worker_readiness_layer.summary
+
+
+
+def test_team_admin_aggregation_report_keeps_worker_startup_timeout_in_readiness_layer() -> None:
+    report = build_team_admin_aggregation_report(
+        ralph_prd_artifact=_prd_artifact(),
+        task_snapshot=TeamApiListTasksSnapshot(
+            count=2,
+            tasks=(
+                TeamApiTaskSnapshot(
+                    id="task-1",
+                    subject="worker-1 handoff",
+                    status="completed",
+                    owner="worker-1",
+                ),
+                TeamApiTaskSnapshot(
+                    id="task-2",
+                    subject="worker-2 handoff",
+                    status="completed",
+                    owner="worker-2",
+                ),
+            ),
+        ),
+        event_snapshot=TeamApiReadEventsSnapshot(count=0, cursor="", events=()),
+        worker_statuses=(
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-1",
+                state="idle",
+                updated_at="2026-05-06T00:00:00Z",
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-2",
+                state="idle",
+                updated_at="2026-05-06T00:00:00Z",
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-3",
+                state="worker_startup_timeout",
+                updated_at="2026-05-06T00:00:00Z",
+            ),
+        ),
+    )
+
+    assert report.missing_workers == ()
+    assert report.startup_issue_workers == ("worker-3",)
+    assert report.incomplete_workers == ("worker-3",)
+    worker_readiness_layer = next(
+        layer for layer in report.proof_layers if layer.name == "worker_readiness"
+    )
+    assert worker_readiness_layer.state == "failed"
+    assert worker_readiness_layer.blocking is True
+    assert "worker-3" in worker_readiness_layer.summary
 
 
 

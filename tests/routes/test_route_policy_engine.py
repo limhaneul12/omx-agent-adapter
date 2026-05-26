@@ -50,6 +50,37 @@ def _capabilities() -> CockpitCapabilitiesSnapshot:
     )
 
 
+def _capabilities_without_ultragoal() -> CockpitCapabilitiesSnapshot:
+    return CockpitCapabilitiesSnapshot(
+        codex=CockpitRuntimeCapability(
+            name="codex",
+            available=True,
+            executable_path="/usr/bin/codex",
+            version="codex 0.133.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="exec_json",
+                    available=True,
+                    detail="codex exec --json is available.",
+                ),
+            ),
+        ),
+        omx=CockpitRuntimeCapability(
+            name="omx",
+            available=True,
+            executable_path="/usr/bin/omx",
+            version="omx 0.18.0",
+            commands=(
+                CockpitCapabilityCommand(
+                    name="team",
+                    available=True,
+                    detail="omx team --help succeeded.",
+                ),
+            ),
+        ),
+    )
+
+
 def _agents() -> CockpitAgentConfigSummary:
     return CockpitAgentConfigSummary(
         config_path=".agent-remote.toml",
@@ -90,6 +121,45 @@ def test_policy_prefers_ultragoal_for_durable_roadmap(tmp_path: Path) -> None:
     assert result.recommendations[0].status == RouteRecommendationStatus.RECOMMENDED
     assert result.recommendations[0].confidence == "high"
     assert "durable" in result.recommendations[0].reason
+
+
+def test_policy_explains_missing_ultragoal_capability_for_roadmap(
+    tmp_path: Path,
+) -> None:
+    result = build_route_policy_result(
+        task="execute this roadmap with multiple goals",
+        cwd=tmp_path,
+        capabilities=_capabilities_without_ultragoal(),
+        agent_summary=_agents(),
+        recipe_summary=_recipes(),
+        safe_to_mutate=True,
+        active_runtime_modes=(),
+    )
+    blocked_routes = {alternative.route: alternative for alternative in result.blocked_alternatives}
+
+    assert result.recommendations[0].route == RouteName.CODEX_EXEC
+    assert RouteName.OMX_ULTRAGOAL in blocked_routes
+    assert blocked_routes[RouteName.OMX_ULTRAGOAL].blocked_by == (
+        "omx ultragoal command is unavailable",
+    )
+
+
+def test_policy_does_not_prefer_ultragoal_for_small_verification(
+    tmp_path: Path,
+) -> None:
+    result = build_route_policy_result(
+        task="verify current repo state",
+        cwd=tmp_path,
+        capabilities=_capabilities(),
+        agent_summary=_agents(),
+        recipe_summary=_recipes(),
+        safe_to_mutate=True,
+        active_runtime_modes=(),
+    )
+
+    assert result.recommendations[0].route != RouteName.OMX_ULTRAGOAL
+    assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
+    assert result.recommendations[0].command_id == "builtin:verify-handoff"
 
 
 def test_policy_prefers_review_diff_recipe_for_review_task(tmp_path: Path) -> None:

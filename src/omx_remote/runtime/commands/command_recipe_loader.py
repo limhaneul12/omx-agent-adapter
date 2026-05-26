@@ -13,7 +13,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
 
 COMMANDS_TOP_LEVEL_SECTION: Final[str] = "commands"
 RESERVED_TOP_LEVEL_SECTIONS: Final[frozenset[str]] = frozenset(
-    {"agents", COMMANDS_TOP_LEVEL_SECTION, "routes"}
+    {"agents", COMMANDS_TOP_LEVEL_SECTION, "routes", "mcp", "mcp_servers"}
 )
 
 
@@ -112,6 +112,9 @@ def _command_from_provider_mode(provider: str | None, mode: str | None) -> Comma
     if provider == "local" or mode == "local":
         command = CommandStepCommand.LOCAL
         return command
+    if provider == "mcp" or mode == "mcp_tool":
+        command = CommandStepCommand.MCP_TOOL
+        return command
     if mode == "prompt":
         command = CommandStepCommand.PROMPT_ONLY
         return command
@@ -146,6 +149,9 @@ def _definition_to_recipe(command_id: str, definition: RepoCommandDefinition) ->
                 prompt_file=definition.prompt_file,
                 inline_prompt=definition.inline_prompt,
                 brief_file=definition.brief_file,
+                mcp_server=definition.mcp_server,
+                mcp_tool=definition.mcp_tool,
+                mcp_arguments=definition.mcp_arguments,
                 output_last_message=definition.output_last_message,
                 expected_artifacts=definition.expected_artifacts,
             ),

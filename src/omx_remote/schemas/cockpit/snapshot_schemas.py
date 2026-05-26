@@ -9,6 +9,7 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
 )
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
+from omx_remote.schemas.teamwork.proof_layer_schemas import TeamProofLayerSummary
 
 
 class CockpitLaneName(StrEnum):
@@ -109,6 +110,7 @@ class CockpitTeamObservation(StrictSchemaModel):
     event_count: int = Field(ge=0)
     worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = ()
     warnings: tuple[NonEmptyString, ...] = ()
+    proof_layers: tuple[TeamProofLayerSummary, ...] = ()
 
 
 class CockpitLaneSnapshot(StrictSchemaModel):

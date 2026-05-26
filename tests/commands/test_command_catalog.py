@@ -89,6 +89,27 @@ steps = [
     assert recipes[0].steps[2].inline_prompt == "Review the resulting diff."
 
 
+def test_repo_command_recipe_loader_reads_mcp_tool_command(tmp_path: Path) -> None:
+    (tmp_path / ".agent-remote.toml").write_text(
+        """
+[commands.read_state]
+description = "Read active state through MCP."
+provider = "mcp"
+mode = "tool"
+mcp_server = "local_state"
+mcp_tool = "state_list_active"
+mcp_arguments = { mode = "state" }
+""".strip()
+    )
+
+    recipes = load_repo_command_recipes(cwd=tmp_path)
+
+    assert recipes[0].steps[0].command == CommandStepCommand.MCP_TOOL
+    assert recipes[0].steps[0].mcp_server == "local_state"
+    assert recipes[0].steps[0].mcp_tool == "state_list_active"
+    assert recipes[0].steps[0].mcp_arguments == {"mode": "state"}
+
+
 def test_repo_command_recipe_unknown_key_fails(tmp_path: Path) -> None:
     (tmp_path / ".agent-remote.toml").write_text(
         """

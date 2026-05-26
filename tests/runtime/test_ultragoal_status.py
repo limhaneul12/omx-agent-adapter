@@ -91,3 +91,75 @@ def test_read_ultragoal_status_reports_status_failure_as_supported(
     assert result.status_result is not None
     assert result.status_result.exit_code == 1
     assert result.warnings == ("omx ultragoal status returned a non-zero exit code.",)
+
+
+def test_read_ultragoal_status_wraps_empty_status_stdout_without_traceback(
+    monkeypatch,
+) -> None:
+    command_results = {
+        ("ultragoal", "--help"): OmxCommandResult(
+            exit_code=0,
+            stdout="Usage: omx ultragoal ...",
+            stderr="",
+        ),
+        ("ultragoal", "status", "--json"): OmxCommandResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+        ),
+    }
+
+    def fake_run_omx_command(
+        arguments: tuple[str, ...] | list[str],
+        cwd: str | None = None,
+    ) -> OmxCommandResult:
+        assert cwd == "/repo"
+        return command_results[tuple(arguments)]
+
+    monkeypatch.setattr(
+        "omx_remote.runtime.ultragoal.ultragoal_status.run_omx_command",
+        fake_run_omx_command,
+    )
+
+    result = read_ultragoal_status(cwd="/repo")
+
+    assert result.supported is True
+    assert result.state == UltragoalNativeState.AVAILABLE
+    assert result.status_result is not None
+    assert result.status_result.stdout == ""
+    assert result.warnings == ()
+
+
+def test_read_ultragoal_status_wraps_malformed_status_stdout_without_traceback(
+    monkeypatch,
+) -> None:
+    command_results = {
+        ("ultragoal", "--help"): OmxCommandResult(
+            exit_code=0,
+            stdout="Usage: omx ultragoal ...",
+            stderr="",
+        ),
+        ("ultragoal", "status", "--json"): OmxCommandResult(
+            exit_code=0,
+            stdout="{not-json",
+            stderr="",
+        ),
+    }
+
+    def fake_run_omx_command(
+        arguments: tuple[str, ...] | list[str],
+        cwd: str | None = None,
+    ) -> OmxCommandResult:
+        return command_results[tuple(arguments)]
+
+    monkeypatch.setattr(
+        "omx_remote.runtime.ultragoal.ultragoal_status.run_omx_command",
+        fake_run_omx_command,
+    )
+
+    result = read_ultragoal_status()
+
+    assert result.supported is True
+    assert result.state == UltragoalNativeState.AVAILABLE
+    assert result.status_result is not None
+    assert result.status_result.stdout == "{not-json"

@@ -6,8 +6,10 @@ from omx_remote.runtime.commands.command_step_planner import (
     build_one_off_prompt_recipe,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import (
+    CommandRecipe,
     CommandRisk,
     CommandSource,
+    CommandStep,
     CommandStepCommand,
 )
 
@@ -94,6 +96,50 @@ inline_prompt = "Review."
     plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
 
     assert "No agent named reviewer" in plan.steps[0].blocked_reasons[0]
+
+
+def test_mcp_tool_plan_renders_comx_agent_call(tmp_path: Path) -> None:
+    (tmp_path / ".agent-remote.toml").write_text(
+        """
+[commands.read_state]
+description = "Read active state through MCP."
+provider = "mcp"
+mode = "tool"
+mcp_server = "local_state"
+mcp_tool = "state_list_active"
+mcp_arguments = { mode = "state" }
+""".strip()
+    )
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("repo:read_state")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
+
+    assert plan.steps[0].command == CommandStepCommand.MCP_TOOL
+    assert plan.steps[0].native_argv == (
+        "comx-agent",
+        "mcp",
+        "call",
+        "local_state",
+        "state_list_active",
+    )
+    assert plan.steps[0].mcp_arguments == {"mode": "state"}
+    assert plan.blocked_reasons == ()
+
+
+def test_incomplete_mcp_tool_plan_reports_blockers(tmp_path: Path) -> None:
+    recipe = CommandRecipe(
+        id="bad-mcp",
+        source=CommandSource.REPO,
+        description="Bad MCP recipe.",
+        steps=(CommandStep(command=CommandStepCommand.MCP_TOOL),),
+    )
+
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
+
+    assert "MCP tool step requires mcp_server." in plan.blocked_reasons
+    assert "MCP tool step requires mcp_tool." in plan.blocked_reasons
 
 
 def test_one_off_prompt_recipe_uses_prompt_file(tmp_path: Path) -> None:

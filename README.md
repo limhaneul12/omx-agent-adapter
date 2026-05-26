@@ -1,6 +1,8 @@
-# agent-remote
+# agent-remote / comx-agent
 
 Agent-facing control layer that helps agents use **OMX + Codex strongly** through typed, inspectable operating routes.
+
+`comx-agent` is the forward-looking executable name for the same control surface. `agent-remote` remains a compatibility alias while the adapter is still being dogfooded.
 
 ## What this repo is for
 
@@ -48,7 +50,9 @@ For another local agent or machine that has repository access:
 ```bash
 uv tool install git+https://github.com/limhaneul12/omx-agent-adapter.git
 agent-remote --help
+comx-agent --help
 agent-remote version
+comx-agent version
 ```
 
 After install, do not prefix normal CLI usage with `uv run`. Treat `agent-remote` like any other installed executable:
@@ -106,7 +110,40 @@ agent-remote probes run omx-basic --cwd . --json
 agent-remote agents plan-apply-codex --cwd . --json
 agent-remote agents codex-status --cwd . --json
 agent-remote ultragoal status --cwd . --json
+comx-agent tui --cwd . --once
+comx-agent tui --cwd . --session-id daily
+comx-agent daemon start --cwd . --session-id daily
+comx-agent daemon status --cwd . --session-id daily
+comx-agent daemon attach --session-id daily
+comx-agent daemon stop --cwd . --session-id daily
+comx-agent sessions list --cwd .
+comx-agent sessions show daily --cwd . --json
+comx-agent surface --cwd . --json
+comx-agent mcp servers --cwd . --json
+comx-agent mcp tools <server-name> --cwd . --json
+comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --json
 ```
+
+## comx-agent TUI and MCP client
+
+`comx-agent tui` renders a Codex-like terminal cockpit for the adapter. It supports `/` slash-command completions, persistent input history, normal free-text prompt capture, and the same typed library surfaces as `cockpit`, `next`, `route`, and `commands`.
+
+TUI sessions are durable by default. `--session-id <name>` stores the current prompt, render count, slash-command history, and lifecycle events under `.comx-agent/sessions/<name>.json`; reopening the same session id resumes the last prompt when `--prompt` is omitted. Use `comx-agent sessions list` and `comx-agent sessions show <name>` to inspect saved sessions after leaving the TUI.
+
+For the OMX-like background UX, use the tmux-backed daemon surface after installing the package once:
+
+```bash
+comx-agent daemon start --cwd . --session-id daily
+comx-agent daemon status --cwd . --session-id daily
+comx-agent daemon attach --session-id daily
+comx-agent daemon stop --cwd . --session-id daily
+```
+
+`daemon start` launches `comx-agent tui` in a detached tmux session named from the durable TUI session id. The TUI state still persists under `.comx-agent/sessions/`, so stopping or detaching does not lose the session record.
+
+`comx-agent surface` separates direct **native commands** from **composed commands** loaded from the built-in/repo recipe catalog.
+
+MCP support is **client/consumer support**, not an adapter-owned MCP server. `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml` or `.agent-remote.toml`, list server tools, and execute a tool only when `--execute` is passed.
 
 The human-readable commands explain the route and risk. The `--json` surfaces provide typed fields, stable enums, artifact paths, warnings, blockers, and exit codes for automated agents.
 
@@ -124,7 +161,9 @@ For installed users and other agents:
 
 ```bash
 agent-remote --help
+comx-agent --help
 agent-remote version
+comx-agent version
 agent-remote runtime --help
 agent-remote cockpit --help
 agent-remote team --help
@@ -133,6 +172,11 @@ agent-remote adapt --help
 agent-remote agents --help
 agent-remote commands --help
 agent-remote preflight --help
+comx-agent surface --help
+comx-agent tui --help
+comx-agent sessions --help
+comx-agent daemon --help
+comx-agent mcp --help
 agent-remote probes --help
 agent-remote route --help
 agent-remote runs --help

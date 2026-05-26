@@ -196,6 +196,12 @@ def test_package_entrypoint_runs_help() -> None:
     assert "agents" in completed_process.stdout
     assert "commands" in completed_process.stdout
     assert "preflight" in completed_process.stdout
+    assert "next" in completed_process.stdout
+    assert "surface" in completed_process.stdout
+    assert "tui" in completed_process.stdout
+    assert "sessions" in completed_process.stdout
+    assert "daemon" in completed_process.stdout
+    assert "mcp" in completed_process.stdout
     assert "goal" in completed_process.stdout
     assert "prd" in completed_process.stdout
     assert "ultragoal" in completed_process.stdout
@@ -230,6 +236,59 @@ def test_package_entrypoint_runs_cockpit_snapshot_help() -> None:
     assert "--cwd" in completed_process.stdout
     assert "--team" in completed_process.stdout
     assert "--team-name" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_next_help() -> None:
+    completed_process = _run_agent_remote_command(["next", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--cwd" in completed_process.stdout
+    assert "--task" in completed_process.stdout
+    assert "--team" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_mcp_help() -> None:
+    completed_process = _run_agent_remote_command(["mcp", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "servers" in completed_process.stdout
+    assert "tools" in completed_process.stdout
+    assert "call" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_surface_help() -> None:
+    completed_process = _run_agent_remote_command(["surface", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--cwd" in completed_process.stdout
+    assert "--json" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_tui_help() -> None:
+    completed_process = _run_agent_remote_command(["tui", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "--once" in completed_process.stdout
+    assert "--prompt" in completed_process.stdout
+    assert "--session-id" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_sessions_help() -> None:
+    completed_process = _run_agent_remote_command(["sessions", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "list" in completed_process.stdout
+    assert "show" in completed_process.stdout
+
+
+def test_package_entrypoint_runs_daemon_help() -> None:
+    completed_process = _run_agent_remote_command(["daemon", "--help"])
+
+    assert completed_process.returncode == 0
+    assert "start" in completed_process.stdout
+    assert "status" in completed_process.stdout
+    assert "attach" in completed_process.stdout
+    assert "stop" in completed_process.stdout
 
 
 def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) -> None:
@@ -977,4 +1036,5 @@ def test_package_entrypoint_runs_version() -> None:
     completed_process = _run_agent_remote_command(["version"])
 
     assert completed_process.returncode == 0
+    assert "comx-agent 0.1.0" in completed_process.stdout
     assert "agent-remote 0.1.0" in completed_process.stdout
