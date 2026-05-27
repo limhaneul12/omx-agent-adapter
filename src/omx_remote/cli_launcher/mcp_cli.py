@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Literal, cast
 
 import orjson
 import typer
@@ -22,6 +23,7 @@ from omx_remote.runtime.mcp.mcp_tool_client import (
     call_mcp_tool,
     list_mcp_tools,
 )
+from omx_remote.runtime.mcp.omx_agent_mcp_server import run_omx_agent_mcp_stdio
 from omx_remote.schemas.mcp.client_schemas import (
     McpServerConfig,
     McpServerListResult,
@@ -34,8 +36,10 @@ from omx_remote.schemas.mcp.client_schemas import (
     RepoMcpServerDefinition,
 )
 
+type McpServeLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
 mcp_app = typer.Typer(
-    help="Consume external MCP servers/tools like Codex; comx-agent is the client.",
+    help="Consume external MCP servers/tools like Codex, or serve omx-agent tools.",
     add_completion=False,
 )
 
@@ -200,7 +204,9 @@ def _format_servers_human(result: McpServerListResult) -> str:
     for server in result.servers:
         target: str = server.transport.url or server.transport.command or "-"
         status: str = "enabled" if server.enabled else "disabled"
-        lines.append(f"{server.qualified_name}\t{status}\t{server.transport.type}\t{target}")
+        lines.append(
+            f"{server.qualified_name}\t{status}\t{server.transport.type}\t{target}"
+        )
     lines.extend(f"warning: {warning}" for warning in result.warnings)
 
     server_text = "\n".join(lines)
@@ -247,13 +253,52 @@ def _guard_disabled_server(server: McpServerConfig, allow_disabled: bool) -> Non
     )
 
 
+@mcp_app.command("serve")
+def mcp_serve(
+    cwd: Path = typer.Option(
+        Path("."),
+        "--cwd",
+        help="Default repository root used by omx-agent MCP command tools.",
+    ),
+    config_path: Path | None = typer.Option(
+        None,
+        "--config",
+        help="Optional command recipe config path used by omx-agent MCP tools.",
+    ),
+    log_level: str = typer.Option(
+        "ERROR",
+        "--log-level",
+        help="FastMCP log level for the stdio server.",
+    ),
+) -> None:
+    """Serve omx-agent command tools over MCP stdio.
+
+    Args:
+        cwd [Path]: Default repository root.
+        config_path [Path | None]: Optional command recipe config path.
+        log_level [str]: FastMCP log level.
+    """
+    allowed_levels: tuple[str, ...] = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+    if log_level not in allowed_levels:
+        raise typer.BadParameter(
+            f"--log-level must be one of: {', '.join(allowed_levels)}"
+        )
+    run_omx_agent_mcp_stdio(
+        cwd=cwd,
+        config_path=config_path,
+        log_level=cast(McpServeLogLevel, log_level),
+    )
+
+
 @mcp_app.command(
     "add",
     context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 def mcp_add(
     ctx: typer.Context,
-    server_name: str = typer.Argument(..., help="Repo-local MCP server id to register."),
+    server_name: str = typer.Argument(
+        ..., help="Repo-local MCP server id to register."
+    ),
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
@@ -284,7 +329,9 @@ def mcp_add(
         "--env-var",
         help="Stdio environment variable name inherited from the agent shell. Repeatable.",
     ),
-    enabled: bool = typer.Option(True, "--enabled/--disabled", help="Enable the repo-local server."),
+    enabled: bool = typer.Option(
+        True, "--enabled/--disabled", help="Enable the repo-local server."
+    ),
     startup_timeout_sec: float | None = typer.Option(
         None,
         "--startup-timeout-sec",
@@ -295,7 +342,9 @@ def mcp_add(
         "--tool-timeout-sec",
         help="Optional MCP tool call timeout in seconds.",
     ),
-    force: bool = typer.Option(False, "--force", help="Replace an existing repo-local server."),
+    force: bool = typer.Option(
+        False, "--force", help="Replace an existing repo-local server."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Register a repo-local MCP server that comx-agent can consume.
@@ -372,7 +421,9 @@ def mcp_remove(
         "--cwd",
         help="Repository root used to resolve .comx-agent.toml or .agent-remote.toml.",
     ),
-    config_path: Path | None = typer.Option(None, "--config", help="Optional config override."),
+    config_path: Path | None = typer.Option(
+        None, "--config", help="Optional config override."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Remove a repo-local MCP server registration.
@@ -404,14 +455,20 @@ def mcp_remove(
 
 @mcp_app.command("import-codex")
 def mcp_import_codex(
-    server_name: str = typer.Argument(..., help="Codex MCP server id to copy repo-locally."),
+    server_name: str = typer.Argument(
+        ..., help="Codex MCP server id to copy repo-locally."
+    ),
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
         help="Repository root used to resolve .comx-agent.toml or .agent-remote.toml.",
     ),
-    config_path: Path | None = typer.Option(None, "--config", help="Optional config override."),
-    force: bool = typer.Option(False, "--force", help="Replace an existing repo-local server."),
+    config_path: Path | None = typer.Option(
+        None, "--config", help="Optional config override."
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Replace an existing repo-local server."
+    ),
     enable: bool = typer.Option(
         True,
         "--enable/--preserve-enabled",
@@ -495,14 +552,20 @@ def mcp_servers(
 
 @mcp_app.command("tools")
 def mcp_tools(
-    server_name: str = typer.Argument(..., help="MCP server name or source-qualified id."),
+    server_name: str = typer.Argument(
+        ..., help="MCP server name or source-qualified id."
+    ),
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
         help="Repository root used to resolve MCP config.",
     ),
-    config_path: Path | None = typer.Option(None, "--config", help="Optional config override."),
-    include_codex: bool = typer.Option(True, "--codex/--no-codex", help="Include Codex registry data."),
+    config_path: Path | None = typer.Option(
+        None, "--config", help="Optional config override."
+    ),
+    include_codex: bool = typer.Option(
+        True, "--codex/--no-codex", help="Include Codex registry data."
+    ),
     allow_disabled: bool = typer.Option(
         False,
         "--allow-disabled",
@@ -546,11 +609,19 @@ def mcp_tools(
 
 @mcp_app.command("call")
 def mcp_call(
-    server_name: str = typer.Argument(..., help="MCP server name or source-qualified id."),
+    server_name: str = typer.Argument(
+        ..., help="MCP server name or source-qualified id."
+    ),
     tool_name: str = typer.Argument(..., help="MCP tool name."),
-    cwd: Path = typer.Option(Path("."), "--cwd", help="Repository root used to resolve MCP config."),
-    config_path: Path | None = typer.Option(None, "--config", help="Optional config override."),
-    include_codex: bool = typer.Option(True, "--codex/--no-codex", help="Include Codex registry data."),
+    cwd: Path = typer.Option(
+        Path("."), "--cwd", help="Repository root used to resolve MCP config."
+    ),
+    config_path: Path | None = typer.Option(
+        None, "--config", help="Optional config override."
+    ),
+    include_codex: bool = typer.Option(
+        True, "--codex/--no-codex", help="Include Codex registry data."
+    ),
     arguments_json: str | None = typer.Option(
         None,
         "--arguments-json",
@@ -590,9 +661,7 @@ def mcp_call(
                 server=server,
                 tool_name=tool_name,
                 arguments=arguments,
-                warnings=(
-                    "Dry-run only. Pass --execute to call the MCP tool.",
-                ),
+                warnings=("Dry-run only. Pass --execute to call the MCP tool.",),
             )
             if json_output:
                 typer.echo(plan.model_dump_json(indent=2))

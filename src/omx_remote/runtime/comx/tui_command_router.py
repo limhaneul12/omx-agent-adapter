@@ -10,6 +10,7 @@ from omx_remote.runtime.comx.tui_command_catalog import (
     format_tui_slash_command_help,
     get_tui_slash_command_args,
 )
+from omx_remote.runtime.comx.tui_run_plan_preview import build_tui_run_plan_preview
 from omx_remote.runtime.mcp.mcp_registry_reader import (
     read_mcp_servers,
     resolve_mcp_server,
@@ -75,9 +76,8 @@ def _secret_argument_name(value: str) -> bool:
         bool: True when the name is secret-like.
     """
     normalized_value: str = value.strip().lstrip("-").lower().replace("_", "-")
-    secret_like: bool = (
-        value in SECRET_ARGUMENT_FLAGS
-        or any(term in normalized_value for term in SECRET_ARGUMENT_TERMS)
+    secret_like: bool = value in SECRET_ARGUMENT_FLAGS or any(
+        term in normalized_value for term in SECRET_ARGUMENT_TERMS
     )
     return secret_like
 
@@ -161,7 +161,9 @@ def _format_mcp_server_rows(registry: McpServerListResult) -> str:
         str: Human-readable rows.
     """
     if not registry.servers:
-        return "No MCP servers discovered. Use `comx-agent mcp add ...` to register one."
+        return (
+            "No MCP servers discovered. Use `comx-agent mcp add ...` to register one."
+        )
 
     lines: list[str] = [
         "source  name                         enabled  auth          transport          target",
@@ -221,7 +223,9 @@ def _format_command_inventory(inventory: ComxControlSurfaceInventory) -> str:
     return "\n".join(lines)
 
 
-def _status_result(cwd: Path, next_action: NextActionResult | None) -> ComxTuiCommandResult:
+def _status_result(
+    cwd: Path, next_action: NextActionResult | None
+) -> ComxTuiCommandResult:
     """Build a status result.
 
     Args:
@@ -232,7 +236,9 @@ def _status_result(cwd: Path, next_action: NextActionResult | None) -> ComxTuiCo
     Returns:
         ComxTuiCommandResult: Result.
     """
-    inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(cwd=cwd)
+    inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(
+        cwd=cwd
+    )
     registry: McpServerListResult = read_mcp_servers(cwd=cwd)
     next_summary: str = "not loaded"
     if next_action is not None:
@@ -372,14 +378,13 @@ def route_tui_slash_command(
             body=_format_command_inventory(inventory),
         )
     if command.handler_key == "run":
-        recipe_id: str = args or "<recipe>"
+        recipe_id: str = args.strip()
+        if not recipe_id:
+            raise ValueError("/run requires a command recipe id.")
         return ComxTuiCommandResult(
             command=command.name,
             title="command recipe preview",
-            body=(
-                f"dry_run: {recipe_id}\n"
-                f"Use `comx-agent run {recipe_id} --cwd {workspace}` for the typed plan."
-            ),
+            body=build_tui_run_plan_preview(recipe_id, workspace),
             warnings=("No command recipe was executed from the TUI.",),
         )
     if command.handler_key == "route":
@@ -426,7 +431,9 @@ def route_tui_slash_command(
         body = "Next action has not been loaded."
         if next_action is not None:
             body = next_action.summary
-        return ComxTuiCommandResult(command=command.name, title="next action", body=body)
+        return ComxTuiCommandResult(
+            command=command.name, title="next action", body=body
+        )
     if command.handler_key == "team":
         return ComxTuiCommandResult(
             command=command.name,
@@ -465,7 +472,7 @@ def route_tui_slash_command(
         )
     if command.handler_key in {"research", "interview"}:
         objective: str = args or "Clarify and research the current task."
-        plan: ComxResearchWorkflowPlan = create_research_workflow_plan(
+        research_plan: ComxResearchWorkflowPlan = create_research_workflow_plan(
             workspace,
             objective,
             include_team=True,
@@ -475,14 +482,14 @@ def route_tui_slash_command(
             command=command.name,
             title="research workflow plan",
             body=(
-                f"research_id: {plan.research_id}\n"
-                f"objective: {plan.objective}\n"
-                f"artifact: {plan.artifact_path}\n"
+                f"research_id: {research_plan.research_id}\n"
+                f"objective: {research_plan.objective}\n"
+                f"artifact: {research_plan.artifact_path}\n"
                 "status: planned; no external research tools executed"
             ),
             read_only=False,
-            artifact_path=plan.artifact_path,
-            warnings=plan.warnings,
+            artifact_path=research_plan.artifact_path,
+            warnings=research_plan.warnings,
         )
 
     raise ValueError(f"No TUI handler is implemented for {command.name}.")

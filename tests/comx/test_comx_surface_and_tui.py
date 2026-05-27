@@ -33,6 +33,8 @@ def test_comx_surface_inventory_distinguishes_native_and_composed(tmp_path) -> N
     assert "surface" in native_names
     assert "builtin:review-diff" in composed_ids
     assert "builtin:mcp-registry-inspect" in composed_ids
+    assert "builtin:research-interview-prd" in composed_ids
+    assert "builtin:company-build-loop" in composed_ids
 
 
 def test_surface_cli_outputs_json(tmp_path) -> None:
@@ -74,7 +76,9 @@ def test_tui_slash_completer_suggests_nested_commands() -> None:
     completer = ComxSlashCompleter()
 
     completions = list(
-        completer.get_completions(Document("/m"), CompleteEvent(completion_requested=True))
+        completer.get_completions(
+            Document("/m"), CompleteEvent(completion_requested=True)
+        )
     )
 
     assert any(completion.text == "/mcp servers" for completion in completions)
@@ -271,6 +275,21 @@ def test_tui_catalog_promotes_codex_omx_commands() -> None:
     assert get_tui_slash_command_args("/research codex mcp UX") == "codex mcp UX"
 
 
+def test_tui_run_renders_typed_command_plan(tmp_path: Path) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    result = route_tui_slash_command(
+        "/run builtin:research-interview-prd", cwd=tmp_path
+    )
+
+    assert result.command == "/run"
+    assert result.title == "command recipe preview"
+    assert "dry_run: true" in result.body
+    assert "builtin:research-interview-prd" in result.body
+    assert "codex --search exec --json --sandbox read-only" in result.body
+    assert "No command recipe was executed from the TUI." in result.warnings
+
+
 def test_tui_snapshot_includes_command_and_mcp_counts(monkeypatch, tmp_path) -> None:
     from omx_remote.schemas.mcp.client_schemas import McpServerListResult
 
@@ -294,7 +313,9 @@ def test_tui_snapshot_includes_command_and_mcp_counts(monkeypatch, tmp_path) -> 
     assert "/status" in snapshot.tips[0]
 
 
-def test_tui_router_lists_mcp_servers_with_redacted_targets(monkeypatch, tmp_path) -> None:
+def test_tui_router_lists_mcp_servers_with_redacted_targets(
+    monkeypatch, tmp_path
+) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
     from omx_remote.schemas.mcp.client_schemas import (
         McpServerConfig,

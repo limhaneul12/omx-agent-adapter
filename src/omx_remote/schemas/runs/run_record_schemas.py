@@ -10,6 +10,8 @@ class RunRecordStatus(StrEnum):
     PLANNED = "planned"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    REQUIRES_AGENT_ACTION = "requires_agent_action"
+    BLOCKED = "blocked"
 
 
 class RunNativeCommand(StrictSchemaModel):

@@ -21,7 +21,9 @@ class CommandRecipeLoadError(ValueError):
     """Raised when repo command recipe TOML cannot be loaded."""
 
 
-def _resolve_config_path(cwd: str | Path | None, config_path: str | Path | None) -> Path:
+def _resolve_config_path(
+    cwd: str | Path | None, config_path: str | Path | None
+) -> Path:
     """Resolve the repo command config path.
 
     Args:
@@ -69,7 +71,9 @@ def _load_toml_object(config_path: Path) -> dict[str, object]:
     return parsed_toml
 
 
-def _validate_top_level_sections(parsed_toml: dict[str, object], config_path: Path) -> None:
+def _validate_top_level_sections(
+    parsed_toml: dict[str, object], config_path: Path
+) -> None:
     """Validate supported top-level TOML sections.
 
     Args:
@@ -84,7 +88,9 @@ def _validate_top_level_sections(parsed_toml: dict[str, object], config_path: Pa
         )
 
 
-def _command_from_provider_mode(provider: str | None, mode: str | None) -> CommandStepCommand:
+def _command_from_provider_mode(
+    provider: str | None, mode: str | None
+) -> CommandStepCommand:
     """Map simple recipe provider/mode fields to a step command.
 
     Args:
@@ -124,7 +130,9 @@ def _command_from_provider_mode(provider: str | None, mode: str | None) -> Comma
     )
 
 
-def _definition_to_recipe(command_id: str, definition: RepoCommandDefinition) -> CommandRecipe:
+def _definition_to_recipe(
+    command_id: str, definition: RepoCommandDefinition
+) -> CommandRecipe:
     """Convert one repo command definition into a stable recipe.
 
     Args:
@@ -146,6 +154,8 @@ def _definition_to_recipe(command_id: str, definition: RepoCommandDefinition) ->
                 command=command,
                 agent=definition.agent,
                 argv=definition.argv,
+                codex_search=definition.codex_search,
+                codex_sandbox=definition.codex_sandbox,
                 prompt_file=definition.prompt_file,
                 inline_prompt=definition.inline_prompt,
                 brief_file=definition.brief_file,

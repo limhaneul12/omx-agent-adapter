@@ -1,9 +1,16 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import orjson
 
-from omx_remote.runtime.runs.run_artifact_store import build_run_id, ensure_run_dir
+from omx_remote.adapter_types.json_types import JsonValue
+from omx_remote.runtime.commands.command_output_redaction import (
+    redact_argv,
+    redact_json_artifact,
+    redact_text,
+)
+from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
 from omx_remote.schemas.runs.run_record_schemas import (
     RunArtifact,
@@ -41,7 +48,8 @@ def _write_json(path: Path, value: object) -> None:
         path [Path]: Destination path.
         value [object]: JSON-compatible value.
     """
-    path.write_bytes(orjson.dumps(value, option=orjson.OPT_INDENT_2))
+    redacted_value: JsonValue = redact_json_artifact(cast(JsonValue, value))
+    path.write_bytes(orjson.dumps(redacted_value, option=orjson.OPT_INDENT_2))
 
 
 def _native_commands(plan: CommandExecutionPlan) -> tuple[RunNativeCommand, ...]:
@@ -54,7 +62,7 @@ def _native_commands(plan: CommandExecutionPlan) -> tuple[RunNativeCommand, ...]
         tuple[RunNativeCommand, ...]: Captured native commands.
     """
     commands: tuple[RunNativeCommand, ...] = tuple(
-        RunNativeCommand(index=step.index, argv=step.native_argv)
+        RunNativeCommand(index=step.index, argv=redact_argv(step.native_argv))
         for step in plan.steps
         if step.native_argv
     )
@@ -82,12 +90,13 @@ def render_run_handoff(record: RunRecord, plan: CommandExecutionPlan) -> str:
         "## Planned native commands",
     ]
     lines.extend(
-        f"{command.index}. `{' '.join(command.argv)}`" for command in record.native_commands
+        f"{command.index}. `{' '.join(command.argv)}`"
+        for command in record.native_commands
     )
     if plan.blocked_reasons:
         lines.append("")
         lines.append("## Blockers")
-        lines.extend(f"- {blocker}" for blocker in plan.blocked_reasons)
+        lines.extend(f"- {redact_text(blocker)}" for blocker in plan.blocked_reasons)
 
     handoff_text: str = "\n".join(lines)
     return handoff_text
@@ -109,8 +118,7 @@ def write_dry_run_record(
         RunRecord: Persisted run record.
     """
     timestamp_text: str = _now_timestamp() if timestamp is None else timestamp
-    run_id: str = build_run_id(timestamp_text, plan.command_id)
-    run_dir: Path = ensure_run_dir(cwd, run_id)
+    run_id, run_dir = allocate_unique_run_dir(cwd, timestamp_text, plan.command_id)
     started_at: str = _now_iso()
     finished_at: str = started_at
     plan_path: Path = run_dir / "plan.json"

@@ -1,3 +1,6 @@
+from omx_remote.runtime.commands.workflow_command_catalog import (
+    build_workflow_command_catalog,
+)
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandCatalog,
     CommandRecipe,
@@ -8,11 +11,11 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
 )
 
 
-def build_builtin_command_catalog() -> CommandCatalog:
-    """Build the built-in project-owned command catalog.
+def _core_builtin_recipes() -> tuple[CommandRecipe, ...]:
+    """Build the core built-in project command recipes.
 
     Returns:
-        CommandCatalog: Built-in commands available without repo TOML.
+        tuple[CommandRecipe, ...]: Core recipes available without repo TOML.
     """
     review_diff = CommandRecipe(
         id="review-diff",
@@ -27,7 +30,6 @@ def build_builtin_command_catalog() -> CommandCatalog:
                     "Return findings, risks, and an approval recommendation."
                 ),
                 output_last_message=".agent-remote/runs/review-diff/final-message.md",
-                expected_artifacts=(".agent-remote/runs/review-diff/final-message.md",),
             ),
         ),
     )
@@ -80,7 +82,25 @@ def build_builtin_command_catalog() -> CommandCatalog:
             ),
         ),
     )
+    recipes = (
+        review_diff,
+        verify_handoff,
+        ultragoal_roadmap,
+        mcp_registry_inspect,
+    )
+    return recipes
+
+
+def build_builtin_command_catalog() -> CommandCatalog:
+    """Build the built-in project-owned command catalog.
+
+    Returns:
+        CommandCatalog: Built-in commands available without repo TOML.
+    """
     catalog = CommandCatalog(
-        commands=(review_diff, verify_handoff, ultragoal_roadmap, mcp_registry_inspect),
+        commands=(
+            *_core_builtin_recipes(),
+            *build_workflow_command_catalog(),
+        ),
     )
     return catalog

@@ -37,6 +37,14 @@ class CommandStepCommand(StrEnum):
     PROMPT_ONLY = "prompt_only"
 
 
+class CodexSandboxMode(StrEnum):
+    """Supported Codex sandbox modes for composed-command previews."""
+
+    READ_ONLY = "read-only"
+    WORKSPACE_WRITE = "workspace-write"
+    DANGER_FULL_ACCESS = "danger-full-access"
+
+
 class CommandRecipe(StrictSchemaModel):
     """Represents one composed command recipe."""
 
@@ -63,6 +71,8 @@ class CommandStep(StrictSchemaModel):
     command: CommandStepCommand
     agent: NonEmptyString | None = None
     argv: tuple[NonEmptyString, ...] = ()
+    codex_search: bool = False
+    codex_sandbox: CodexSandboxMode | None = None
     prompt_file: NonEmptyString | None = None
     inline_prompt: NonEmptyString | None = None
     brief_file: NonEmptyString | None = None
@@ -71,6 +81,21 @@ class CommandStep(StrictSchemaModel):
     mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
+
+    @model_validator(mode="after")
+    def _validate_codex_options(self) -> "CommandStep":
+        """Ensure Codex-only options stay on Codex execution steps.
+
+        Returns:
+            CommandStep: Validated command step.
+        """
+        if self.command == CommandStepCommand.CODEX_EXEC:
+            return self
+        if self.codex_search or self.codex_sandbox is not None:
+            raise ValueError(
+                "codex_search and codex_sandbox require command=codex_exec"
+            )
+        return self
 
 
 class RepoCommandDefinition(StrictSchemaModel):
@@ -83,6 +108,8 @@ class RepoCommandDefinition(StrictSchemaModel):
     mode: NonEmptyString | None = None
     agent: NonEmptyString | None = None
     argv: tuple[NonEmptyString, ...] = ()
+    codex_search: bool = False
+    codex_sandbox: CodexSandboxMode | None = None
     prompt_file: NonEmptyString | None = None
     inline_prompt: NonEmptyString | None = None
     brief_file: NonEmptyString | None = None
@@ -91,6 +118,25 @@ class RepoCommandDefinition(StrictSchemaModel):
     mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
+
+    @model_validator(mode="after")
+    def _validate_codex_options(self) -> "RepoCommandDefinition":
+        """Ensure shorthand Codex options stay on Codex execution definitions.
+
+        Returns:
+            RepoCommandDefinition: Validated repo command definition.
+        """
+        if not self.codex_search and self.codex_sandbox is None:
+            return self
+        if self.steps is not None:
+            raise ValueError(
+                "top-level codex_search/codex_sandbox cannot be combined with steps"
+            )
+        if self.provider == "codex" and self.mode == "exec":
+            return self
+        raise ValueError(
+            "codex_search and codex_sandbox require provider='codex' and mode='exec'"
+        )
 
 
 class CommandCatalog(StrictSchemaModel):
@@ -109,7 +155,9 @@ class CommandCatalog(StrictSchemaModel):
         for recipe in self.commands:
             key = (recipe.source, recipe.id)
             if key in seen_ids:
-                raise ValueError(f"duplicate command id in {recipe.source}: {recipe.id}")
+                raise ValueError(
+                    f"duplicate command id in {recipe.source}: {recipe.id}"
+                )
             seen_ids.add(key)
         return self
 
@@ -174,6 +222,8 @@ class CommandPlanStep(StrictSchemaModel):
     command: CommandStepCommand
     agent: NonEmptyString | None = None
     native_argv: tuple[NonEmptyString, ...]
+    codex_search: bool = False
+    codex_sandbox: CodexSandboxMode | None = None
     prompt_file: NonEmptyString | None = None
     prompt_exists: bool | None = None
     prompt_sha256: NonEmptyString | None = None

@@ -4,6 +4,7 @@ from pathlib import Path
 from omx_remote.runtime.agents.agent_config_loader import load_agent_config
 from omx_remote.schemas.agents.agent_config_schemas import AgentConfigSet
 from omx_remote.schemas.commands.command_recipe_schemas import (
+    CodexSandboxMode,
     CommandExecutionPlan,
     CommandPlanStep,
     CommandRecipe,
@@ -12,6 +13,21 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandStep,
     CommandStepCommand,
 )
+
+
+def _effective_codex_sandbox(step: CommandStep) -> CodexSandboxMode | None:
+    """Return the effective sandbox for Codex exec steps.
+
+    Args:
+        step: See function signature.
+
+    Returns:
+        See function return annotation."""
+    if step.command != CommandStepCommand.CODEX_EXEC:
+        no_sandbox: None = None
+        return no_sandbox
+    sandbox: CodexSandboxMode = step.codex_sandbox or CodexSandboxMode.READ_ONLY
+    return sandbox
 
 
 def _resolve_path(cwd: str | Path | None, path_text: str) -> Path:
@@ -51,7 +67,9 @@ def _prompt_hash(prompt_path: Path) -> str | None:
     return digest
 
 
-def _resolve_expected_artifacts(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+def _resolve_expected_artifacts(
+    cwd: str | Path | None, step: CommandStep
+) -> tuple[str, ...]:
     """Resolve expected artifact paths from one step.
 
     Args:
@@ -62,9 +80,17 @@ def _resolve_expected_artifacts(cwd: str | Path | None, step: CommandStep) -> tu
         tuple[str, ...]: Resolved artifact paths.
     """
     artifacts: list[str] = []
+    seen_artifacts: set[str] = set()
     if step.output_last_message is not None:
-        artifacts.append(str(_resolve_path(cwd, step.output_last_message)))
-    artifacts.extend(str(_resolve_path(cwd, artifact)) for artifact in step.expected_artifacts)
+        output_path: str = str(_resolve_path(cwd, step.output_last_message))
+        artifacts.append(output_path)
+        seen_artifacts.add(output_path)
+    for artifact in step.expected_artifacts:
+        artifact_path: str = str(_resolve_path(cwd, artifact))
+        if artifact_path in seen_artifacts:
+            continue
+        artifacts.append(artifact_path)
+        seen_artifacts.add(artifact_path)
     resolved_artifacts: tuple[str, ...] = tuple(artifacts)
     return resolved_artifacts
 
@@ -79,9 +105,17 @@ def _build_codex_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, .
     Returns:
         tuple[str, ...]: Native argv preview.
     """
-    argv: list[str] = ["codex", "exec", "--json"]
+    argv: list[str] = ["codex"]
+    if step.codex_search:
+        argv.append("--search")
+    argv.extend(["exec", "--json"])
+    codex_sandbox = _effective_codex_sandbox(step)
+    if codex_sandbox is not None:
+        argv.extend(["--sandbox", codex_sandbox])
     if step.output_last_message is not None:
-        argv.extend(["--output-last-message", str(_resolve_path(cwd, step.output_last_message))])
+        argv.extend(
+            ["--output-last-message", str(_resolve_path(cwd, step.output_last_message))]
+        )
     if step.prompt_file is not None:
         argv.append(str(_resolve_path(cwd, step.prompt_file)))
     if step.inline_prompt is not None:
@@ -270,6 +304,8 @@ def _build_plan_step(
         command=step.command,
         agent=step.agent,
         native_argv=_native_argv(cwd, step),
+        codex_search=step.codex_search,
+        codex_sandbox=_effective_codex_sandbox(step),
         prompt_file=prompt_file,
         prompt_exists=prompt_exists,
         prompt_sha256=prompt_sha256,
@@ -336,9 +372,13 @@ def build_one_off_prompt_recipe(
         CommandRecipe: One-off recipe suitable for dry-run planning.
     """
     if provider != "codex":
-        raise ValueError("one-off prompt dry-run currently supports provider=codex only")
+        raise ValueError(
+            "one-off prompt dry-run currently supports provider=codex only"
+        )
     if prompt_file is None and inline_prompt is None:
-        raise ValueError("one-off prompt dry-run requires --prompt-file or --inline-prompt")
+        raise ValueError(
+            "one-off prompt dry-run requires --prompt-file or --inline-prompt"
+        )
 
     step = CommandStep(
         command=CommandStepCommand.CODEX_EXEC,

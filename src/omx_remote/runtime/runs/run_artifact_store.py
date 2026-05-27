@@ -100,3 +100,31 @@ def ensure_run_dir(cwd: str | Path, run_id: str) -> Path:
     run_dir: Path = resolve_run_dir(cwd, run_id)
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
+
+
+def allocate_unique_run_dir(
+    cwd: str | Path,
+    timestamp: str,
+    command_id: str,
+) -> tuple[str, Path]:
+    """Atomically allocate a non-overwriting run directory.
+
+    Args:
+        cwd [str | Path]: Repository root.
+        timestamp [str]: Timestamp prefix.
+        command_id [str]: Command id or qualified command id.
+
+    Returns:
+        tuple[str, Path]: Unique run id and created run directory.
+    """
+    base_run_id: str = build_run_id(timestamp, command_id)
+    candidate_run_id: str = base_run_id
+    suffix = 2
+    while True:
+        run_dir: Path = resolve_run_dir(cwd, candidate_run_id)
+        try:
+            run_dir.mkdir(parents=True, exist_ok=False)
+            return candidate_run_id, run_dir
+        except FileExistsError:
+            candidate_run_id = f"{base_run_id}-{suffix:02d}"
+            suffix += 1

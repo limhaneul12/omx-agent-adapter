@@ -7,7 +7,6 @@ import orjson
 
 from omx_remote.runtime.agents.agent_config_loader import load_agent_config
 
-
 EXAMPLE_DOCS = (
     Path("docs/examples/agent-remote-command-recipes.md"),
     Path("docs/examples/agent-remote-route-recommendations.md"),
@@ -47,11 +46,17 @@ def test_readme_surfaces_command_composition_flow() -> None:
         "agent-remote probes run omx-basic",
         "agent-remote agents plan-apply-codex --cwd .",
         "agent-remote ultragoal status --cwd .",
+        "agent-remote run research-interview-prd --cwd . --dry-run --json",
+        "agent-remote run codex-deep-research --cwd . --dry-run --json",
+        "agent-remote run company-build-loop --cwd . --dry-run --json",
+        "agent-remote run route-doctor --cwd . --dry-run --json",
+        "agent-remote run ultragoal-story-factory --cwd . --dry-run --json",
     )
     for expected_command in expected_commands:
         assert expected_command in readme_text
 
     assert "agent-remote hypergoal" not in readme_text.lower()
+    assert "verify-handoff-plus" in readme_text
 
 
 def test_subagent_toml_example_matches_loader_contract(tmp_path: Path) -> None:

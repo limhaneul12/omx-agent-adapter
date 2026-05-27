@@ -157,3 +157,11 @@ def test_mcp_call_cli_executes_when_requested(monkeypatch, tmp_path: Path) -> No
     payload = orjson.loads(result.stdout)
     assert payload["executed"] is True
     assert payload["result"]["content"][0]["type"] == "text"
+
+
+def test_mcp_serve_cli_help_mentions_omx_agent_tools() -> None:
+    result = CliRunner().invoke(app, ["mcp", "serve", "--help"])
+
+    assert result.exit_code == 0
+    assert "omx-agent" in result.stdout
+    assert "--cwd" in result.stdout

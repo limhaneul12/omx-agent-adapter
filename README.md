@@ -33,10 +33,10 @@ Current practical strengths:
 - scoped Ultrawork launch/resume/cleanup state control for `omx team` workflows
 - native OMX UltraGoal capability/status reads through `agent-remote ultragoal status`
 - repo-local TOML subagent config validation/list/show and Codex native-agent materialization planning via `agent-remote agents`
-- typed project-owned command catalog and dry-run planning via `agent-remote commands` / `agent-remote run --dry-run`
+- typed project-owned command catalog, dry-run planning, and actual policy-gated execution via `agent-remote commands` / `agent-remote run --dry-run` / `agent-remote run --execute --autonomy agent`
 - reusable preflight reports for command/route/prompt safety via `agent-remote preflight`
 - route recommendations and blocked alternatives via `agent-remote route`
-- recorded dry-run plans and handoff artifacts via `agent-remote runs`
+- recorded dry-run and actual run plans, attempts, stdout/stderr, artifacts, recovery evidence, and handoff artifacts via `agent-remote runs`
 - upstream Codex/OMX command contract probes via `agent-remote probes`
 
 ## Installation for other agents
@@ -100,6 +100,12 @@ agent-remote commands list --cwd .
 agent-remote preflight run review-diff --cwd .
 agent-remote run review-diff --cwd . --dry-run
 agent-remote run review-diff --cwd . --dry-run --json --record-run
+agent-remote run research-interview-prd --cwd . --dry-run --json
+agent-remote run codex-deep-research --cwd . --dry-run --json
+agent-remote run company-build-loop --cwd . --dry-run --json
+agent-remote run route-doctor --cwd . --dry-run --json
+agent-remote run route-doctor --cwd . --execute --autonomy agent --task "choose the safest route" --json
+agent-remote run ultragoal-story-factory --cwd . --dry-run --json
 agent-remote runs handoff <run-id> --cwd .
 ```
 
@@ -122,13 +128,16 @@ comx-agent surface --cwd . --json
 comx-agent mcp servers --cwd . --json
 comx-agent mcp tools <server-name> --cwd . --json
 comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --json
+comx-agent mcp serve --cwd .
 ```
 
 ## comx-agent TUI and MCP client
 
 `comx-agent tui` renders a Codex-like terminal cockpit for the adapter. It supports `/` slash-command completions, persistent input history, normal free-text prompt capture, and typed read-only panels for `/status`, `/surface`, `/commands`, `/mcp`, `/mcp tools <server>`, `/team`, `/ultragoal`, `/goal`, `/next`, and `/research <objective>`.
 
-The TUI keeps mutating actions guarded: `/mcp call <server> <tool>` is a dry-run preview, `/run <recipe>` points to the typed command planner, and `/research <objective>` creates a staged local research-plan artifact without running external research tools.
+The TUI keeps mutating actions guarded: `/mcp call <server> <tool>` is a dry-run preview, `/run <recipe>` renders the typed dry-run command plan, and `/research <objective>` creates a staged local research-plan artifact without running external research tools. CLI execution is explicit through `agent-remote run <recipe> --execute --autonomy agent`, which records the plan, autonomy decision, step attempts, stdout/stderr, artifact checks, and recovery evidence. Actual execution returns shell status `0` only for `succeeded`; `failed`, `blocked`, and `requires_agent_action` stop shell pipelines with non-zero exit codes after still printing the typed result.
+
+Adapter-owned workflow recipes include the original research/build set (`codex-deep-research`, `omx-autoresearch-loop`, `research-interview-prd`, `company-build-loop`, and `verify-handoff-plus`) plus dogfood commands such as `route-doctor`, `company-discovery-loop`, `ultragoal-story-factory`, `team-sprint-plan`, `qa-war-room`, and `librarian-closeout`. These are not raw aliases: they preview staged Codex/OMX steps, risk level, expected artifacts, and handoff points before any runtime launch. When executed, local/Codex/MCP steps run through the typed executor, Codex exec plans default to `--sandbox read-only` when no sandbox is declared, prompt-only/runtime-gated steps create honest handoff artifacts, missing subprocess artifacts fail instead of being manufactured, secret-shaped argv/log/handoff values are redacted before persistence, and failures classify/retry/recover before final failure.
 
 TUI sessions are durable by default. `--session-id <name>` stores the current prompt, render count, slash-command history, and lifecycle events under `.comx-agent/sessions/<name>.json`; reopening the same session id resumes the last prompt when `--prompt` is omitted. Use `comx-agent sessions list` and `comx-agent sessions show <name>` to inspect saved sessions after leaving the TUI.
 
@@ -145,7 +154,28 @@ comx-agent daemon stop --cwd . --session-id daily
 
 `comx-agent surface` separates direct **native commands** from **composed commands** loaded from the built-in/repo recipe catalog.
 
-MCP support is **client/consumer support**, not an adapter-owned MCP server. `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml` or `.agent-remote.toml`, list server tools, and execute a tool only when `--execute` is passed.
+MCP support has two sides:
+
+- **Client/consumer support**: `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml` or `.agent-remote.toml`, list server tools, and execute a tool only when `--execute` is passed.
+- **Adapter-owned server support**: `comx-agent mcp serve --cwd <repo>` exposes omx-agent command recipes as MCP stdio tools so Codex/other agents can call `codex_deep_research`, `omx_autoresearch_loop`, `research_interview_prd`, `company_build_loop`, `verify_handoff_plus`, and generic catalog/preview tools without memorizing CLI syntax.
+
+Register the adapter-owned server repo-locally:
+
+```bash
+comx-agent mcp add omx_agent --cwd . -- comx-agent mcp serve --cwd "$PWD"
+comx-agent mcp tools omx_agent --cwd . --execute --json
+comx-agent mcp call omx_agent verify_handoff_plus --arguments-json '{"notes":"final check"}' --execute --json
+comx-agent mcp call omx_agent research_interview_prd --arguments-json '{"objective":"turn this idea into a validated PRD"}' --execute --json
+```
+
+During local development, use the working tree entrypoint and pass `PYTHONPATH` into the registered stdio server:
+
+```bash
+comx-agent mcp add omx_agent --cwd . --env PYTHONPATH="$PWD/src:$PWD/src/omx_remote" --force -- \
+  uv run python omx_agent_adapter_cli.py mcp serve --cwd "$PWD"
+```
+
+The MCP tools are dry-run-first. They return typed plans, risk labels, blocked reasons, native command previews, artifact paths, and next-action hints; they do not directly launch high-risk native Codex/OMX commands.
 
 The human-readable commands explain the route and risk. The `--json` surfaces provide typed fields, stable enums, artifact paths, warnings, blockers, and exit codes for automated agents.
 
@@ -231,7 +261,7 @@ Choose one of the six top-level lanes before acting. The distinction between `Go
 5. UltraGoal
    Use native OMX UltraGoal for durable multi-goal roadmaps instead of the removed project-owned HyperGoal scaffold.
    Done baseline: `agent-remote ultragoal status` reads native OMX capability/status; command recipes, route policy, cockpit capability evidence, and run records make UltraGoal-oriented command composition discoverable.
-   Not done: automatic non-dry-run roadmap execution from `agent-remote`; durable execution remains native OMX UltraGoal.
+   Done executor slice: `agent-remote run --execute --autonomy agent` can record actual runs and policy-gated handoffs. Native durable roadmap execution still belongs to OMX UltraGoal; runtime-spawning recipe steps are guarded and recorded instead of silently launched.
 
 6. Ralph → Team
    Use when Ralph already owns the task and needs Team fanout directly, without a Goal lifecycle envelope.
