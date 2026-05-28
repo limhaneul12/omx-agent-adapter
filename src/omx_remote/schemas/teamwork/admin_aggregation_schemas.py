@@ -4,6 +4,7 @@ from omx_remote.schemas.common_schemas import (
     StrictSchemaModel,
 )
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
+from omx_remote.schemas.teamwork.proof_layer_schemas import TeamProofLayerSummary
 from omx_remote.shared.omx_enums.team_admin_enums import TeamAdminAggregationState
 
 
@@ -31,3 +32,4 @@ class TeamAdminAggregationReport(StrictSchemaModel):
     task_count: int
     event_count: int
     summary: NonEmptyString
+    proof_layers: tuple[TeamProofLayerSummary, ...] = ()

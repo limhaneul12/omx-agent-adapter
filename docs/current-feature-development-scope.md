@@ -1,14 +1,35 @@
 # Current Feature Development Scope
 
-Last updated: 2026-05-10 12:16 KST
+Last updated: 2026-05-25 KST
 
-This document records the current cockpit/status feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, and cockpit decision-reason stitching slices.
+This document records the current cockpit/status and command-composition feature boundary after the cockpit baseline, Team evidence hardening, evidence-backed Team discovery, GitHub PR status, runtime structure split, cockpit decision-reason stitching, Team proof layers, `agent-remote next`, and UltraGoal command-composition control-plane slices.
 
 ## Product framing
 
 `agent-remote` is an agent-facing control layer for OMX + Codex. It helps agents operate repo-scoped OMX/Codex flows through typed contracts, status observation, evidence collection, guardrails, and lifecycle decisions.
 
 It should not replace OMX, Codex, Ralph, Team, or Ultrawork.
+
+## Completed command-composition baseline
+
+Merged scope:
+
+- Native OMX UltraGoal status/capability exposure through `agent-remote ultragoal status`.
+- Repo-local TOML subagent config validation/list/show plus Codex-native materialization planning/status through `agent-remote agents`.
+- Project-owned command catalog and dry-run plans through `agent-remote commands` and `agent-remote run --dry-run`.
+- Reusable command/route/prompt preflight reports through `agent-remote preflight`.
+- Cockpit capability, configured-agent, command-recipe, and route-policy evidence.
+- Task classification and route recommendation through `agent-remote route recommend`.
+- Read-only cross-lane next-action recommendation through `agent-remote next`.
+- Recorded dry-run plans, handoff artifacts, and replay plans through `agent-remote runs`.
+- Upstream Codex/OMX command contract probes through `agent-remote probes`.
+- Operator/agent examples under `docs/examples/` with parseable JSON blocks.
+
+Current boundary:
+
+- `agent-remote` can choose, inspect, plan, preflight, and record composed command intent.
+- Actual durable roadmap execution remains native OMX UltraGoal.
+- The removed project-owned HyperGoal lane must not be revived; project-owned composition belongs under recipes, route recommendations, preflight, run records, and cockpit evidence.
 
 ## Completed cockpit baseline
 
@@ -54,21 +75,31 @@ The cockpit baseline now includes:
    - Reasons carry their own `recommended_next_action`, `blocks_mutation`, and evidence `source_names` so future agents do not need to re-derive decisions from scattered status fields.
    - The surface remains evidence-backed and read-only; cockpit still does not launch, cleanup, or implicitly advance runtime state.
 
-8. **Python support boundary**
+8. **Team proof-layer evidence**
+   - Team Admin aggregation output includes `proof_layers` for `prd_dag_import`, `assignment`, `worker_readiness`, `dispatch`, and `completion`.
+   - `ready_prompt_timeout`, `startup_prompt_timeout`, and `worker_startup_timeout` remain startup/readiness evidence, not hidden completion or generic missing-worker state.
+   - Cockpit active Team decision reasons include blocking proof-layer source names when available.
+
+9. **Read-only next action surface**
+   - `agent-remote next --cwd <repo> --json` composes cockpit evidence into one next-safe-action result.
+   - `agent-remote next --cwd <repo> --task "<task>" --json` also includes route recommendations and dry-run/preflight-first command suggestions.
+   - The command is an inspector/recommender only: it does not launch Team/Ralph/UltraGoal, close goals, clean state, or execute composed commands.
+
+10. **Python support boundary**
    - Project support remains `Python >=3.13,<3.15`.
    - `.python-version` remains on the lower-bound development target.
    - 3.14-only stdlib imports and syntax remain off-limits while Python 3.13 is supported.
 
 ## Current verified stopping point
 
-Latest verified cockpit state on `feat/cockpit-decision-reason-stitching`:
+Latest verified roadmap state on `team-ultragoal-next-runtime-roadmap`:
 
 - `git diff --check` passed.
 - `uv run ruff check src tests` passed.
 - `uv run pyrefly check src` passed with `0 errors`.
-- `uv run pytest -q` passed with `747 passed`.
-- `uv run agent-remote cockpit snapshot --cwd .` passed after rebuilding the local `oh-my-codex` `dist/` artifact and reinstalling the adapter worktree package with `uv sync --reinstall-package agent-remote`.
-- Smoke output included typed `decision_reasons` with `recommended_next_action`, `blocks_mutation`, and `source_names`.
+- Focused tests passed for Team proof layers, cockpit decision source links, `agent-remote next`, UltraGoal status, route policy, and CLI entrypoints.
+- `agent-remote next --cwd . --json` and `agent-remote next --cwd . --task "plan a durable multi-slice runtime hardening roadmap" --json` emitted typed JSON. In an active UltraGoal session, both correctly recommended observing active runtime evidence before mutation.
+- UltraGoal dogfood covered `agent-remote ultragoal status`, `cockpit snapshot`, `route recommend`, `commands list`, `preflight route`, `run --dry-run --record-run`, and `runs list`; all emitted valid JSON. The `preflight route omx-ultragoal` result correctly blocked native launch while the worktree was dirty.
 
 ## Next feature direction
 
@@ -76,13 +107,14 @@ The next work should stay evidence-first and should not broaden cockpit into an 
 
 Recommended near-term sequence:
 
-1. **Team launch/status proof-layer UX**
-   - Make it easier for agents to distinguish Team DAG/import/assignment success from Codex worker readiness, dispatch, and completion evidence.
-   - Prefer read-only status and explanation surfaces; do not add adapter-owned pane relaunch or worker redispatch.
+1. **Live Team proof-layer dogfood**
+   - Use the proof-layer output in a real Team wave and compare it against native OMX events.
+   - Keep `ready_prompt_timeout` in `worker_readiness` until native OMX exposes recovered startup evidence.
 
 2. **Native OMX startup reliability hardening**
    - The adapter should continue surfacing `ready_prompt_timeout` and startup issues as evidence.
    - Actual pane relaunch, same-assignment redispatch, and deeper startup repair belong in native OMX/runtime hardening, not cockpit mutation.
+   - Adapter-compatible expectations are documented in `docs/native-omx-worker-startup-reliability.md`.
 
 3. **Dependency/transport hardening only when needed**
    - Keep Python support and Pydantic dependency posture stable unless a concrete transport-hardening slice requires a tighter minimum.
@@ -95,7 +127,7 @@ Recommended near-term sequence:
 - Do not add direct Goal→Team as a public lane.
 - Do not make cockpit perform launch, cleanup, or implicit advance.
 - Do not treat `unknown` Team evidence as active execution.
-- Do not claim Hypergoal runtime support; Hypergoal remains planned/template-only.
+- Do not revive a project-owned HyperGoal runtime; use native OMX UltraGoal and put project-owned composition under command recipes.
 
 ## Current dependency decision
 

@@ -1,8 +1,7 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.runtime_types import ActiveRuntimeModesTransportPayload
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes
 from omx_remote.shared.exceptions import RuntimeSurfaceError
@@ -14,7 +13,7 @@ async def read_active_runtime_modes() -> ActiveRuntimeModes:
     Returns:
         ActiveRuntimeModes: Typed active-mode contract built from `omx state list-active --json`.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         ["state", "list-active", "--json"],
     )

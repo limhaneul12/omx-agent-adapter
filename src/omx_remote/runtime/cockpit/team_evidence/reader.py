@@ -1,5 +1,8 @@
 import asyncio
 
+from omx_remote.runtime.cockpit.team_evidence.proof_layers import (
+    build_cockpit_team_observation_proof_layers,
+)
 from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
     CockpitTeamWorkerObservation,
@@ -108,7 +111,7 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
     if events_snapshot is not None:
         event_count = events_snapshot.count
 
-    observation = CockpitTeamObservation(
+    base_observation = CockpitTeamObservation(
         team_name=team_name,
         status=status_value,
         phase=phase_value,
@@ -116,6 +119,10 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
         event_count=event_count,
         worker_statuses=worker_statuses,
         warnings=tuple(warnings),
+    )
+    proof_layers = build_cockpit_team_observation_proof_layers(base_observation)
+    observation: CockpitTeamObservation = base_observation.model_copy(
+        update={"proof_layers": proof_layers}
     )
     return observation
 

@@ -18,7 +18,7 @@ The top-level lanes are:
 2. Goal → Ralph
 3. Goal → Ralph → Team(s)
 4. Ultrawork only
-5. Hypergoal, planned only for now
+5. UltraGoal, native OMX surface
 6. Ralph → Team
 ```
 
@@ -119,7 +119,7 @@ It also includes a short route guide for:
 2. Goal → Ralph
 3. Goal → Ralph → Team(s)
 4. Ultrawork only
-5. Hypergoal, planned only
+5. UltraGoal, native OMX surface
 6. Ralph → Team
 ```
 
@@ -127,7 +127,7 @@ It also includes a short route guide for:
 
 This is intentionally **not** `goal draft`: it does not inspect the repo, infer files, choose a route, call Codex/OMX/Ralph/Team/Ultrawork, or mutate state. Treat it as a checklist/scaffold for meta-prompting, not a prompt-generation engine.
 
-Use `agent-remote hypergoal template` when the work is too large for a normal Goal-only loop and needs deep-work checkpoints/resume context. Hypergoal is a static scaffold in this slice, not an executor.
+Use native OMX UltraGoal for durable multi-goal roadmaps when a normal Goal-only loop is too small. The adapter exposes a read-only `agent-remote ultragoal status` surface and project-owned command composition under `commands`, `run`, `route`, `preflight`, and `runs` instead of a HyperGoal lane.
 
 ## 2.3 Operating lane map
 
@@ -169,14 +169,16 @@ Choose one of the six top-level lanes before acting. The point is not to replace
    - `agent-remote ultrawork resume`
    - `agent-remote ultrawork cleanup-stale`
 
-5. Hypergoal
-   Future long-work concept. For now it is planning/scaffold only.
+5. UltraGoal
+   Native OMX durable multi-goal workflow for roadmap-sized work.
    Implemented baseline:
-   - `agent-remote hypergoal template`
+   - `agent-remote ultragoal status`
+   - `agent-remote commands show ultragoal-roadmap`
+   - `agent-remote run ultragoal-roadmap --dry-run`
+   - cockpit capability/route evidence for native UltraGoal availability
+   - run records for dry-run handoff/replay planning
    Not complete yet:
-   - executor
-   - runtime state model
-   - lifecycle/restore loop
+   - adapter-owned non-dry-run roadmap execution; durable execution remains native OMX UltraGoal
 
 6. Ralph → Team
    Use when Ralph already owns the PRD/task and needs direct Team fanout without Goal lifecycle wrapping.

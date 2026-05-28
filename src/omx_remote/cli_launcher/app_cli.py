@@ -1,19 +1,36 @@
 import typer
 
 from omx_remote.cli_launcher.adapt_cli import adapt_app
+from omx_remote.cli_launcher.agents_cli import agents_app
 from omx_remote.cli_launcher.cockpit_cli import cockpit_app
+from omx_remote.cli_launcher.commands_cli import commands_app
+from omx_remote.cli_launcher.comx_cli import (
+    sessions_app,
+    surface_command,
+    tui_command,
+)
+from omx_remote.cli_launcher.comx_daemon_cli import daemon_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
-from omx_remote.cli_launcher.hypergoal_cli import hypergoal_app
+from omx_remote.cli_launcher.mcp_cli import mcp_app
+from omx_remote.cli_launcher.next_cli import next_command
 from omx_remote.cli_launcher.prd_cli import prd_app
+from omx_remote.cli_launcher.preflight_cli import preflight_app
+from omx_remote.cli_launcher.probes_cli import probes_app
 from omx_remote.cli_launcher.ralph_cli import ralph_app
+from omx_remote.cli_launcher.route_cli import route_app
+from omx_remote.cli_launcher.run_cli import run_command
+from omx_remote.cli_launcher.runs_cli import runs_app
 from omx_remote.cli_launcher.runtime_cli import runtime_app
 from omx_remote.cli_launcher.team_cli import team_app
+from omx_remote.cli_launcher.ultragoal_cli import ultragoal_app
 from omx_remote.cli_launcher.ultrawork_cli import ultrawork_app
 
-HELP_TEXT = """Agent-facing control layer for using OMX + Codex strongly.
+HELP_TEXT = """comx-agent: Agent-facing control layer for using OMX + Codex strongly.
 
-AI-friendly route guidance, typed state, evidence, and guardrails for Codex/OMX development lanes.
+AI-friendly route guidance, typed state, evidence, MCP client access, and guardrails for Codex/OMX development lanes.
+The legacy agent-remote executable remains a compatibility alias for the same control surface.
+Composition flow: validate agents, inspect cockpit, recommend a route, preflight, dry-run, record, then hand off.
 Use subcommand --help to see available operations for each domain.
 """
 
@@ -23,11 +40,24 @@ app.add_typer(cockpit_app, name="cockpit")
 app.add_typer(team_app, name="team")
 app.add_typer(history_app, name="history")
 app.add_typer(adapt_app, name="adapt")
+app.add_typer(agents_app, name="agents")
+app.add_typer(commands_app, name="commands")
+app.add_typer(preflight_app, name="preflight")
+app.command("next")(next_command)
+app.command("surface")(surface_command)
+app.command("tui")(tui_command)
+app.add_typer(sessions_app, name="sessions")
+app.add_typer(daemon_app, name="daemon")
+app.add_typer(mcp_app, name="mcp")
+app.add_typer(probes_app, name="probes")
+app.add_typer(route_app, name="route")
+app.add_typer(runs_app, name="runs")
 app.add_typer(goal_app, name="goal")
 app.add_typer(prd_app, name="prd")
-app.add_typer(hypergoal_app, name="hypergoal")
+app.add_typer(ultragoal_app, name="ultragoal")
 app.add_typer(ralph_app, name="ralph")
 app.add_typer(ultrawork_app, name="ultrawork")
+app.command("run")(run_command)
 
 
 @app.callback(invoke_without_command=True)
@@ -44,4 +74,5 @@ def main(ctx: typer.Context) -> None:
 @app.command()
 def version() -> None:
     """Show the current package version."""
-    typer.echo("agent-remote 0.1.0")
+    typer.echo("comx-agent 0.1.0")
+    typer.echo("agent-remote 0.1.0 (compatibility alias)")

@@ -1,8 +1,10 @@
 import asyncio
 import subprocess
 
-import omx_remote.runtime.cockpit.sources.github_pr_status as github_pr_status
-from omx_remote.runtime.cockpit.sources.github_pr_status import read_github_pull_request_status
+import omx_remote.runtime.cockpit.sources.github_pr_status.api_client as github_api_client
+import omx_remote.runtime.cockpit.sources.github_pr_status.credentials as github_credentials
+import omx_remote.runtime.cockpit.sources.github_pr_status.reader as github_pr_status
+from omx_remote.runtime.cockpit.sources.github_pr_status.reader import read_github_pull_request_status
 
 
 def test_read_github_pull_request_status_reports_open_pr_review_and_checks(
@@ -57,6 +59,11 @@ def test_read_github_pull_request_status_reports_open_pr_review_and_checks(
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -101,6 +108,11 @@ def test_read_github_pull_request_status_reports_missing_open_pr(
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -134,6 +146,11 @@ def test_read_github_pull_request_status_reports_api_unavailable(
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -201,6 +218,11 @@ def test_read_github_pull_request_status_prioritizes_blocking_reviews(
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -253,6 +275,11 @@ def test_read_github_pull_request_status_uses_latest_reviewer_decision(
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -329,6 +356,11 @@ def test_read_github_pull_request_status_uses_later_review_pages(
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -413,6 +445,11 @@ def test_read_github_pull_request_status_uses_later_issue_comment_pages(
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -438,9 +475,9 @@ def test_read_git_credential_token_disables_interactive_prompts(
             stderr="",
         )
 
-    monkeypatch.setattr(github_pr_status.subprocess, "run", fake_run)
+    monkeypatch.setattr(github_credentials.subprocess, "run", fake_run)
 
-    token = github_pr_status._read_git_credential_token(str(tmp_path))
+    token = github_credentials._read_git_credential_token(str(tmp_path))
 
     assert token is None
     credential_calls = [
@@ -451,7 +488,7 @@ def test_read_git_credential_token_disables_interactive_prompts(
     assert credential_calls
     run_kwargs = credential_calls[0]
     assert isinstance(run_kwargs, dict)
-    assert run_kwargs["timeout"] == github_pr_status.GITHUB_CREDENTIAL_TIMEOUT_SECONDS
+    assert run_kwargs["timeout"] == github_credentials.GITHUB_CREDENTIAL_TIMEOUT_SECONDS
     run_env = run_kwargs["env"]
     assert isinstance(run_env, dict)
     assert run_env["GIT_TERMINAL_PROMPT"] == "0"
@@ -517,6 +554,11 @@ def test_read_github_pull_request_status_keeps_review_unknown_when_reviews_unava
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -606,6 +648,11 @@ def test_read_github_pull_request_status_uses_later_check_run_pages(
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -674,6 +721,11 @@ def test_read_github_pull_request_status_clears_dismissed_change_request(
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -747,6 +799,11 @@ def test_read_github_pull_request_status_ignores_non_codex_clean_marker_comments
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -808,6 +865,11 @@ def test_read_github_pull_request_status_keeps_check_state_unknown_when_check_ru
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -834,10 +896,10 @@ def test_read_git_credential_token_includes_repository_path(
             stderr="",
         )
 
-    monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
-    monkeypatch.setattr(github_pr_status.subprocess, "run", fake_run)
+    monkeypatch.setattr(github_credentials, "_run_git_command", fake_run_git_command)
+    monkeypatch.setattr(github_credentials.subprocess, "run", fake_run)
 
-    token = github_pr_status._read_git_credential_token(str(tmp_path))
+    token = github_credentials._read_git_credential_token(str(tmp_path))
 
     assert token == "redacted-token"
     assert recorded_kwargs
@@ -899,6 +961,11 @@ def test_read_github_pull_request_status_reports_no_checks_when_no_statuses_or_c
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )
@@ -972,6 +1039,11 @@ def test_read_github_pull_request_status_ignores_stale_codex_clean_marker_commen
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -1038,6 +1110,11 @@ def test_read_github_pull_request_status_keeps_check_state_unknown_for_stale_che
         "_read_github_api_json",
         fake_read_github_api_json,
     )
+    monkeypatch.setattr(
+        github_api_client,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
 
     observation = asyncio.run(read_github_pull_request_status(str(tmp_path)))
 
@@ -1095,6 +1172,11 @@ def test_read_github_pull_request_status_queries_upstream_repo_for_fork_origin(
     monkeypatch.setattr(github_pr_status, "_run_git_command", fake_run_git_command)
     monkeypatch.setattr(
         github_pr_status,
+        "_read_github_api_json",
+        fake_read_github_api_json,
+    )
+    monkeypatch.setattr(
+        github_api_client,
         "_read_github_api_json",
         fake_read_github_api_json,
     )

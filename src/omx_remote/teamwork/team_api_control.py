@@ -1,7 +1,6 @@
-import asyncio
-
 import orjson
 
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.schemas.teamwork.api_request_schemas import (
@@ -49,7 +48,7 @@ async def send_team_message(request: TeamApiSendMessageRequest) -> OmxCommandRes
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -78,7 +77,7 @@ async def write_team_worker_inbox(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -105,7 +104,7 @@ async def broadcast_team_message(request: TeamApiBroadcastRequest) -> OmxCommand
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -138,7 +137,7 @@ async def create_team_task(request: TeamApiCreateTaskRequest) -> OmxCommandResul
         orjson.dumps(task_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -164,7 +163,7 @@ async def read_team_task(request: TeamApiReadTaskRequest) -> OmxCommandResult:
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -199,7 +198,7 @@ async def transition_team_task_status(
         orjson.dumps(transition_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -233,7 +232,7 @@ async def update_team_task(request: TeamApiUpdateTaskRequest) -> OmxCommandResul
         orjson.dumps(update_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -262,7 +261,7 @@ async def claim_team_task(request: TeamApiClaimTaskRequest) -> OmxCommandResult:
         orjson.dumps(claim_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -292,7 +291,7 @@ async def release_team_task_claim(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -320,7 +319,7 @@ async def read_team_task_approval(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -353,7 +352,7 @@ async def write_team_task_approval(
         orjson.dumps(approval_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -382,7 +381,7 @@ async def mark_team_mailbox_delivered(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -411,7 +410,7 @@ async def mark_team_mailbox_notified(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -440,7 +439,7 @@ async def write_team_shutdown_request(
         ).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -470,7 +469,7 @@ async def read_team_shutdown_ack(
         orjson.dumps(shutdown_ack_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -499,7 +498,7 @@ async def cleanup_team_state(request: TeamApiCleanupRequest) -> OmxCommandResult
         orjson.dumps(cleanup_payload).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result
 
 
@@ -520,5 +519,5 @@ async def cleanup_team_orphans(request: TeamApiOrphanCleanupRequest) -> OmxComma
         orjson.dumps({"team_name": request.team_name}).decode(),
         "--json",
     ]
-    result: OmxCommandResult = await asyncio.to_thread(run_omx_command, command_arguments)
+    result: OmxCommandResult = await run_blocking_call(run_omx_command, command_arguments)
     return result

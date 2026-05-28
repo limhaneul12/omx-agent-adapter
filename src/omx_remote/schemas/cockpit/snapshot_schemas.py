@@ -2,7 +2,14 @@ from enum import StrEnum
 
 from pydantic import Field
 
+from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
+    CockpitAgentConfigSummary,
+    CockpitCapabilitiesSnapshot,
+    CockpitCommandRecipeSummary,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
+from omx_remote.schemas.teamwork.proof_layer_schemas import TeamProofLayerSummary
 
 
 class CockpitLaneName(StrEnum):
@@ -12,7 +19,7 @@ class CockpitLaneName(StrEnum):
     GOAL_RALPH = "goal_to_ralph"
     GOAL_RALPH_TEAMS = "goal_to_ralph_to_teams"
     ULTRAWORK_ONLY = "ultrawork_only"
-    HYPERGOAL = "hypergoal"
+    ULTRAGOAL = "ultragoal"
     RALPH_TEAM = "ralph_to_team"
 
 
@@ -103,6 +110,7 @@ class CockpitTeamObservation(StrictSchemaModel):
     event_count: int = Field(ge=0)
     worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = ()
     warnings: tuple[NonEmptyString, ...] = ()
+    proof_layers: tuple[TeamProofLayerSummary, ...] = ()
 
 
 class CockpitLaneSnapshot(StrictSchemaModel):
@@ -133,6 +141,11 @@ class CockpitSnapshot(StrictSchemaModel):
     discovered_teams: tuple[NonEmptyString, ...] = ()
     status_sources: tuple[CockpitStatusSourceObservation, ...] = ()
     pull_request_status: CockpitPullRequestObservation | None = None
+    capabilities: CockpitCapabilitiesSnapshot | None = None
+    configured_agents: CockpitAgentConfigSummary | None = None
+    command_recipes: CockpitCommandRecipeSummary | None = None
+    route_recommendations: tuple[RouteRecommendation, ...] = ()
+    blocked_route_alternatives: tuple[RouteRecommendation, ...] = ()
     contradictions: tuple[CockpitContradiction, ...]
     lanes: tuple[CockpitLaneSnapshot, ...]
     warnings: tuple[NonEmptyString, ...] = ()

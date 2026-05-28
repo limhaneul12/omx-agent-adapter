@@ -1,5 +1,3 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.bridge_types import (
@@ -11,6 +9,7 @@ from omx_remote.bridge.adapter_transport_payloads import (
     load_probe_runtime_payload,
     require_string_field,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge.adapter_schemas import (
     AdapterProbeRequest,
@@ -28,7 +27,7 @@ async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
     Returns:
         AdapterProbeSnapshot: Normalized probe contract built from the live adapt probe payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         ["adapt", request.target, "probe", "--json"],
     )

@@ -24,6 +24,14 @@ def test_wheel_build_does_not_force_include_packaged_source_tree() -> None:
     assert force_include.get("src/omx_remote") is None
 
 
+def test_comx_agent_console_script_preserves_agent_remote_alias() -> None:
+    pyproject = _pyproject()
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["agent-remote"] == "omx_agent_adapter_cli:app"
+    assert scripts["comx-agent"] == "omx_agent_adapter_cli:app"
+
+
 def test_readme_documents_private_install_before_public_pypi() -> None:
     readme = (ROOT / "README.md").read_text()
 

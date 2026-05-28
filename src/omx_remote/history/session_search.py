@@ -1,5 +1,3 @@
-import asyncio
-
 import msgspec
 import orjson
 
@@ -12,6 +10,7 @@ from omx_remote.adapter_types.history_types import (
     SessionSearchTransportResultPayload,
     SessionSearchTransportResults,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.history.session_schemas import (
     SessionSearchRequest,
@@ -34,7 +33,7 @@ async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapsho
     if request.limit is not None:
         command_arguments.extend(["--limit", str(request.limit)])
 
-    command_result = await asyncio.to_thread(run_omx_command, command_arguments)
+    command_result = await run_blocking_call(run_omx_command, command_arguments)
     stdout: str = command_result.stdout.strip()
     result: SessionSearchSnapshot = _normalize_session_search(stdout)
     return result

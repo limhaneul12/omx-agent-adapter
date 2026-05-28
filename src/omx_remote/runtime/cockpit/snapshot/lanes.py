@@ -46,7 +46,7 @@ def _build_lane_snapshots(
         _build_goal_ralph_lane(repo_root, goal_mirror_state),
         _build_goal_ralph_teams_lane(repo_root, goal_mirror_state),
         _build_ultrawork_lane(ultrawork_state_classification, ultrawork_warnings),
-        _build_hypergoal_lane(),
+        _build_ultragoal_lane(),
         _build_ralph_team_lane(team_names, team_observations),
     )
     return lanes
@@ -182,17 +182,17 @@ def _build_ultrawork_lane(
     )
     return lane
 
-def _build_hypergoal_lane() -> CockpitLaneSnapshot:
-    """Build the Hypergoal planned-only lane summary.
+def _build_ultragoal_lane() -> CockpitLaneSnapshot:
+    """Build the native UltraGoal lane summary.
 
     Returns:
-        CockpitLaneSnapshot: Hypergoal lane summary.
+        CockpitLaneSnapshot: UltraGoal lane summary.
     """
     lane = CockpitLaneSnapshot(
-        name=CockpitLaneName.HYPERGOAL,
-        state=CockpitLaneState.PLANNED_ONLY,
-        summary="Hypergoal is currently template/planned-only; no runtime state exists.",
-        recommended_next_action="use_hypergoal_template_only",
+        name=CockpitLaneName.ULTRAGOAL,
+        state=CockpitLaneState.UNKNOWN,
+        summary="UltraGoal is native OMX; inspect the UltraGoal status surface for current evidence.",
+        recommended_next_action="inspect_ultragoal_status",
     )
     return lane
 

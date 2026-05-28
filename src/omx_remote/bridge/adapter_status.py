@@ -1,5 +1,3 @@
-import asyncio
-
 import orjson
 
 from omx_remote.adapter_types.bridge_types import (
@@ -12,6 +10,7 @@ from omx_remote.bridge.adapter_transport_payloads import (
     load_status_runtime_payload,
     require_string_field,
 )
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.bridge.adapter_schemas import (
     AdapterProbeRequest,
@@ -29,7 +28,7 @@ async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnap
     Returns:
         AdapterStatusSnapshot: Normalized status contract built from the live adapt status payload.
     """
-    command_result = await asyncio.to_thread(
+    command_result = await run_blocking_call(
         run_omx_command,
         ["adapt", request.target, "status", "--json"],
     )

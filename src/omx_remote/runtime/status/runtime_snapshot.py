@@ -1,8 +1,9 @@
 """Normalizes OMX runtime status output into stable adapter contracts."""
 
-import asyncio
+from __future__ import annotations
 
 from omx_remote.adapter_types.type_contract import runtime_status_contract_type
+from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
 from omx_remote.schemas.runtime.status_schemas import (
     RuntimeModeSnapshot,
@@ -29,7 +30,7 @@ async def read_runtime_status(
         normalized_request = RuntimeStatusRequest()
     else:
         normalized_request = request
-    command_result = await asyncio.to_thread(run_omx_command, ["status"])
+    command_result = await run_blocking_call(run_omx_command, ["status"])
     stdout: str = command_result.stdout.strip()
     stderr: str = command_result.stderr.strip()
     summary: str
