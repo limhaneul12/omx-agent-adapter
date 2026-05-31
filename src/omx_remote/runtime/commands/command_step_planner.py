@@ -95,17 +95,71 @@ def _resolve_expected_artifacts(
     return resolved_artifacts
 
 
-def _build_codex_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+def _apply_task_placeholder(value: str | None, task_text: str | None) -> str | None:
+    """Apply only the user task placeholder for dry-run preview readability.
+
+    Args:
+        value [str | None]: Candidate recipe text.
+        task_text [str | None]: Optional caller-supplied task text.
+
+    Returns:
+        str | None: Text with ``<task>`` replaced when task text is supplied.
+    """
+    if value is None or task_text is None:
+        return value
+
+    substituted_value: str = value.replace("<task>", task_text)
+    return substituted_value
+
+
+def _codex_prompt_text(
+    cwd: str | Path | None,
+    step: CommandStep,
+    task_text: str | None,
+) -> str | None:
+    """Build one Codex prompt from optional template and inline task text.
+
+    Args:
+        cwd [str | Path | None]: Base working directory for relative paths.
+        step [CommandStep]: Step to render.
+        task_text [str | None]: Optional caller-supplied task text.
+
+    Returns:
+        str | None: Combined prompt text when available.
+    """
+    prompt_parts: list[str] = []
+    if step.prompt_file is not None:
+        prompt_path = _resolve_path(cwd, step.prompt_file)
+        if prompt_path.exists():
+            prompt_parts.append(prompt_path.read_text(encoding="utf-8"))
+    inline_prompt: str | None = _apply_task_placeholder(step.inline_prompt, task_text)
+    if inline_prompt is not None:
+        prompt_parts.append(inline_prompt)
+    if not prompt_parts:
+        no_prompt: None = None
+        return no_prompt
+    prompt_text: str = "\n\n".join(prompt_parts)
+    return prompt_text
+
+
+def _build_codex_argv(
+    cwd: str | Path | None,
+    step: CommandStep,
+    task_text: str | None,
+) -> tuple[str, ...]:
     """Build inspectable native argv for a Codex exec step.
 
     Args:
         cwd [str | Path | None]: Base working directory for relative paths.
         step [CommandStep]: Step to render.
+        task_text [str | None]: Optional caller-supplied task text.
 
     Returns:
         tuple[str, ...]: Native argv preview.
     """
     argv: list[str] = ["codex"]
+    if step.agent is not None:
+        argv.extend(["-c", f'agent_type="{step.agent}"'])
     if step.codex_search:
         argv.append("--search")
     argv.extend(["exec", "--json"])
@@ -116,10 +170,9 @@ def _build_codex_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, .
         argv.extend(
             ["--output-last-message", str(_resolve_path(cwd, step.output_last_message))]
         )
-    if step.prompt_file is not None:
-        argv.append(str(_resolve_path(cwd, step.prompt_file)))
-    if step.inline_prompt is not None:
-        argv.append(step.inline_prompt)
+    prompt_text = _codex_prompt_text(cwd, step, task_text)
+    if prompt_text is not None:
+        argv.append(prompt_text)
     native_argv: tuple[str, ...] = tuple(argv)
     return native_argv
 
@@ -159,18 +212,23 @@ def _build_omx_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...
     return native_argv
 
 
-def _native_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
+def _native_argv(
+    cwd: str | Path | None,
+    step: CommandStep,
+    task_text: str | None,
+) -> tuple[str, ...]:
     """Build inspectable native argv for one step.
 
     Args:
         cwd [str | Path | None]: Base working directory for relative paths.
         step [CommandStep]: Step to render.
+        task_text [str | None]: Optional caller-supplied task text.
 
     Returns:
         tuple[str, ...]: Native argv preview.
     """
     if step.command == CommandStepCommand.CODEX_EXEC:
-        native_argv = _build_codex_argv(cwd, step)
+        native_argv = _build_codex_argv(cwd, step, task_text)
         return native_argv
     if step.command in {
         CommandStepCommand.OMX_EXEC,
@@ -193,7 +251,10 @@ def _native_argv(cwd: str | Path | None, step: CommandStep) -> tuple[str, ...]:
     return native_argv
 
 
-def _agent_blockers(step: CommandStep, agent_config: AgentConfigSet) -> tuple[str, ...]:
+def _agent_blockers(
+    step: CommandStep,
+    agent_config: AgentConfigSet,
+) -> tuple[str, ...]:
     """Detect agent-reference blockers for one step.
 
     Args:
@@ -264,7 +325,12 @@ def _prompt_file_metadata(
     prompt_exists: bool = prompt_path.exists()
     prompt_sha256: str | None = _prompt_hash(prompt_path)
     blockers: tuple[str, ...] = ()
-    if not prompt_exists:
+    generated_brief_artifact = (
+        step.prompt_file is None
+        and step.brief_file is not None
+        and step.brief_file in step.expected_artifacts
+    )
+    if not prompt_exists and not generated_brief_artifact:
         blockers = (f"Prompt file does not exist: {prompt_path}",)
 
     metadata = (str(prompt_path), prompt_exists, prompt_sha256, blockers)
@@ -277,6 +343,7 @@ def _build_plan_step(
     step: CommandStep,
     recipe_risk: CommandRisk,
     agent_config: AgentConfigSet,
+    task_text: str | None,
 ) -> CommandPlanStep:
     """Build one dry-run plan step.
 
@@ -286,6 +353,7 @@ def _build_plan_step(
         step [CommandStep]: Recipe step to render.
         recipe_risk [CommandRisk]: Parent recipe risk.
         agent_config [AgentConfigSet]: Loaded repo agent config.
+        task_text [str | None]: Optional caller-supplied task text.
 
     Returns:
         CommandPlanStep: Dry-run plan step.
@@ -303,17 +371,18 @@ def _build_plan_step(
         index=index,
         command=step.command,
         agent=step.agent,
-        native_argv=_native_argv(cwd, step),
+        native_argv=_native_argv(cwd, step, task_text),
         codex_search=step.codex_search,
         codex_sandbox=_effective_codex_sandbox(step),
         prompt_file=prompt_file,
         prompt_exists=prompt_exists,
         prompt_sha256=prompt_sha256,
-        inline_prompt=step.inline_prompt,
+        inline_prompt=_apply_task_placeholder(step.inline_prompt, task_text),
         mcp_server=step.mcp_server,
         mcp_tool=step.mcp_tool,
         mcp_arguments=step.mcp_arguments,
         expected_artifacts=_resolve_expected_artifacts(cwd, step),
+        role_lanes=step.role_lanes,
         risk=recipe_risk,
         blocked_reasons=blockers,
     )
@@ -324,6 +393,7 @@ def build_command_execution_plan(
     recipe: CommandRecipe,
     cwd: str | Path | None = None,
     dry_run: bool = True,
+    task_text: str | None = None,
 ) -> CommandExecutionPlan:
     """Build an inspectable command execution plan.
 
@@ -331,13 +401,21 @@ def build_command_execution_plan(
         recipe [CommandRecipe]: Command recipe to plan.
         cwd [str | Path | None]: Base working directory for relative paths.
         dry_run [bool]: Whether the plan is dry-run only.
+        task_text [str | None]: Optional caller-supplied task text.
 
     Returns:
         CommandExecutionPlan: Typed dry-run execution plan.
     """
     agent_config: AgentConfigSet = load_agent_config(cwd=cwd)
     steps: tuple[CommandPlanStep, ...] = tuple(
-        _build_plan_step(index, cwd, step, recipe.risk, agent_config)
+        _build_plan_step(
+            index,
+            cwd,
+            step,
+            recipe.risk,
+            agent_config,
+            task_text,
+        )
         for index, step in enumerate(recipe.steps, start=1)
     )
     blocked_reasons: tuple[str, ...] = tuple(

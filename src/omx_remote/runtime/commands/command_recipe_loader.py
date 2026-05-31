@@ -5,6 +5,8 @@ from typing import Final
 from omx_remote.runtime.agents.agent_config_loader import DEFAULT_AGENT_CONFIG_FILENAME
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandRecipe,
+    CommandRecipeMode,
+    CommandRecipeProvider,
     CommandSource,
     CommandStep,
     CommandStepCommand,
@@ -89,7 +91,8 @@ def _validate_top_level_sections(
 
 
 def _command_from_provider_mode(
-    provider: str | None, mode: str | None
+    provider: CommandRecipeProvider | None,
+    mode: CommandRecipeMode | None,
 ) -> CommandStepCommand:
     """Map simple recipe provider/mode fields to a step command.
 
@@ -100,28 +103,31 @@ def _command_from_provider_mode(
     Returns:
         CommandStepCommand: Step command enum.
     """
-    if provider == "codex" and mode == "exec":
+    if provider == CommandRecipeProvider.CODEX and mode == CommandRecipeMode.EXEC:
         command: CommandStepCommand = CommandStepCommand.CODEX_EXEC
         return command
-    if provider == "omx" and mode == "exec":
+    if provider == CommandRecipeProvider.OMX and mode == CommandRecipeMode.EXEC:
         command = CommandStepCommand.OMX_EXEC
         return command
-    if provider == "omx" and mode == "ultragoal":
+    if provider == CommandRecipeProvider.OMX and mode == CommandRecipeMode.ULTRAGOAL:
         command = CommandStepCommand.OMX_ULTRAGOAL
         return command
-    if provider == "omx" and mode == "team":
+    if provider == CommandRecipeProvider.OMX and mode == CommandRecipeMode.TEAM:
         command = CommandStepCommand.OMX_TEAM
         return command
-    if provider == "omx" and mode == "ralph":
+    if provider == CommandRecipeProvider.OMX and mode == CommandRecipeMode.RALPH:
         command = CommandStepCommand.OMX_RALPH
         return command
-    if provider == "local" or mode == "local":
+    if provider == CommandRecipeProvider.LOCAL or mode == CommandRecipeMode.LOCAL:
         command = CommandStepCommand.LOCAL
         return command
-    if provider == "mcp" or mode == "mcp_tool":
+    if provider == CommandRecipeProvider.MCP or mode in {
+        CommandRecipeMode.MCP_TOOL,
+        CommandRecipeMode.TOOL,
+    }:
         command = CommandStepCommand.MCP_TOOL
         return command
-    if mode == "prompt":
+    if mode == CommandRecipeMode.PROMPT:
         command = CommandStepCommand.PROMPT_ONLY
         return command
 
@@ -164,6 +170,7 @@ def _definition_to_recipe(
                 mcp_arguments=definition.mcp_arguments,
                 output_last_message=definition.output_last_message,
                 expected_artifacts=definition.expected_artifacts,
+                role_lanes=definition.role_lanes,
             ),
         )
 

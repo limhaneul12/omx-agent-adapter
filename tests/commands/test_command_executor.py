@@ -1,12 +1,22 @@
+import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from omx_remote.runtime.commands.agent_autonomy_policy import AgentAutonomyPolicy
 from omx_remote.runtime.commands.artifact_verifier import ArtifactVerifier
+from omx_remote.runtime.commands.builtin_command_catalog import (
+    build_builtin_command_catalog,
+)
 from omx_remote.runtime.commands.command_executor import CommandExecutor
 from omx_remote.runtime.commands.command_output_redaction import redact_text
 from omx_remote.runtime.commands.command_step_planner import (
     build_command_execution_plan,
+)
+from omx_remote.runtime.commands.subprocess_attempt_runner import (
+    SubprocessAttemptOutcome,
+    run_subprocess,
 )
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandAutonomyDecisionKind,
@@ -27,6 +37,33 @@ def _recipe(command_id: str, steps: tuple[CommandStep, ...]) -> CommandRecipe:
         steps=steps,
     )
     return recipe
+
+
+def _write_builtin_agent_config(workspace: Path) -> None:
+    agent_blocks = [
+        f"""
+[agents.{agent_id}]
+enabled = true
+provider = "codex"
+role = "{agent_id}"
+model = "gpt-5.5"
+effort = "high"
+persona = "Test {agent_id} persona."
+""".strip()
+        for agent_id in (
+            "architect",
+            "critic",
+            "planner",
+            "researcher",
+            "team-executor",
+            "test-engineer",
+            "verifier",
+            "writer",
+        )
+    ]
+    (workspace / ".agent-remote.toml").write_text(
+        "\n\n".join(agent_blocks), encoding="utf-8"
+    )
 
 
 def test_command_executor_runs_local_step_and_records_attempt(tmp_path: Path) -> None:
@@ -54,6 +91,31 @@ def test_command_executor_runs_local_step_and_records_attempt(tmp_path: Path) ->
         ).read_text()
         == "ok\n"
     )
+
+
+def test_subprocess_attempt_closes_stdin_to_prevent_prompt_contamination(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    class FakeProcess:
+        returncode = 0
+        pid = 12345
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return "ok", ""
+
+    def fake_popen(*args: object, **kwargs: object) -> FakeProcess:
+        captured_kwargs.update(kwargs)
+        process = FakeProcess()
+        return process
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    outcome = run_subprocess(("codex", "exec", "prompt"), tmp_path, 1.0)
+
+    assert outcome.exit_code == 0
+    assert captured_kwargs["stdin"] == subprocess.DEVNULL
 
 
 def test_command_executor_retries_retryable_local_failure(tmp_path: Path) -> None:
@@ -112,6 +174,37 @@ def test_command_executor_materializes_prompt_only_handoff_artifact(
     assert "Capture this decision" in artifact_path.read_text()
 
 
+def test_prompt_expected_artifacts_validate_all_paths_before_writes(
+    tmp_path: Path,
+) -> None:
+    safe_artifact = tmp_path / "notes" / "safe.md"
+    outside_artifact = tmp_path.parent / f"{tmp_path.name}-prompt-outside" / "bad.md"
+    recipe = _recipe(
+        "prompt-unsafe-artifact",
+        (
+            CommandStep(
+                command=CommandStepCommand.PROMPT_ONLY,
+                inline_prompt="Capture this decision.",
+                expected_artifacts=(str(safe_artifact), str(outside_artifact)),
+            ),
+        ),
+    )
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=False)
+
+    result = CommandExecutor().execute(
+        plan,
+        tmp_path,
+        timestamp="20260527T010225Z",
+    )
+
+    assert result.status == "failed"
+    assert result.steps[0].attempts == ()
+    assert result.steps[0].failure is not None
+    assert result.steps[0].failure.kind == "permission_or_policy_block"
+    assert not safe_artifact.parent.exists()
+    assert not outside_artifact.parent.exists()
+
+
 def test_autonomy_policy_blocks_plan_blockers(tmp_path: Path) -> None:
     recipe = _recipe(
         "blocked",
@@ -163,6 +256,64 @@ def test_agent_policy_allows_recoverable_generated_brief_handoff(
     assert "recover_generated_prompt_files" in decision.required_safeguards
     assert result.status == "requires_agent_action"
     assert result.steps[0].handoff_path is not None
+
+
+def test_agent_policy_allows_generated_brief_handoff_with_relative_cwd(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _write_builtin_agent_config(tmp_path)
+    recipe = build_builtin_command_catalog().find("builtin:idea-to-prd-council")
+    plan = build_command_execution_plan(
+        recipe,
+        cwd=Path("."),
+        dry_run=False,
+        task_text="stock evidence radar",
+    )
+
+    def fake_run_subprocess(
+        argv: tuple[str, ...], cwd: Path, timeout_seconds: float
+    ) -> SubprocessAttemptOutcome:
+        if "--output-last-message" in argv:
+            output_index = argv.index("--output-last-message") + 1
+            output_path = Path(argv[output_index])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text("# generated\n", encoding="utf-8")
+        if len(argv) >= 5 and "artifact_path = Path(sys.argv[1])" in argv[2]:
+            output_path = Path(argv[3])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(argv[4], encoding="utf-8")
+        outcome = SubprocessAttemptOutcome(
+            argv=argv,
+            started_at="2026-05-29T00:00:00Z",
+            finished_at="2026-05-29T00:00:00Z",
+            duration_seconds=0.0,
+            exit_code=0,
+            stdout="{}",
+            stderr="",
+            timed_out=False,
+        )
+        return outcome
+
+    monkeypatch.setattr(
+        "omx_remote.runtime.commands.command_executor.run_subprocess",
+        fake_run_subprocess,
+    )
+
+    decision = AgentAutonomyPolicy().decide(plan)
+    result = CommandExecutor().execute(plan, Path("."), timestamp="20260527T010450Z")
+
+    assert any(
+        reason.startswith(
+            "Prompt file does not exist: .agent-remote/runs/idea-to-prd-council/"
+        )
+        for reason in plan.blocked_reasons
+    )
+    assert decision.decision == CommandAutonomyDecisionKind.ALLOW
+    assert "recover_generated_prompt_files" in decision.required_safeguards
+    assert result.status == "requires_agent_action"
+    assert result.blocked_reasons == ()
 
 
 def test_prompt_handoff_stops_before_following_steps(tmp_path: Path) -> None:
@@ -219,6 +370,68 @@ def test_missing_subprocess_artifact_fails_without_materializing(
     assert result.steps[0].failure.kind == "missing_artifact"
     assert result.steps[0].artifact_checks[0].exists is False
     assert not (tmp_path / "out" / "report.md").exists()
+
+
+def test_subprocess_expected_artifact_parent_directories_are_prepared(
+    tmp_path: Path,
+) -> None:
+    script = """
+from pathlib import Path
+Path("nested/reports/codex-output.md").write_text("ok", encoding="utf-8")
+""".strip()
+    recipe = _recipe(
+        "prepare-artifact-dir",
+        (
+            CommandStep(
+                command=CommandStepCommand.LOCAL,
+                argv=(sys.executable, "-c", script),
+                expected_artifacts=("nested/reports/codex-output.md",),
+            ),
+        ),
+    )
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=False)
+
+    result = CommandExecutor(max_attempts=1).execute(
+        plan,
+        tmp_path,
+        timestamp="20260527T010650Z",
+    )
+
+    assert result.status == "succeeded"
+    artifact_path = tmp_path / "nested" / "reports" / "codex-output.md"
+    assert artifact_path.read_text(encoding="utf-8") == "ok"
+    assert result.steps[0].artifact_checks[0].exists is True
+
+
+def test_subprocess_expected_artifact_outside_policy_fails_before_mkdir(
+    tmp_path: Path,
+) -> None:
+    safe_artifact = tmp_path / "safe" / "report.md"
+    outside_artifact = tmp_path.parent / f"{tmp_path.name}-outside" / "report.md"
+    recipe = _recipe(
+        "unsafe-artifact-dir",
+        (
+            CommandStep(
+                command=CommandStepCommand.LOCAL,
+                argv=(sys.executable, "-c", "print('should not run')"),
+                expected_artifacts=(str(safe_artifact), str(outside_artifact)),
+            ),
+        ),
+    )
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=False)
+
+    result = CommandExecutor(max_attempts=1).execute(
+        plan,
+        tmp_path,
+        timestamp="20260527T010675Z",
+    )
+
+    assert result.status == "failed"
+    assert result.steps[0].attempts == ()
+    assert result.steps[0].failure is not None
+    assert result.steps[0].failure.kind == "permission_or_policy_block"
+    assert not safe_artifact.parent.exists()
+    assert not outside_artifact.parent.exists()
 
 
 def test_attempt_persistence_redacts_sensitive_argv_and_output(tmp_path: Path) -> None:

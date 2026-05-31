@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from pathlib import Path
 
 ALEXANDRIA_VAULT_ROOT = Path("/Users/imhaneul/Desktop/Alexandria")
@@ -42,3 +43,22 @@ def validate_materialized_artifact_path(path: Path, cwd: str | Path) -> Path:
         "Refusing to materialize artifact outside the repository, Alexandria vault, or Codex skills root: "
         f"{resolved_path}"
     )
+
+
+def validate_materialized_artifact_paths(
+    paths: Iterable[Path],
+    cwd: str | Path,
+) -> tuple[Path, ...]:
+    """Validate every artifact path before callers perform write side effects.
+
+    Args:
+        paths [Iterable[Path]]: Candidate paths to validate.
+        cwd [str | Path]: Repository root used for relative paths.
+
+    Returns:
+        tuple[Path, ...]: Validated absolute artifact paths.
+    """
+    validated_paths: tuple[Path, ...] = tuple(
+        validate_materialized_artifact_path(path, cwd) for path in paths
+    )
+    return validated_paths

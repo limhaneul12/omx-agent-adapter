@@ -1,24 +1,25 @@
 from __future__ import annotations
 
 import os
+import signal
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from omx_remote.runtime.commands.actual_run_record_writer import (
-    ActualRunPaths,
-    now_iso,
-    write_json_artifact,
-)
+from omx_remote.runtime.commands.actual_run_record_writer import ActualRunPaths
 from omx_remote.runtime.commands.command_output_redaction import (
     redact_argv,
     redact_text,
+)
+from omx_remote.runtime.commands.redacted_command_artifact_writer import (
+    write_redacted_json_artifact,
 )
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandFailureClassification,
     CommandStepAttempt,
 )
+from omx_remote.shared.utils.runtime_identity import utcnow_text
 
 
 @dataclass(frozen=True)
@@ -79,49 +80,55 @@ def run_subprocess(
 
     Returns:
         See function return annotation."""
-    started_at: str = now_iso()
+    started_at: str = utcnow_text()
     started_time: float = time.monotonic()
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             argv,
             cwd=cwd,
             env=_execution_env(cwd),
-            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout_seconds,
-            check=False,
+            start_new_session=True,
         )
-        finished_at: str = now_iso()
-        duration: float = time.monotonic() - started_time
-        outcome = SubprocessAttemptOutcome(
-            argv=argv,
-            started_at=started_at,
-            finished_at=finished_at,
-            duration_seconds=duration,
-            exit_code=completed.returncode,
-            stdout=completed.stdout,
-            stderr=completed.stderr,
-            timed_out=False,
-        )
-        return outcome
-    except subprocess.TimeoutExpired as error:
-        finished_at = now_iso()
-        duration = time.monotonic() - started_time
-        stdout = error.stdout if isinstance(error.stdout, str) else ""
-        stderr = error.stderr if isinstance(error.stderr, str) else ""
-        outcome = SubprocessAttemptOutcome(
-            argv=argv,
-            started_at=started_at,
-            finished_at=finished_at,
-            duration_seconds=duration,
-            exit_code=None,
-            stdout=stdout,
-            stderr=stderr,
-            timed_out=True,
-        )
-        return outcome
+        try:
+            stdout, stderr = process.communicate(timeout=timeout_seconds)
+            finished_at: str = utcnow_text()
+            duration: float = time.monotonic() - started_time
+            outcome = SubprocessAttemptOutcome(
+                argv=argv,
+                started_at=started_at,
+                finished_at=finished_at,
+                duration_seconds=duration,
+                exit_code=process.returncode,
+                stdout=stdout,
+                stderr=stderr,
+                timed_out=False,
+            )
+            return outcome
+        except subprocess.TimeoutExpired:
+            if hasattr(os, "killpg"):
+                os.killpg(process.pid, signal.SIGKILL)
+            else:
+                process.kill()
+            stdout, stderr = process.communicate()
+            finished_at = utcnow_text()
+            duration = time.monotonic() - started_time
+            outcome = SubprocessAttemptOutcome(
+                argv=argv,
+                started_at=started_at,
+                finished_at=finished_at,
+                duration_seconds=duration,
+                exit_code=None,
+                stdout=stdout,
+                stderr=stderr,
+                timed_out=True,
+            )
+            return outcome
     except OSError as error:
-        finished_at = now_iso()
+        finished_at = utcnow_text()
         duration = time.monotonic() - started_time
         outcome = SubprocessAttemptOutcome(
             argv=argv,
@@ -183,7 +190,7 @@ def write_attempt(
     redacted_argv = redact_argv(outcome.argv)
     redacted_stdout = redact_text(outcome.stdout)
     redacted_stderr = redact_text(outcome.stderr)
-    write_json_artifact(argv_path, {"argv": list(redacted_argv)})
+    write_redacted_json_artifact(argv_path, {"argv": list(redacted_argv)})
     stdout_path.write_text(redacted_stdout, encoding="utf-8")
     stderr_path.write_text(redacted_stderr, encoding="utf-8")
     attempt_result = CommandStepAttempt(
@@ -200,6 +207,6 @@ def write_attempt(
         result_path=str(result_path),
         classification=classification,
     )
-    write_json_artifact(result_path, attempt_result.model_dump(mode="json"))
+    write_redacted_json_artifact(result_path, attempt_result.model_dump(mode="json"))
     append_global_logs(paths, outcome.stdout, outcome.stderr)
     return attempt_result

@@ -51,7 +51,9 @@ def resolve_command_recipe(catalog: CommandCatalog, command_id: str) -> CommandR
     if ":" in command_id:
         recipe = catalog.find(command_id)
         if recipe is None:
-            raise CommandCatalogResolutionError(f"No command named {command_id} was found.")
+            raise CommandCatalogResolutionError(
+                f"No command named {command_id} was found."
+            )
         return recipe
 
     matches: tuple[CommandRecipe, ...] = tuple(

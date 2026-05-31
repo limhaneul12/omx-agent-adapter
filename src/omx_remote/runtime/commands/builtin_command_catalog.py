@@ -33,31 +33,6 @@ def _core_builtin_recipes() -> tuple[CommandRecipe, ...]:
             ),
         ),
     )
-    verify_handoff = CommandRecipe(
-        id="verify-handoff",
-        source=CommandSource.BUILTIN,
-        description="Run repo verification gates and prepare a handoff artifact.",
-        risk=CommandRisk.READ_ONLY,
-        steps=(
-            CommandStep(
-                command=CommandStepCommand.LOCAL,
-                argv=("git", "diff", "--check"),
-            ),
-            CommandStep(
-                command=CommandStepCommand.LOCAL,
-                argv=("uv", "run", "ruff", "check", "src", "tests"),
-            ),
-            CommandStep(
-                command=CommandStepCommand.LOCAL,
-                argv=("uv", "run", "pyrefly", "check", "src"),
-            ),
-            CommandStep(
-                command=CommandStepCommand.LOCAL,
-                argv=("uv", "run", "pytest", "-q"),
-                expected_artifacts=(".agent-remote/runs/verify-handoff/handoff.md",),
-            ),
-        ),
-    )
     ultragoal_roadmap = CommandRecipe(
         id="ultragoal-roadmap",
         source=CommandSource.BUILTIN,
@@ -70,23 +45,9 @@ def _core_builtin_recipes() -> tuple[CommandRecipe, ...]:
             ),
         ),
     )
-    mcp_registry_inspect = CommandRecipe(
-        id="mcp-registry-inspect",
-        source=CommandSource.BUILTIN,
-        description="Inspect MCP servers available to comx-agent through Codex/repo config.",
-        risk=CommandRisk.READ_ONLY,
-        steps=(
-            CommandStep(
-                command=CommandStepCommand.LOCAL,
-                argv=("comx-agent", "mcp", "servers", "--json"),
-            ),
-        ),
-    )
     recipes = (
         review_diff,
-        verify_handoff,
         ultragoal_roadmap,
-        mcp_registry_inspect,
     )
     return recipes
 

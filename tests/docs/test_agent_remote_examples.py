@@ -48,7 +48,6 @@ def test_readme_surfaces_command_composition_flow() -> None:
         "agent-remote ultragoal status --cwd .",
         "agent-remote run research-interview-prd --cwd . --dry-run --json",
         "agent-remote run codex-deep-research --cwd . --dry-run --json",
-        "agent-remote run company-build-loop --cwd . --dry-run --json",
         "agent-remote run route-doctor --cwd . --dry-run --json",
         "agent-remote run ultragoal-story-factory --cwd . --dry-run --json",
     )

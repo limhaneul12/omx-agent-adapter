@@ -2,7 +2,7 @@ from pathlib import Path
 
 from omx_remote.runtime.commands.actual_run_record_writer import ActualRunPaths
 from omx_remote.runtime.commands.command_artifact_path_policy import (
-    validate_materialized_artifact_path,
+    validate_materialized_artifact_paths,
 )
 from omx_remote.runtime.commands.command_output_redaction import redact_text
 from omx_remote.runtime.commands.command_placeholder_resolution import (
@@ -92,12 +92,15 @@ def materialize_expected_artifacts(
 
     Returns:
         See function return annotation."""
+    artifact_paths: tuple[Path, ...] = validate_materialized_artifact_paths(
+        (
+            resolve_artifact_path(artifact, state)
+            for artifact in step.expected_artifacts
+        ),
+        cwd,
+    )
     materialized_paths: list[Path] = []
-    for artifact in step.expected_artifacts:
-        artifact_path: Path = validate_materialized_artifact_path(
-            resolve_artifact_path(artifact, state),
-            cwd,
-        )
+    for artifact_path in artifact_paths:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         if not artifact_path.exists():
             artifact_path.write_text(

@@ -140,7 +140,7 @@ def _upstream_contract_refresh_recipe() -> CommandRecipe:
             ),
             local_step(("agent-remote", "probes", "list-fixtures", "--json")),
             codex_step(
-                "Compare current Codex/OMX probe results with known fixtures. Flag "
+                "Compare current Codex/OMX probe results for: <task>. Compare with known fixtures. Flag "
                 "contract drift, unsupported assumptions, fixture update candidates, "
                 "and follow-up implementation tasks.",
                 output_last_message=".agent-remote/runs/upstream-contract-refresh/report.md",

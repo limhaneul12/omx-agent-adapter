@@ -35,6 +35,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build]
 include = [
   "src/omx_remote/**/*.py",
+  "src/omx_remote/**/*.md",
   "omx_agent_adapter_cli.py",
   "README.md",
 ]

@@ -177,6 +177,8 @@ The MCP server is dry-run-first and returns typed plans. Flagship workflows have
 
 Use when the task needs current external evidence but does not yet need durable OMX professor/critic state.
 
+Dogfood note: pass the research objective with `--task`; the built-in prompt includes `<task>` so dry-runs and actual executions show the concrete objective.
+
 ### `omx-autoresearch-loop`
 
 **Lane**: OMX-only
@@ -193,14 +195,6 @@ Use when the user wants research to be gated and resumable.
 
 Use for ambiguous product/build requests where the adapter should act like a product researcher + interviewer + architect.
 
-### `company-build-loop`
-
-**Lane**: Codex + OMX hybrid
-**Risk**: `launches_runtime`
-**Purpose**: a small-company operating loop: product/research, architecture, implementation lanes, verification, review, QA, and librarian memory.
-
-Use after a PRD exists or when the user explicitly asks to start development with a team-like flow.
-
 ### `verify-handoff-plus`
 
 **Lane**: local + Codex review
@@ -211,7 +205,7 @@ Use before checkpointing final Ultragoal evidence.
 
 ## Dogfood command family
 
-The dogfood slice expands the built-in catalog with 18 additional project-owned recipes. They remain preview/dry-run-first, but are now addressable by the actual executor: local/Codex/MCP steps execute, prompt-only steps write handoff artifacts and stop for agent action, and runtime-launching OMX steps are policy-gated instead of blindly started. Missing artifacts from subprocess/Codex/MCP steps are treated as failures, not placeholder success.
+The dogfood slice expands the built-in catalog with practical project-owned recipes, including the collaboration/research command suite. They remain preview/dry-run-first, but are now addressable by the actual executor: local/Codex/MCP steps execute, prompt-only steps write handoff artifacts and stop for agent action, and runtime-launching OMX steps are policy-gated instead of blindly started. Missing artifacts from subprocess/Codex/MCP steps are treated as failures, not placeholder success.
 
 ### Operational guardrails and closeout
 
@@ -239,6 +233,45 @@ The dogfood slice expands the built-in catalog with 18 additional project-owned 
 | `ultragoal-story-factory` | `launches_runtime` | Convert PRD/test spec into UltraGoal-ready stories, acceptance criteria, verification, and handoff prompts. |
 | `qa-war-room` | `long_running` | Multi-role verification war room with reviewer/QA/security/performance evidence and approve/block verdict. |
 | `librarian-closeout` | `writes_files` | Verify final artifacts and save accepted decisions/evidence to the Alexandria Obsidian vault. |
+
+For objective-driven dogfood commands, pass `--task "<objective>"`. Recipes that research, plan, or split work should include `<task>` in the first Codex prompt so `run --dry-run` previews the same objective that `run --execute` will send.
+
+
+## Collaboration and research command suite
+
+These seven commands compose OMX, Codex, Codex native-agent specialist lanes, local evidence reads, TUI previews, and Alexandria/UltraGoal handoffs into practical operator workflows. They are dry-run-first, not dry-run-only: local/Codex read-only steps can execute through `agent-remote run builtin:<command> --execute --autonomy agent --task "..." --json`, while Team/UltraGoal/runtime-spawning work remains a policy-gated handoff unless an agent-approved launch path exists. For Codex specialist lanes, dry-run plans expose both the role lane and the concrete `agent_type` override that will be used for the `codex` subprocess; this prevents a single prompt from pretending to be multiple subagents.
+
+Alexandria is the memory/library system. The suite does not create a Codex `librarian` subagent. Use Alexandria-oriented prompt/MCP handoffs for memory search/save phases and keep memory notes summary-only with no secrets.
+
+| Command | TUI label | Risk | Purpose |
+| --- | --- | --- | --- |
+| `collaboration-kickoff` | Collaboration → Kickoff | `long_running` | Turn a broad objective into route, staffing, subagent roles, UltraGoal/Team fanout advice, and a runtime handoff. |
+| `team-standup-sync` | Collaboration → Team Standup Sync | `read_only` | Read Team evidence and summarize workers, blockers, proof layers, and suggested dispatches without mutating mailboxes. |
+| `integration-room` | Collaboration → Integration Room | `long_running` | Integrate Team/subagent/run outputs into accepted decisions, conflict matrix, integration order, and verification plan. |
+| `conflict-resolution-council` | Collaboration → Conflict Resolution Council | `long_running` | Resolve conflicting agent outputs or design options with an ADR-style decision. |
+| `parallel-review-board` | Review → Parallel Review Board | `long_running` | Run specialist review lanes for security, tests, maintainability, performance, docs, and final approve/block synthesis. |
+| `release-readiness-room` | Release → Release Readiness Room | `writes_files` | Compose verification, review, docs sync, run-ledger evidence, Alexandria closeout, and release verdict. |
+| `idea-to-prd-council` | Research → Idea to PRD Council | `long_running` | Convert an idea into product-slug PRD/test/execution/UltraGoal artifacts with Alexandria begin/end phases and validator approval. |
+
+CLI examples verified against the development tree:
+
+```bash
+agent-remote commands list --cwd . --json
+agent-remote commands show builtin:idea-to-prd-council --cwd . --json
+agent-remote run builtin:idea-to-prd-council --cwd . --dry-run --task "AI memory assistant for developers" --json
+agent-remote run builtin:collaboration-kickoff --cwd . --dry-run --task "coordinate implementation" --json
+agent-remote run builtin:release-readiness-room --cwd . --dry-run --task "new command suite release" --json
+```
+
+TUI usage:
+
+```text
+/commands
+/run builtin:idea-to-prd-council --task "AI memory assistant for developers"
+/run builtin:collaboration-kickoff --task "coordinate implementation"
+```
+
+`idea-to-prd-council` uses a product workspace at `.agent-remote/workspaces/idea-to-prd-council/<product_slug>/current/` so repeated work on the same idea updates one workspace instead of creating dated folders. Artifact names include `00_intake/idea.md`, `01_memory/similar_ideas.md`, `02_research/evidence_ledger.md`, `04_prd/prd.md`, `04_prd/test_spec.md`, `04_prd/execution_plan.md`, `05_validation/validation_verdict.md`, and `06_ultragoal/ultragoal_brief.md`. The final UltraGoal step is a policy-gated handoff and may surface a recoverable missing generated-brief blocker in dry-run until earlier prompt/Codex phases materialize the brief.
 
 ## Future schema extensions
 

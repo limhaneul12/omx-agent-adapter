@@ -47,11 +47,14 @@ def _is_recoverable_plan_blocker(reason: str) -> bool:
 
     Returns:
         See function return annotation."""
-    if not reason.startswith("Prompt file does not exist:"):
+    prefix = "Prompt file does not exist:"
+    if not reason.startswith(prefix):
         return False
-    recoverable = (
-        "/.agent-remote/runs/" in reason or "\\.agent-remote\\runs\\" in reason
-    )
+    missing_path_text: str = reason.removeprefix(prefix).strip()
+    normalized_path_text: str = missing_path_text.replace("\\", "/")
+    recoverable: bool = normalized_path_text.startswith(
+        ".agent-remote/runs/"
+    ) or "/.agent-remote/runs/" in normalized_path_text
     return recoverable
 
 

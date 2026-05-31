@@ -1,17 +1,12 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
 
-import orjson
-
-from omx_remote.adapter_types.json_types import JsonValue
-from omx_remote.runtime.commands.command_output_redaction import (
-    redact_argv,
-    redact_json_artifact,
-    redact_text,
+from omx_remote.runtime.commands.command_output_redaction import redact_text
+from omx_remote.runtime.commands.redacted_command_artifact_writer import (
+    write_redacted_json_artifact,
 )
 from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
+from omx_remote.runtime.runs.run_native_commands import collect_run_native_commands
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandActualRunResult,
     CommandActualRunStatus,
@@ -21,11 +16,11 @@ from omx_remote.schemas.commands.command_execution_schemas import (
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
 from omx_remote.schemas.runs.run_record_schemas import (
     RunArtifact,
-    RunNativeCommand,
     RunRecord,
     RunRecordStatus,
     RunVerification,
 )
+from omx_remote.shared.utils.runtime_identity import utc_compact_timestamp
 
 
 @dataclass(frozen=True)
@@ -45,35 +40,6 @@ class ActualRunPaths:
     stderr_log_path: Path
 
 
-def now_timestamp() -> str:
-    """Return a compact UTC timestamp for actual run ids.
-
-    Returns:
-        See function return annotation."""
-    timestamp: str = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    return timestamp
-
-
-def now_iso() -> str:
-    """Return an ISO-8601 UTC timestamp.
-
-    Returns:
-        See function return annotation."""
-    timestamp: str = datetime.now(UTC).isoformat()
-    return timestamp
-
-
-def write_json_artifact(path: Path, value: object) -> None:
-    """Write one JSON artifact using the repository transport library.
-
-    Args:
-        path: See function signature.
-        value: See function signature."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    redacted_value: JsonValue = redact_json_artifact(cast(JsonValue, value))
-    path.write_bytes(orjson.dumps(redacted_value, option=orjson.OPT_INDENT_2))
-
-
 def initialize_actual_run(
     plan: CommandExecutionPlan,
     cwd: str | Path,
@@ -88,7 +54,7 @@ def initialize_actual_run(
 
     Returns:
         See function return annotation."""
-    timestamp_text: str = now_timestamp() if timestamp is None else timestamp
+    timestamp_text: str = utc_compact_timestamp() if timestamp is None else timestamp
     run_id, run_dir = allocate_unique_run_dir(cwd, timestamp_text, plan.command_id)
     paths = ActualRunPaths(
         run_id=run_id,
@@ -103,28 +69,12 @@ def initialize_actual_run(
         stdout_log_path=run_dir / "stdout.log",
         stderr_log_path=run_dir / "stderr.log",
     )
-    write_json_artifact(paths.plan_path, plan.model_dump(mode="json"))
+    write_redacted_json_artifact(paths.plan_path, plan.model_dump(mode="json"))
     paths.recovery_path.write_text("# Recovery evidence\n", encoding="utf-8")
     paths.handoff_path.write_text("", encoding="utf-8")
     paths.stdout_log_path.write_text("", encoding="utf-8")
     paths.stderr_log_path.write_text("", encoding="utf-8")
     return paths
-
-
-def native_commands(plan: CommandExecutionPlan) -> tuple[RunNativeCommand, ...]:
-    """Collect native command previews from a plan.
-
-    Args:
-        plan: See function signature.
-
-    Returns:
-        See function return annotation."""
-    commands: tuple[RunNativeCommand, ...] = tuple(
-        RunNativeCommand(index=step.index, argv=redact_argv(step.native_argv))
-        for step in plan.steps
-        if step.native_argv
-    )
-    return commands
 
 
 def run_record_status(status: CommandActualRunStatus) -> RunRecordStatus:
@@ -189,7 +139,7 @@ def build_actual_run_record(
         finished_at=finished_at,
         status=run_record_status(status),
         dry_run=False,
-        native_commands=native_commands(plan),
+        native_commands=collect_run_native_commands(plan),
         artifacts=artifacts,
         verification=RunVerification(status=status, evidence=str(paths.result_path)),
         plan_path=str(paths.plan_path),
@@ -237,7 +187,7 @@ def persist_initial_run_record(
         finished_at=started_at,
         status=RunRecordStatus.PLANNED,
         dry_run=False,
-        native_commands=native_commands(plan),
+        native_commands=collect_run_native_commands(plan),
         artifacts=artifacts,
         verification=RunVerification(status="running", evidence=str(paths.plan_path)),
         plan_path=str(paths.plan_path),
@@ -245,7 +195,7 @@ def persist_initial_run_record(
         stderr_log_path=str(paths.stderr_log_path),
         handoff_path=str(paths.handoff_path),
     )
-    write_json_artifact(paths.run_record_path, record.model_dump(mode="json"))
+    write_redacted_json_artifact(paths.run_record_path, record.model_dump(mode="json"))
     return record
 
 
@@ -304,11 +254,11 @@ def persist_actual_result(
 
     Returns:
         See function return annotation."""
-    write_json_artifact(
+    write_redacted_json_artifact(
         paths.autonomy_decision_path, autonomy_decision.model_dump(mode="json")
     )
-    write_json_artifact(paths.result_path, result.model_dump(mode="json"))
-    write_json_artifact(
+    write_redacted_json_artifact(paths.result_path, result.model_dump(mode="json"))
+    write_redacted_json_artifact(
         paths.artifacts_path,
         {
             "artifacts": [
@@ -328,5 +278,5 @@ def persist_actual_result(
         result.started_at,
         result.finished_at,
     )
-    write_json_artifact(paths.run_record_path, record.model_dump(mode="json"))
+    write_redacted_json_artifact(paths.run_record_path, record.model_dump(mode="json"))
     return record

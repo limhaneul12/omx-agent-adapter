@@ -7,8 +7,10 @@ Human flow:
 ```bash
 agent-remote commands list --cwd .
 agent-remote commands show review-diff --cwd .
+agent-remote commands show builtin:idea-to-prd-council --cwd . --json
 agent-remote run review-diff --cwd . --dry-run
 agent-remote run review-diff --cwd . --dry-run --json
+agent-remote run builtin:idea-to-prd-council --cwd . --dry-run --task "AI memory assistant for developers" --json
 agent-remote run route-doctor --cwd . --execute --autonomy agent --task "choose the safest route" --json
 ```
 
@@ -39,7 +41,6 @@ The adapter-owned `omx_agent` MCP server advertises flagship dedicated tools plu
 - `codex_deep_research`
 - `omx_autoresearch_loop`
 - `research_interview_prd`
-- `company_build_loop`
 - `verify_handoff_plus`
 
 These MCP tools return dry-run command plans, native command previews, risk labels, blockers, and next-action hints. Use the CLI `run --execute --autonomy agent` path for actual execution; high-risk native Codex/OMX launches remain policy-gated and recorded rather than silently started from MCP preview tools.
@@ -50,9 +51,12 @@ Any built-in recipe can be previewed through the generic MCP tool:
 comx-agent mcp call omx_agent omx_agent_preview_command \
   --arguments-json '{"command_id":"builtin:route-doctor","objective":"choose the safest dogfood route"}' \
   --execute --json
+comx-agent mcp call omx_agent omx_agent_preview_command \
+  --arguments-json '{"command_id":"builtin:idea-to-prd-council","objective":"AI memory assistant for developers"}' \
+  --execute --json
 ```
 
-The current dogfood command family adds these future-facing built-ins:
+The current dogfood command family adds these future-facing built-ins; weak legacy public built-ins `verify-handoff`, `company-build-loop`, and `mcp-registry-inspect` are intentionally absent:
 
 - `route-doctor`
 - `mcp-onboard-audit`
@@ -73,6 +77,16 @@ The current dogfood command family adds these future-facing built-ins:
 - `qa-war-room`
 - `librarian-closeout`
 
+Collaboration/research suite built-ins:
+
+- `collaboration-kickoff`
+- `team-standup-sync`
+- `integration-room`
+- `conflict-resolution-council`
+- `parallel-review-board`
+- `release-readiness-room`
+- `idea-to-prd-council`
+
 Agent JSON contract example from `agent-remote commands list --cwd . --json`:
 
 ```json
@@ -87,27 +101,11 @@ Agent JSON contract example from `agent-remote commands list --cwd . --json`:
       "step_count": 1
     },
     {
-      "id": "verify-handoff",
-      "qualified_id": "builtin:verify-handoff",
-      "source": "builtin",
-      "description": "Run repo verification gates and prepare a handoff artifact.",
-      "risk": "read_only",
-      "step_count": 4
-    },
-    {
       "id": "ultragoal-roadmap",
       "qualified_id": "builtin:ultragoal-roadmap",
       "source": "builtin",
       "description": "Plan an OMX UltraGoal run from a roadmap brief file.",
       "risk": "launches_runtime",
-      "step_count": 1
-    },
-    {
-      "id": "mcp-registry-inspect",
-      "qualified_id": "builtin:mcp-registry-inspect",
-      "source": "builtin",
-      "description": "Inspect MCP servers available to comx-agent through Codex/repo config.",
-      "risk": "read_only",
       "step_count": 1
     },
     {
@@ -157,14 +155,6 @@ Agent JSON contract example from `agent-remote commands list --cwd . --json`:
       "description": "Analyze a vulnerability, advisory, or dependency incident against the repo and produce a safe patch or upgrade plan.",
       "risk": "external_network",
       "step_count": 1
-    },
-    {
-      "id": "company-build-loop",
-      "qualified_id": "builtin:company-build-loop",
-      "source": "builtin",
-      "description": "Preview a company-like build loop: product research, PRD/staffing, Ultragoal, optional Team, verification, code review, UltraQA, and memory.",
-      "risk": "launches_runtime",
-      "step_count": 4
     },
     {
       "id": "company-build-loop-plus",
@@ -293,9 +283,65 @@ Agent JSON contract example from `agent-remote commands list --cwd . --json`:
       "description": "Inspect code changes and decide whether docs, examples, AGENTS.md, or Codex skills need synchronized updates.",
       "risk": "read_only",
       "step_count": 2
+    },
+    {
+      "id": "collaboration-kickoff",
+      "qualified_id": "builtin:collaboration-kickoff",
+      "source": "builtin",
+      "description": "Turn a broad objective into a real collaboration plan with explicit Codex native-agent lanes, Team fanout advice, UltraGoal story preview, and policy-gated runtime handoff.",
+      "risk": "long_running",
+      "step_count": 10
+    },
+    {
+      "id": "team-standup-sync",
+      "qualified_id": "builtin:team-standup-sync",
+      "source": "builtin",
+      "description": "Read active/recent OMX Team evidence and summarize workers, blockers, proof layers, and suggested dispatches without mutating mailboxes.",
+      "risk": "read_only",
+      "step_count": 5
+    },
+    {
+      "id": "integration-room",
+      "qualified_id": "builtin:integration-room",
+      "source": "builtin",
+      "description": "Integrate Team/subagent/run outputs into accepted decisions, conflict matrix, integration order, and verification plan.",
+      "risk": "long_running",
+      "step_count": 4
+    },
+    {
+      "id": "conflict-resolution-council",
+      "qualified_id": "builtin:conflict-resolution-council",
+      "source": "builtin",
+      "description": "Resolve conflicting agent outputs or design options with an ADR-style decision and explicit reversibility/risk notes.",
+      "risk": "long_running",
+      "step_count": 3
+    },
+    {
+      "id": "parallel-review-board",
+      "qualified_id": "builtin:parallel-review-board",
+      "source": "builtin",
+      "description": "Run specialist review lanes for security, tests, maintainability, performance, docs, and final approve/block synthesis.",
+      "risk": "long_running",
+      "step_count": 4
+    },
+    {
+      "id": "release-readiness-room",
+      "qualified_id": "builtin:release-readiness-room",
+      "source": "builtin",
+      "description": "Compose verification, review, docs sync, run-ledger evidence, Alexandria closeout, and final release approve/block verdict.",
+      "risk": "writes_files",
+      "step_count": 7
+    },
+    {
+      "id": "idea-to-prd-council",
+      "qualified_id": "builtin:idea-to-prd-council",
+      "source": "builtin",
+      "description": "Convert a product idea into researched product-slug artifacts through explicit Codex native-agent lanes, PRD/test/execution artifacts, validation, Alexandria memory, and policy-gated UltraGoal handoff.",
+      "risk": "long_running",
+      "step_count": 18
     }
   ],
-  "builtin_count": 27,
+  "builtin_count": 31,
   "repo_count": 0,
   "warnings": []
 }

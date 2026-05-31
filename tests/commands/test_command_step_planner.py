@@ -16,6 +16,44 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandStepCommand,
 )
 
+NEW_COMMAND_IDS = {
+    "collaboration-kickoff",
+    "team-standup-sync",
+    "integration-room",
+    "conflict-resolution-council",
+    "parallel-review-board",
+    "release-readiness-room",
+    "idea-to-prd-council",
+}
+
+EXPECTED_NEW_COMMAND_RISKS = {
+    "collaboration-kickoff": CommandRisk.LONG_RUNNING,
+    "team-standup-sync": CommandRisk.READ_ONLY,
+    "integration-room": CommandRisk.LONG_RUNNING,
+    "conflict-resolution-council": CommandRisk.LONG_RUNNING,
+    "parallel-review-board": CommandRisk.LONG_RUNNING,
+    "release-readiness-room": CommandRisk.WRITES_FILES,
+    "idea-to-prd-council": CommandRisk.LONG_RUNNING,
+}
+
+
+def _write_agent_config(workspace: Path, agent_ids: tuple[str, ...]) -> None:
+    agent_blocks = [
+        f"""
+[agents.{agent_id}]
+enabled = true
+provider = "codex"
+role = "{agent_id}"
+model = "gpt-5.5"
+effort = "high"
+persona = "Test {agent_id} persona."
+""".strip()
+        for agent_id in agent_ids
+    ]
+    (workspace / ".agent-remote.toml").write_text(
+        "\n\n".join(agent_blocks), encoding="utf-8"
+    )
+
 
 def test_builtin_review_diff_dry_run_plan_is_inspectable(tmp_path: Path) -> None:
     catalog = load_command_catalog(cwd=tmp_path)
@@ -93,6 +131,277 @@ def test_builtin_alexandria_memory_capture_plan_targets_vault(
         "/Users/imhaneul/Desktop/Alexandria/Contexts/Project Context/<descriptive-title>.md",
     )
     assert plan.blocked_reasons == ()
+
+
+@pytest.mark.parametrize("command_id", sorted(NEW_COMMAND_IDS))
+def test_new_builtin_command_dry_run_plan_is_inspectable(
+    tmp_path: Path, command_id: str
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find(f"builtin:{command_id}")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="smoke task"
+    )
+
+    assert plan.command_id == command_id
+    assert plan.qualified_id == f"builtin:{command_id}"
+    assert plan.source == CommandSource.BUILTIN
+    assert plan.dry_run is True
+    assert plan.risk == EXPECTED_NEW_COMMAND_RISKS[command_id]
+    assert plan.steps
+
+
+def test_team_standup_sync_dry_run_uses_only_read_only_team_inspection(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:team-standup-sync")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
+
+    argv_text = "\n".join(" ".join(step.native_argv) for step in plan.steps)
+    assert "agent-remote team status --team" in argv_text
+    assert "agent-remote team tasks --team" in argv_text
+    assert "agent-remote team events --team" in argv_text
+    forbidden_terms = (" send ", " dispatch ", " claim ", " complete ", " launch ")
+    assert not any(term in f" {argv_text} " for term in forbidden_terms)
+
+
+def test_collaboration_kickoff_dry_run_includes_route_evidence_and_handoff(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:collaboration-kickoff")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="coordinate work"
+    )
+
+    argv_text = "\n".join(" ".join(step.native_argv) for step in plan.steps)
+    assert "agent-remote cockpit snapshot" in argv_text
+    assert "agent-remote next" in argv_text
+    assert "agent-remote route recommend" in argv_text
+    assert any(step.codex_sandbox == "read-only" for step in plan.steps)
+    assert plan.steps[-1].command == CommandStepCommand.OMX_TEAM
+    assert plan.steps[-1].role_lanes[0].execution == "runtime_handoff"
+    assert not any(
+        step.command == CommandStepCommand.OMX_ULTRAGOAL for step in plan.steps
+    )
+
+
+def test_collaboration_kickoff_codex_roles_are_agent_bound(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:collaboration-kickoff")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="coordinate work"
+    )
+
+    agent_bound_steps = tuple(
+        step
+        for step in plan.steps
+        if any(lane.execution == "codex_subagent" for lane in step.role_lanes)
+    )
+    assert agent_bound_steps
+    for step in agent_bound_steps:
+        assert step.agent is not None
+        assert "-c" in step.native_argv
+        assert f'agent_type="{step.agent}"' in step.native_argv
+    assert any(
+        reason.startswith("No agent named researcher") for reason in plan.blocked_reasons
+    )
+
+
+def test_idea_to_prd_council_dry_run_includes_required_gates(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:idea-to-prd-council")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="information advantage radar"
+    )
+
+    plan_text = "\n".join(
+        "\n".join((step.inline_prompt or "", *step.expected_artifacts))
+        for step in plan.steps
+    )
+    argv_text = "\n".join("\n".join(step.native_argv) for step in plan.steps)
+    assert "Alexandria intake" in plan_text
+    assert "Alexandria closeout" in plan_text
+    assert "Do not create, modify, or delete files directly" in argv_text
+    assert sum(1 for step in plan.steps if step.codex_search) >= 2
+    gap_steps = tuple(
+        step
+        for step in plan.steps
+        if any(
+            argv_part.endswith("/02_research/gap_research.md")
+            for argv_part in step.native_argv
+        )
+    )
+    assert len(gap_steps) == 1
+    assert gap_steps[0].codex_search is False
+    assert "do not run more live web research" in (gap_steps[0].inline_prompt or "")
+    assert "approved_for_ultragoal" in plan_text
+    validation_steps = tuple(
+        step
+        for step in plan.steps
+        if any(
+            argv_part.endswith("/05_validation/validation_verdict.md")
+            for argv_part in step.native_argv
+        )
+    )
+    assert len(validation_steps) == 1
+    assert validation_steps[0].command == CommandStepCommand.LOCAL
+    assert validation_steps[0].agent is None
+    assert "Approve PRD handoff readiness only" in (
+        validation_steps[0].inline_prompt or ""
+    )
+    closeout_steps = tuple(
+        step
+        for step in plan.steps
+        if any(
+            argv_part.endswith("/current/07_closeout/closeout.md")
+            for argv_part in step.native_argv
+        )
+    )
+    assert len(closeout_steps) == 1
+    assert closeout_steps[0].command == CommandStepCommand.LOCAL
+    assert closeout_steps[0].prompt_file is None
+    assert "summary-only Alexandria closeout" in (
+        closeout_steps[0].inline_prompt or ""
+    )
+    assert plan.steps[-1].command == CommandStepCommand.OMX_ULTRAGOAL
+    assert plan.steps[-1].prompt_file is not None
+    assert plan.steps[-1].prompt_file.endswith(
+        "/current/06_ultragoal/ultragoal_brief.md"
+    )
+    assert "Roles: librarian" not in plan_text
+
+
+def test_idea_to_prd_council_codex_roles_are_agent_bound(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:idea-to-prd-council")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="information advantage radar"
+    )
+
+    agent_bound_steps = tuple(
+        step
+        for step in plan.steps
+        if any(lane.execution == "codex_subagent" for lane in step.role_lanes)
+    )
+    assert len(agent_bound_steps) >= 10
+    for step in agent_bound_steps:
+        assert step.agent is not None
+        assert "-c" in step.native_argv
+        assert f'agent_type="{step.agent}"' in step.native_argv
+    assert any(
+        reason.startswith("No agent named planner") for reason in plan.blocked_reasons
+    )
+
+
+def test_builtin_native_agents_are_unblocked_when_configured(
+    tmp_path: Path,
+) -> None:
+    _write_agent_config(
+        tmp_path,
+        (
+            "architect",
+            "critic",
+            "planner",
+            "researcher",
+            "team-executor",
+            "test-engineer",
+            "verifier",
+            "writer",
+        ),
+    )
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:idea-to-prd-council")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="information advantage radar"
+    )
+
+    assert not any(
+        reason.startswith("No agent named") for reason in plan.blocked_reasons
+    )
+
+
+def test_release_readiness_room_dry_run_includes_closeout_phases(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:release-readiness-room")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe, cwd=tmp_path, dry_run=True, task_text="release suite"
+    )
+
+    plan_text = "\n".join(step.inline_prompt or "" for step in plan.steps)
+    for term in (
+        "verification_results",
+        "review_board_verdict",
+        "docs_verdict",
+        "run_ledger_evidence",
+        "Alexandria closeout",
+        "approve_block_verdict",
+        "blockers",
+    ):
+        assert term in plan_text
+
+
+def test_new_builtin_commands_do_not_silently_launch_team_or_ultragoal_runtime(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+
+    for command_id in sorted(NEW_COMMAND_IDS - {"idea-to-prd-council", "collaboration-kickoff"}):
+        recipe = catalog.find(f"builtin:{command_id}")
+        assert recipe is not None
+        plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
+        assert not any(
+            step.command == CommandStepCommand.OMX_TEAM for step in plan.steps
+        )
+        assert not any(
+            step.command == CommandStepCommand.OMX_ULTRAGOAL for step in plan.steps
+        )
+
+    collaboration = catalog.find("builtin:collaboration-kickoff")
+    assert collaboration is not None
+    collaboration_plan = build_command_execution_plan(
+        collaboration, cwd=tmp_path, dry_run=True
+    )
+    assert collaboration_plan.steps[-1].command == CommandStepCommand.OMX_TEAM
+    assert collaboration_plan.steps[-1].role_lanes[0].execution == "runtime_handoff"
+
+    idea = catalog.find("builtin:idea-to-prd-council")
+    assert idea is not None
+    idea_plan = build_command_execution_plan(idea, cwd=tmp_path, dry_run=True)
+    runtime_steps = tuple(
+        step
+        for step in idea_plan.steps
+        if step.command
+        in {CommandStepCommand.OMX_TEAM, CommandStepCommand.OMX_ULTRAGOAL}
+    )
+    assert len(runtime_steps) == 1
+    assert runtime_steps[0].command == CommandStepCommand.OMX_ULTRAGOAL
+    assert runtime_steps[0].index == len(idea_plan.steps)
 
 
 def test_prompt_file_plan_reports_hash_and_native_argv(tmp_path: Path) -> None:
@@ -191,6 +500,42 @@ inline_prompt = "Review."
     plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
 
     assert "No agent named reviewer" in plan.steps[0].blocked_reasons[0]
+
+
+def test_configured_agent_reference_adds_codex_agent_type_override(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / ".agent-remote.toml").write_text(
+        """
+[agents.reviewer]
+enabled = true
+provider = "codex"
+role = "code-reviewer"
+model = "gpt-5.5"
+effort = "high"
+persona = "Review the current diff."
+
+[commands.codex_review]
+description = "Review current diff."
+agent = "reviewer"
+provider = "codex"
+mode = "exec"
+inline_prompt = "Review."
+""".strip()
+    )
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("repo:codex_review")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
+
+    assert plan.blocked_reasons == ()
+    assert plan.steps[0].agent == "reviewer"
+    assert plan.steps[0].native_argv[:3] == (
+        "codex",
+        "-c",
+        'agent_type="reviewer"',
+    )
 
 
 def test_mcp_tool_plan_renders_comx_agent_call(tmp_path: Path) -> None:

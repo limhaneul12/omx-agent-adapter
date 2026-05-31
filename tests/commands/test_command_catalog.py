@@ -20,13 +20,62 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandStepCommand,
 )
 
+NEW_COMMAND_IDS = {
+    "collaboration-kickoff",
+    "team-standup-sync",
+    "integration-room",
+    "conflict-resolution-council",
+    "parallel-review-board",
+    "release-readiness-room",
+    "idea-to-prd-council",
+}
 
-def test_builtin_catalog_contains_review_and_verify_commands() -> None:
+EXPECTED_NEW_COMMAND_RISKS = {
+    "collaboration-kickoff": CommandRisk.LONG_RUNNING,
+    "team-standup-sync": CommandRisk.READ_ONLY,
+    "integration-room": CommandRisk.LONG_RUNNING,
+    "conflict-resolution-council": CommandRisk.LONG_RUNNING,
+    "parallel-review-board": CommandRisk.LONG_RUNNING,
+    "release-readiness-room": CommandRisk.WRITES_FILES,
+    "idea-to-prd-council": CommandRisk.LONG_RUNNING,
+}
+
+
+def _write_builtin_agent_config(workspace: Path) -> None:
+    agent_blocks = [
+        f"""
+[agents.{agent_id}]
+enabled = true
+provider = "codex"
+role = "{agent_id}"
+model = "gpt-5.5"
+effort = "high"
+persona = "Test {agent_id} persona."
+""".strip()
+        for agent_id in (
+        "architect",
+        "critic",
+        "planner",
+        "researcher",
+        "team-executor",
+        "test-engineer",
+        "verifier",
+        "writer",
+        )
+    ]
+    (workspace / ".agent-remote.toml").write_text(
+        "\n\n".join(agent_blocks), encoding="utf-8"
+    )
+
+
+def test_builtin_catalog_contains_review_command_and_prunes_weak_legacy_builtins() -> None:
     catalog = build_builtin_command_catalog()
 
     command_ids = [recipe.id for recipe in catalog.commands]
     assert "review-diff" in command_ids
-    assert "verify-handoff" in command_ids
+    assert "verify-handoff" not in command_ids
+    assert "mcp-registry-inspect" not in command_ids
+    assert "company-build-loop" not in command_ids
     assert catalog.find("builtin:review-diff") is not None
 
 
@@ -39,7 +88,6 @@ def test_builtin_catalog_contains_custom_workflow_commands() -> None:
         "codex-deep-research",
         "omx-autoresearch-loop",
         "research-interview-prd",
-        "company-build-loop",
         "verify-handoff-plus",
         "route-doctor",
         "mcp-onboard-audit",
@@ -60,7 +108,7 @@ def test_builtin_catalog_contains_custom_workflow_commands() -> None:
         "qa-war-room",
         "librarian-closeout",
     }.issubset(command_ids)
-    assert len(catalog.commands) == 27
+    assert len(catalog.commands) == 31
     assert len({recipe.qualified_id for recipe in catalog.commands}) == len(
         catalog.commands
     )
@@ -87,11 +135,24 @@ def test_custom_workflow_builtin_contracts_are_typed() -> None:
         ".agent-remote/runs/research-interview-prd/staffing-plan.md",
     )
 
-    company_recipe = catalog.find("builtin:company-build-loop")
-    assert company_recipe is not None
-    assert company_recipe.risk == CommandRisk.LAUNCHES_RUNTIME
-    assert company_recipe.steps[1].command == CommandStepCommand.OMX_ULTRAGOAL
-    assert company_recipe.steps[2].command == CommandStepCommand.OMX_TEAM
+    deep_research_recipe = catalog.find("builtin:codex-deep-research")
+    assert deep_research_recipe is not None
+    assert deep_research_recipe.steps[0].inline_prompt is not None
+    assert "<task>" in deep_research_recipe.steps[0].inline_prompt
+
+    swarm_recipe = catalog.find("builtin:subagent-research-swarm")
+    assert swarm_recipe is not None
+    assert swarm_recipe.steps[0].inline_prompt is not None
+    assert "<task>" in swarm_recipe.steps[0].inline_prompt
+    assert swarm_recipe.steps[0].expected_artifacts == ()
+
+    company_plus_recipe = catalog.find("builtin:company-build-loop-plus")
+    assert company_plus_recipe is not None
+    assert company_plus_recipe.risk == CommandRisk.LAUNCHES_RUNTIME
+    assert any(
+        step.command == CommandStepCommand.OMX_ULTRAGOAL
+        for step in company_plus_recipe.steps
+    )
 
 
 def test_dogfood_workflow_builtins_expose_expected_risk_and_artifacts() -> None:
@@ -118,6 +179,185 @@ def test_dogfood_workflow_builtins_expose_expected_risk_and_artifacts() -> None:
     assert memory_capture.steps[0].expected_artifacts == (
         "/Users/imhaneul/Desktop/Alexandria/Contexts/Project Context/<descriptive-title>.md",
     )
+
+
+def test_builtin_catalog_contains_new_collaboration_and_research_commands() -> None:
+    catalog = build_builtin_command_catalog()
+
+    command_ids = {recipe.id for recipe in catalog.commands}
+
+    assert NEW_COMMAND_IDS.issubset(command_ids)
+    for command_id in NEW_COMMAND_IDS:
+        assert catalog.find(f"builtin:{command_id}") is not None
+
+
+def test_new_builtin_commands_expose_expected_risks_and_step_shapes() -> None:
+    catalog = build_builtin_command_catalog()
+
+    for command_id, expected_risk in EXPECTED_NEW_COMMAND_RISKS.items():
+        recipe = catalog.find(f"builtin:{command_id}")
+        assert recipe is not None
+        assert recipe.risk == expected_risk
+        assert recipe.steps
+
+    team_standup = catalog.find("builtin:team-standup-sync")
+    assert team_standup is not None
+    assert [step.command for step in team_standup.steps[:3]] == [
+        CommandStepCommand.LOCAL,
+        CommandStepCommand.LOCAL,
+        CommandStepCommand.LOCAL,
+    ]
+    assert all("dispatch" not in " ".join(step.argv) for step in team_standup.steps)
+
+    release_room = catalog.find("builtin:release-readiness-room")
+    assert release_room is not None
+    release_prompts = "\n".join(step.inline_prompt or "" for step in release_room.steps)
+    for required_term in (
+        "verification_results",
+        "review_board_verdict",
+        "docs_verdict",
+        "run_ledger_evidence",
+        "Alexandria closeout",
+        "approve_block_verdict",
+    ):
+        assert required_term in release_prompts
+
+    idea = catalog.find("builtin:idea-to-prd-council")
+    assert idea is not None
+    idea_prompts = "\n".join(step.inline_prompt or "" for step in idea.steps)
+    assert "Alexandria intake" in idea_prompts
+    assert "Alexandria closeout" in idea_prompts
+    assert "librarian subagent" in idea_prompts
+    assert "Roles: librarian" not in idea_prompts
+    assert sum(1 for step in idea.steps if step.codex_search) >= 2
+    gap_steps = tuple(
+        step
+        for step in idea.steps
+        if step.output_last_message is not None
+        and step.output_last_message.endswith("/02_research/gap_research.md")
+    )
+    assert len(gap_steps) == 1
+    assert gap_steps[0].codex_search is False
+    assert "do not run more live web research" in (gap_steps[0].inline_prompt or "")
+    validation_steps = tuple(
+        step
+        for step in idea.steps
+        if any(
+            artifact.endswith("/05_validation/validation_verdict.md")
+            for artifact in step.expected_artifacts
+        )
+    )
+    assert len(validation_steps) == 1
+    assert validation_steps[0].command == CommandStepCommand.LOCAL
+    assert validation_steps[0].agent is None
+    assert validation_steps[0].prompt_file is None
+    assert "Approve PRD handoff readiness only" in (
+        validation_steps[0].inline_prompt or ""
+    )
+    closeout_steps = tuple(
+        step
+        for step in idea.steps
+        if any(
+            artifact.endswith("/current/07_closeout/closeout.md")
+            for artifact in step.expected_artifacts
+        )
+    )
+    assert len(closeout_steps) == 1
+    assert closeout_steps[0].command == CommandStepCommand.LOCAL
+    assert closeout_steps[0].prompt_file is None
+    assert "summary-only Alexandria closeout" in (
+        closeout_steps[0].inline_prompt or ""
+    )
+    assert idea.steps[-1].command == CommandStepCommand.OMX_ULTRAGOAL
+
+
+def test_new_builtin_commands_declare_expected_artifacts() -> None:
+    catalog = build_builtin_command_catalog()
+
+    expected_terms = {
+        "collaboration-kickoff": ("collaboration_plan", "team_handoff"),
+        "team-standup-sync": ("standup_report", "suggested_dispatches"),
+        "integration-room": (
+            "conflict_matrix",
+            "accepted_output_ledger",
+            "verification_plan",
+        ),
+        "conflict-resolution-council": ("adr_decision",),
+        "parallel-review-board": ("review_verdict", "security", "tests"),
+        "release-readiness-room": (
+            "release_verdict",
+            "verification_evidence",
+            "run_ledger_evidence",
+        ),
+        "idea-to-prd-council": (
+            "workspaces/idea-to-prd-council/<product_slug>/current/00_intake/idea.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/01_memory/similar_ideas.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/02_research/evidence_ledger.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/04_prd/prd.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/04_prd/test_spec.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/04_prd/execution_plan.md",
+            "workspaces/idea-to-prd-council/<product_slug>/current/06_ultragoal/ultragoal_brief.md",
+            "validation_verdict.md",
+        ),
+    }
+
+    for command_id, terms in expected_terms.items():
+        recipe = catalog.find(f"builtin:{command_id}")
+        assert recipe is not None
+        artifact_items: list[str] = []
+        for step in recipe.steps:
+            if step.output_last_message is not None:
+                artifact_items.append(step.output_last_message)
+            artifact_items.extend(step.expected_artifacts)
+        artifact_text = "\n".join(artifact_items)
+        for term in terms:
+            assert term in artifact_text
+
+    idea = catalog.find("builtin:idea-to-prd-council")
+    assert idea is not None
+    idea_artifacts = tuple(
+        artifact
+        for step in idea.steps
+        for artifact in (
+            (step.output_last_message,) if step.output_last_message else ()
+        )
+        + step.expected_artifacts
+    )
+    assert any(
+        "workspaces/idea-to-prd-council/<product_slug>/current/00_intake/idea.md"
+        in artifact
+        for artifact in idea_artifacts
+    )
+    assert any(
+        "workspaces/idea-to-prd-council/<product_slug>/current/04_prd/prd.md"
+        in artifact
+        for artifact in idea_artifacts
+    )
+    assert any(
+        "workspaces/idea-to-prd-council/<product_slug>/current/06_ultragoal/ultragoal_brief.md"
+        in artifact
+        for artifact in idea_artifacts
+    )
+
+
+def test_new_builtin_commands_do_not_write_to_personal_absolute_paths() -> None:
+    catalog = build_builtin_command_catalog()
+
+    for command_id in NEW_COMMAND_IDS:
+        recipe = catalog.find(f"builtin:{command_id}")
+        assert recipe is not None
+        artifact_items: list[str] = []
+        for step in recipe.steps:
+            if step.output_last_message is not None:
+                artifact_items.append(step.output_last_message)
+            artifact_items.extend(step.expected_artifacts)
+            artifact_items.extend(
+                role.artifact for role in step.role_lanes if role.artifact is not None
+            )
+
+        assert not any(
+            artifact.startswith("/Users/imhaneul") for artifact in artifact_items
+        )
 
 
 def test_catalog_rejects_duplicate_ids_inside_one_source() -> None:
@@ -259,6 +499,7 @@ def test_builtin_workflows_are_addressable_by_agent_autonomy_policy(
 
     catalog = build_builtin_command_catalog()
     policy = AgentAutonomyPolicy()
+    _write_builtin_agent_config(tmp_path)
 
     blocked: list[str] = []
     for recipe in catalog.commands:

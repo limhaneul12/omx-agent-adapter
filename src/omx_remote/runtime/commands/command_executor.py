@@ -3,13 +3,14 @@ from pathlib import Path
 from omx_remote.runtime.commands.actual_run_record_writer import (
     ActualRunPaths,
     initialize_actual_run,
-    now_iso,
     persist_actual_result,
     persist_initial_run_record,
-    write_json_artifact,
 )
 from omx_remote.runtime.commands.agent_autonomy_policy import AgentAutonomyPolicy
 from omx_remote.runtime.commands.artifact_verifier import ArtifactVerifier
+from omx_remote.runtime.commands.command_artifact_path_policy import (
+    validate_materialized_artifact_paths,
+)
 from omx_remote.runtime.commands.command_output_redaction import (
     redact_argv,
     redact_text,
@@ -27,6 +28,9 @@ from omx_remote.runtime.commands.prompt_artifact_materializer import (
 from omx_remote.runtime.commands.recovery_strategy import (
     append_recovery_note,
     render_recovery_note,
+)
+from omx_remote.runtime.commands.redacted_command_artifact_writer import (
+    write_redacted_json_artifact,
 )
 from omx_remote.runtime.commands.retry_policy import RetryPolicy
 from omx_remote.runtime.commands.subprocess_attempt_runner import (
@@ -54,6 +58,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandPlanStep,
     CommandStepCommand,
 )
+from omx_remote.shared.utils.runtime_identity import utcnow_text
 
 _RUNTIME_HANDOFF_COMMANDS: frozenset[CommandStepCommand] = frozenset(
     {
@@ -70,6 +75,7 @@ _STOPPING_STATUSES: frozenset[CommandStepExecutionStatus] = frozenset(
         CommandStepExecutionStatus.REQUIRES_AGENT_ACTION,
     }
 )
+_MIN_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
 
 
 def _write_step_json(paths: ActualRunPaths, step: CommandPlanStep) -> None:
@@ -80,7 +86,7 @@ def _write_step_json(paths: ActualRunPaths, step: CommandPlanStep) -> None:
         step: See function signature."""
     step_dir = paths.run_dir / "steps" / f"{step.index:03d}"
     step_dir.mkdir(parents=True, exist_ok=True)
-    write_json_artifact(step_dir / "step.json", step.model_dump(mode="json"))
+    write_redacted_json_artifact(step_dir / "step.json", step.model_dump(mode="json"))
 
 
 def _step_should_handoff(step: CommandPlanStep) -> bool:
@@ -119,6 +125,86 @@ def _missing_artifact_classification(
     return classification
 
 
+def _prepare_subprocess_artifact_directories(
+    step: CommandPlanStep,
+    state: ExecutionPlaceholderState,
+    cwd: Path,
+) -> None:
+    """Create parent directories for artifacts a subprocess is expected to write.
+
+    Args:
+        step: See function signature.
+        state: See function signature.
+        cwd: See function signature."""
+    artifact_paths = _validated_expected_artifact_paths(step, state, cwd)
+    for artifact_path in artifact_paths:
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+
+
+def _validated_expected_artifact_paths(
+    step: CommandPlanStep,
+    state: ExecutionPlaceholderState,
+    cwd: Path,
+) -> tuple[Path, ...]:
+    """Resolve and validate every expected artifact before side effects.
+
+    Args:
+        step: See function signature.
+        state: See function signature.
+        cwd: See function signature.
+
+    Returns:
+        tuple[Path, ...]: Validated artifact paths.
+    """
+    artifact_paths: tuple[Path, ...] = validate_materialized_artifact_paths(
+        (
+            resolve_artifact_path(artifact, state)
+            for artifact in step.expected_artifacts
+        ),
+        cwd,
+    )
+    return artifact_paths
+
+
+def _artifact_policy_failure(error: ValueError) -> CommandFailureClassification:
+    """Build a non-retryable failure for unsafe artifact paths.
+
+    Args:
+        error [ValueError]: Path-policy error raised while preparing artifacts.
+
+    Returns:
+        CommandFailureClassification: Failure classification for the blocked path.
+    """
+    classification = CommandFailureClassification(
+        kind=CommandFailureKind.PERMISSION_OR_POLICY_BLOCK,
+        reason=redact_text(str(error)),
+        retryable=False,
+    )
+    return classification
+
+
+def _subprocess_timeout_seconds(
+    step: CommandPlanStep,
+    default_timeout_seconds: float,
+) -> float:
+    """Return the timeout budget for one subprocess step.
+
+    Args:
+        step: See function signature.
+        default_timeout_seconds: See function signature.
+
+    Returns:
+        See function return annotation.
+    """
+    if step.command == CommandStepCommand.CODEX_EXEC:
+        timeout_seconds = max(
+            default_timeout_seconds,
+            _MIN_CODEX_EXEC_TIMEOUT_SECONDS,
+        )
+        return timeout_seconds
+    return default_timeout_seconds
+
+
 class CommandExecutor:
     """Execute typed command plans and write actual run records."""
 
@@ -154,12 +240,12 @@ class CommandExecutor:
         Returns:
             See function return annotation."""
         cwd_path: Path = Path(cwd).resolve()
-        started_at: str = now_iso()
+        started_at: str = utcnow_text()
         paths: ActualRunPaths = initialize_actual_run(
             plan, cwd_path, timestamp=timestamp
         )
         decision: CommandAutonomyDecision = self._policy.decide(plan, autonomy_mode)
-        write_json_artifact(
+        write_redacted_json_artifact(
             paths.autonomy_decision_path, decision.model_dump(mode="json")
         )
         persist_initial_run_record(plan, paths, cwd_path, started_at)
@@ -226,7 +312,12 @@ class CommandExecutor:
 
         Returns:
             See function return annotation."""
-        materialized_paths = materialize_expected_artifacts(step, paths, state, cwd)
+        try:
+            materialized_paths = materialize_expected_artifacts(step, paths, state, cwd)
+        except ValueError as error:
+            classification = _artifact_policy_failure(error)
+            result = self._failed_step_result(step, [], classification, [])
+            return result
         checks = self._artifact_verifier.check_many(materialized_paths)
         result = CommandStepExecutionResult(
             index=step.index,
@@ -263,8 +354,22 @@ class CommandExecutor:
         last_classification: CommandFailureClassification | None = None
         attempt_number = 1
         while True:
+            try:
+                _prepare_subprocess_artifact_directories(step, state, cwd)
+            except ValueError as error:
+                classification = _artifact_policy_failure(error)
+                result = self._failed_step_result(
+                    step,
+                    attempts,
+                    classification,
+                    retry_decisions,
+                    artifact_checks,
+                )
+                return result
             outcome = run_subprocess(
-                step_argv(step, cwd, state), cwd, self._timeout_seconds
+                step_argv(step, cwd, state),
+                cwd,
+                _subprocess_timeout_seconds(step, self._timeout_seconds),
             )
             classification = self._classify_outcome(outcome)
             attempt = write_attempt(
@@ -272,7 +377,7 @@ class CommandExecutor:
             )
             attempts.append(attempt)
             if classification is None:
-                artifact_checks = self._check_expected_artifacts(step, state)
+                artifact_checks = self._check_expected_artifacts(step, state, cwd)
                 classification = _missing_artifact_classification(artifact_checks)
             if classification is None:
                 extract_route_from_stdout(outcome.stdout, state)
@@ -336,19 +441,18 @@ class CommandExecutor:
         self,
         step: CommandPlanStep,
         state: ExecutionPlaceholderState,
+        cwd: Path,
     ) -> tuple[CommandArtifactCheck, ...]:
         """Verify expected artifacts without manufacturing subprocess outputs.
 
         Args:
             step: See function signature.
             state: See function signature.
+            cwd: See function signature.
 
         Returns:
             See function return annotation."""
-        artifact_paths: tuple[Path, ...] = tuple(
-            resolve_artifact_path(artifact, state)
-            for artifact in step.expected_artifacts
-        )
+        artifact_paths = _validated_expected_artifact_paths(step, state, cwd)
         if not artifact_paths:
             empty_checks: tuple[CommandArtifactCheck, ...] = ()
             return empty_checks
@@ -404,7 +508,7 @@ class CommandExecutor:
 
         Returns:
             See function return annotation."""
-        finished_at: str = now_iso()
+        finished_at: str = utcnow_text()
         result = CommandActualRunResult(
             run_id=paths.run_id,
             command_id=plan.command_id,
@@ -448,7 +552,7 @@ class CommandExecutor:
 
         Returns:
             See function return annotation."""
-        finished_at: str = now_iso()
+        finished_at: str = utcnow_text()
         artifact_checks: tuple[CommandArtifactCheck, ...] = tuple(
             check for step in step_results for check in step.artifact_checks
         )

@@ -25,7 +25,7 @@ def _codex_deep_research_recipe() -> CommandRecipe:
         risk=CommandRisk.EXTERNAL_NETWORK,
         steps=(
             codex_step(
-                "Research the supplied objective using live web search. Prioritize "
+                "Research this objective: <task>. Use live web search. Prioritize "
                 "official or upstream sources, include inline citations/source URLs, "
                 "label confidence for each claim, separate evidence from inference, "
                 "and finish with open questions plus recommended next workflow command.",
@@ -83,7 +83,8 @@ def _research_interview_prd_recipe() -> CommandRecipe:
         risk=CommandRisk.LONG_RUNNING,
         steps=(
             codex_step(
-                "Stage 1: run an evidence intake and research pass. Use official, "
+                "Stage 1: run an evidence intake and research pass for: <task>. "
+                "Use official, "
                 "upstream, repo-local, MCP, and Alexandria evidence where available. "
                 "Return cited claims, contradictions, unknowns, and source quality labels.",
                 output_last_message=".agent-remote/runs/research-interview-prd/research-pass-1.md",
@@ -151,7 +152,7 @@ def _company_discovery_loop_recipe() -> CommandRecipe:
         risk=CommandRisk.LONG_RUNNING,
         steps=(
             codex_step(
-                "Research the objective as a product researcher. Use official/upstream, "
+                "Research this objective as a product researcher: <task>. Use official/upstream, "
                 "repo-local, MCP, and Alexandria context where available. Return source "
                 "quality, contradictions, and open questions.",
                 output_last_message=".agent-remote/runs/company-discovery-loop/research.md",
@@ -200,17 +201,13 @@ def _subagent_research_swarm_recipe() -> CommandRecipe:
         risk=CommandRisk.EXTERNAL_NETWORK,
         steps=(
             codex_step(
-                "Spawn read-only research subagents by lane: official/upstream docs, "
+                "Research this objective with read-only subagents: <task>. "
+                "Use bounded lanes: official/upstream docs, "
                 "repo architecture, risks/security, alternatives/prior art. Use web search "
-                "where current evidence matters. Wait for all lanes, then synthesize a "
-                "cited memo with confidence and next workflow command.",
+                "where current evidence matters. Prefer concise lane summaries over long "
+                "transcripts, wait for all lanes, then synthesize a cited memo with "
+                "confidence and next workflow command.",
                 output_last_message=".agent-remote/runs/subagent-research-swarm/synthesis.md",
-                expected_artifacts=(
-                    ".agent-remote/runs/subagent-research-swarm/official-docs.md",
-                    ".agent-remote/runs/subagent-research-swarm/repo-architecture.md",
-                    ".agent-remote/runs/subagent-research-swarm/risks.md",
-                    ".agent-remote/runs/subagent-research-swarm/alternatives.md",
-                ),
                 search=True,
             ),
         ),
@@ -233,7 +230,7 @@ def _dependency_incident_audit_recipe() -> CommandRecipe:
         risk=CommandRisk.EXTERNAL_NETWORK,
         steps=(
             codex_step(
-                "Research the supplied advisory or dependency incident using official "
+                "Research this advisory or dependency incident: <task>. Use official "
                 "security/advisory sources when available. Map affected packages and "
                 "versions to this repository, assess exploitability, propose a minimal "
                 "patch/upgrade plan, and list verification commands.",

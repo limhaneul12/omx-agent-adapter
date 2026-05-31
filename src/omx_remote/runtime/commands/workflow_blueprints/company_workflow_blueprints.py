@@ -12,57 +12,6 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
 )
 
 
-def _company_build_loop_recipe() -> CommandRecipe:
-    """Implement company build loop recipe behavior.
-
-    Returns:
-        See function return annotation."""
-    recipe = CommandRecipe(
-        id="company-build-loop",
-        source=CommandSource.BUILTIN,
-        description=(
-            "Preview a company-like build loop: product research, PRD/staffing, "
-            "Ultragoal, optional Team, verification, code review, UltraQA, and memory."
-        ),
-        risk=CommandRisk.LAUNCHES_RUNTIME,
-        steps=(
-            prompt_step(
-                "Confirm the PRD/test-spec inputs and decide staffing: single Codex "
-                "executor, native Codex subagents, OMX Team, Ralph, or Ultrawork.",
-                expected_artifacts=(
-                    ".agent-remote/runs/company-build-loop/staffing-plan.md",
-                ),
-            ),
-            CommandStep(
-                command=CommandStepCommand.OMX_ULTRAGOAL,
-                inline_prompt=(
-                    "Create or resume an Ultragoal plan from the approved PRD/test spec. "
-                    "Use Team only inside an active story when parallel worktrees/shared "
-                    "team state are genuinely useful."
-                ),
-            ),
-            CommandStep(
-                command=CommandStepCommand.OMX_TEAM,
-                inline_prompt=(
-                    "Optional: launch `omx team` only after Ultragoal identifies an "
-                    "independent parallel story and the leader has captured context."
-                ),
-            ),
-            codex_step(
-                "Run a post-development review summary: changed files, test evidence, "
-                "remaining risks, and whether to proceed to code-review and UltraQA.",
-                output_last_message=".agent-remote/runs/company-build-loop/final-message.md",
-                expected_artifacts=(
-                    ".agent-remote/runs/company-build-loop/final-message.md",
-                    ".omx/ultragoal/goals.json",
-                    ".omx/ultragoal/ledger.jsonl",
-                ),
-            ),
-        ),
-    )
-    return recipe
-
-
 def _company_build_loop_plus_recipe() -> CommandRecipe:
     """Implement company build loop plus recipe behavior.
 
@@ -158,7 +107,7 @@ def _product_council_recipe() -> CommandRecipe:
         risk=CommandRisk.LONG_RUNNING,
         steps=(
             codex_step(
-                "Run a product council with role-separated sections: PM scope, researcher "
+                "Run a product council for: <task>. Use role-separated sections: PM scope, researcher "
                 "evidence, architect route, skeptic risks, operator recommendation, and "
                 "final build/no-build/research-more verdict.",
                 output_last_message=".agent-remote/runs/product-council/decision-memo.md",
@@ -183,7 +132,8 @@ def _team_sprint_plan_recipe() -> CommandRecipe:
         risk=CommandRisk.LAUNCHES_RUNTIME,
         steps=(
             codex_step(
-                "Read the PRD or active UltraGoal story and produce Team sprint lanes: "
+                "Plan Team sprint lanes for: <task>. Read the PRD or active UltraGoal story and produce "
+                "Team sprint lanes: "
                 "lead responsibilities, worker roles, task boundaries, artifacts, mailbox "
                 "protocol, merge rules, and checkpoint evidence.",
                 output_last_message=".agent-remote/runs/team-sprint-plan/team-plan.md",
@@ -215,7 +165,7 @@ def _ultragoal_story_factory_recipe() -> CommandRecipe:
         risk=CommandRisk.LAUNCHES_RUNTIME,
         steps=(
             codex_step(
-                "Read the PRD/test spec and generate UltraGoal-ready stories. Include "
+                "Generate UltraGoal-ready stories for: <task>. Read the PRD/test spec and include "
                 "dependencies, acceptance criteria, verification commands, Team fanout "
                 "candidates, rollback notes, and checkpoint evidence.",
                 output_last_message=".agent-remote/runs/ultragoal-story-factory/stories.md",
@@ -253,7 +203,7 @@ def _migration_checkpoint_loop_recipe() -> CommandRecipe:
         risk=CommandRisk.LAUNCHES_RUNTIME,
         steps=(
             codex_step(
-                "Analyze the migration objective and repository constraints. Produce "
+                "Analyze this migration objective and repository constraints: <task>. Produce "
                 "checkpoint slices, invariants, rollback notes, verification commands, "
                 "and parallelism boundaries.",
                 output_last_message=".agent-remote/runs/migration-checkpoint-loop/plan.md",
@@ -344,7 +294,6 @@ def build_company_workflow_blueprints() -> tuple[CommandRecipe, ...]:
     Returns:
         See function return annotation."""
     recipes = (
-        _company_build_loop_recipe(),
         _company_build_loop_plus_recipe(),
         _subagent_review_wave_recipe(),
         _product_council_recipe(),
