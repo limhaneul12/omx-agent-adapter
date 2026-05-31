@@ -10,6 +10,7 @@ from omx_remote.schemas.agents.codex_agent_materialization_schemas import (
     CodexAgentMaterializationFileStatus,
     CodexAgentMaterializationPlan,
     CodexAgentMaterializationStatus,
+    CodexAgentMaterializationTarget,
 )
 
 
@@ -77,6 +78,7 @@ def _file_status(
     matches: bool = actual_sha256 == planned_file.content_sha256
     status = CodexAgentMaterializationFileStatus(
         agent_id=planned_file.agent_id,
+        materialized_agent_name=planned_file.materialized_agent_name,
         target_path=planned_file.target_path,
         exists=exists,
         matches=matches,
@@ -89,12 +91,16 @@ def _file_status(
 def read_codex_agent_materialization_status(
     cwd: str | Path,
     codex_home: str | Path | None = None,
+    target: CodexAgentMaterializationTarget = CodexAgentMaterializationTarget.PROJECT,
+    namespace: str | None = None,
 ) -> CodexAgentMaterializationStatus:
     """Read whether generated Codex agent files match the TOML source.
 
     Args:
         cwd [str | Path]: Repository root.
         codex_home [str | Path | None]: Optional Codex home used for capability detection.
+        target [CodexAgentMaterializationTarget]: Materialization target.
+        namespace [str | None]: Optional global target namespace.
 
     Returns:
         CodexAgentMaterializationStatus: Generated artifact status.
@@ -102,6 +108,8 @@ def read_codex_agent_materialization_status(
     plan: CodexAgentMaterializationPlan = build_codex_agent_materialization_plan(
         cwd,
         codex_home=codex_home,
+        target=target,
+        namespace=namespace,
     )
     file_statuses: tuple[CodexAgentMaterializationFileStatus, ...] = tuple(
         _file_status(planned_file) for planned_file in plan.files
@@ -112,6 +120,7 @@ def read_codex_agent_materialization_status(
     status = CodexAgentMaterializationStatus(
         up_to_date=up_to_date,
         supported=plan.supported,
+        target=plan.target,
         files=file_statuses,
         warning_count=len(plan.warnings),
         warnings=plan.warnings,

@@ -63,7 +63,10 @@ def detect_codex_agent_capabilities(
         resolved_codex_home
     )
     if native_agent_toml_supported:
-        targets: tuple[str, ...] = ("project_codex_agents_toml",)
+        targets: tuple[str, ...] = (
+            "project_codex_agents_toml",
+            "global_codex_agents_toml",
+        )
         warnings: tuple[str, ...] = ()
     else:
         targets = ()

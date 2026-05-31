@@ -1,6 +1,6 @@
 # Agent Remote Subagents TOML
 
-Use `agent-remote agents` to validate repo-local TOML subagent configuration and materialize supported entries into project-local Codex native agent files.
+Use `agent-remote agents` to validate repo-local TOML subagent configuration and materialize supported entries into Codex native agent files.
 
 Minimal `.agent-remote.toml` shape:
 
@@ -27,6 +27,19 @@ agent-remote agents apply-codex --cwd . --dry-run --json
 agent-remote agents codex-status --cwd . --json
 ```
 
+Materialization targets:
+
+- `--target project` writes `.codex/agents/<agent>.toml`. This is the Codex-documented project-scoped location and remains the default.
+- `--target global --namespace <project-slug>` writes `~/.codex/agents/<project-slug>-<agent>.toml`. Use this for non-interactive `codex exec` dogfood when project-local custom agents are not visible to the spawn surface.
+
+Global target preview:
+
+```bash
+agent-remote agents plan-apply-codex --cwd . --target global --namespace my-project --json
+agent-remote agents apply-codex --cwd . --target global --namespace my-project --dry-run --json
+agent-remote agents codex-status --cwd . --target global --namespace my-project --json
+```
+
 Agent JSON contract example from `agent-remote agents validate --cwd . --json` when no config exists yet:
 
 ```json
@@ -47,6 +60,7 @@ Codex materialization status example from `agent-remote agents codex-status --cw
 {
   "up_to_date": true,
   "supported": true,
+  "target": "project",
   "files": [],
   "warning_count": 1,
   "warnings": [
@@ -55,4 +69,4 @@ Codex materialization status example from `agent-remote agents codex-status --cw
 }
 ```
 
-Materialization rule: use `plan-apply-codex` or `apply-codex --dry-run` before writing `.codex/agents/*.toml`. The adapter should preserve Codex-native semantics instead of inventing a separate agent framework.
+Materialization rule: use `plan-apply-codex` or `apply-codex --dry-run` before writing Codex agent TOML. Keep repo source in `.agent-remote.toml`, use project target for documented local files, and use global namespaced target only when the execution surface has proven it needs globally discoverable agent names.

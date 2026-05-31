@@ -1,9 +1,11 @@
 from pathlib import Path
 
-import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_invalid_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.agents.agent_config_loader import (
     AgentConfigLoadError,
     load_agent_config,
@@ -26,29 +28,13 @@ from omx_remote.schemas.agents.codex_agent_materialization_schemas import (
     CodexAgentMaterializationApplyResult,
     CodexAgentMaterializationPlan,
     CodexAgentMaterializationStatus,
+    CodexAgentMaterializationTarget,
 )
 
 agents_app = typer.Typer(
     help="Validate and inspect repo-local TOML subagent configuration.",
     add_completion=False,
 )
-
-
-def _format_error_payload(error: Exception, config_path: str | None = None) -> str:
-    """Format one CLI error as JSON.
-
-    Args:
-        error [Exception]: Error raised while loading or validating config.
-        config_path [str | None]: Optional config path to include.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"valid": False, "error": str(error)}
-    if config_path is not None:
-        payload["config_path"] = config_path
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _format_agents_human_table(agents: tuple[AgentConfig, ...]) -> str:
@@ -183,7 +169,9 @@ def agents_show(
         config: AgentConfigSet = load_agent_config(cwd=cwd, config_path=config_path)
         agent: AgentConfig | None = config.find_agent(agent_id)
         if agent is None:
-            raise ValueError(f"No agent named {agent_id} was found in {config.config_path}.")
+            raise ValueError(
+                f"No agent named {agent_id} was found in {config.config_path}."
+            )
         result = AgentShowResult(
             config_path=config.config_path,
             agent=agent,
@@ -272,6 +260,16 @@ def agents_plan_apply_codex(
         "--include-disabled",
         help="Include disabled agents in the audit plan.",
     ),
+    target: CodexAgentMaterializationTarget = typer.Option(
+        CodexAgentMaterializationTarget.PROJECT,
+        "--target",
+        help="Codex materialization target: project writes .codex/agents; global writes ~/.codex/agents with a namespace.",
+    ),
+    namespace: str | None = typer.Option(
+        None,
+        "--namespace",
+        help="Namespace prefix for --target global. Defaults to the repository directory name.",
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Plan Codex-native agent materialization.
@@ -280,20 +278,29 @@ def agents_plan_apply_codex(
         cwd [Path]: Repository root used for config resolution.
         codex_home [Path | None]: Optional Codex home override.
         include_disabled [bool]: Whether disabled agents should be included.
+        target [CodexAgentMaterializationTarget]: Materialization target.
+        namespace [str | None]: Optional global target namespace.
         json_output [bool]: Whether to print JSON.
     """
     plan: CodexAgentMaterializationPlan = build_codex_agent_materialization_plan(
         cwd,
         codex_home=codex_home,
         include_disabled=include_disabled,
+        target=target,
+        namespace=namespace,
     )
     if json_output:
         typer.echo(plan.model_dump_json(indent=2))
         return
 
     typer.echo(f"supported: {plan.supported}")
+    typer.echo(f"target: {plan.target}")
     for planned_file in plan.files:
-        typer.echo(f"{planned_file.agent_id}\t{planned_file.target_path}")
+        typer.echo(
+            f"{planned_file.agent_id}\t"
+            f"{planned_file.materialized_agent_name}\t"
+            f"{planned_file.target_path}"
+        )
     for warning in plan.warnings:
         typer.echo(f"warning: {warning}")
 
@@ -310,7 +317,19 @@ def agents_apply_codex(
         "--codex-home",
         help="Codex home used to verify native agent TOML support.",
     ),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Plan without writing files."),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Plan without writing files."
+    ),
+    target: CodexAgentMaterializationTarget = typer.Option(
+        CodexAgentMaterializationTarget.PROJECT,
+        "--target",
+        help="Codex materialization target: project writes .codex/agents; global writes ~/.codex/agents with a namespace.",
+    ),
+    namespace: str | None = typer.Option(
+        None,
+        "--namespace",
+        help="Namespace prefix for --target global. Defaults to the repository directory name.",
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Apply Codex-native agent materialization.
@@ -319,11 +338,15 @@ def agents_apply_codex(
         cwd [Path]: Repository root used for config resolution.
         codex_home [Path | None]: Optional Codex home override.
         dry_run [bool]: Whether to avoid writing files.
+        target [CodexAgentMaterializationTarget]: Materialization target.
+        namespace [str | None]: Optional global target namespace.
         json_output [bool]: Whether to print JSON.
     """
     plan: CodexAgentMaterializationPlan = build_codex_agent_materialization_plan(
         cwd,
         codex_home=codex_home,
+        target=target,
+        namespace=namespace,
     )
     result: CodexAgentMaterializationApplyResult = apply_codex_agent_materialization(
         plan,
@@ -334,6 +357,7 @@ def agents_apply_codex(
         return
 
     typer.echo(f"dry_run: {result.dry_run}")
+    typer.echo(f"target: {result.plan.target}")
     for written_file in result.written_files:
         typer.echo(f"wrote: {written_file}")
     for warning in result.warnings:
@@ -352,6 +376,16 @@ def agents_codex_status(
         "--codex-home",
         help="Codex home used to verify native agent TOML support.",
     ),
+    target: CodexAgentMaterializationTarget = typer.Option(
+        CodexAgentMaterializationTarget.PROJECT,
+        "--target",
+        help="Codex materialization target: project writes .codex/agents; global writes ~/.codex/agents with a namespace.",
+    ),
+    namespace: str | None = typer.Option(
+        None,
+        "--namespace",
+        help="Namespace prefix for --target global. Defaults to the repository directory name.",
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Report generated Codex-native agent file status.
@@ -359,18 +393,28 @@ def agents_codex_status(
     Args:
         cwd [Path]: Repository root used for config resolution.
         codex_home [Path | None]: Optional Codex home override.
+        target [CodexAgentMaterializationTarget]: Materialization target.
+        namespace [str | None]: Optional global target namespace.
         json_output [bool]: Whether to print JSON.
     """
     status: CodexAgentMaterializationStatus = read_codex_agent_materialization_status(
         cwd,
         codex_home=codex_home,
+        target=target,
+        namespace=namespace,
     )
     if json_output:
         typer.echo(status.model_dump_json(indent=2))
         return
 
     typer.echo(f"up_to_date: {status.up_to_date}")
+    typer.echo(f"target: {status.target}")
     for file_status in status.files:
-        typer.echo(f"{file_status.agent_id}\t{file_status.matches}\t{file_status.target_path}")
+        typer.echo(
+            f"{file_status.agent_id}\t"
+            f"{file_status.materialized_agent_name}\t"
+            f"{file_status.matches}\t"
+            f"{file_status.target_path}"
+        )
     for warning in status.warnings:
         typer.echo(f"warning: {warning}")

@@ -168,7 +168,43 @@ def test_agents_plan_apply_codex_outputs_materialization_plan(tmp_path: Path) ->
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
     assert payload["supported"] is True
+    assert payload["target"] == "project"
     assert [file["agent_id"] for file in payload["files"]] == ["architect"]
+    assert [file["materialized_agent_name"] for file in payload["files"]] == [
+        "architect"
+    ]
+
+
+def test_agents_plan_apply_codex_can_target_global_namespace(tmp_path: Path) -> None:
+    _write_agent_config(tmp_path / ".agent-remote.toml")
+    codex_home = tmp_path / "codex-home"
+    _write_codex_contract(codex_home)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agents",
+            "plan-apply-codex",
+            "--cwd",
+            str(tmp_path),
+            "--codex-home",
+            str(codex_home),
+            "--target",
+            "global",
+            "--namespace",
+            "sample-project",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["target"] == "global"
+    assert payload["files"][0]["agent_id"] == "architect"
+    assert payload["files"][0]["materialized_agent_name"] == "sample-project-architect"
+    assert payload["files"][0]["target_path"] == str(
+        codex_home / "agents" / "sample-project-architect.toml"
+    )
 
 
 def test_agents_apply_codex_dry_run_does_not_write(tmp_path: Path) -> None:
@@ -193,6 +229,7 @@ def test_agents_apply_codex_dry_run_does_not_write(tmp_path: Path) -> None:
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
     assert payload["dry_run"] is True
+    assert payload["plan"]["target"] == "project"
     assert payload["written_files"] == []
     assert not (tmp_path / ".codex" / "agents" / "architect.toml").exists()
 
@@ -231,4 +268,5 @@ def test_agents_codex_status_reports_generated_artifact_match(tmp_path: Path) ->
     assert status_result.exit_code == 0
     payload = orjson.loads(status_result.stdout)
     assert payload["up_to_date"] is True
+    assert payload["target"] == "project"
     assert payload["files"][0]["matches"] is True
