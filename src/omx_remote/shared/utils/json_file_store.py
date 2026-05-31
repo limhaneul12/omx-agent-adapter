@@ -4,6 +4,9 @@ from pathlib import Path
 import orjson
 from pydantic import BaseModel
 
+from omx_remote.adapter_types.json_types import JsonObject, JsonValue
+from omx_remote.shared.json_transport import is_json_value, json_object_or_none
+
 
 class JsonFileStore:
     """Reads and writes one JSON file path using orjson."""
@@ -16,11 +19,11 @@ class JsonFileStore:
         """
         self.path = path.resolve()
 
-    def read_object(self) -> dict[str, object] | None:
+    def read_object(self) -> JsonObject | None:
         """Read a JSON object from the owned path with orjson.
 
         Returns:
-            dict[str, object] | None: Parsed JSON object when the file exists and contains an object; otherwise ``None``.
+            JsonObject | None: Parsed JSON object when the file exists and contains an object; otherwise ``None``.
         """
         try:
             raw_payload: bytes = self.path.read_bytes()
@@ -33,18 +36,20 @@ class JsonFileStore:
         except orjson.JSONDecodeError:
             return None
 
-        if isinstance(parsed_payload, dict):
-            object_payload: dict[str, object] = dict(parsed_payload)
-            return object_payload
+        object_payload: JsonObject | None = json_object_or_none(parsed_payload)
+        return object_payload
 
-        return None
-
-    def write_mapping(self, payload: Mapping[str, object]) -> None:
+    def write_mapping(self, payload: Mapping[str, JsonValue]) -> None:
         """Write a mapping as indented JSON to the owned path.
 
         Args:
-            payload [Mapping[str, object]]: Mapping to serialize.
+            payload [Mapping[str, JsonValue]]: Mapping to serialize.
         """
+        if not all(
+            isinstance(key, str) and is_json_value(value)
+            for key, value in payload.items()
+        ):
+            raise ValueError("mapping payload must contain JSON-compatible values")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         serialized_payload: bytes = orjson.dumps(payload, option=orjson.OPT_INDENT_2)
         self.path.write_bytes(serialized_payload)
@@ -55,7 +60,10 @@ class JsonFileStore:
         Args:
             model [BaseModel]: Pydantic model to serialize with ``mode=\"json\"``.
         """
-        payload: dict[str, object] = model.model_dump(mode="json")
+        raw_payload: object = model.model_dump(mode="json")
+        payload: JsonObject | None = json_object_or_none(raw_payload)
+        if payload is None:
+            raise ValueError("model dump did not produce a JSON object")
         self.write_mapping(payload)
 
 

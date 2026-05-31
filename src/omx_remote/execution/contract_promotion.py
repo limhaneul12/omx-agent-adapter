@@ -22,7 +22,11 @@ from omx_remote.schemas.execution.event_schemas import (
     ExecToolResult,
 )
 from omx_remote.shared.exceptions import UnsupportedExecutionPayloadError
-from omx_remote.shared.omx_enums.execution_enums import PromotableExecutionPayloadType
+from omx_remote.shared.omx_enums.execution_enums import (
+    ExecutionEventKind,
+    ExecutionPayloadKind,
+    PromotableExecutionPayloadType,
+)
 
 
 def promote_exec_command_execution(
@@ -37,7 +41,7 @@ def promote_exec_command_execution(
         ExecCommandExecution: Stable command-execution contract built from the normalized raw payload.
     """
     normalized_payload = ExecCommandExecutionNormalizedPayload(
-        kind="command_execution",
+        kind=ExecutionPayloadKind.COMMAND_EXECUTION,
         command=payload["command"],
         aggregated_output=payload["aggregated_output"],
         exit_code=payload["exit_code"],
@@ -59,7 +63,7 @@ def promote_exec_message(payload: ExecutionPayload) -> ExecMessage:
         ExecMessage: Stable execution message contract built from the normalized raw payload.
     """
     normalized_payload = ExecMessageNormalizedPayload(
-        kind="message",
+        kind=ExecutionPayloadKind.MESSAGE,
         text=payload["text"],
     )
     result: ExecMessage = ExecMessage.model_validate(normalized_payload)
@@ -76,7 +80,7 @@ def promote_exec_output(payload: ExecutionPayload) -> ExecOutput:
         ExecOutput: Stable execution output contract built from the normalized raw payload.
     """
     normalized_payload = ExecOutputNormalizedPayload(
-        kind="output_text",
+        kind=ExecutionPayloadKind.OUTPUT_TEXT,
         text=payload["text"],
     )
     result: ExecOutput = ExecOutput.model_validate(normalized_payload)
@@ -93,7 +97,7 @@ def promote_exec_tool_call(payload: ExecutionPayload) -> ExecToolCall:
         ExecToolCall: Stable execution tool-call contract built from the normalized raw payload.
     """
     normalized_payload = ExecToolCallNormalizedPayload(
-        kind="tool_call",
+        kind=ExecutionPayloadKind.TOOL_CALL,
         tool_name=payload["tool_name"],
         call_id=payload["call_id"],
         arguments=payload["arguments"],
@@ -112,7 +116,7 @@ def promote_exec_tool_result(payload: ExecutionPayload) -> ExecToolResult:
         ExecToolResult: Stable execution tool-result contract built from the normalized raw payload.
     """
     normalized_payload = ExecToolResultNormalizedPayload(
-        kind="tool_result",
+        kind=ExecutionPayloadKind.TOOL_RESULT,
         tool_name=payload["tool_name"],
         call_id=payload["call_id"],
         text=payload["text"],
@@ -178,7 +182,7 @@ def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
     """
     event_type: object | None = payload.get("type")
 
-    if event_type == "item.completed":
+    if event_type == ExecutionEventKind.ITEM_COMPLETED:
         item: object | None = payload.get("item")
         if isinstance(item, dict):
             item_payload: ExecutionPayload = cast(ExecutionPayload, item)
@@ -221,4 +225,3 @@ def route_execution_payload(payload: ExecutionPayload) -> RoutedExecutionPayload
 
     contract: ExecutionContract = promote_execution_contract(payload)
     return contract
-

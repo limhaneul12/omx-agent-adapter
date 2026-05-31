@@ -1,70 +1,15 @@
-from enum import StrEnum
-
 from pydantic import Field
 
-from omx_remote.schemas.commands.command_recipe_schemas import CommandStepCommand
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-
-
-class CommandAutonomyMode(StrEnum):
-    """Supported autonomy modes for actual command execution."""
-
-    AGENT = "agent"
-
-
-class CommandAutonomyDecisionKind(StrEnum):
-    """Agent policy decisions before or during execution."""
-
-    ALLOW = "allow"
-    BLOCK = "block"
-    RETRY = "retry"
-    RECOVER = "recover"
-    DEFER = "defer"
-
-
-class CommandActualRunStatus(StrEnum):
-    """Final status for an actual composed-command run."""
-
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    BLOCKED = "blocked"
-    REQUIRES_AGENT_ACTION = "requires_agent_action"
-
-
-class CommandStepExecutionStatus(StrEnum):
-    """Execution status for one planned command step."""
-
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    BLOCKED = "blocked"
-    RECOVERED = "recovered"
-    REQUIRES_AGENT_ACTION = "requires_agent_action"
-
-
-class CommandFailureKind(StrEnum):
-    """Normalized failure classes for retry and recovery decisions."""
-
-    TRANSIENT_NETWORK = "transient_network"
-    TIMEOUT = "timeout"
-    MISSING_ARTIFACT = "missing_artifact"
-    LINT_FAILURE = "lint_failure"
-    TEST_FAILURE = "test_failure"
-    RUNTIME_CONFLICT = "runtime_conflict"
-    DIRTY_WORKTREE = "dirty_worktree"
-    MISSING_TOOL = "missing_tool"
-    INVALID_COMMAND = "invalid_command"
-    PERMISSION_OR_POLICY_BLOCK = "permission_or_policy_block"
-    UNKNOWN_FAILURE = "unknown_failure"
-
-
-class CommandRecoveryAction(StrEnum):
-    """Recovery actions a failed step can take before final failure."""
-
-    NONE = "none"
-    RETRY_STEP = "retry_step"
-    WRITE_HANDOFF = "write_handoff"
-    MATERIALIZE_ARTIFACTS = "materialize_artifacts"
-    FINAL_FAIL = "final_fail"
+from omx_remote.shared.omx_enums.command_enums import (
+    CommandActualRunStatus,
+    CommandAutonomyDecisionKind,
+    CommandAutonomyMode,
+    CommandFailureKind,
+    CommandRecoveryAction,
+    CommandStepCommand,
+    CommandStepExecutionStatus,
+)
 
 
 class CommandAutonomyDecision(StrictSchemaModel):

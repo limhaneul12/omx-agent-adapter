@@ -1,23 +1,8 @@
-from enum import StrEnum
-
 from pydantic import Field, computed_field, model_validator
 
 from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-
-
-class McpServerSource(StrEnum):
-    """Configuration sources that comx-agent can consume for MCP servers."""
-
-    CODEX = "codex"
-    REPO = "repo"
-
-
-class McpTransportKind(StrEnum):
-    """MCP transport kinds supported by the client surface."""
-
-    STDIO = "stdio"
-    STREAMABLE_HTTP = "streamable_http"
+from omx_remote.shared.omx_enums.mcp_enums import McpServerSource, McpTransportKind
 
 
 class McpEnvironmentVariable(StrictSchemaModel):

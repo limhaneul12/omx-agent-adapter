@@ -1,48 +1,16 @@
-from enum import StrEnum
-
 from pydantic import Field, model_validator
 
 from omx_remote.adapter_types.json_types import JsonObject
+from omx_remote.schemas.commands.command_role_schemas import CommandRoleLane
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-
-
-class CommandSource(StrEnum):
-    """Sources that can provide project-owned command recipes."""
-
-    BUILTIN = "builtin"
-    REPO = "repo"
-    ONE_OFF = "one_off"
-
-
-class CommandRisk(StrEnum):
-    """Command risk classes used for dry-run planning."""
-
-    READ_ONLY = "read_only"
-    WRITES_FILES = "writes_files"
-    LAUNCHES_RUNTIME = "launches_runtime"
-    LONG_RUNNING = "long_running"
-    EXTERNAL_NETWORK = "external_network"
-
-
-class CommandStepCommand(StrEnum):
-    """Supported composed-command step kinds."""
-
-    CODEX_EXEC = "codex_exec"
-    OMX_EXEC = "omx_exec"
-    OMX_ULTRAGOAL = "omx_ultragoal"
-    OMX_TEAM = "omx_team"
-    OMX_RALPH = "omx_ralph"
-    MCP_TOOL = "mcp_tool"
-    LOCAL = "local"
-    PROMPT_ONLY = "prompt_only"
-
-
-class CodexSandboxMode(StrEnum):
-    """Supported Codex sandbox modes for composed-command previews."""
-
-    READ_ONLY = "read-only"
-    WORKSPACE_WRITE = "workspace-write"
-    DANGER_FULL_ACCESS = "danger-full-access"
+from omx_remote.shared.omx_enums.command_enums import (
+    CodexSandboxMode,
+    CommandRecipeMode,
+    CommandRecipeProvider,
+    CommandRisk,
+    CommandSource,
+    CommandStepCommand,
+)
 
 
 class CommandRecipe(StrictSchemaModel):
@@ -81,6 +49,7 @@ class CommandStep(StrictSchemaModel):
     mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
+    role_lanes: tuple[CommandRoleLane, ...] = ()
 
     @model_validator(mode="after")
     def _validate_codex_options(self) -> "CommandStep":
@@ -104,8 +73,8 @@ class RepoCommandDefinition(StrictSchemaModel):
     description: NonEmptyString
     risk: CommandRisk = CommandRisk.READ_ONLY
     steps: tuple[CommandStep, ...] | None = None
-    provider: NonEmptyString | None = None
-    mode: NonEmptyString | None = None
+    provider: CommandRecipeProvider | None = None
+    mode: CommandRecipeMode | None = None
     agent: NonEmptyString | None = None
     argv: tuple[NonEmptyString, ...] = ()
     codex_search: bool = False
@@ -118,6 +87,7 @@ class RepoCommandDefinition(StrictSchemaModel):
     mcp_arguments: JsonObject = Field(default_factory=dict)
     output_last_message: NonEmptyString | None = None
     expected_artifacts: tuple[NonEmptyString, ...] = ()
+    role_lanes: tuple[CommandRoleLane, ...] = ()
 
     @model_validator(mode="after")
     def _validate_codex_options(self) -> "RepoCommandDefinition":
@@ -132,7 +102,10 @@ class RepoCommandDefinition(StrictSchemaModel):
             raise ValueError(
                 "top-level codex_search/codex_sandbox cannot be combined with steps"
             )
-        if self.provider == "codex" and self.mode == "exec":
+        if (
+            self.provider == CommandRecipeProvider.CODEX
+            and self.mode == CommandRecipeMode.EXEC
+        ):
             return self
         raise ValueError(
             "codex_search and codex_sandbox require provider='codex' and mode='exec'"
@@ -232,6 +205,7 @@ class CommandPlanStep(StrictSchemaModel):
     mcp_tool: NonEmptyString | None = None
     mcp_arguments: JsonObject = Field(default_factory=dict)
     expected_artifacts: tuple[NonEmptyString, ...] = ()
+    role_lanes: tuple[CommandRoleLane, ...] = ()
     risk: CommandRisk
     blocked_reasons: tuple[NonEmptyString, ...] = ()
 

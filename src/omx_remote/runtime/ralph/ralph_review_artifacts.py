@@ -1,12 +1,31 @@
 from pathlib import Path
 
 import orjson
+from pydantic import BaseModel
 
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
 from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
     TeamAdminAggregationReport,
 )
+
+
+def _read_json_model_artifact[ModelT: BaseModel](
+    path: Path,
+    model_type: type[ModelT],
+) -> ModelT:
+    """Read one JSON artifact and validate it as a Pydantic model.
+
+    Args:
+        path [Path]: JSON artifact path to read.
+        model_type [type[ModelT]]: Pydantic model class used for validation.
+
+    Returns:
+        ModelT: Validated model instance.
+    """
+    artifact_payload = orjson.loads(path.read_bytes())
+    artifact_model: ModelT = model_type.model_validate(artifact_payload)
+    return artifact_model
 
 
 def read_ralph_prd_artifact_file(prd_path: Path) -> RalphPrdArtifact:
@@ -18,8 +37,7 @@ def read_ralph_prd_artifact_file(prd_path: Path) -> RalphPrdArtifact:
     Returns:
         RalphPrdArtifact: Validated Ralph PRD artifact from the file.
     """
-    prd_payload = orjson.loads(prd_path.read_bytes())
-    prd_artifact: RalphPrdArtifact = RalphPrdArtifact.model_validate(prd_payload)
+    prd_artifact = _read_json_model_artifact(prd_path, RalphPrdArtifact)
     return prd_artifact
 
 
@@ -34,9 +52,9 @@ def read_team_admin_aggregation_report_artifact(
     Returns:
         TeamAdminAggregationReport: Validated Team Admin aggregation report from the file.
     """
-    report_payload = orjson.loads(report_path.read_bytes())
-    report: TeamAdminAggregationReport = TeamAdminAggregationReport.model_validate(
-        report_payload
+    report = _read_json_model_artifact(
+        report_path,
+        TeamAdminAggregationReport,
     )
     return report
 
@@ -50,9 +68,9 @@ def read_ralph_post_team_review_artifact(review_path: Path) -> RalphPostTeamRevi
     Returns:
         RalphPostTeamReviewResult: Validated Ralph post-Team review result from the file.
     """
-    review_payload = orjson.loads(review_path.read_bytes())
-    review_result: RalphPostTeamReviewResult = RalphPostTeamReviewResult.model_validate(
-        review_payload
+    review_result = _read_json_model_artifact(
+        review_path,
+        RalphPostTeamReviewResult,
     )
     return review_result
 

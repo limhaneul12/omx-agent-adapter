@@ -70,7 +70,7 @@ def _recipes() -> CockpitCommandRecipeSummary:
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff"),
+        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
         warnings=(),
     )
 

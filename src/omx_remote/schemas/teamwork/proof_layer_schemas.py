@@ -1,26 +1,8 @@
-from enum import StrEnum
-
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-
-
-class TeamProofLayerName(StrEnum):
-    """Stable proof-layer names for Team launch/status evidence."""
-
-    PRD_DAG_IMPORT = "prd_dag_import"
-    ASSIGNMENT = "assignment"
-    WORKER_READINESS = "worker_readiness"
-    DISPATCH = "dispatch"
-    COMPLETION = "completion"
-
-
-class TeamProofLayerState(StrEnum):
-    """Machine-readable state for one Team proof layer."""
-
-    MISSING = "missing"
-    PARTIAL = "partial"
-    PASSED = "passed"
-    FAILED = "failed"
-    UNKNOWN = "unknown"
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    TeamProofLayerName,
+    TeamProofLayerState,
+)
 
 
 class TeamProofLayerSummary(StrictSchemaModel):

@@ -99,7 +99,7 @@ def _recipes() -> CockpitCommandRecipeSummary:
         repo_count=1,
         qualified_ids=(
             "builtin:review-diff",
-            "builtin:verify-handoff",
+            "builtin:verify-handoff-plus",
             "repo:implement-with-review",
         ),
         warnings=(),
@@ -159,7 +159,7 @@ def test_policy_does_not_prefer_ultragoal_for_small_verification(
 
     assert result.recommendations[0].route != RouteName.OMX_ULTRAGOAL
     assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
-    assert result.recommendations[0].command_id == "builtin:verify-handoff"
+    assert result.recommendations[0].command_id == "builtin:verify-handoff-plus"
 
 
 def test_policy_prefers_review_diff_recipe_for_review_task(tmp_path: Path) -> None:

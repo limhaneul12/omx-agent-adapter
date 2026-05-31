@@ -232,7 +232,7 @@ def _build_recommendations(
     elif classification.task_type == RouteTaskType.VERIFICATION:
         project_verify = _recommend_project_command(
             recipe_summary,
-            "builtin:verify-handoff",
+            "builtin:verify-handoff-plus",
             "The task is verification and the built-in handoff verification recipe is available.",
         )
         if project_verify is not None:

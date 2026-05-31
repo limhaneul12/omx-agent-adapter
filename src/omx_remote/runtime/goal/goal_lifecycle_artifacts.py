@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.goal.codex_goal_runtime import CodexGoalMirrorStateStore
 from omx_remote.runtime.goal.goal_lifecycle_decision import (
     build_goal_lifecycle_decision,
@@ -154,7 +155,7 @@ class CodexGoalLifecycleArtifactStore:
         """
         artifact_path: Path = self.artifact_path_for_goal(goal_id)
         store = json_file_stores.for_path(artifact_path)
-        payload: dict[str, object] | None = store.read_object()
+        payload: JsonObject | None = store.read_object()
         if payload is None:
             raise ValueError(f"Missing Goal lifecycle artifact bundle for {goal_id}.")
 

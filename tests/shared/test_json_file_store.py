@@ -1,5 +1,7 @@
+import math
 from pathlib import Path
 
+import pytest
 from pydantic import BaseModel
 
 from omx_remote.shared.utils.json_file_store import JsonFileStore, json_file_stores
@@ -29,6 +31,18 @@ def test_json_file_store_writes_and_reads_mapping_without_repassing_path(tmp_pat
     result = store.read_object()
 
     assert result == {"name": "alpha", "count": 2}
+
+
+def test_json_file_store_rejects_non_finite_float_before_mkdir(
+    tmp_path: Path,
+) -> None:
+    state_path = tmp_path / "state" / "payload.json"
+    store = JsonFileStore(state_path)
+
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        store.write_mapping({"value": math.nan})
+
+    assert not state_path.parent.exists()
 
 
 def test_json_file_store_write_model_creates_parent_directories(tmp_path: Path) -> None:

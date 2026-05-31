@@ -1,11 +1,14 @@
-from typing import Literal
-
 from omx_remote.schemas.common_schemas import (
     NonEmptyString,
     NonEmptyStrings,
     StrictSchemaModel,
 )
 from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    TeamOperatorDeliveryMode,
+    TeamOperatorDispatchOperation,
+    TeamOperatorDispatchOutcomeState,
+)
 
 
 class TeamOperatorDispatchInstructionRequest(StrictSchemaModel):
@@ -52,14 +55,8 @@ class TeamOperatorWorkerRecheckRequest(StrictSchemaModel):
 class TeamOperatorDispatchOutcome(StrictSchemaModel):
     """Represents the Hermes-oriented outcome for one dispatched operator action."""
 
-    selected_operation: Literal[
-        "send-message",
-        "write-worker-inbox",
-        "broadcast",
-        "create-task",
-        "write-task-approval",
-    ]
-    outcome: Literal["accepted", "accepted_but_unverified", "failed"]
+    selected_operation: TeamOperatorDispatchOperation
+    outcome: TeamOperatorDispatchOutcomeState
     needs_follow_up: bool
     reason: NonEmptyString
     command_result: OmxCommandResult
@@ -69,5 +66,5 @@ class TeamOperatorWorkerFollowUpOutcome(StrictSchemaModel):
     """Represents the Hermes-oriented outcome for one worker follow-up decision."""
 
     worker_state: NonEmptyString
-    selected_delivery_mode: Literal["direct_message", "durable_inbox"]
+    selected_delivery_mode: TeamOperatorDeliveryMode
     dispatch_result: TeamOperatorDispatchOutcome

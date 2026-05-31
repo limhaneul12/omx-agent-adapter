@@ -3,6 +3,7 @@ from enum import StrEnum
 from pydantic import Field, field_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.shared.utils.session_identifiers import validate_session_identifier
 
 
 class ComxTuiSessionStatus(StrEnum):
@@ -44,16 +45,8 @@ class ComxTuiSessionRecord(StrictSchemaModel):
         Returns:
             str: Validated session id.
         """
-        allowed_characters: set[str] = {"-", "_"}
-        if not value[0].isalnum() or not all(
-            character.isalnum() or character in allowed_characters
-            for character in value
-        ):
-            raise ValueError(
-                "session id must start with a letter or digit and use only "
-                "letters, digits, '-' or '_'"
-            )
-        return value
+        validated_session_id = validate_session_identifier(value)
+        return validated_session_id
 
 
 class ComxTuiSessionListResult(StrictSchemaModel):

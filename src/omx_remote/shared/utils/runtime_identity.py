@@ -2,6 +2,16 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 
+def utc_compact_timestamp() -> str:
+    """Build a compact UTC timestamp text value for runtime run ids.
+
+    Returns:
+        str: Current UTC timestamp in `YYYYMMDDTHHMMSSZ` form.
+    """
+    timestamp_text: str = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    return timestamp_text
+
+
 def utcnow_text() -> str:
     """Builds an ISO-8601 UTC timestamp text value.
 

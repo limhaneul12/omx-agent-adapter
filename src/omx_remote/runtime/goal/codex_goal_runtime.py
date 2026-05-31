@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.execution.codex_invoke import (
     is_codex_goal_session_active,
     spawn_codex_goal_session,
@@ -144,7 +145,7 @@ class CodexGoalMirrorStateStore:
             )
 
         state_store = json_file_stores.for_path(self.state_path)
-        payload: dict[str, object] | None = state_store.read_object()
+        payload: JsonObject | None = state_store.read_object()
         if payload is None:
             raise ValueError(
                 "Native Codex Goal mirror state exists but is not a JSON object."

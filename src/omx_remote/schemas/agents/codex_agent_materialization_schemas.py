@@ -1,6 +1,7 @@
 from pydantic import Field
 
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.shared.omx_enums.agent_enums import CodexAgentMaterializationTarget
 
 
 class CodexAgentCapabilitySnapshot(StrictSchemaModel):
@@ -17,6 +18,7 @@ class CodexAgentMaterializationFile(StrictSchemaModel):
     """Represents one planned Codex-native generated agent file."""
 
     agent_id: NonEmptyString
+    materialized_agent_name: NonEmptyString
     target_path: NonEmptyString
     content_sha256: NonEmptyString
     content: NonEmptyString
@@ -26,6 +28,7 @@ class CodexAgentMaterializationPlan(StrictSchemaModel):
     """Represents the dry-run plan for Codex agent materialization."""
 
     supported: bool
+    target: CodexAgentMaterializationTarget
     capability: CodexAgentCapabilitySnapshot
     source_config_path: NonEmptyString
     files: tuple[CodexAgentMaterializationFile, ...] = ()
@@ -45,6 +48,7 @@ class CodexAgentMaterializationFileStatus(StrictSchemaModel):
     """Represents generated-file status for one Codex agent."""
 
     agent_id: NonEmptyString
+    materialized_agent_name: NonEmptyString
     target_path: NonEmptyString
     exists: bool
     matches: bool
@@ -57,6 +61,7 @@ class CodexAgentMaterializationStatus(StrictSchemaModel):
 
     up_to_date: bool
     supported: bool
+    target: CodexAgentMaterializationTarget
     files: tuple[CodexAgentMaterializationFileStatus, ...] = ()
     warning_count: int = Field(ge=0)
     warnings: tuple[NonEmptyString, ...] = ()

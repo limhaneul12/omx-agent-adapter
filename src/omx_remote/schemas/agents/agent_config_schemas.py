@@ -1,23 +1,7 @@
-from enum import StrEnum
-
 from pydantic import Field, field_validator
 
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-
-
-class AgentProvider(StrEnum):
-    """Supported subagent configuration providers."""
-
-    CODEX = "codex"
-
-
-class AgentEffort(StrEnum):
-    """Supported reasoning effort labels for configured subagents."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    XHIGH = "xhigh"
+from omx_remote.shared.omx_enums.agent_enums import AgentEffort, AgentProvider
 
 
 class AgentConfig(StrictSchemaModel):

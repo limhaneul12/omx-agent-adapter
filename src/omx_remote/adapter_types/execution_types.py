@@ -13,6 +13,7 @@ from omx_remote.schemas.execution.event_schemas import (
 )
 from omx_remote.shared.omx_enums.execution_enums import (
     ExecutionEventKind,
+    ExecutionPayloadKind,
     KnownExecutionEventType,
     PromotableExecutionPayloadType,
 )
@@ -171,21 +172,21 @@ class ExecutionTransportSpec(msgspec.Struct, omit_defaults=True):
 class ExecMessageNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for message promotion."""
 
-    kind: Literal["message"]
+    kind: Literal[ExecutionPayloadKind.MESSAGE]
     text: str
 
 
 class ExecOutputNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for output-text promotion."""
 
-    kind: Literal["output_text"]
+    kind: Literal[ExecutionPayloadKind.OUTPUT_TEXT]
     text: str
 
 
 class ExecCommandExecutionNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for command-execution promotion."""
 
-    kind: Literal["command_execution"]
+    kind: Literal[ExecutionPayloadKind.COMMAND_EXECUTION]
     command: str
     aggregated_output: str
     exit_code: int
@@ -195,7 +196,7 @@ class ExecCommandExecutionNormalizedPayload(TypedDict):
 class ExecToolCallNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for tool-call promotion."""
 
-    kind: Literal["tool_call"]
+    kind: Literal[ExecutionPayloadKind.TOOL_CALL]
     tool_name: str
     call_id: str
     arguments: str
@@ -204,7 +205,7 @@ class ExecToolCallNormalizedPayload(TypedDict):
 class ExecToolResultNormalizedPayload(TypedDict):
     """Represents the normalized adapter-owned payload for tool-result promotion."""
 
-    kind: Literal["tool_result"]
+    kind: Literal[ExecutionPayloadKind.TOOL_RESULT]
     tool_name: str
     call_id: str
     text: str

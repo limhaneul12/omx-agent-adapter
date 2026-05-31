@@ -1,3 +1,4 @@
+from omx_remote.adapter_types.json_types import JsonObject, JsonValue
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 
 
@@ -43,7 +44,7 @@ class TeamApiReadEventsSnapshot(StrictSchemaModel):
 class TeamApiReadMonitorSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api monitor snapshot reads."""
 
-    snapshot: object | None = None
+    snapshot: JsonValue | None = None
 
 
 class TeamApiReadConfigError(StrictSchemaModel):
@@ -56,7 +57,7 @@ class TeamApiReadConfigError(StrictSchemaModel):
 class TeamApiReadConfigSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api config reads."""
 
-    config: object | None = None
+    config: JsonObject | None = None
 
 
 class TeamApiReadManifestError(StrictSchemaModel):
@@ -69,7 +70,7 @@ class TeamApiReadManifestError(StrictSchemaModel):
 class TeamApiReadManifestSnapshot(StrictSchemaModel):
     """Represents the normalized result for team-api manifest reads."""
 
-    manifest: object | None = None
+    manifest: JsonObject | None = None
 
 
 class TeamApiMailboxMessageSnapshot(StrictSchemaModel):

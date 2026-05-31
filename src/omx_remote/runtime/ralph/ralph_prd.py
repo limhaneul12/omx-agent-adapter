@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.ralph.ralph_state import read_json_object
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 
@@ -51,7 +52,7 @@ def read_ralph_prd_artifact(prd_path: Path) -> RalphPrdArtifact:
     Raises:
         ValueError: Raised when the PRD artifact is missing, unreadable, or invalid.
     """
-    prd_payload: dict[str, object] | None = read_json_object(prd_path)
+    prd_payload: JsonObject | None = read_json_object(prd_path)
     if prd_payload is None:
         raise ValueError("Invalid or unreadable .omx/prd.json: expected JSON object.")
 

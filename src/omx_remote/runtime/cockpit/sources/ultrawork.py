@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.ultrawork.ultrawork_control import (
     UltraworkStateClassifier,
     get_ultrawork_state_root,
@@ -39,7 +40,7 @@ def _read_ultrawork_state(
         return stale_state
 
     state_store = json_file_stores.for_path(ultrawork_state_path)
-    state_payload: dict[str, object] | None = state_store.read_object()
+    state_payload: JsonObject | None = state_store.read_object()
     if state_payload is None:
         invalid_state: tuple[UltraworkStateClassification, tuple[str, ...]] = (
             UltraworkStateClassification.INVALID,

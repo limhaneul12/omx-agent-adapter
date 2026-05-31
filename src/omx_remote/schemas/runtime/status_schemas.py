@@ -1,5 +1,6 @@
 from pydantic import Field, model_validator
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.shared.omx_enums.runtime_enums import (
     RuntimeModeStatus,
@@ -34,7 +35,7 @@ class RuntimeModeStateSnapshot(StrictSchemaModel):
 
     mode: NonEmptyString
     exists: bool
-    state: dict[str, object] | None = None
+    state: JsonObject | None = None
 
 
 class RuntimeModeSnapshot(StrictSchemaModel):
@@ -86,7 +87,7 @@ class RuntimeModeStateResult(StrictSchemaModel):
 
     mode: NonEmptyString
     exists: bool
-    state: dict[str, object] | None = None
+    state: JsonObject | None = None
 
     @model_validator(mode="after")
     def _validate_state_presence(self) -> "RuntimeModeStateResult":

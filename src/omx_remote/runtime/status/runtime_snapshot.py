@@ -85,11 +85,14 @@ def _infer_has_active_modes(
     """
     has_active_modes: bool | None
     if stdout and mode_statuses:
-        if any(mode_status is runtime_status_contract_type.ACTIVE_MODE_MARKER for mode_status in mode_statuses.values()):
+        if any(
+            mode_status == runtime_status_contract_type.ACTIVE_MODE_MARKER
+            for mode_status in mode_statuses.values()
+        ):
             has_active_modes = True
             return has_active_modes
         if any(
-            mode_status is RuntimeModeStatus.UNKNOWN
+            mode_status == RuntimeModeStatus.UNKNOWN
             for mode_status in mode_statuses.values()
         ):
             has_active_modes = None
@@ -116,7 +119,7 @@ def _extract_active_mode_names(stdout: str) -> list[str]:
     active_mode_names: list[str] = [
         mode_name
         for mode_name, status_text in mode_statuses.items()
-        if status_text is runtime_status_contract_type.ACTIVE_MODE_MARKER
+        if status_text == runtime_status_contract_type.ACTIVE_MODE_MARKER
     ]
     return active_mode_names
 

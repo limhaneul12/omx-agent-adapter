@@ -33,6 +33,10 @@ from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorWorkerFollowUpOutcome,
     TeamOperatorWorkerRecheckRequest,
 )
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    TeamOperatorDeliveryMode,
+    TeamOperatorDispatchOutcomeState,
+)
 from omx_remote.teamwork.team_operator_facade import (
     dispatch_team_instruction,
     dispatch_team_task,
@@ -266,7 +270,7 @@ def _normalize_team_dispatch_result(
     Returns:
         OperatorActionResult: Function return value.
     """
-    if dispatch_result.outcome == "accepted":
+    if dispatch_result.outcome == TeamOperatorDispatchOutcomeState.ACCEPTED:
         accepted_result: OperatorActionResult = OperatorActionResult(
             lane=OperatorLane.TEAM,
             action=action,
@@ -278,7 +282,10 @@ def _normalize_team_dispatch_result(
         )
         return accepted_result
 
-    if dispatch_result.outcome == "accepted_but_unverified":
+    if (
+        dispatch_result.outcome
+        == TeamOperatorDispatchOutcomeState.ACCEPTED_BUT_UNVERIFIED
+    ):
         recovery_hint = OperatorRecoveryHint(
             next_action=unverified_next_action,
             reason=dispatch_result.reason,
@@ -631,7 +638,7 @@ async def operate_team_worker_recheck(
     follow_up_result: TeamOperatorWorkerFollowUpOutcome = await request_worker_recheck(request)
     dispatch_result: TeamOperatorDispatchOutcome = follow_up_result.dispatch_result
     next_action: OperatorNextAction
-    if follow_up_result.selected_delivery_mode == "durable_inbox":
+    if follow_up_result.selected_delivery_mode == TeamOperatorDeliveryMode.DURABLE_INBOX:
         next_action = OperatorNextAction.RESUME
     else:
         next_action = OperatorNextAction.OBSERVE

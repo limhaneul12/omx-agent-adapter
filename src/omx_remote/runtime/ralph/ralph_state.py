@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from shutil import which
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.adapter_types.type_contract.ralph_contract_type import (
     RALPH_NON_TERMINAL_OUTCOMES,
     RALPH_NON_TERMINAL_PHASES,
@@ -38,17 +39,17 @@ def normalize_ralph_state_token(value: object) -> str | None:
     return token or None
 
 
-def read_json_object(path: Path) -> dict[str, object] | None:
+def read_json_object(path: Path) -> JsonObject | None:
     """Reads one JSON object from an adapter-owned file store.
 
     Args:
         path [Path]: JSON file path to read.
 
     Returns:
-        dict[str, object] | None: Parsed object, or `None` when missing/unreadable/non-object.
+        JsonObject | None: Parsed object, or `None` when missing/unreadable/non-object.
     """
     state_store = json_file_stores.for_path(path)
-    object_payload: dict[str, object] | None = state_store.read_object()
+    object_payload: JsonObject | None = state_store.read_object()
     return object_payload
 
 
@@ -156,12 +157,12 @@ class RalphStateClassifier:
     @classmethod
     def classify_state_snapshot(
         cls,
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> RalphStateClassification:
         """Classifies a Ralph state artifact as resumable, terminal, or stale.
 
         Args:
-            state_payload [dict[str, object]]: Raw state payload loaded from `.omx/state`.
+            state_payload [JsonObject]: Raw state payload loaded from `.omx/state`.
 
         Returns:
             RalphStateClassification: Adapter-visible Ralph state classification.
@@ -183,12 +184,12 @@ class RalphStateClassifier:
     @classmethod
     def _classify_inactive_state(
         cls,
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> RalphStateClassification:
         """Classifies an explicitly inactive Ralph state payload.
 
         Args:
-            state_payload [dict[str, object]]: Raw state payload with `active=false`.
+            state_payload [JsonObject]: Raw state payload with `active=false`.
 
         Returns:
             RalphStateClassification: Terminal, resumable, or stale classification.
@@ -206,12 +207,12 @@ class RalphStateClassifier:
     @classmethod
     def _classify_marker_state(
         cls,
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> RalphStateClassification:
         """Classifies a Ralph state payload using phase/outcome markers only.
 
         Args:
-            state_payload [dict[str, object]]: Raw state payload without a boolean `active` marker.
+            state_payload [JsonObject]: Raw state payload without a boolean `active` marker.
 
         Returns:
             RalphStateClassification: Terminal, resumable, or stale classification.
@@ -229,11 +230,11 @@ class RalphStateClassifier:
         return RalphStateClassification.STALE
 
     @staticmethod
-    def _read_outcome_value(state_payload: dict[str, object]) -> object | None:
+    def _read_outcome_value(state_payload: JsonObject) -> object | None:
         """Reads the supported Ralph outcome marker from state payloads.
 
         Args:
-            state_payload [dict[str, object]]: Raw state payload.
+            state_payload [JsonObject]: Raw state payload.
 
         Returns:
             object | None: Raw `run_outcome` or fallback `outcome` value.
@@ -246,12 +247,12 @@ class RalphStateClassifier:
 
 
 def classify_ralph_state_snapshot(
-    state_payload: dict[str, object],
+    state_payload: JsonObject,
 ) -> RalphStateClassification:
     """Classifies Ralph state as resumable, terminal, or stale.
 
     Args:
-        state_payload [dict[str, object]]: Raw state payload loaded from `.omx/state`.
+        state_payload [JsonObject]: Raw state payload loaded from `.omx/state`.
 
     Returns:
         RalphStateClassification: Adapter-visible Ralph state classification.
@@ -315,7 +316,7 @@ def assess_ralph_launch_preflight_state() -> tuple[RalphStateClassification, lis
             "If these are stale, run `agent-remote ralph cleanup-stale` before re-launching.",
         ]
 
-    ralph_state_payload: dict[str, object] | None = read_json_object(ralph_state_path)
+    ralph_state_payload: JsonObject | None = read_json_object(ralph_state_path)
     if ralph_state_payload is None:
         return RalphStateClassification.TERMINAL, [
             "Ralph state artifact is present but unreadable.",
@@ -363,7 +364,7 @@ def assess_ralph_resume_preflight_state() -> tuple[RalphStateClassification, lis
             "Run cleanup-stale and re-run launch if this is stale recovery.",
         ]
 
-    state_payload: dict[str, object] | None = read_json_object(ralph_state_path)
+    state_payload: JsonObject | None = read_json_object(ralph_state_path)
     if state_payload is None:
         return RalphStateClassification.INVALID, [
             "Ralph state file is present but unreadable.",

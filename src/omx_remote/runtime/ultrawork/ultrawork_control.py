@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from shutil import which
 
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.ultrawork.ultrawork_state_classifier import (
     UltraworkStateClassifier,
 )
@@ -19,7 +20,7 @@ _ULTRAWORK_STATE_FILENAMES: tuple[str, ...] = (
 
 
 def _classify_ultrawork_state_snapshot(
-    state_payload: dict[str, object],
+    state_payload: JsonObject,
 ) -> UltraworkStateClassification:
     """Handles classify ultrawork state snapshot.
     
@@ -55,7 +56,7 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
         ]
 
     ultrawork_state_store = json_file_stores.for_path(ultrawork_state_path)
-    ultrawork_state_payload: dict[str, object] | None = ultrawork_state_store.read_object()
+    ultrawork_state_payload: JsonObject | None = ultrawork_state_store.read_object()
     if ultrawork_state_payload is None:
         joined_paths: str = ", ".join(str(path) for path in existing_state_paths)
         return UltraworkStateClassification.TERMINAL, [
@@ -64,7 +65,9 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
             "Clean stale Ultrawork artifacts and retry with `agent-remote ultrawork cleanup-stale`.",
         ]
 
-    state_class: str = _classify_ultrawork_state_snapshot(ultrawork_state_payload)
+    state_class: UltraworkStateClassification = _classify_ultrawork_state_snapshot(
+        ultrawork_state_payload
+    )
     joined_paths = ", ".join(str(path) for path in existing_state_paths)
 
     if state_class == UltraworkStateClassification.RESUMABLE:
@@ -108,7 +111,7 @@ def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassifica
         ]
 
     state_store = json_file_stores.for_path(ultrawork_state_path)
-    state_payload: dict[str, object] | None = state_store.read_object()
+    state_payload: JsonObject | None = state_store.read_object()
     if state_payload is None:
         return UltraworkStateClassification.INVALID, [
             "Ultrawork state file is present but unreadable.",
@@ -277,7 +280,7 @@ def build_ultrawork_launch_plan(
     state_class, state_warnings = _assess_ultrawork_launch_preflight_state()
     warnings.extend(state_warnings)
 
-    if state_class == "resumable" and not force_cleanup:
+    if state_class == UltraworkStateClassification.RESUMABLE and not force_cleanup:
         raise ValueError(
             "Existing resumable Ultrawork state detected. "
             "Run `agent-remote ultrawork cleanup-stale` or retry with --force-cleanup."

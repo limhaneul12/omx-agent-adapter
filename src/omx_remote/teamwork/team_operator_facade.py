@@ -1,5 +1,3 @@
-from typing import Literal
-
 from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
@@ -17,6 +15,11 @@ from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorWorkerFollowUpOutcome,
     TeamOperatorWorkerRecheckRequest,
 )
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    TeamOperatorDeliveryMode,
+    TeamOperatorDispatchOperation,
+    TeamOperatorDispatchOutcomeState,
+)
 from omx_remote.teamwork.team_api_control import (
     broadcast_team_message,
     create_team_task,
@@ -28,13 +31,7 @@ from omx_remote.teamwork.team_api_snapshot import read_team_api_read_worker_stat
 
 
 def _build_dispatch_outcome(
-    selected_operation: Literal[
-        "send-message",
-        "write-worker-inbox",
-        "broadcast",
-        "create-task",
-        "write-task-approval",
-    ],
+    selected_operation: TeamOperatorDispatchOperation,
     exit_code: int,
     success_reason: str,
     unverified_reason: str | None,
@@ -55,7 +52,7 @@ def _build_dispatch_outcome(
     if exit_code != 0:
         failed_outcome: TeamOperatorDispatchOutcome = TeamOperatorDispatchOutcome(
             selected_operation=selected_operation,
-            outcome="failed",
+            outcome=TeamOperatorDispatchOutcomeState.FAILED,
             needs_follow_up=True,
             reason="OMX command returned a non-zero exit code.",
             command_result=command_result,
@@ -65,7 +62,7 @@ def _build_dispatch_outcome(
     if unverified_reason is not None:
         unverified_outcome: TeamOperatorDispatchOutcome = TeamOperatorDispatchOutcome(
             selected_operation=selected_operation,
-            outcome="accepted_but_unverified",
+            outcome=TeamOperatorDispatchOutcomeState.ACCEPTED_BUT_UNVERIFIED,
             needs_follow_up=True,
             reason=unverified_reason,
             command_result=command_result,
@@ -74,7 +71,7 @@ def _build_dispatch_outcome(
 
     accepted_outcome: TeamOperatorDispatchOutcome = TeamOperatorDispatchOutcome(
         selected_operation=selected_operation,
-        outcome="accepted",
+        outcome=TeamOperatorDispatchOutcomeState.ACCEPTED,
         needs_follow_up=False,
         reason=success_reason,
         command_result=command_result,
@@ -102,7 +99,7 @@ async def dispatch_team_instruction(
             )
         )
         result: TeamOperatorDispatchOutcome = _build_dispatch_outcome(
-            selected_operation="broadcast",
+            selected_operation=TeamOperatorDispatchOperation.BROADCAST,
             exit_code=command_result.exit_code,
             success_reason="Broadcast accepted by OMX.",
             unverified_reason=None,
@@ -119,7 +116,7 @@ async def dispatch_team_instruction(
             )
         )
         result = _build_dispatch_outcome(
-            selected_operation="write-worker-inbox",
+            selected_operation=TeamOperatorDispatchOperation.WRITE_WORKER_INBOX,
             exit_code=command_result.exit_code,
             success_reason="Worker inbox update accepted by OMX.",
             unverified_reason=(
@@ -138,7 +135,7 @@ async def dispatch_team_instruction(
         )
     )
     result = _build_dispatch_outcome(
-        selected_operation="send-message",
+        selected_operation=TeamOperatorDispatchOperation.SEND_MESSAGE,
         exit_code=command_result.exit_code,
         success_reason="Direct message accepted by OMX.",
         unverified_reason=None,
@@ -169,7 +166,7 @@ async def dispatch_team_task(
         )
     )
     result: TeamOperatorDispatchOutcome = _build_dispatch_outcome(
-        selected_operation="create-task",
+        selected_operation=TeamOperatorDispatchOperation.CREATE_TASK,
         exit_code=command_result.exit_code,
         success_reason="Task creation accepted by OMX.",
         unverified_reason=(
@@ -202,7 +199,7 @@ async def request_task_approval(
         )
     )
     result: TeamOperatorDispatchOutcome = _build_dispatch_outcome(
-        selected_operation="write-task-approval",
+        selected_operation=TeamOperatorDispatchOperation.WRITE_TASK_APPROVAL,
         exit_code=command_result.exit_code,
         success_reason="Task approval write accepted by OMX.",
         unverified_reason=(
@@ -232,11 +229,11 @@ async def request_worker_recheck(
     )
 
     durable_delivery: bool = worker_status.state == "unknown"
-    selected_delivery_mode: Literal["direct_message", "durable_inbox"]
+    selected_delivery_mode: TeamOperatorDeliveryMode
     if durable_delivery:
-        selected_delivery_mode = "durable_inbox"
+        selected_delivery_mode = TeamOperatorDeliveryMode.DURABLE_INBOX
     else:
-        selected_delivery_mode = "direct_message"
+        selected_delivery_mode = TeamOperatorDeliveryMode.DIRECT_MESSAGE
 
     dispatch_result = await dispatch_team_instruction(
         TeamOperatorDispatchInstructionRequest(

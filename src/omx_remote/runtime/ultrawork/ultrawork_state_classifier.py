@@ -1,3 +1,4 @@
+from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.adapter_types.type_contract.ultrawork_contract_type import (
     ULTRAWORK_NON_TERMINAL_OUTCOMES,
     ULTRAWORK_NON_TERMINAL_PHASES,
@@ -153,7 +154,7 @@ class UltraworkStateClassifier:
 
     @staticmethod
     def classify_state_snapshot(
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> UltraworkStateClassification:
         """Classify one Ultrawork state payload for launch/resume preflight.
 
@@ -182,12 +183,12 @@ class UltraworkStateClassifier:
 
     @staticmethod
     def _classify_inactive_state(
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> UltraworkStateClassification:
         """Handles classify inactive state.
         
         Args:
-            state_payload [dict[str, object]]: Function argument.
+            state_payload [JsonObject]: Function argument.
         
         Returns:
             UltraworkStateClassification: Function return value.
@@ -211,12 +212,12 @@ class UltraworkStateClassifier:
 
     @staticmethod
     def _classify_marker_state(
-        state_payload: dict[str, object],
+        state_payload: JsonObject,
     ) -> UltraworkStateClassification:
         """Handles classify marker state.
         
         Args:
-            state_payload [dict[str, object]]: Function argument.
+            state_payload [JsonObject]: Function argument.
         
         Returns:
             UltraworkStateClassification: Function return value.
@@ -240,11 +241,11 @@ class UltraworkStateClassifier:
         return UltraworkStateClassification.STALE
 
     @staticmethod
-    def _read_outcome_value(state_payload: dict[str, object]) -> object | None:
+    def _read_outcome_value(state_payload: JsonObject) -> object | None:
         """Handles read outcome value.
         
         Args:
-            state_payload [dict[str, object]]: Function argument.
+            state_payload [JsonObject]: Function argument.
         
         Returns:
             object | None: Function return value.
@@ -254,4 +255,3 @@ class UltraworkStateClassifier:
             outcome_value = state_payload.get("outcome")
 
         return outcome_value
-

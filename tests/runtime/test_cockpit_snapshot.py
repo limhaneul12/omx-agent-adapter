@@ -143,7 +143,7 @@ def _patch_snapshot_capability_sources(monkeypatch, tmp_path: Path) -> None:
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff"),
+        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
         warnings=(),
     )
 
@@ -417,7 +417,7 @@ def test_cockpit_snapshot_derives_ultragoal_route_when_capability_is_available(
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff"),
+        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
         warnings=(),
     )
 
