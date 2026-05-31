@@ -304,14 +304,9 @@ def test_agent_policy_allows_generated_brief_handoff_with_relative_cwd(
     decision = AgentAutonomyPolicy().decide(plan)
     result = CommandExecutor().execute(plan, Path("."), timestamp="20260527T010450Z")
 
-    assert any(
-        reason.startswith(
-            "Prompt file does not exist: .agent-remote/runs/idea-to-prd-council/"
-        )
-        for reason in plan.blocked_reasons
-    )
+    assert plan.blocked_reasons == ()
     assert decision.decision == CommandAutonomyDecisionKind.ALLOW
-    assert "recover_generated_prompt_files" in decision.required_safeguards
+    assert "recover_generated_prompt_files" not in decision.required_safeguards
     assert result.status == "requires_agent_action"
     assert result.blocked_reasons == ()
 
