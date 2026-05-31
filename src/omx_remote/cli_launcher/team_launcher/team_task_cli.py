@@ -2,6 +2,7 @@ import asyncio
 
 import typer
 
+from omx_remote.cli_launcher.omx_command_result_output import echo_omx_command_result
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiClaimTaskRequest,
     TeamApiCreateTaskRequest,
@@ -52,9 +53,7 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("read-task")
     def team_read_task(
@@ -70,9 +69,7 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
         result = asyncio.run(
             read_team_task(TeamApiReadTaskRequest(team_name=team, task_id=task_id))
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("transition-task-status")
     def team_transition_task_status(
@@ -102,9 +99,7 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("update-task")
     def team_update_task(
@@ -141,9 +136,7 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("claim-task")
     def team_claim_task(
@@ -170,9 +163,7 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("release-task-claim")
     def team_release_task_claim(
@@ -199,6 +190,4 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)

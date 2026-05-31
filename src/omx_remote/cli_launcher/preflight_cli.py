@@ -1,9 +1,11 @@
 from pathlib import Path
 
-import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.preflight.command_preflight_runner import (
     run_command_preflight,
     run_route_preflight,
@@ -18,20 +20,6 @@ preflight_app = typer.Typer(
     help="Run reusable preflight safety checks before command or route execution.",
     add_completion=False,
 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format a preflight CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _echo_report(report: PreflightReport, json_output: bool) -> None:

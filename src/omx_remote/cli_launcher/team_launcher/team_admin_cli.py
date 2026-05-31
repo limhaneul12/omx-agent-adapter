@@ -1,10 +1,10 @@
 import asyncio
 from pathlib import Path
 
-import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.runtime.ralph.ralph_review_artifacts import read_ralph_prd_artifact_file
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
     TeamAdminAggregationReportRequest,
@@ -13,20 +13,6 @@ from omx_remote.teamwork.team_admin_aggregation import (
     read_team_admin_aggregation_report,
     write_team_admin_aggregation_report_artifact,
 )
-
-
-def read_ralph_prd_artifact_file(prd_path: Path) -> RalphPrdArtifact:
-    """Reads a strict Ralph PRD artifact from a JSON file.
-
-    Args:
-        prd_path [Path]: JSON file containing a RalphPrdArtifact payload.
-
-    Returns:
-        RalphPrdArtifact: Validated Ralph PRD artifact from the file.
-    """
-    prd_payload = orjson.loads(prd_path.read_bytes())
-    prd_artifact: RalphPrdArtifact = RalphPrdArtifact.model_validate(prd_payload)
-    return prd_artifact
 
 
 def register_team_admin_commands(team_app: typer.Typer) -> None:
@@ -66,7 +52,7 @@ def register_team_admin_commands(team_app: typer.Typer) -> None:
             report = asyncio.run(read_team_admin_aggregation_report(request))
             if output_path is not None:
                 write_team_admin_aggregation_report_artifact(report, output_path)
-        except (OSError, orjson.JSONDecodeError, ValidationError, ValueError) as error:
+        except (OSError, ValidationError, ValueError) as error:
             typer.echo(str(error))
             raise typer.Exit(code=2) from error
 

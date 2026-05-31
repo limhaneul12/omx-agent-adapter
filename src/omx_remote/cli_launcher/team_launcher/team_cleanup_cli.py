@@ -2,6 +2,7 @@ import asyncio
 
 import typer
 
+from omx_remote.cli_launcher.omx_command_result_output import echo_omx_command_result
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiCleanupRequest,
     TeamApiOrphanCleanupRequest,
@@ -49,9 +50,7 @@ def register_team_cleanup_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("orphan-cleanup")
     def team_orphan_cleanup(
@@ -65,6 +64,4 @@ def register_team_cleanup_commands(team_app: typer.Typer) -> None:
         result = asyncio.run(
             cleanup_team_orphans(TeamApiOrphanCleanupRequest(team_name=team))
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)

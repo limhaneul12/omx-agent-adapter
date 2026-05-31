@@ -1,9 +1,11 @@
 from pathlib import Path
 
-import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.commands.command_catalog_resolver import (
     CommandCatalogResolutionError,
     load_command_catalog,
@@ -30,20 +32,6 @@ from omx_remote.schemas.runs.run_record_schemas import (
     RunCommandRecordResult,
     RunRecord,
 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one run CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _format_plan_human(plan: CommandExecutionPlan) -> str:
@@ -225,6 +213,7 @@ def run_command(
             recipe,
             cwd=cwd,
             dry_run=dry_run,
+            task_text=task,
         )
         if dry_run and record_run:
             run_record = write_dry_run_record(plan, cwd=cwd)

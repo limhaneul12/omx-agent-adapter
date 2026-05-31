@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -6,39 +5,19 @@ import orjson
 
 from omx_remote.adapter_types.json_types import JsonValue
 from omx_remote.runtime.commands.command_output_redaction import (
-    redact_argv,
     redact_json_artifact,
     redact_text,
 )
 from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
+from omx_remote.runtime.runs.run_native_commands import collect_run_native_commands
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
 from omx_remote.schemas.runs.run_record_schemas import (
     RunArtifact,
-    RunNativeCommand,
     RunRecord,
     RunRecordStatus,
     RunVerification,
 )
-
-
-def _now_timestamp() -> str:
-    """Return a compact UTC timestamp for run ids.
-
-    Returns:
-        str: UTC timestamp in `YYYYMMDDTHHMMSSZ` form.
-    """
-    timestamp: str = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    return timestamp
-
-
-def _now_iso() -> str:
-    """Return an ISO-8601 UTC timestamp.
-
-    Returns:
-        str: Current UTC timestamp.
-    """
-    timestamp: str = datetime.now(UTC).isoformat()
-    return timestamp
+from omx_remote.shared.utils.runtime_identity import utc_compact_timestamp, utcnow_text
 
 
 def _write_json(path: Path, value: object) -> None:
@@ -50,23 +29,6 @@ def _write_json(path: Path, value: object) -> None:
     """
     redacted_value: JsonValue = redact_json_artifact(cast(JsonValue, value))
     path.write_bytes(orjson.dumps(redacted_value, option=orjson.OPT_INDENT_2))
-
-
-def _native_commands(plan: CommandExecutionPlan) -> tuple[RunNativeCommand, ...]:
-    """Collect native command previews from a plan.
-
-    Args:
-        plan [CommandExecutionPlan]: Execution plan to inspect.
-
-    Returns:
-        tuple[RunNativeCommand, ...]: Captured native commands.
-    """
-    commands: tuple[RunNativeCommand, ...] = tuple(
-        RunNativeCommand(index=step.index, argv=redact_argv(step.native_argv))
-        for step in plan.steps
-        if step.native_argv
-    )
-    return commands
 
 
 def render_run_handoff(record: RunRecord, plan: CommandExecutionPlan) -> str:
@@ -117,9 +79,9 @@ def write_dry_run_record(
     Returns:
         RunRecord: Persisted run record.
     """
-    timestamp_text: str = _now_timestamp() if timestamp is None else timestamp
+    timestamp_text: str = utc_compact_timestamp() if timestamp is None else timestamp
     run_id, run_dir = allocate_unique_run_dir(cwd, timestamp_text, plan.command_id)
-    started_at: str = _now_iso()
+    started_at: str = utcnow_text()
     finished_at: str = started_at
     plan_path: Path = run_dir / "plan.json"
     run_path: Path = run_dir / "run.json"
@@ -146,7 +108,7 @@ def write_dry_run_record(
         finished_at=finished_at,
         status=RunRecordStatus.PLANNED,
         dry_run=True,
-        native_commands=_native_commands(plan),
+        native_commands=collect_run_native_commands(plan),
         artifacts=artifacts,
         verification=RunVerification(status="not_run", evidence="dry-run record"),
         plan_path=str(plan_path),

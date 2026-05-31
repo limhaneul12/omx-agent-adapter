@@ -2,6 +2,7 @@ import asyncio
 
 import typer
 
+from omx_remote.cli_launcher.omx_command_result_output import echo_omx_command_result
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiBroadcastRequest,
     TeamApiSendMessageRequest,
@@ -46,9 +47,7 @@ def register_team_message_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("write-inbox")
     def team_write_inbox(
@@ -72,9 +71,7 @@ def register_team_message_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("broadcast")
     def team_broadcast(
@@ -98,6 +95,4 @@ def register_team_message_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)

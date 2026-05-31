@@ -4,6 +4,9 @@ import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_invalid_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.commands.command_catalog_resolver import (
     CommandCatalogResolutionError,
     load_command_catalog,
@@ -23,20 +26,6 @@ commands_app = typer.Typer(
     help="Inspect project-owned command catalog and repo-defined recipes.",
     add_completion=False,
 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one command CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"valid": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _catalog_list_result(catalog: CommandCatalog) -> CommandCatalogListResult:

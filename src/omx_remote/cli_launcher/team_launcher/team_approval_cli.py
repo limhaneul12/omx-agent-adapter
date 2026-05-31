@@ -2,6 +2,7 @@ import asyncio
 
 import typer
 
+from omx_remote.cli_launcher.omx_command_result_output import echo_omx_command_result
 from omx_remote.schemas.teamwork.api_request_schemas import (
     TeamApiReadTaskApprovalRequest,
     TeamApiWriteTaskApprovalRequest,
@@ -35,9 +36,7 @@ def register_team_approval_commands(team_app: typer.Typer) -> None:
                 TeamApiReadTaskApprovalRequest(team_name=team, task_id=task_id)
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)
 
     @team_app.command("write-task-approval")
     def team_write_task_approval(
@@ -74,6 +73,4 @@ def register_team_approval_commands(team_app: typer.Typer) -> None:
                 )
             )
         )
-        typer.echo(result.model_dump_json(indent=2))
-        if result.exit_code != 0:
-            raise typer.Exit(code=result.exit_code)
+        echo_omx_command_result(result)

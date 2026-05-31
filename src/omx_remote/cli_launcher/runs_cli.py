@@ -4,6 +4,9 @@ import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.runs.run_record_reader import (
     build_run_replay_plan,
     list_run_records,
@@ -41,20 +44,6 @@ def _format_run_list_human(result: RunListResult) -> str:
     ]
     rendered_text: str = "\n".join(lines)
     return rendered_text
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one runs CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _raise_runs_error(error: Exception, json_output: bool) -> None:

@@ -43,10 +43,15 @@ def next_command(
         json_output [bool]: Whether to print JSON output.
     """
     try:
+        normalized_team_names: tuple[str, ...]
+        if team_names is None:
+            normalized_team_names = ()
+        else:
+            normalized_team_names = tuple(team_names)
         request = NextActionRequest(
             repo_root=str(cwd.resolve()),
             task=task,
-            team_names=tuple(team_names or ()),
+            team_names=normalized_team_names,
         )
         result: NextActionResult = asyncio.run(read_next_action(request))
     except (OSError, ValidationError, ValueError) as error:
