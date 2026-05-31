@@ -10,6 +10,9 @@ from omx_remote.runtime.mcp.mcp_config_loader import (
     load_repo_mcp_servers,
     resolve_mcp_config_path,
 )
+from omx_remote.runtime.mcp.mcp_transport_resolution import (
+    infer_repo_mcp_transport_kind,
+)
 from omx_remote.schemas.mcp.client_schemas import (
     McpServerConfig,
     McpServerRegistrationResult,
@@ -89,34 +92,13 @@ def _toml_inline_env(values: dict[str, str]) -> str:
     return rendered_env
 
 
-def _definition_transport_kind(
-    definition: RepoMcpServerDefinition,
-) -> McpTransportKind:
-    """Infer the transport kind for a repo MCP definition.
-
-    Args:
-        definition [RepoMcpServerDefinition]: Server definition.
-
-    Returns:
-        McpTransportKind: Resolved transport kind.
-    """
-    if definition.transport is not None:
-        transport_kind: McpTransportKind = definition.transport
-        return transport_kind
-    if definition.url is not None:
-        transport_kind = McpTransportKind.STREAMABLE_HTTP
-        return transport_kind
-    transport_kind = McpTransportKind.STDIO
-    return transport_kind
-
-
 def _validate_repo_definition(definition: RepoMcpServerDefinition) -> None:
     """Validate writer-only constraints before persisting a server.
 
     Args:
         definition [RepoMcpServerDefinition]: Candidate server definition.
     """
-    transport_kind: McpTransportKind = _definition_transport_kind(definition)
+    transport_kind: McpTransportKind = infer_repo_mcp_transport_kind(definition)
     if transport_kind == McpTransportKind.STDIO:
         if definition.command is None:
             raise McpConfigWriteError("stdio MCP registration requires a command.")
@@ -153,7 +135,7 @@ def _render_repo_server_block(
     Returns:
         str: TOML block.
     """
-    transport_kind: McpTransportKind = _definition_transport_kind(definition)
+    transport_kind: McpTransportKind = infer_repo_mcp_transport_kind(definition)
     lines: list[str] = [
         f"[mcp.servers.{server_name}]",
         f"enabled = {'true' if definition.enabled else 'false'}",

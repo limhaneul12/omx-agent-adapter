@@ -4,6 +4,10 @@ from collections.abc import Sequence
 import orjson
 
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
+from omx_remote.runtime.mcp.mcp_json_payloads import (
+    normalize_mcp_json_object,
+    normalize_mcp_json_object_list,
+)
 from omx_remote.schemas.mcp.client_schemas import (
     McpEnvironmentVariable,
     McpServerConfig,
@@ -17,21 +21,6 @@ class CodexMcpRegistryError(ValueError):
     """Raised when the Codex MCP registry cannot be read or normalized."""
 
 
-def _json_object(value: object) -> JsonObject:
-    """Round-trip a dynamic payload into the repository JSON object alias.
-
-    Args:
-        value [object]: Dynamic payload from a process or SDK boundary.
-
-    Returns:
-        JsonObject: JSON-compatible object.
-    """
-    payload: JsonValue = orjson.loads(orjson.dumps(value))
-    if not isinstance(payload, dict):
-        raise CodexMcpRegistryError("Expected a JSON object while reading Codex MCP data.")
-    return payload
-
-
 def _json_list(value: object) -> list[JsonObject]:
     """Round-trip a dynamic payload into a list of JSON objects.
 
@@ -41,16 +30,13 @@ def _json_list(value: object) -> list[JsonObject]:
     Returns:
         list[JsonObject]: JSON-compatible object list.
     """
-    payload: JsonValue = orjson.loads(orjson.dumps(value))
-    if not isinstance(payload, list):
-        raise CodexMcpRegistryError("Codex MCP list output must be a JSON array.")
-
-    objects: list[JsonObject] = []
-    for item in payload:
-        if not isinstance(item, dict):
-            raise CodexMcpRegistryError("Codex MCP list output must contain objects.")
-        objects.append(item)
-
+    try:
+        objects = normalize_mcp_json_object_list(
+            value,
+            "Codex MCP list output must contain JSON objects.",
+        )
+    except ValueError as error:
+        raise CodexMcpRegistryError(str(error)) from error
     return objects
 
 
@@ -191,7 +177,13 @@ def server_from_codex_payload(payload: JsonObject) -> McpServerConfig:
     transport_value: JsonValue | None = payload.get("transport")
     if not isinstance(transport_value, dict):
         raise CodexMcpRegistryError("Codex MCP server payload requires transport object.")
-    transport_payload: JsonObject = _json_object(transport_value)
+    try:
+        transport_payload: JsonObject = normalize_mcp_json_object(
+            transport_value,
+            "Expected a JSON object while reading Codex MCP data.",
+        )
+    except ValueError as error:
+        raise CodexMcpRegistryError(str(error)) from error
 
     enabled_value: JsonValue | None = payload.get("enabled")
     if not isinstance(enabled_value, bool):

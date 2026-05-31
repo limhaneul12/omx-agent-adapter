@@ -83,7 +83,9 @@ def create_research_workflow_plan(
     """
     normalized_objective: str = objective.strip()
     if not normalized_objective:
-        raise ValueError("/research requires an objective, for example: /research compare Codex MCP UX")
+        raise ValueError(
+            "/research requires an objective, for example: /research compare Codex MCP UX"
+        )
 
     workspace: Path = Path(cwd)
     created_at_datetime: datetime = datetime.now(UTC)

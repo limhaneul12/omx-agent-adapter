@@ -42,25 +42,6 @@ def test_preview_command_tool_payload_injects_objective(tmp_path: Path) -> None:
     assert "safest MCP shape" in first_step["inline_prompt"]
 
 
-def test_company_build_loop_tool_uses_prd_path_for_ultragoal(tmp_path: Path) -> None:
-    payload = preview_command_tool_payload(
-        cwd=tmp_path,
-        command_id="builtin:company-build-loop",
-        prd_path="docs/prd.md",
-    )
-
-    plan = payload["plan"]
-    assert isinstance(plan, dict)
-    ultragoal_step = plan["steps"][1]
-    assert ultragoal_step["native_argv"][:4] == [
-        "omx",
-        "ultragoal",
-        "create-goals",
-        "--brief-file",
-    ]
-    assert ultragoal_step["native_argv"][4] == str(tmp_path / "docs/prd.md")
-
-
 def test_preview_command_tool_payload_supports_new_dogfood_commands(
     tmp_path: Path,
 ) -> None:
@@ -92,7 +73,7 @@ def test_omx_agent_mcp_server_advertises_custom_workflow_tools() -> None:
     assert "codex_deep_research" in tool_names
     assert "omx_autoresearch_loop" in tool_names
     assert "research_interview_prd" in tool_names
-    assert "company_build_loop" in tool_names
+    assert "company_build_loop" not in tool_names
     assert "verify_handoff_plus" in tool_names
 
 

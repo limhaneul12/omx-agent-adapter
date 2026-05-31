@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
@@ -10,22 +9,14 @@ from omx_remote.schemas.comx.session_schemas import (
     ComxTuiSessionRecord,
     ComxTuiSessionStatus,
 )
+from omx_remote.shared.utils.runtime_identity import utcnow_text
+from omx_remote.shared.utils.session_identifiers import validate_session_identifier
 
 COMX_SESSION_ROOT: Final[str] = ".comx-agent/sessions"
 
 
 class ComxTuiSessionPathError(ValueError):
     """Raised when a comx-agent TUI session path is unsafe."""
-
-
-def _now_iso() -> str:
-    """Return a UTC ISO timestamp.
-
-    Returns:
-        str: Current UTC timestamp.
-    """
-    timestamp: str = datetime.now(UTC).isoformat()
-    return timestamp
 
 
 def resolve_session_root(cwd: str | Path) -> Path:
@@ -48,14 +39,10 @@ def _validate_session_id(session_id: str) -> None:
     Args:
         session_id [str]: Candidate session id.
     """
-    allowed_characters: set[str] = {"-", "_"}
-    if not session_id or not session_id[0].isalnum():
-        raise ComxTuiSessionPathError(f"unsafe session id: {session_id}")
-    if not all(
-        character.isalnum() or character in allowed_characters
-        for character in session_id
-    ):
-        raise ComxTuiSessionPathError(f"unsafe session id: {session_id}")
+    try:
+        validate_session_identifier(session_id)
+    except ValueError as error:
+        raise ComxTuiSessionPathError(f"unsafe session id: {session_id}") from error
 
 
 def resolve_session_path(cwd: str | Path, session_id: str) -> Path:
@@ -130,7 +117,7 @@ def start_or_resume_tui_session(
         ComxTuiSessionRecord: Active session record.
     """
     existing_session: ComxTuiSessionRecord | None = read_tui_session(cwd, session_id)
-    now: str = _now_iso()
+    now: str = utcnow_text()
     if existing_session is None:
         started_event = ComxTuiSessionEvent(
             timestamp=now,
@@ -181,7 +168,7 @@ def record_tui_render(
     Returns:
         ComxTuiSessionRecord: Updated session.
     """
-    now: str = _now_iso()
+    now: str = utcnow_text()
     render_event = ComxTuiSessionEvent(
         timestamp=now,
         kind="rendered",
@@ -215,7 +202,7 @@ def record_tui_command(
     Returns:
         ComxTuiSessionRecord: Updated session.
     """
-    now: str = _now_iso()
+    now: str = utcnow_text()
     command_event = ComxTuiSessionEvent(
         timestamp=now,
         kind="command",
@@ -248,7 +235,7 @@ def close_tui_session(
     Returns:
         ComxTuiSessionRecord: Closed session.
     """
-    now: str = _now_iso()
+    now: str = utcnow_text()
     closed_event = ComxTuiSessionEvent(
         timestamp=now,
         kind="closed",

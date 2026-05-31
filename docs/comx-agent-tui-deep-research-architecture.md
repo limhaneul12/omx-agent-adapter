@@ -243,10 +243,11 @@ Security rules:
 
 The current command recipe system is a strong differentiator. The TUI should make it visible:
 
-- `/commands` lists recipes with source, risk, steps, and dry-run availability.
-- `/run <recipe>` should call the existing command planner and render the same plan as CLI JSON/human output.
+- `/commands` lists recipes with source, risk, steps, and dry-run availability; the collaboration/research suite is grouped under Collaboration, Research, Review, and Release labels.
+- `/run <recipe>` should call the existing command planner and render the same plan as CLI JSON/human output. `/run <recipe> --task "..."` passes the task prompt into preview rendering.
 - MCP recipe steps should show missing server/tool blockers rather than failing late.
 - Project-owned recipes should appear alongside native commands in `/surface` but remain clearly separate.
+- Runtime-spawning OMX steps must be displayed as policy-gated handoffs unless an agent-approved launch path exists.
 
 ## Persistence model
 
@@ -268,6 +269,7 @@ Do not persist raw secrets, full MCP env values, or unredacted headers.
 3. Add TUI snapshot sections for MCP/command/session/runtime state without making the renderer parse raw data.
 4. Add tests for command catalog, router results, redaction, and TUI JSON output.
 5. Keep all mutation paths dry-run/preview-only unless a command already has explicit safe CLI behavior.
+6. Keep collaboration/research command labels discoverable without requiring humans to memorize CLI ids.
 
 ## Acceptance criteria
 
@@ -276,6 +278,8 @@ Do not persist raw secrets, full MCP env values, or unredacted headers.
 - `/mcp` shows server rows, not only counts.
 - `/mcp tools <server>` can be tested with a fake MCP client and surfaces errors clearly.
 - `/research <objective>` writes a typed plan artifact and does not run external tools by default.
+- `/commands` shows the seven collaboration/research commands with grouped labels, risk, dry-run command, execute/handoff command, and warnings.
+- `/run builtin:idea-to-prd-council --task "..."` previews Alexandria, validation, product-slug artifact, and UltraGoal handoff phases without executing them.
 - Tests cover redaction of env/header/secret-like values.
 - Ruff, Pyrefly, and focused tests pass.
 

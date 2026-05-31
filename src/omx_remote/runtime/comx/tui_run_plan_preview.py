@@ -25,6 +25,14 @@ def _format_run_plan_step(step: CommandPlanStep) -> tuple[str, ...]:
         tuple[str, ...]: Human-readable lines for the step.
     """
     lines: list[str] = [f"step {step.index}: {' '.join(step.native_argv)}"]
+    if step.inline_prompt is not None:
+        prompt_preview: str = step.inline_prompt.replace("\n", " ")[:320]
+        lines.append(f"  prompt: {prompt_preview}")
+    if step.role_lanes:
+        role_text: str = ", ".join(
+            f"{lane.id}:{lane.execution}" for lane in step.role_lanes
+        )
+        lines.append(f"  roles: {role_text}")
     if step.expected_artifacts:
         artifacts_text: str = ", ".join(step.expected_artifacts)
         lines.append(f"  artifacts: {artifacts_text}")
@@ -55,12 +63,17 @@ def format_tui_run_plan(plan: CommandExecutionPlan) -> str:
     return run_plan_text
 
 
-def build_tui_run_plan_preview(recipe_id: str, cwd: str | Path) -> str:
+def build_tui_run_plan_preview(
+    recipe_id: str,
+    cwd: str | Path,
+    task_text: str | None = None,
+) -> str:
     """Build a typed command recipe preview body for the TUI.
 
     Args:
         recipe_id [str]: Qualified or unambiguous command recipe id.
         cwd [str | Path]: Workspace root.
+        task_text [str | None]: Optional task prompt for preview rendering.
 
     Returns:
         str: Human-readable typed dry-run preview.
@@ -71,6 +84,7 @@ def build_tui_run_plan_preview(recipe_id: str, cwd: str | Path) -> str:
         recipe,
         cwd=cwd,
         dry_run=True,
+        task_text=task_text,
     )
     preview_text: str = format_tui_run_plan(plan)
     return preview_text

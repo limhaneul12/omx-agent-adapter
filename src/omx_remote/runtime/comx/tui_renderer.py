@@ -21,7 +21,10 @@ def _permission_label() -> str:
     bypass_value: str | None = os.environ.get("CODEX_SANDBOX") or os.environ.get(
         "OMX_PERMISSIONS"
     )
-    if bypass_value is not None and bypass_value.lower() in {"yolo", "danger-full-access"}:
+    if bypass_value is not None and bypass_value.lower() in {
+        "yolo",
+        "danger-full-access",
+    }:
         permission_label: str = "YOLO mode"
         return permission_label
 
@@ -56,7 +59,9 @@ def build_tui_snapshot(
         goal_label = "safe" if next_action.safe_to_mutate else "blocked"
         warning_items.extend(next_action.blocked_actions)
 
-    inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(cwd=cwd_path)
+    inventory: ComxControlSurfaceInventory = build_comx_control_surface_inventory(
+        cwd=cwd_path
+    )
     mcp_server_count = 0
     try:
         registry: McpServerListResult = read_mcp_servers(cwd=cwd_path)

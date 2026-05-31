@@ -2,7 +2,6 @@ import asyncio
 from collections.abc import Iterable
 from pathlib import Path
 
-import orjson
 import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
@@ -13,6 +12,9 @@ from prompt_toolkit.shortcuts import clear
 from prompt_toolkit.styles import Style
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.comx.control_surface_inventory import (
     build_comx_control_surface_inventory,
 )
@@ -79,20 +81,6 @@ class ComxSlashCompleter(Completer):
                     start_position=-len(text_before_cursor),
                     display_meta=description,
                 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one comx CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _format_surface_human(inventory: ComxControlSurfaceInventory) -> str:

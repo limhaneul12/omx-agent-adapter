@@ -178,12 +178,16 @@ def _command_tokens(command_text: str) -> tuple[str, str]:
     Returns:
         tuple[str, str]: Prefix and inline args.
     """
-    for command in sorted(TUI_SLASH_COMMANDS, key=lambda item: len(item.name), reverse=True):
+    for command in sorted(
+        TUI_SLASH_COMMANDS, key=lambda item: len(item.name), reverse=True
+    ):
         names: tuple[str, ...] = (command.name, *command.aliases)
         for candidate in names:
             if command_text == candidate:
                 return command.name, ""
-            if command.supports_inline_args and command_text.startswith(f"{candidate} "):
+            if command.supports_inline_args and command_text.startswith(
+                f"{candidate} "
+            ):
                 return command.name, command_text[len(candidate) :].strip()
     return command_text, ""
 

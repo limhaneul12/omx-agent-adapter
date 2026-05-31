@@ -33,7 +33,6 @@ CUSTOM_WORKFLOW_COMMAND_IDS: tuple[str, ...] = (
     "codex-deep-research",
     "omx-autoresearch-loop",
     "research-interview-prd",
-    "company-build-loop",
     "verify-handoff-plus",
     "route-doctor",
     "mcp-onboard-audit",

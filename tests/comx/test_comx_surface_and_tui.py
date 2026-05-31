@@ -32,9 +32,11 @@ def test_comx_surface_inventory_distinguishes_native_and_composed(tmp_path) -> N
     assert "daemon" in native_names
     assert "surface" in native_names
     assert "builtin:review-diff" in composed_ids
-    assert "builtin:mcp-registry-inspect" in composed_ids
     assert "builtin:research-interview-prd" in composed_ids
-    assert "builtin:company-build-loop" in composed_ids
+    assert "builtin:collaboration-kickoff" in composed_ids
+    assert "builtin:idea-to-prd-council" in composed_ids
+    assert "builtin:parallel-review-board" in composed_ids
+    assert "builtin:release-readiness-room" in composed_ids
 
 
 def test_surface_cli_outputs_json(tmp_path) -> None:
@@ -52,6 +54,11 @@ def test_surface_cli_outputs_json(tmp_path) -> None:
         command["qualified_id"] == "builtin:review-diff"
         for command in payload["composed_commands"]
     )
+    composed_ids = {command["qualified_id"] for command in payload["composed_commands"]}
+    assert "builtin:collaboration-kickoff" in composed_ids
+    assert "builtin:idea-to-prd-council" in composed_ids
+    assert "builtin:parallel-review-board" in composed_ids
+    assert "builtin:release-readiness-room" in composed_ids
 
 
 def test_tui_renderer_includes_screenshot_style_labels(tmp_path) -> None:
@@ -290,6 +297,53 @@ def test_tui_run_renders_typed_command_plan(tmp_path: Path) -> None:
     assert "No command recipe was executed from the TUI." in result.warnings
 
 
+def test_tui_commands_lists_new_command_suite_with_grouped_labels(
+    tmp_path: Path,
+) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    result = route_tui_slash_command("/commands", cwd=tmp_path)
+
+    assert result.command == "/commands"
+    assert "[Collaboration]" in result.body
+    assert "Collaboration → Kickoff" in result.body
+    assert "builtin:collaboration-kickoff" in result.body
+    assert "[long_running]" in result.body
+    assert "Collaboration → Team Standup Sync" in result.body
+    assert "builtin:team-standup-sync" in result.body
+    assert "[read_only]" in result.body
+    assert "[Research]" in result.body
+    assert "Research → Idea to PRD Council" in result.body
+    assert "[Review]" in result.body
+    assert "Review → Parallel Review Board" in result.body
+    assert "[Release]" in result.body
+    assert "Release → Release Readiness Room" in result.body
+    assert "--execute --autonomy agent" in result.body
+
+
+def test_tui_run_previews_idea_to_prd_council_with_task_without_execution(
+    tmp_path: Path,
+) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    result = route_tui_slash_command(
+        '/run builtin:idea-to-prd-council --task "stock evidence radar"',
+        cwd=tmp_path,
+    )
+
+    assert result.command == "/run"
+    assert result.title == "command recipe preview"
+    assert "dry_run: true" in result.body
+    assert "builtin:idea-to-prd-council" in result.body
+    assert "stock evidence radar" in result.body
+    assert "Alexandria intake" in result.body
+    assert "roles:" in result.body
+    assert "market_researcher:codex_subagent" in result.body
+    assert "approved_for_ultragoal" in result.body
+    assert "06_ultragoal/ultragoal_brief.md" in result.body
+    assert "No command recipe was executed from the TUI." in result.warnings
+
+
 def test_tui_snapshot_includes_command_and_mcp_counts(monkeypatch, tmp_path) -> None:
     from omx_remote.schemas.mcp.client_schemas import McpServerListResult
 
@@ -337,7 +391,7 @@ def test_tui_router_lists_mcp_servers_with_redacted_targets(
         auth_status="bearer_token",
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.read_mcp_servers",
+        "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
             servers=(server,),
             codex_count=0,
@@ -382,7 +436,7 @@ def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> Non
         ),
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.read_mcp_servers",
+        "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
             servers=(server,),
             codex_count=0,
@@ -424,7 +478,7 @@ def test_tui_router_lists_mcp_tools(monkeypatch, tmp_path) -> None:
         ),
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.read_mcp_servers",
+        "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
             servers=(server,),
             codex_count=0,
@@ -448,7 +502,7 @@ def test_tui_router_lists_mcp_tools(monkeypatch, tmp_path) -> None:
         )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.list_mcp_tools",
+        "omx_remote.runtime.comx.tui_mcp_panels.list_mcp_tools",
         fake_list_mcp_tools,
     )
 
@@ -479,7 +533,7 @@ def test_tui_router_surfaces_mcp_tool_listing_errors(monkeypatch, tmp_path) -> N
         ),
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.read_mcp_servers",
+        "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
             servers=(server,),
             codex_count=0,
@@ -492,7 +546,7 @@ def test_tui_router_surfaces_mcp_tool_listing_errors(monkeypatch, tmp_path) -> N
         raise FileNotFoundError(server_config.transport.command or "missing")
 
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.list_mcp_tools",
+        "omx_remote.runtime.comx.tui_mcp_panels.list_mcp_tools",
         fake_list_mcp_tools,
     )
 
@@ -524,7 +578,7 @@ def test_tui_router_surfaces_mcp_http_exception_group(monkeypatch, tmp_path) -> 
         ),
     )
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.read_mcp_servers",
+        "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
             servers=(server,),
             codex_count=0,
@@ -540,7 +594,7 @@ def test_tui_router_surfaces_mcp_http_exception_group(monkeypatch, tmp_path) -> 
         )
 
     monkeypatch.setattr(
-        "omx_remote.runtime.comx.tui_command_router.list_mcp_tools",
+        "omx_remote.runtime.comx.tui_mcp_panels.list_mcp_tools",
         fake_list_mcp_tools,
     )
 

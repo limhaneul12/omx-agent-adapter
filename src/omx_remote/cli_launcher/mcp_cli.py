@@ -1,12 +1,14 @@
 import asyncio
 from pathlib import Path
-from typing import Literal, cast
 
 import orjson
 import typer
 from pydantic import ValidationError
 
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.mcp.mcp_registry_reader import (
     McpServerResolutionError,
     read_mcp_servers,
@@ -35,27 +37,12 @@ from omx_remote.schemas.mcp.client_schemas import (
     McpTransportKind,
     RepoMcpServerDefinition,
 )
-
-type McpServeLogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+from omx_remote.shared.omx_enums.mcp_enums import McpLogLevel
 
 mcp_app = typer.Typer(
     help="Consume external MCP servers/tools like Codex, or serve omx-agent tools.",
     add_completion=False,
 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one MCP CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _arguments_json(value: str | None) -> JsonObject:
@@ -265,8 +252,8 @@ def mcp_serve(
         "--config",
         help="Optional command recipe config path used by omx-agent MCP tools.",
     ),
-    log_level: str = typer.Option(
-        "ERROR",
+    log_level: McpLogLevel = typer.Option(
+        McpLogLevel.ERROR,
         "--log-level",
         help="FastMCP log level for the stdio server.",
     ),
@@ -276,17 +263,12 @@ def mcp_serve(
     Args:
         cwd [Path]: Default repository root.
         config_path [Path | None]: Optional command recipe config path.
-        log_level [str]: FastMCP log level.
+        log_level [McpLogLevel]: FastMCP log level.
     """
-    allowed_levels: tuple[str, ...] = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
-    if log_level not in allowed_levels:
-        raise typer.BadParameter(
-            f"--log-level must be one of: {', '.join(allowed_levels)}"
-        )
     run_omx_agent_mcp_stdio(
         cwd=cwd,
         config_path=config_path,
-        log_level=cast(McpServeLogLevel, log_level),
+        log_level=log_level,
     )
 
 
@@ -383,13 +365,18 @@ def mcp_add(
                 tool_timeout_sec=tool_timeout_sec,
             )
         else:
+            normalized_env_vars: tuple[str, ...]
+            if env_vars is None:
+                normalized_env_vars = ()
+            else:
+                normalized_env_vars = tuple(env_vars)
             definition = RepoMcpServerDefinition(
                 enabled=enabled,
                 transport=McpTransportKind.STDIO,
                 command=command_args[0],
                 args=command_args[1:],
                 env=_env_pairs(env_values),
-                env_vars=tuple(env_vars or ()),
+                env_vars=normalized_env_vars,
                 startup_timeout_sec=startup_timeout_sec,
                 tool_timeout_sec=tool_timeout_sec,
             )

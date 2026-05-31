@@ -4,12 +4,12 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 
 import httpx
-import orjson
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 
 from mcp import ClientSession, StdioServerParameters
-from omx_remote.adapter_types.json_types import JsonObject, JsonValue
+from omx_remote.adapter_types.json_types import JsonObject
+from omx_remote.runtime.mcp.mcp_json_payloads import normalize_mcp_json_object
 from omx_remote.schemas.mcp.client_schemas import (
     McpServerConfig,
     McpToolCallResult,
@@ -32,10 +32,14 @@ def _json_object_from_model(value: object) -> JsonObject:
     Returns:
         JsonObject: JSON-compatible object.
     """
-    payload: JsonValue = orjson.loads(orjson.dumps(value))
-    if not isinstance(payload, dict):
-        raise McpToolClientError("Expected MCP SDK payload to normalize to JSON object.")
-    return payload
+    try:
+        json_object = normalize_mcp_json_object(
+            value,
+            "Expected MCP SDK payload to normalize to JSON object.",
+        )
+    except ValueError as error:
+        raise McpToolClientError(str(error)) from error
+    return json_object
 
 
 def _optional_json_object(value: object | None) -> JsonObject | None:

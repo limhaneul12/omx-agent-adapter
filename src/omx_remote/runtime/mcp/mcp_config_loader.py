@@ -3,6 +3,9 @@ from pathlib import Path
 from typing import Final
 
 from omx_remote.runtime.agents.agent_config_loader import DEFAULT_AGENT_CONFIG_FILENAME
+from omx_remote.runtime.mcp.mcp_transport_resolution import (
+    infer_repo_mcp_transport_kind,
+)
 from omx_remote.schemas.mcp.client_schemas import (
     McpEnvironmentVariable,
     McpServerConfig,
@@ -75,26 +78,6 @@ def _load_toml_object(config_path: Path) -> dict[str, object]:
     return parsed_toml
 
 
-def _repo_transport_kind(definition: RepoMcpServerDefinition) -> McpTransportKind:
-    """Infer the transport kind for a repo-defined MCP server.
-
-    Args:
-        definition [RepoMcpServerDefinition]: Validated repo server definition.
-
-    Returns:
-        McpTransportKind: Inferred or explicit transport kind.
-    """
-    if definition.transport is not None:
-        transport_kind: McpTransportKind = definition.transport
-        return transport_kind
-    if definition.url is not None:
-        transport_kind = McpTransportKind.STREAMABLE_HTTP
-        return transport_kind
-
-    transport_kind = McpTransportKind.STDIO
-    return transport_kind
-
-
 def _definition_to_server(
     server_name: str,
     definition: RepoMcpServerDefinition,
@@ -108,7 +91,7 @@ def _definition_to_server(
     Returns:
         McpServerConfig: Stable server config.
     """
-    transport_kind: McpTransportKind = _repo_transport_kind(definition)
+    transport_kind: McpTransportKind = infer_repo_mcp_transport_kind(definition)
     env: tuple[McpEnvironmentVariable, ...] = tuple(
         McpEnvironmentVariable(name=name, value=value)
         for name, value in sorted(definition.env.items())

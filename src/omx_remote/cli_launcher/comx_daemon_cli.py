@@ -1,8 +1,10 @@
 from pathlib import Path
 
-import orjson
 import typer
 
+from omx_remote.cli_launcher.cli_error_payload import (
+    format_failed_cli_error_payload as _format_error_payload,
+)
 from omx_remote.runtime.comx.tui_daemon_control import (
     attach_comx_tui_daemon,
     build_daemon_start_command,
@@ -20,20 +22,6 @@ daemon_app = typer.Typer(
     help="Run the comx-agent TUI as a durable tmux-backed background session.",
     add_completion=False,
 )
-
-
-def _format_error_payload(error: Exception) -> str:
-    """Format one daemon CLI error as JSON.
-
-    Args:
-        error [Exception]: Error to render.
-
-    Returns:
-        str: JSON error payload.
-    """
-    payload: dict[str, object] = {"ok": False, "error": str(error)}
-    error_payload: str = orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()
-    return error_payload
 
 
 def _format_status_human(status: ComxTuiDaemonStatusResult) -> str:
