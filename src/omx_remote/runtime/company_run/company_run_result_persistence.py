@@ -155,6 +155,10 @@ def artifact_kind_for_path(path: Path) -> CompanyRunArtifactKind:
         CompanyRunArtifactKind: Inferred artifact kind.
     """
     path_text = str(path)
+    if "/discovery/" in path_text:
+        return CompanyRunArtifactKind.DISCOVERY
+    if "decision-report" in path_text:
+        return CompanyRunArtifactKind.DECISION_REPORT
     if "/research/" in path_text:
         return CompanyRunArtifactKind.RESEARCH
     if "/planning/" in path_text:

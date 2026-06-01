@@ -17,6 +17,12 @@ REQUIRED_ARTIFACTS = {
     "roster.json",
     "phase-log.jsonl",
     "memory-recall.md",
+    "discovery/discovery-decision-packet.json",
+    "discovery/discovery-summary.md",
+    "discovery/roi-no-build-gate.json",
+    "discovery/deep-interview-handoff.md",
+    "decisions/discovery-decision-report.json",
+    "decisions/discovery-decision-report.md",
     "route-next.json",
     "research/domain-research.md",
     "research/technical-feasibility.md",
@@ -75,6 +81,8 @@ def test_artifact_index_points_inside_actual_run_company_run_directory(
     root = run_dir / "company-run"
     paths = tuple(str(path) for path in validated.artifact_paths)
     assert str(root / "state.json") in paths
+    assert str(root / "discovery" / "discovery-decision-packet.json") in paths
+    assert str(root / "decisions" / "discovery-decision-report.md") in paths
     assert str(root / "planning" / "prd.md") in paths
     assert str(root / "planning" / "test-spec.md") in paths
     assert str(root / "planning" / "execution-brief.md") in paths

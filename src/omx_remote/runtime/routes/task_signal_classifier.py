@@ -12,6 +12,17 @@ _VERIFY_MARKERS: tuple[str, ...] = ("verify", "test", "qa", "lint", "typecheck")
 _DOC_MARKERS: tuple[str, ...] = ("document", "docs", "readme")
 _ROADMAP_MARKERS: tuple[str, ...] = ("roadmap", "multi-goal", "ultragoal", "brief")
 _PARALLEL_MARKERS: tuple[str, ...] = ("parallel", "workers", "subagents", "split")
+_DISCOVERY_MARKERS: tuple[str, ...] = (
+    "vague",
+    "unclear",
+    "ambiguous",
+    "don't assume",
+    "dont assume",
+    "unknown scope",
+    "non-goals",
+    "decision boundaries",
+)
+_COMPANY_RUN_MARKERS: tuple[str, ...] = ("company-run", "company run")
 
 
 def _contains_any(normalized_task: str, markers: tuple[str, ...]) -> bool:
@@ -99,6 +110,10 @@ def _collect_signals(normalized_task: str) -> tuple[str, ...]:
         signals.append("roadmap")
     if _contains_any(normalized_task, _PARALLEL_MARKERS):
         signals.append("parallel_workers")
+    if _contains_any(normalized_task, _DISCOVERY_MARKERS):
+        signals.append("needs_discovery")
+    if _contains_any(normalized_task, _COMPANY_RUN_MARKERS):
+        signals.append("company_run_requested")
     if "performance" in normalized_task or "benchmark" in normalized_task:
         signals.append("performance")
     if "research" in normalized_task or "investigate" in normalized_task:
@@ -125,6 +140,9 @@ def classify_task_signals(task: str) -> TaskClassification:
         task_type=_classify_task_type(normalized_task),
         needs_parallelism="parallel_workers" in signals,
         needs_durable_state="roadmap" in signals,
+        needs_discovery=(
+            "needs_discovery" in signals or "company_run_requested" in signals
+        ),
         signals=signals,
     )
     return classification

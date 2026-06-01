@@ -20,6 +20,7 @@ from omx_remote.schemas.commands.command_role_schemas import CommandRoleExecutio
 
 PUBLIC_WORKFLOW_COMMAND_IDS: tuple[str, ...] = (
     "route-next",
+    "discovery-gate",
     "research-brief",
     "idea-to-prd",
     "implementation-kickoff",
@@ -70,6 +71,64 @@ def _route_next_recipe() -> CommandRecipe:
                         CommandRoleExecution.CODEX_SUBAGENT,
                         "Classify the task and recommend the safest next command.",
                         report_path,
+                    ),
+                ),
+            ),
+        ),
+    )
+    return recipe
+
+
+def _discovery_gate_recipe() -> CommandRecipe:
+    """Build the discovery-gate lifecycle recipe.
+
+    Returns:
+        CommandRecipe: Discovery-gate recipe.
+    """
+    run_root = ".comx-agent/runs/discovery-gate"
+    recipe = CommandRecipe(
+        id="discovery-gate",
+        source=CommandSource.BUILTIN,
+        description=(
+            "Clarify vague ideas, score ambiguity, decide no-build/reroute/research/"
+            "PRD/company-run readiness, and bridge to OMX deep-interview when needed."
+        ),
+        namespace=CommandNamespace.WORKFLOW,
+        category=CommandRecipeCategory.LIFECYCLE,
+        risk=CommandRisk.LONG_RUNNING,
+        steps=(
+            codex_step(
+                "Produce the discovery-gate decision packet for: <task>.",
+                agent="route_strategist",
+                prompt_file=prompt_asset_path("discovery-gate", "discovery-gate.md"),
+                output_last_message=f"{run_root}/discovery-summary.md",
+                expected_artifacts=(
+                    f"{run_root}/discovery-decision-packet.json",
+                    f"{run_root}/discovery-summary.md",
+                    f"{run_root}/ambiguity-score.json",
+                    f"{run_root}/interview-handoff.md",
+                    f"{run_root}/interview-transcript-reference.json",
+                ),
+                role_lanes=(
+                    role_lane(
+                        "discovery_gatekeeper",
+                        CommandRoleExecution.CODEX_SUBAGENT,
+                        "Build the typed Discovery Decision Packet and routing verdict.",
+                        f"{run_root}/discovery-decision-packet.json",
+                    ),
+                    role_lane(
+                        "deep_interview_bridge",
+                        CommandRoleExecution.RUNTIME_HANDOFF,
+                        "Create an OMX deep-interview handoff only when ambiguity remains.",
+                        f"{run_root}/interview-handoff.md",
+                        approval_required=True,
+                    ),
+                    role_lane(
+                        "roi_no_build_gate",
+                        CommandRoleExecution.VALIDATION_GATE,
+                        "Challenge company-run ROI and cheaper/no-build alternatives.",
+                        f"{run_root}/ambiguity-score.json",
+                        approval_required=True,
                     ),
                 ),
             ),
@@ -402,13 +461,14 @@ def _release_readiness_recipe() -> CommandRecipe:
 
 
 def build_public_workflow_blueprints() -> tuple[CommandRecipe, ...]:
-    """Build the 9 public workflow recipes.
+    """Build the 10 public workflow recipes.
 
     Returns:
         tuple[CommandRecipe, ...]: Public workflow recipes.
     """
     recipes = (
         _route_next_recipe(),
+        _discovery_gate_recipe(),
         _research_brief_recipe(),
         _idea_to_prd_recipe(),
         _implementation_kickoff_recipe(),

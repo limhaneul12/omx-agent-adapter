@@ -229,6 +229,79 @@ def _run_tui_loop(
         )
 
 
+def _format_tui_command_result_human(command_result: ComxTuiCommandResult) -> str:
+    """Render one typed slash-command result for human TUI output.
+
+    Args:
+        command_result [ComxTuiCommandResult]: Routed slash-command result.
+
+    Returns:
+        str: Human-readable routed command output.
+    """
+    lines: list[str] = [f"## {command_result.title}", command_result.body]
+    lines.extend(f"warning: {warning}" for warning in command_result.warnings)
+    rendered: str = "\n".join(lines)
+    return rendered
+
+
+def _route_once_prompt_command(
+    cwd: Path,
+    next_action: NextActionResult,
+    session: ComxTuiSessionRecord,
+    prompt_text: str,
+) -> tuple[ComxTuiCommandResult | None, ComxTuiSessionRecord]:
+    """Route a one-shot prompt when it is a slash command.
+
+    Args:
+        cwd [Path]: Workspace root.
+        next_action [NextActionResult]: Current next-action snapshot.
+        session [ComxTuiSessionRecord]: Active TUI session record.
+        prompt_text [str]: Raw one-shot prompt text.
+
+    Returns:
+        tuple[ComxTuiCommandResult | None, ComxTuiSessionRecord]: Routed command
+            result when prompt text is a slash command, plus updated session.
+    """
+    normalized_command: str = normalize_tui_command_text(prompt_text)
+    if not normalized_command.startswith("/"):
+        return None, session
+
+    routed_session = record_tui_command(
+        cwd=cwd,
+        session=session,
+        command_text=normalized_command,
+    )
+    if normalized_command in {"/quit", "/exit"}:
+        closed_session = close_tui_session(
+            cwd=cwd,
+            session=routed_session,
+            reason="one-shot slash quit",
+        )
+        command_result = ComxTuiCommandResult(
+            command=normalized_command,
+            title="session closed",
+            body=f"session={closed_session.session_id} status={closed_session.status}",
+            warnings=(),
+        )
+        return command_result, closed_session
+
+    if not is_known_tui_slash_command(normalized_command):
+        raise ValueError(f"unknown slash command: {normalized_command}")
+
+    command_result: ComxTuiCommandResult = route_tui_slash_command(
+        normalized_command,
+        cwd=cwd,
+        next_action=next_action,
+        current_session=routed_session,
+    )
+    closed_session = close_tui_session(
+        cwd=cwd,
+        session=routed_session,
+        reason="one-shot slash command routed",
+    )
+    return command_result, closed_session
+
+
 def surface_command(
     cwd: Path = typer.Option(
         Path("."),
@@ -312,16 +385,46 @@ def tui_command(
     snapshot = build_tui_snapshot(cwd=cwd, next_action=next_action, prompt=prompt_text)
     session = record_tui_render(cwd, session, snapshot.prompt)
 
+    if once:
+        try:
+            command_result, session = _route_once_prompt_command(
+                cwd=cwd,
+                next_action=next_action,
+                session=session,
+                prompt_text=prompt_text,
+            )
+        except ValueError as error:
+            close_tui_session(
+                cwd=cwd,
+                session=session,
+                reason="one-shot slash command rejected",
+            )
+            if json_output:
+                typer.echo(_format_error_payload(error))
+            else:
+                typer.echo(str(error))
+            raise typer.Exit(code=2) from error
+        if command_result is not None:
+            if json_output:
+                typer.echo(command_result.model_dump_json(indent=2))
+                return
+            typer.echo(_format_tui_command_result_human(command_result))
+            return
+        close_tui_session(cwd=cwd, session=session, reason="one-shot render exited")
+        if json_output:
+            typer.echo(snapshot.model_dump_json(indent=2))
+            return
+        frame_text: str = render_tui_frame(snapshot)
+        typer.echo(frame_text)
+        return
+
     if json_output:
         typer.echo(snapshot.model_dump_json(indent=2))
-        close_tui_session(cwd, session, "json render exited")
+        close_tui_session(cwd=cwd, session=session, reason="json render exited")
         return
 
     frame_text: str = render_tui_frame(snapshot)
     typer.echo(frame_text)
-    if once:
-        close_tui_session(cwd, session, "one-shot render exited")
-        return
 
     final_session: ComxTuiSessionRecord = _run_tui_loop(
         cwd,

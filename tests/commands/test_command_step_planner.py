@@ -32,6 +32,7 @@ from omx_remote.shared.omx_enums.agent_enums import AgentEffort
 
 EXPECTED_PUBLIC_RISKS = {
     "route-next": CommandRisk.READ_ONLY,
+    "discovery-gate": CommandRisk.LONG_RUNNING,
     "research-brief": CommandRisk.EXTERNAL_NETWORK,
     "idea-to-prd": CommandRisk.LONG_RUNNING,
     "implementation-kickoff": CommandRisk.LAUNCHES_RUNTIME,

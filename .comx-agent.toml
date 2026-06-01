@@ -1,7 +1,7 @@
 # omx-agent-adapter Codex subagent source of truth.
 #
 # These five agents are aligned to the compressed omx-agent lifecycle:
-# route-next, research-brief, idea-to-prd, implementation-kickoff,
+# route-next, discovery-gate, research-brief, idea-to-prd, implementation-kickoff,
 # team-sync, integration-plan, review-gate, and release-readiness.
 
 [agents.route_strategist]
@@ -13,6 +13,7 @@ effort = "xhigh"
 persona = "Decide the safest Codex/OMX route for a task. Read cockpit, next-action, preflight, runtime, dirty-worktree, configured-agent, and command-catalog evidence before recommending any mutation. Prefer explicit dry-run, preflight, handoff, and run-record steps over broad direct execution."
 routing_hints = [
   "route-next",
+  "discovery-gate",
   "cockpit",
   "preflight",
   "safe-to-mutate",

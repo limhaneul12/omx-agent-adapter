@@ -22,6 +22,7 @@ Agent JSON contract example from `comx-agent route recommend --task "review curr
     "task_type": "review",
     "needs_parallelism": false,
     "needs_durable_state": false,
+    "needs_discovery": false,
     "signals": ["current_diff"]
   },
   "recommendations": [
@@ -44,6 +45,35 @@ Agent JSON contract example from `comx-agent route recommend --task "review curr
       "blocked_by": ["active runtime modes: ultragoal"]
     }
   ],
+  "warnings": []
+}
+```
+
+Discovery recommendation example for an ambiguous company-run request:
+
+```json
+{
+  "task": "company-run this vague product idea with unclear non-goals",
+  "classification": {
+    "task": "company-run this vague product idea with unclear non-goals",
+    "size": "medium",
+    "task_type": "implementation",
+    "needs_parallelism": false,
+    "needs_durable_state": false,
+    "needs_discovery": true,
+    "signals": ["needs_discovery", "company_run_requested"]
+  },
+  "recommendations": [
+    {
+      "route": "project_command",
+      "status": "recommended",
+      "confidence": "high",
+      "reason": "The task is broad, ambiguous, or company-run-sized; discovery-gate should settle non-goals, decision boundaries, ROI/no-build, and deep-interview handoff before expensive work.",
+      "command_id": "builtin:discovery-gate",
+      "blocked_by": []
+    }
+  ],
+  "blocked_alternatives": [],
   "warnings": []
 }
 ```

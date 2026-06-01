@@ -1,6 +1,5 @@
 from pydantic import Field, model_validator
 
-from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
     CommandRuntimeOptions,
 )
@@ -17,6 +16,7 @@ from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunTeamLaunchStatus,
     CompanyRunVoteChoice,
 )
+from omx_remote.shared.omx_enums.discovery_gate_enums import DiscoveryGateProfile
 
 COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS = 1800.0
 
@@ -293,6 +293,9 @@ class CompanyRunExecutionRequest(StrictSchemaModel):
     team_launch_mode: CompanyRunTeamLaunchMode = CompanyRunTeamLaunchMode.LAUNCH
     worker_count: int = Field(ge=3, default=4)
     max_research_rounds: int = Field(ge=1, default=2)
+    discovery_profile: DiscoveryGateProfile = DiscoveryGateProfile.STANDARD
+    max_discovery_questions: int | None = Field(ge=1, default=None)
+    budget_hint: NonEmptyString | None = None
     runtime_options: CommandRuntimeOptions | None = None
     timeout_seconds: float = Field(
         ge=1.0,
@@ -349,7 +352,15 @@ class CompanyRunResult(StrictSchemaModel):
     team_launch_attempted: bool
     team_task: NonEmptyString | None
     artifacts: tuple[NonEmptyString, ...]
-    metadata: JsonObject
+    metadata: "CompanyRunResultMetadata"
+
+
+class CompanyRunResultMetadata(StrictSchemaModel):
+    """Typed metadata paths attached to a company-run result."""
+
+    state_path: NonEmptyString
+    artifact_index_path: NonEmptyString
+    discovery_decision_report_path: NonEmptyString | None = None
 
 
 class CompanyRunArtifactSummaryPayload(StrictSchemaModel):

@@ -29,6 +29,7 @@ from omx_remote.shared.omx_enums.company_run_enums import (
 
 REQUIRED_PHASES = (
     "memory_recall",
+    "discovery_gate",
     "route_next",
     "research_brief_loop",
     "research_completion_vote",
@@ -51,7 +52,7 @@ def test_company_run_phase_enum_matches_runtime_contract_order() -> None:
 
 def test_team_bootstrap_blocks_until_prd_test_spec_and_execution_brief_exist() -> None:
     verdict = validate_team_bootstrap_readiness(
-        completed_phases=REQUIRED_PHASES[:7],
+        completed_phases=REQUIRED_PHASES[:8],
         artifacts=CompanyRunTeamBootstrapArtifacts(
             planning_prd=True,
             planning_test_spec=False,
@@ -71,7 +72,7 @@ def test_team_bootstrap_blocks_until_prd_test_spec_and_execution_brief_exist() -
 
 def test_team_bootstrap_allows_only_after_ordered_gates_artifacts_and_votes() -> None:
     verdict = validate_team_bootstrap_readiness(
-        completed_phases=REQUIRED_PHASES[:8],
+        completed_phases=REQUIRED_PHASES[:9],
         artifacts=_ready_bootstrap_artifacts(),
         votes=_valid_bootstrap_votes(),
     )
@@ -88,6 +89,7 @@ def test_phase_gate_order_rejects_skipping_research_and_proceed_votes() -> None:
 
     assert verdict.allowed is False
     reason_text = "\n".join(str(reason) for reason in verdict.blocked_reasons).lower()
+    assert "discovery_gate" in reason_text
     assert "research_completion_vote" in reason_text
     assert "proceed_vote" in reason_text
     assert "executive_readiness_gate" in reason_text
@@ -272,7 +274,7 @@ def _required_phase_records_before_team() -> list[CompanyRunPhaseRecord]:
             started_at="2026-06-01T00:00:00Z",
             finished_at="2026-06-01T00:00:00Z",
         )
-        for phase_value in REQUIRED_PHASES[:8]
+        for phase_value in REQUIRED_PHASES[:9]
     ]
 
 

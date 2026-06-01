@@ -94,10 +94,11 @@ def _agents() -> CockpitAgentConfigSummary:
 
 def _recipes() -> CockpitCommandRecipeSummary:
     return CockpitCommandRecipeSummary(
-        available_count=3,
-        builtin_count=2,
+        available_count=4,
+        builtin_count=3,
         repo_count=1,
         qualified_ids=(
+            "builtin:discovery-gate",
             "builtin:review-gate",
             "builtin:release-readiness",
             "repo:implement-with-review",
@@ -177,6 +178,24 @@ def test_policy_prefers_review_diff_recipe_for_review_task(tmp_path: Path) -> No
 
     assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
     assert result.recommendations[0].command_id == "builtin:review-gate"
+
+
+def test_policy_prefers_discovery_gate_for_ambiguous_company_run_request(
+    tmp_path: Path,
+) -> None:
+    result = build_route_policy_result(
+        task="company-run this vague product idea with unclear non-goals",
+        cwd=tmp_path,
+        capabilities=_capabilities(),
+        agent_summary=_agents(),
+        recipe_summary=_recipes(),
+        safe_to_mutate=True,
+        active_runtime_modes=(),
+    )
+
+    assert result.classification.needs_discovery is True
+    assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
+    assert result.recommendations[0].command_id == "builtin:discovery-gate"
 
 
 def test_policy_blocks_team_route_when_runtime_is_active(tmp_path: Path) -> None:

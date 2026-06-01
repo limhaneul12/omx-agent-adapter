@@ -22,6 +22,106 @@ If these tools are unavailable in a runtime, record the limitation explicitly an
     return text
 
 
+def discovery_summary_markdown(
+    objective: str,
+    verdict: str,
+    recommended_next_command: str,
+) -> str:
+    """Render Gate 0 discovery summary text.
+
+    Args:
+        objective [str]: Company-run objective.
+        verdict [str]: Discovery-gate verdict.
+        recommended_next_command [str]: Recommended next command.
+
+    Returns:
+        str: Markdown artifact text.
+    """
+    text = f"""# Discovery gate summary
+
+Objective: {objective}
+
+Decision: {verdict}
+Recommended next command: {recommended_next_command}
+
+This Gate 0 summary records whether company-run is worth the orchestration cost before Research Council, PRD Council, Executive Council, Team, or scoped subagents spend tokens.
+"""
+    return text
+
+
+def deep_interview_handoff_markdown(objective: str, invocation: str) -> str:
+    """Render OMX deep-interview bridge handoff text.
+
+    Args:
+        objective [str]: Company-run objective.
+        invocation [str]: Suggested OMX deep-interview invocation.
+
+    Returns:
+        str: Markdown artifact text.
+    """
+    text = f"""# Deep-interview handoff
+
+Objective: {objective}
+
+Suggested invocation:
+
+```bash
+{invocation}
+```
+
+Use this only when Gate 0 cannot settle non-goals, decision boundaries, acceptance criteria, or delegation authority. The handoff returns to discovery-gate before company-run continues.
+"""
+    return text
+
+
+def user_facing_decision_report_markdown(
+    decision: str,
+    rationale: tuple[str, ...],
+    concerns: tuple[str, ...],
+    next_actions: tuple[str, ...],
+    artifact_paths: tuple[str, ...],
+) -> str:
+    """Render a user-facing company-run decision report.
+
+    Args:
+        decision [str]: User-visible decision.
+        rationale [tuple[str, ...]]: Decision rationale bullets.
+        concerns [tuple[str, ...]]: Concern bullets.
+        next_actions [tuple[str, ...]]: Next-action bullets.
+        artifact_paths [tuple[str, ...]]: Artifact references.
+
+    Returns:
+        str: Markdown artifact text.
+    """
+    rationale_text = "\n".join(f"- {item}" for item in rationale)
+    concerns_text = "\n".join(f"- {item}" for item in concerns)
+    next_actions_text = "\n".join(f"- {item}" for item in next_actions)
+    artifact_text = "\n".join(f"- {path}" for path in artifact_paths)
+    text = f"""# Company-run decision report
+
+Decision: {decision}
+
+## Rationale
+
+{rationale_text}
+
+## Concerns
+
+{concerns_text}
+
+## Next actions
+
+{next_actions_text}
+
+## Artifact paths
+
+{artifact_text}
+
+Governance details are persisted as internal artifacts and are available for audit when requested, but the default user surface is this decision report rather than raw ballot ceremony.
+"""
+    return text
+
+
 def prd_markdown(objective: str) -> str:
     """Render PRD artifact text.
 

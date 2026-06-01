@@ -41,6 +41,7 @@ def ensure_company_run_tree(root: Path) -> None:
     """
     for relative in (
         "context",
+        "discovery",
         "decisions",
         "research",
         "votes",

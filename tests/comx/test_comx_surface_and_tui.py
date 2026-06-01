@@ -33,6 +33,7 @@ def test_comx_surface_inventory_distinguishes_native_and_composed(tmp_path) -> N
     assert "surface" in native_names
     assert {
         "builtin:route-next",
+        "builtin:discovery-gate",
         "builtin:research-brief",
         "builtin:idea-to-prd",
         "builtin:implementation-kickoff",
@@ -205,6 +206,64 @@ def test_tui_once_persists_session_record(tmp_path) -> None:
     assert session.last_prompt == "Run /review"
     assert session.render_count == 1
     assert session.events[-1].kind == "closed"
+
+
+def test_tui_once_routes_slash_prompt_to_command_result(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "tui",
+            "--cwd",
+            str(tmp_path),
+            "--once",
+            "--session-id",
+            "slash-once",
+            "--prompt",
+            "/commands",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["command"] == "/commands"
+    assert payload["title"] == "composed commands"
+    assert "builtin:discovery-gate" in payload["body"]
+    assert "COMX Agent" not in payload["title"]
+    session = read_tui_session(tmp_path, "slash-once")
+    assert session is not None
+    assert session.status == "closed"
+    assert session.command_history == ("/commands",)
+
+
+def test_tui_once_routes_run_prompt_with_runtime_options(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "tui",
+            "--cwd",
+            str(tmp_path),
+            "--once",
+            "--session-id",
+            "run-once",
+            "--prompt",
+            "/run builtin:research-brief --model gpt-5.5 --xhigh",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["command"] == "/run"
+    assert payload["title"] == "command recipe preview"
+    assert "runtime_options: model=gpt-5.5, reasoning_effort=xhigh" in payload["body"]
+    assert "--model gpt-5.5" in payload["body"]
+    session = read_tui_session(tmp_path, "run-once")
+    assert session is not None
+    assert session.status == "closed"
+    assert session.command_history == (
+        "/run builtin:research-brief --model gpt-5.5 --xhigh",
+    )
 
 
 def test_tui_resume_uses_last_prompt_when_prompt_omitted(tmp_path) -> None:

@@ -17,6 +17,7 @@ class CompanyRunPhase(StrEnum):
     """Ordered phases for the real company-run execution engine."""
 
     MEMORY_RECALL = "memory_recall"
+    DISCOVERY_GATE = "discovery_gate"
     ROUTE_NEXT = "route_next"
     RESEARCH_BRIEF_LOOP = "research_brief_loop"
     RESEARCH_COMPLETION_VOTE = "research_completion_vote"
@@ -70,6 +71,8 @@ class CompanyRunArtifactKind(StrEnum):
     STATE = "state"
     PHASE_LOG = "phase_log"
     ROSTER = "roster"
+    DISCOVERY = "discovery"
+    DECISION_REPORT = "decision_report"
     RESEARCH = "research"
     VOTE = "vote"
     PRD = "prd"

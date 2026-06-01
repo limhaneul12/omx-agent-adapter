@@ -32,6 +32,7 @@ TARGET_PUBLIC_IDS = tuple(PUBLIC_WORKFLOW_COMMAND_IDS)
 TARGET_ADAPTER_OPS_IDS = tuple(ADAPTER_OPS_COMMAND_IDS)
 EXPECTED_PUBLIC_RISKS = {
     "route-next": CommandRisk.READ_ONLY,
+    "discovery-gate": CommandRisk.LONG_RUNNING,
     "research-brief": CommandRisk.EXTERNAL_NETWORK,
     "idea-to-prd": CommandRisk.LONG_RUNNING,
     "implementation-kickoff": CommandRisk.LAUNCHES_RUNTIME,
@@ -67,7 +68,7 @@ persona = "Test {agent_id} persona."
     )
 
 
-def test_builtin_catalog_contains_exactly_nine_public_workflows() -> None:
+def test_builtin_catalog_contains_exactly_ten_public_workflows() -> None:
     catalog = build_builtin_command_catalog()
 
     public_recipes = tuple(
@@ -82,8 +83,8 @@ def test_builtin_catalog_contains_exactly_nine_public_workflows() -> None:
     )
 
     assert tuple(recipe.id for recipe in public_recipes) == TARGET_PUBLIC_IDS
-    assert len(public_recipes) == 9
-    assert len(catalog.commands) == 14
+    assert len(public_recipes) == 10
+    assert len(catalog.commands) == 15
     assert len({recipe.qualified_id for recipe in catalog.commands}) == len(
         catalog.commands
     )
@@ -152,6 +153,14 @@ def test_public_workflow_contracts_expose_expected_risks_and_shapes() -> None:
         == CommandStepCommand.OMX_ULTRAGOAL
     )  # type: ignore[union-attr]
     assert catalog.find("builtin:company-run").category == CommandRecipeCategory.MACRO  # type: ignore[union-attr]
+    assert catalog.find("builtin:deep-interview") is None
+    discovery_recipe = catalog.find("builtin:discovery-gate")
+    assert discovery_recipe is not None
+    assert "discovery-decision-packet.json" in "\n".join(
+        artifact
+        for step in discovery_recipe.steps
+        for artifact in step.expected_artifacts
+    )
 
 
 def test_company_run_declares_macro_gates_team_subagents_and_alexandria_mcp() -> None:
@@ -175,6 +184,7 @@ def test_company_run_declares_macro_gates_team_subagents_and_alexandria_mcp() ->
 
     for term in (
         "company_orchestrator",
+        "discovery_gate",
         "research_council",
         "executive_council",
         "omx_team",
@@ -187,6 +197,9 @@ def test_company_run_declares_macro_gates_team_subagents_and_alexandria_mcp() ->
         assert term in role_text
     for artifact in (
         "memory-recall.md",
+        "discovery-decision-packet.json",
+        "roi-no-build-gate.json",
+        "discovery-decision-report.md",
         "research-vote.md",
         "proceed-vote.md",
         "prd-readiness.md",

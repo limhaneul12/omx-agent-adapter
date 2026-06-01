@@ -69,7 +69,7 @@ def test_cli_execute_company_run_passes_explicit_company_options(
             "team_task": None,
             "artifacts": [str(company_root / "state.json")],
             "runtime_options": request_payload["runtime_options"],
-            "metadata": {},
+            "metadata": {"state_path": str(company_root / "state.json"), "artifact_index_path": str(company_root / "artifact-index.json")},
         }
         result = result_schema.model_validate(payload)  # type: ignore[attr-defined]
         result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
@@ -117,6 +117,9 @@ def test_cli_execute_company_run_passes_explicit_company_options(
             "team_launch_mode": "handoff",
             "worker_count": 6,
             "max_research_rounds": 2,
+            "discovery_profile": "standard",
+            "max_discovery_questions": None,
+            "budget_hint": None,
             "timeout_seconds": 1800.0,
             "runtime_options": {
                 "model": "gpt-5.5",
@@ -161,7 +164,7 @@ def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_te
     )
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove dispatch is injectable",
+            "objective": "prove dispatch is injectable with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -177,7 +180,7 @@ def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_te
     assert launched_commands == [("omx", "team", "4:executor", result.team_task)]
     assert validated_vote_counts == [3]
 
-    artifact_index_path = Path(result.metadata["artifact_index_path"])
+    artifact_index_path = Path(result.metadata.artifact_index_path)
     artifact_index = json.loads(artifact_index_path.read_text())
     required_artifacts = [
         artifact for artifact in artifact_index["artifacts"] if artifact["required"]
@@ -206,6 +209,7 @@ def test_company_run_request_defaults_to_no_runtime_options(tmp_path: Path) -> N
     assert payload["runtime_options"] is None
     assert payload["team_launch_mode"] == "launch"
     assert payload["worker_count"] == 4
+    assert payload["discovery_profile"] == "standard"
 
 
 def test_company_run_preserves_runtime_options_in_result_and_team_records(
@@ -228,7 +232,7 @@ def test_company_run_preserves_runtime_options_in_result_and_team_records(
 
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove runtime options survive company-run handoff",
+            "objective": "prove runtime options survive company-run handoff with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -241,7 +245,7 @@ def test_company_run_preserves_runtime_options_in_result_and_team_records(
     result = engine.execute(request)
 
     result_payload = model_json_object(result)
-    state_path = Path(result.metadata["state_path"])
+    state_path = Path(result.metadata.state_path)
     state_payload = json.loads(state_path.read_text(encoding="utf-8"))
     assert result_payload["runtime_options"] == expected_options
     assert launched_requests[0]["runtime_options"] == expected_options
@@ -286,7 +290,7 @@ def test_company_run_default_codex_council_blocks_when_subagents_fail(
     monkeypatch.setattr(council_module, "run_subprocess", failing_codex_run)
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove codex council is mandatory by default",
+            "objective": "prove codex council is mandatory by default with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "live_team_allowed": False,
@@ -322,7 +326,7 @@ def test_company_run_artifact_council_mode_does_not_invoke_codex_subprocess(
     monkeypatch.setattr(council_module, "run_subprocess", forbidden_codex_run)
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove artifact council mode is explicit",
+            "objective": "prove artifact council mode is explicit with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -817,7 +821,7 @@ def test_company_run_vote_ballot_evidence_paths_exist(
 
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove ballot evidence paths point at produced artifacts",
+            "objective": "prove ballot evidence paths point at produced artifacts with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -828,7 +832,7 @@ def test_company_run_vote_ballot_evidence_paths_exist(
 
     result = engine.execute(request)
 
-    state_path = Path(result.metadata["state_path"])
+    state_path = Path(result.metadata.state_path)
     state_payload = json.loads(state_path.read_text(encoding="utf-8"))
     evidence_paths = tuple(
         Path(ballot["evidence_path"])
@@ -859,7 +863,7 @@ def test_company_run_planned_dispatch_matches_requested_worker_count(
 
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove every planned worker gets a dispatch packet",
+            "objective": "prove every planned worker gets a dispatch packet with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -905,7 +909,7 @@ def test_company_run_injected_launcher_sees_worker_dispatches_before_launch(
 
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {
-            "objective": "prove injected launch sees complete dispatch packets",
+            "objective": "prove injected launch sees complete dispatch packets with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
             "cwd": str(tmp_path),
             "autonomy": "agent",
             "council_mode": "artifact",
@@ -944,7 +948,7 @@ def test_company_run_live_dispatch_matches_requested_worker_count(
     record, attempts = launch_team(  # type: ignore[operator]
         paths=paths,
         cwd=tmp_path,
-        objective="prove every live worker gets a dispatch packet",
+        objective="prove every live worker gets a dispatch packet with non-goals do not mutate outside test scope, decision boundaries preserve test scope, and Team review release evidence",
         company_root=company_root,
         worker_count=8,
         timeout_seconds=1.0,

@@ -28,6 +28,7 @@ Examples:
 
 ```text
 prompt/route-next/route-next-plan.md
+prompt/discovery-gate/discovery-gate.md
 prompt/research-brief/research-brief-plan.md
 prompt/idea-to-prd/idea-to-prd-plan.md
 prompt/company-run/company-run-orchestration.md
@@ -44,5 +45,5 @@ Nested folders are justified when a namespace or macro command owns multiple pro
 - Long reusable prompts must live here, not in Python strings.
 - Short inline prompt fragments may remain in Python only when they are not standalone operating prompts.
 - Every lifecycle prompt should name its stop condition and the command it must not accidentally execute.
-- Alexandria MCP usage must name concrete available tool points such as `alexandria_recall_context`, `alexandria_search`, `alexandria_search_vault`, `alexandria_ask_obsidian_librarian`, `alexandria_start_skill_acquisition`, `alexandria_complete_skill_acquisition`, `alexandria_read_note`, and `alexandria_reindex_vault`; if a writable memory tool is unavailable, the prompt must require an explicit unavailable-tool note instead of vague “integrate with Alexandria” wording.
+- Alexandria MCP usage must name concrete available tool points such as `alexandria_search_vault`, `alexandria_read_note`, `alexandria_get_current_memory_compact`, `alexandria_ask_obsidian_librarian`, and `alexandria_save_note`; if a writable memory tool is unavailable, the prompt must require an explicit unavailable-tool note instead of vague “integrate with Alexandria” wording.
 - Tests should verify required prompt files exist when a command depends on them.

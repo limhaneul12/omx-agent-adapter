@@ -235,6 +235,18 @@ def _build_recommendations(
     """
     recommendations: list[RouteRecommendation] = []
     blocked: list[RouteRecommendation] = []
+    if classification.needs_discovery:
+        discovery_gate = _recommend_project_command(
+            recipe_summary,
+            "builtin:discovery-gate",
+            (
+                "The task is broad, ambiguous, or company-run-sized; discovery-gate "
+                "should settle non-goals, decision boundaries, ROI/no-build, and "
+                "deep-interview handoff before expensive work."
+            ),
+        )
+        if discovery_gate is not None:
+            recommendations.append(discovery_gate)
     if classification.task_type == RouteTaskType.REVIEW:
         project_review = _recommend_project_command(
             recipe_summary,

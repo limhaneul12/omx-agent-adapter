@@ -1,7 +1,9 @@
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+import orjson
 from asyncer import create_task_group
 
 from omx_remote.execution.async_boundary import run_blocking_call
@@ -187,6 +189,11 @@ def run_council_subagent(
         cwd=cwd,
         timeout_seconds=timeout_seconds,
     )
+    if outcome.exit_code == 0 and not outcome.timed_out and not output_path.exists():
+        recover_output_last_message_from_stdout(
+            output_path=output_path,
+            stdout=outcome.stdout,
+        )
     failure: CommandFailureClassification | None = None
     if outcome.exit_code != 0 or outcome.timed_out or not output_path.exists():
         failure = CommandFailureClassification(
@@ -203,6 +210,60 @@ def run_council_subagent(
     )
     result = CouncilRunResult(attempts=(attempt,), failure=failure)
     return result
+
+
+def recover_output_last_message_from_stdout(output_path: Path, stdout: str) -> bool:
+    """Recover a missing Codex output-last-message artifact from JSON stdout.
+
+    Args:
+        output_path [Path]: Expected final-message artifact path.
+        stdout [str]: Captured Codex JSON event stream.
+
+    Returns:
+        bool: Whether a recovered final agent message was written.
+    """
+    final_message = final_agent_message_from_codex_stdout(stdout=stdout)
+    if final_message is None:
+        recovered = False
+        return recovered
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(final_message, encoding="utf-8")
+    recovered = True
+    return recovered
+
+
+def final_agent_message_from_codex_stdout(stdout: str) -> str | None:
+    """Return the final agent message text from a Codex JSON event stream.
+
+    Args:
+        stdout [str]: Captured Codex JSON event stream.
+
+    Returns:
+        str | None: Final non-empty agent message text when present.
+    """
+    messages: list[str] = []
+    for line in stdout.splitlines():
+        stripped_line = line.strip()
+        if not stripped_line.startswith("{"):
+            continue
+        try:
+            decoded: object = orjson.loads(stripped_line)
+        except orjson.JSONDecodeError:
+            continue
+        if not isinstance(decoded, Mapping):
+            continue
+        if decoded.get("type") != "item.completed":
+            continue
+        item = decoded.get("item")
+        if not isinstance(item, Mapping):
+            continue
+        if item.get("type") != "agent_message":
+            continue
+        message_text = item.get("text")
+        if isinstance(message_text, str) and message_text.strip():
+            messages.append(message_text)
+    final_message = messages[-1] if messages else None
+    return final_message
 
 
 def run_council_subagent_request(request: CouncilLaneRequest) -> CouncilRunResult:

@@ -26,8 +26,9 @@ def build_company_run_blueprint() -> CommandRecipe:
         id="company-run",
         source=CommandSource.BUILTIN,
         description=(
-            "Run a company-style macro orchestration loop with gates, votes, "
-            "Team, subagents, review, release, and Alexandria MCP tool points."
+            "Run a build-oriented company-style macro loop with discovery/ROI "
+            "gates, internal governance, Team, subagents, review, release, and "
+            "Alexandria MCP tool points."
         ),
         namespace=CommandNamespace.WORKFLOW,
         category=CommandRecipeCategory.MACRO,
@@ -42,6 +43,11 @@ def build_company_run_blueprint() -> CommandRecipe:
                 output_last_message=f"{run_root}/company-run-plan.md",
                 expected_artifacts=(
                     f"{run_root}/memory-recall.md",
+                    f"{run_root}/discovery/discovery-decision-packet.json",
+                    f"{run_root}/discovery/discovery-summary.md",
+                    f"{run_root}/discovery/roi-no-build-gate.json",
+                    f"{run_root}/discovery/deep-interview-handoff.md",
+                    f"{run_root}/decisions/discovery-decision-report.md",
                     f"{run_root}/research-vote.md",
                     f"{run_root}/proceed-vote.md",
                     f"{run_root}/prd-readiness.md",
@@ -53,14 +59,21 @@ def build_company_run_blueprint() -> CommandRecipe:
                     role_lane(
                         lane_id="company_orchestrator",
                         execution=CommandRoleExecution.SYNTHESIS,
-                        purpose="Own phase sequencing, gates, voting, decisions, and closeout.",
+                        purpose="Own phase sequencing, discovery/ROI gates, internal decisions, and closeout.",
                         artifact=f"{run_root}/company-run-plan.md",
+                        approval_required=True,
+                    ),
+                    role_lane(
+                        lane_id="discovery_gate",
+                        execution=CommandRoleExecution.VALIDATION_GATE,
+                        purpose="Run Gate 0 discovery, ROI/no-build, and deep-interview handoff before expensive work.",
+                        artifact=f"{run_root}/discovery/discovery-decision-packet.json",
                         approval_required=True,
                     ),
                     role_lane(
                         lane_id="research_council",
                         execution=CommandRoleExecution.CODEX_SUBAGENT,
-                        purpose="Run independent research lanes and research completion vote.",
+                        purpose="Run independent research lanes and internal research decision record.",
                         artifact=f"{run_root}/research-vote.md",
                     ),
                     role_lane(
@@ -89,7 +102,7 @@ def build_company_run_blueprint() -> CommandRecipe:
                 command=CommandStepCommand.OMX_TEAM,
                 inline_prompt=(
                     "Policy-gated company-run Team handoff. Team and subagents are "
-                    "required only after research/proceed votes and PRD/test spec readiness."
+                    "required only after discovery/ROI, research/proceed decisions, and PRD/test spec readiness."
                 ),
                 expected_artifacts=(f"{run_root}/team-plan.md",),
             ),

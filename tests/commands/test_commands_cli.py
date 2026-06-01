@@ -15,6 +15,7 @@ from omx_remote.runtime.commands.blueprints.consolidated_lifecycle_blueprints im
 
 EXPECTED_PUBLIC_RISKS = {
     "route-next": "read_only",
+    "discovery-gate": "long_running",
     "research-brief": "external_network",
     "idea-to-prd": "long_running",
     "implementation-kickoff": "launches_runtime",
@@ -50,7 +51,7 @@ persona = "Test {agent_id} persona."
     )
 
 
-def test_commands_list_shows_nine_public_workflows_and_adapter_ops(
+def test_commands_list_shows_ten_public_workflows_and_adapter_ops(
     tmp_path: Path,
 ) -> None:
     result = CliRunner().invoke(
@@ -60,9 +61,9 @@ def test_commands_list_shows_nine_public_workflows_and_adapter_ops(
 
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
-    assert payload["builtin_count"] == 14
-    assert payload["public_workflow_commands"] == 9
-    assert payload["lifecycle_commands"] == 8
+    assert payload["builtin_count"] == 15
+    assert payload["public_workflow_commands"] == 10
+    assert payload["lifecycle_commands"] == 9
     assert payload["macro_commands"] == 1
     assert payload["adapter_ops_commands"] == 5
     public_ids = {
@@ -90,11 +91,11 @@ def test_commands_validate_outputs_grouped_counts(tmp_path: Path) -> None:
     payload = orjson.loads(result.stdout)
     assert payload == {
         "valid": True,
-        "command_count": 14,
-        "builtin_count": 14,
+        "command_count": 15,
+        "builtin_count": 15,
         "repo_count": 0,
-        "public_workflow_commands": 9,
-        "lifecycle_commands": 8,
+        "public_workflow_commands": 10,
+        "lifecycle_commands": 9,
         "macro_commands": 1,
         "adapter_ops_commands": 5,
     }

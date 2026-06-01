@@ -62,6 +62,7 @@ def test_readme_surfaces_command_composition_flow() -> None:
         "comx-agent agents plan-apply-codex --cwd .",
         "comx-agent ultragoal status --cwd .",
         "comx-agent run builtin:research-brief --cwd . --dry-run",
+        "comx-agent run builtin:discovery-gate --cwd . --dry-run",
         "comx-agent run builtin:idea-to-prd --cwd . --dry-run",
         "comx-agent run builtin:implementation-kickoff --cwd . --dry-run",
         "comx-agent run builtin:company-run --cwd . --dry-run",
@@ -71,7 +72,7 @@ def test_readme_surfaces_command_composition_flow() -> None:
         assert expected_command in readme_text
 
     assert "comx-agent hypergoal" not in readme_text.lower()
-    assert "exactly nine public workflow commands" in readme_text
+    assert "exactly ten public workflow commands" in readme_text
     assert "company-run" in readme_text
 
 

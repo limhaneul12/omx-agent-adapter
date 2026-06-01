@@ -17,6 +17,14 @@ TUI_COMMAND_SECTION_LABELS: Final[dict[str, TuiCommandSectionLabel]] = {
         label="Lifecycle → Route Next",
         warning="Route recommendation only; it does not mutate runtime state.",
     ),
+    "discovery-gate": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Discovery Gate",
+        warning=(
+            "Clarification, ROI/no-build, and deep-interview handoff only; "
+            "it does not implement."
+        ),
+    ),
     "research-brief": TuiCommandSectionLabel(
         group="Lifecycle",
         label="Lifecycle → Research Brief",

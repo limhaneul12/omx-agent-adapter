@@ -16,6 +16,7 @@ class TaskClassification(StrictSchemaModel):
     task_type: RouteTaskType
     needs_parallelism: bool = False
     needs_durable_state: bool = False
+    needs_discovery: bool = False
     signals: tuple[NonEmptyString, ...] = ()
 
 

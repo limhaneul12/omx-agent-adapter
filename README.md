@@ -100,6 +100,7 @@ comx-agent commands show builtin:company-run --cwd . --json
 comx-agent preflight run builtin:review-gate --cwd . --json
 comx-agent run builtin:review-gate --cwd . --dry-run
 comx-agent run builtin:review-gate --cwd . --dry-run --json --record-run
+comx-agent run builtin:discovery-gate --cwd . --dry-run --task "clarify a company-run idea" --json
 comx-agent run builtin:research-brief --cwd . --dry-run --task "current upstream evidence" --json
 comx-agent run builtin:idea-to-prd --cwd . --dry-run --task "turn this idea into a PRD" --json
 comx-agent run builtin:implementation-kickoff --cwd . --dry-run --task "coordinate implementation" --json
@@ -151,11 +152,12 @@ comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --
 
 The TUI keeps mutating actions guarded: `/mcp call <server> <tool>` is a dry-run preview, `/run <recipe>` renders the typed dry-run command plan, `/run <recipe> --task "..."` passes a task prompt into preview rendering, and `/research <objective>` creates a staged local research-plan artifact without running external research tools. CLI execution is explicit through `comx-agent run <recipe> --execute --autonomy agent`, which records the plan, autonomy decision, step attempts, stdout/stderr, artifact checks, and recovery evidence. Actual execution returns shell status `0` only for `succeeded`; `failed`, `blocked`, and `requires_agent_action` stop shell pipelines with non-zero exit codes after still printing the typed result.
 
-Adapter-owned workflow recipes now expose exactly nine public workflow commands plus a separate maintenance namespace:
+Adapter-owned workflow recipes now expose exactly ten public workflow commands plus a separate maintenance namespace:
 
 | Group | Command id | Risk |
 | --- | --- | --- |
 | Lifecycle | `route-next` | `read_only` |
+| Lifecycle | `discovery-gate` | `long_running` |
 | Lifecycle | `research-brief` | `external_network` |
 | Lifecycle | `idea-to-prd` | `long_running` |
 | Lifecycle | `implementation-kickoff` | `launches_runtime` |
@@ -170,7 +172,7 @@ Adapter-owned workflow recipes now expose exactly nine public workflow commands 
 | Adapter Ops | `adapter-ops run-ledger` | `read_only` |
 | Adapter Ops | `adapter-ops memory-capture` | `writes_files` |
 
-These are not raw aliases: they preview staged Codex/OMX/local/MCP steps, risk level, expected artifacts, typed role lanes, Codex native-agent bindings, root `prompt/` Markdown assets, and handoff points before any runtime launch. `company-run` is a macro orchestration mode: it models research/proceed votes, PRD readiness, implementation-kickoff as the development-start gate, Team plus subagents, review/release loops, and Alexandria MCP tool points for memory recall, librarian queries, artifact curation, context recovery, and closeout.
+These are not raw aliases: they preview staged Codex/OMX/local/MCP steps, risk level, expected artifacts, typed role lanes, Codex native-agent bindings, root `prompt/` Markdown assets, and handoff points before any runtime launch. `discovery-gate` is an adapter-owned pre-planning gate that can hand off to OMX `deep-interview` without exposing a duplicate adapter command. `company-run` is a build-oriented macro orchestration mode: it records Gate -1 memory/context recovery, Gate 0 discovery/ROI/no-build, internal research/proceed decision records, PRD readiness, implementation-kickoff as the development-start gate, Team plus subagents, review/release loops, user-facing decision reports, and Alexandria MCP tool points for memory recall, librarian queries, artifact curation, context recovery, and closeout.
 
 TUI sessions are durable by default. `--session-id <name>` stores the current prompt, render count, slash-command history, and lifecycle events under `.comx-agent/sessions/<name>.json`; reopening the same session id resumes the last prompt when `--prompt` is omitted. Use `comx-agent sessions list` and `comx-agent sessions show <name>` to inspect saved sessions after leaving the TUI.
 

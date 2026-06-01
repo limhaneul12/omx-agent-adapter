@@ -12,6 +12,7 @@ from omx_remote.shared.omx_enums.company_run_enums import (
 _REQUIRED_PHASE_ORDER: tuple[CompanyRunPhase, ...] = tuple(CompanyRunPhase)
 _TEAM_BOOTSTRAP_REQUIRED_PHASES: tuple[CompanyRunPhase, ...] = (
     CompanyRunPhase.MEMORY_RECALL,
+    CompanyRunPhase.DISCOVERY_GATE,
     CompanyRunPhase.ROUTE_NEXT,
     CompanyRunPhase.RESEARCH_BRIEF_LOOP,
     CompanyRunPhase.RESEARCH_COMPLETION_VOTE,

@@ -29,3 +29,13 @@ def test_classifier_detects_parallel_refactor_worker_signal() -> None:
     assert classification.task_type == RouteTaskType.REFACTOR
     assert classification.needs_parallelism is True
     assert "parallel_workers" in classification.signals
+
+
+def test_classifier_detects_company_run_discovery_need() -> None:
+    classification = classify_task_signals(
+        "company-run this vague idea with unclear non-goals"
+    )
+
+    assert classification.needs_discovery is True
+    assert "needs_discovery" in classification.signals
+    assert "company_run_requested" in classification.signals

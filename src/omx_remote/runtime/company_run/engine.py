@@ -1,6 +1,9 @@
 from collections.abc import Callable
 from pathlib import Path
 
+from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
+    ActualRunPaths,
+)
 from omx_remote.runtime.company_run.company_run_artifacts import (
     ensure_company_run_tree,
     write_artifact_index,
@@ -26,10 +29,13 @@ from omx_remote.runtime.company_run.company_run_roster_policy import (
 )
 from omx_remote.runtime.company_run.company_run_team_runtime import build_team_task
 from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
+from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunExecutionRequest,
     CompanyRunPhaseRecord,
     CompanyRunResult,
+    CompanyRunResultMetadata,
+    CompanyRunRoster,
     CompanyRunState,
     CompanyRunTeamRequest,
     CompanyRunVoteRecord,
@@ -38,6 +44,7 @@ from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunFinalStatus,
     CompanyRunPhase,
 )
+from omx_remote.shared.omx_enums.discovery_gate_enums import DiscoveryGateVerdict
 from omx_remote.shared.utils.runtime_identity import utc_compact_timestamp
 
 TeamLauncher = Callable[[CompanyRunTeamRequest], object]
@@ -84,11 +91,24 @@ class CompanyRunEngine:
         council_mode = str(request.council_mode)
         live_team_allowed = request.live_team_allowed
 
-        self._phase_sequence.write_memory_and_route_artifacts(
+        discovery_artifacts = self._phase_sequence.write_memory_and_route_artifacts(
             company_root=company_root,
             request=request,
             phase_records=phase_records,
         )
+        if not discovery_artifacts.should_continue:
+            result = self._finalize_after_discovery_stop(
+                paths=paths,
+                request=request,
+                run_id=run_id,
+                run_dir=run_dir,
+                company_root=company_root,
+                cwd=cwd,
+                roster=roster,
+                phase_records=phase_records,
+                discovery_artifacts=discovery_artifacts,
+            )
+            return result
         council_results = self._phase_sequence.run_research_council(
             paths=paths,
             cwd=cwd,
@@ -144,10 +164,10 @@ class CompanyRunEngine:
                 ),
                 runtime_options=request.runtime_options,
                 artifacts=tuple(record.path for record in records),
-                metadata={
-                    "state_path": str(state_path),
-                    "artifact_index_path": str(artifact_index_path),
-                },
+                metadata=CompanyRunResultMetadata(
+                    state_path=str(state_path),
+                    artifact_index_path=str(artifact_index_path),
+                ),
             )
             write_final_company_run_files(paths, result, artifact_index_path)
             return result
@@ -237,10 +257,94 @@ class CompanyRunEngine:
             ),
             runtime_options=request.runtime_options,
             artifacts=tuple(record.path for record in records),
-            metadata={
-                "state_path": str(state_path),
-                "artifact_index_path": str(artifact_index_path),
-            },
+            metadata=CompanyRunResultMetadata(
+                state_path=str(state_path),
+                artifact_index_path=str(artifact_index_path),
+            ),
+        )
+        write_final_company_run_files(paths, result, artifact_index_path)
+        return result
+
+    def _finalize_after_discovery_stop(
+        self,
+        paths: ActualRunPaths,
+        request: CompanyRunExecutionRequest,
+        run_id: str,
+        run_dir: Path,
+        company_root: Path,
+        cwd: Path,
+        roster: CompanyRunRoster,
+        phase_records: list[CompanyRunPhaseRecord],
+        discovery_artifacts: CompanyRunDiscoveryArtifacts,
+    ) -> CompanyRunResult:
+        """Finalize a run stopped by company-run Gate 0.
+
+        Args:
+            paths: Actual-run artifact paths.
+            request [CompanyRunExecutionRequest]: Company-run request.
+            run_id [str]: Run id.
+            run_dir [Path]: Run directory.
+            company_root [Path]: Company-run artifact root.
+            cwd [Path]: Resolved repository root.
+            roster: Validated company-run roster.
+            phase_records [list[CompanyRunPhaseRecord]]: Phase log.
+            discovery_artifacts [CompanyRunDiscoveryArtifacts]: Gate 0 artifacts.
+
+        Returns:
+            CompanyRunResult: Final result without Team launch.
+        """
+        blocked_reasons = (
+            (discovery_artifacts.stop_reason,)
+            if discovery_artifacts.stop_reason is not None
+            else ()
+        )
+        final_status = _final_status_from_discovery_verdict(
+            verdict=DiscoveryGateVerdict(discovery_artifacts.verdict)
+        )
+        initial_records = company_run_artifact_records(company_root)
+        state = CompanyRunState(
+            run_id=run_id,
+            objective=request.objective,
+            cwd=str(cwd),
+            runtime_options=request.runtime_options,
+            status=final_status,
+            current_phase=CompanyRunPhase.DISCOVERY_GATE,
+            roster=roster,
+            phases=tuple(phase_records),
+            votes=(),
+            artifacts=initial_records,
+            team_launch=None,
+            alexandria_tool_points=alexandria_tool_points(),
+            blocked_reasons=blocked_reasons,
+        )
+        state_path = write_company_state(company_root, state)
+        records = company_run_artifact_records(company_root)
+        if records != initial_records:
+            state = state.model_copy(update={"artifacts": records})
+            state_path = write_company_state(company_root, state)
+        artifact_index_path = write_artifact_index(company_root, run_id, records)
+        result = CompanyRunResult(
+            run_id=run_id,
+            command_id="company-run",
+            qualified_id="builtin:company-run",
+            cwd=str(cwd),
+            dry_run=False,
+            status=final_status.value,
+            run_dir=str(run_dir),
+            result_path=str(paths.result_path),
+            company_run_root=str(company_root),
+            blocked_reasons=blocked_reasons,
+            team_launch_attempted=False,
+            team_task=None,
+            runtime_options=request.runtime_options,
+            artifacts=tuple(record.path for record in records),
+            metadata=CompanyRunResultMetadata(
+                state_path=str(state_path),
+                artifact_index_path=str(artifact_index_path),
+                discovery_decision_report_path=(
+                    discovery_artifacts.decision_report_markdown_path
+                ),
+            ),
         )
         write_final_company_run_files(paths, result, artifact_index_path)
         return result
@@ -258,6 +362,24 @@ def execute_company_run(request: CompanyRunExecutionRequest) -> CompanyRunResult
     engine = CompanyRunEngine()
     result = engine.execute(request)
     return result
+
+
+def _final_status_from_discovery_verdict(
+    verdict: DiscoveryGateVerdict,
+) -> CompanyRunFinalStatus:
+    """Map Gate 0 verdict to final company-run status.
+
+    Args:
+        verdict [DiscoveryGateVerdict]: Gate 0 verdict.
+
+    Returns:
+        CompanyRunFinalStatus: Final status for stopped runs.
+    """
+    if verdict == DiscoveryGateVerdict.NO_BUILD:
+        return CompanyRunFinalStatus.SUCCEEDED
+    if verdict == DiscoveryGateVerdict.BLOCKED:
+        return CompanyRunFinalStatus.BLOCKED
+    return CompanyRunFinalStatus.REQUIRES_AGENT_ACTION
 
 
 __all__ = [
