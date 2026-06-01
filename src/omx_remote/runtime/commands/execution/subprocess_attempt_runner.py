@@ -21,6 +21,7 @@ from omx_remote.schemas.commands.command_execution_schemas import (
     CommandFailureClassification,
     CommandStepAttempt,
 )
+from omx_remote.schemas.process_environment_schemas import ProcessEnvironmentOverrides
 from omx_remote.shared.process_environment_settings import ProcessEnvironmentSettings
 from omx_remote.shared.utils.runtime_identity import utcnow_text
 
@@ -39,11 +40,15 @@ class SubprocessAttemptOutcome:
     timed_out: bool
 
 
-def _execution_env(cwd: Path) -> dict[str, str]:
+def _execution_env(
+    cwd: Path,
+    environment_overrides: ProcessEnvironmentOverrides | None,
+) -> dict[str, str]:
     """Build an execution environment that can import the repo-local package.
 
     Args:
         cwd: See function signature.
+        environment_overrides: See function signature.
 
     Returns:
         See function return annotation."""
@@ -53,6 +58,8 @@ def _execution_env(cwd: Path) -> dict[str, str]:
     if existing_pythonpath:
         python_paths.append(existing_pythonpath)
     env["PYTHONPATH"] = os.pathsep.join(python_paths)
+    if environment_overrides is not None:
+        env.update(environment_overrides.as_environment_mapping())
     return env
 
 
@@ -73,6 +80,7 @@ def run_subprocess(
     argv: tuple[str, ...],
     cwd: Path,
     timeout_seconds: float,
+    environment_overrides: ProcessEnvironmentOverrides | None = None,
 ) -> SubprocessAttemptOutcome:
     """Run one subprocess attempt and capture stdout/stderr.
 
@@ -80,6 +88,7 @@ def run_subprocess(
         argv: See function signature.
         cwd: See function signature.
         timeout_seconds: See function signature.
+        environment_overrides: See function signature.
 
     Returns:
         See function return annotation."""
@@ -89,7 +98,10 @@ def run_subprocess(
         process = subprocess.Popen(
             argv,
             cwd=cwd,
-            env=_execution_env(cwd),
+            env=_execution_env(
+                cwd=cwd,
+                environment_overrides=environment_overrides,
+            ),
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

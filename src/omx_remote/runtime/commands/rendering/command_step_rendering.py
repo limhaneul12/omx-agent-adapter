@@ -1,10 +1,16 @@
 from hashlib import sha256
 from pathlib import Path
 
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    codex_runtime_argv,
+)
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CodexSandboxMode,
     CommandStep,
     CommandStepCommand,
+)
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
 )
 
 
@@ -166,6 +172,7 @@ def _build_codex_argv(
     cwd: str | Path | None,
     step: CommandStep,
     task_text: str | None,
+    runtime_options: CommandRuntimeOptions | None,
 ) -> tuple[str, ...]:
     """Build inspectable native argv for a Codex exec step.
 
@@ -173,6 +180,7 @@ def _build_codex_argv(
         cwd [str | Path | None]: Base working directory for relative paths.
         step [CommandStep]: Step to render.
         task_text [str | None]: Optional caller-supplied task text.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         tuple[str, ...]: Native argv preview.
@@ -180,6 +188,7 @@ def _build_codex_argv(
     argv: list[str] = ["codex"]
     if step.agent is not None:
         argv.extend(["-c", f'agent_type="{step.agent}"'])
+    argv.extend(codex_runtime_argv(runtime_options=runtime_options))
     if step.codex_search:
         argv.append("--search")
     argv.extend(["exec", "--json"])
@@ -239,6 +248,7 @@ def native_step_argv(
     cwd: str | Path | None,
     step: CommandStep,
     task_text: str | None,
+    runtime_options: CommandRuntimeOptions | None = None,
 ) -> tuple[str, ...]:
     """Build inspectable native argv for one step.
 
@@ -246,12 +256,18 @@ def native_step_argv(
         cwd [str | Path | None]: Base working directory for relative paths.
         step [CommandStep]: Step to render.
         task_text [str | None]: Optional caller-supplied task text.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         tuple[str, ...]: Native argv preview.
     """
     if step.command == CommandStepCommand.CODEX_EXEC:
-        native_argv = _build_codex_argv(cwd, step, task_text)
+        native_argv = _build_codex_argv(
+            cwd=cwd,
+            step=step,
+            task_text=task_text,
+            runtime_options=runtime_options,
+        )
         return native_argv
     if step.command in {
         CommandStepCommand.OMX_EXEC,

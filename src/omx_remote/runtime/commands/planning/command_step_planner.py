@@ -19,6 +19,9 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandStep,
     CommandStepCommand,
 )
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 
 
 def _agent_blockers(
@@ -114,6 +117,7 @@ def _build_plan_step(
     recipe_risk: CommandRisk,
     agent_config: AgentConfigSet,
     task_text: str | None,
+    runtime_options: CommandRuntimeOptions | None,
 ) -> CommandPlanStep:
     """Build one dry-run plan step.
 
@@ -124,6 +128,7 @@ def _build_plan_step(
         recipe_risk [CommandRisk]: Parent recipe risk.
         agent_config [AgentConfigSet]: Loaded repo agent config.
         task_text [str | None]: Optional caller-supplied task text.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         CommandPlanStep: Dry-run plan step.
@@ -141,7 +146,12 @@ def _build_plan_step(
         index=index,
         command=step.command,
         agent=step.agent,
-        native_argv=native_step_argv(cwd, step, task_text),
+        native_argv=native_step_argv(
+            cwd=cwd,
+            step=step,
+            task_text=task_text,
+            runtime_options=runtime_options,
+        ),
         codex_search=step.codex_search,
         codex_sandbox=effective_codex_sandbox(step),
         prompt_file=prompt_file,
@@ -164,6 +174,7 @@ def build_command_execution_plan(
     cwd: str | Path | None = None,
     dry_run: bool = True,
     task_text: str | None = None,
+    runtime_options: CommandRuntimeOptions | None = None,
 ) -> CommandExecutionPlan:
     """Build an inspectable command execution plan.
 
@@ -172,6 +183,7 @@ def build_command_execution_plan(
         cwd [str | Path | None]: Base working directory for relative paths.
         dry_run [bool]: Whether the plan is dry-run only.
         task_text [str | None]: Optional caller-supplied task text.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         CommandExecutionPlan: Typed dry-run execution plan.
@@ -185,6 +197,7 @@ def build_command_execution_plan(
             recipe.risk,
             agent_config,
             task_text,
+            runtime_options,
         )
         for index, step in enumerate(recipe.steps, start=1)
     )
@@ -200,6 +213,7 @@ def build_command_execution_plan(
         description=recipe.description,
         risk=recipe.risk,
         dry_run=dry_run,
+        runtime_options=runtime_options,
         steps=steps,
         blocked_reasons=blocked_reasons,
     )

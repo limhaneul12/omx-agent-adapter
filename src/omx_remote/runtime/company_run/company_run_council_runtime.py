@@ -12,10 +12,16 @@ from omx_remote.runtime.commands.execution.subprocess_attempt_runner import (
     run_subprocess,
     write_attempt,
 )
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    codex_runtime_argv,
+)
 from omx_remote.runtime.prompt_assets import render_prompt_model_asset
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandFailureClassification,
     CommandStepAttempt,
+)
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
 )
 from omx_remote.schemas.company_run_schemas import CompanyRunCouncilPromptContext
 from omx_remote.shared.omx_enums.command_enums import CommandFailureKind
@@ -45,6 +51,7 @@ class CouncilLaneRequest:
     step_index: int
     attempt_number: int
     mode: str
+    runtime_options: CommandRuntimeOptions | None
 
 
 def company_run_council_prompt(
@@ -122,6 +129,7 @@ def run_council_subagent(
     step_index: int,
     attempt_number: int,
     mode: str,
+    runtime_options: CommandRuntimeOptions | None,
 ) -> CouncilRunResult:
     """Run or materialize one company-run council/subagent lane.
 
@@ -138,6 +146,7 @@ def run_council_subagent(
         step_index [int]: Step index for attempt artifacts.
         attempt_number [int]: Attempt number for this subagent lane.
         mode [str]: `codex` for real Codex execution, `artifact` for deterministic fallback.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         CouncilRunResult: Attempt and failure evidence.
@@ -164,6 +173,7 @@ def run_council_subagent(
         "codex",
         "-c",
         f'agent_type="{agent_name}"',
+        *codex_runtime_argv(runtime_options=runtime_options),
         "exec",
         "--json",
         "--sandbox",
@@ -217,6 +227,7 @@ def run_council_subagent_request(request: CouncilLaneRequest) -> CouncilRunResul
         step_index=request.step_index,
         attempt_number=request.attempt_number,
         mode=request.mode,
+        runtime_options=request.runtime_options,
     )
     return result
 

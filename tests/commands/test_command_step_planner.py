@@ -3,16 +3,18 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.runtime.commands.catalog.command_catalog_resolver import load_command_catalog
-from omx_remote.runtime.commands.planning.command_step_planner import (
-    build_command_execution_plan,
-    build_one_off_prompt_recipe,
-)
 from omx_remote.runtime.commands.blueprints.adapter_ops_blueprints import (
     ADAPTER_OPS_COMMAND_IDS,
 )
 from omx_remote.runtime.commands.blueprints.consolidated_lifecycle_blueprints import (
     PUBLIC_WORKFLOW_COMMAND_IDS,
+)
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
+    load_command_catalog,
+)
+from omx_remote.runtime.commands.planning.command_step_planner import (
+    build_command_execution_plan,
+    build_one_off_prompt_recipe,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandNamespace,
@@ -23,6 +25,10 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandStep,
     CommandStepCommand,
 )
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
+from omx_remote.shared.omx_enums.agent_enums import AgentEffort
 
 EXPECTED_PUBLIC_RISKS = {
     "route-next": CommandRisk.READ_ONLY,
@@ -141,6 +147,38 @@ def test_research_brief_plan_includes_search_sandbox_and_prompt_asset(
     assert plan.steps[0].prompt_exists is True
     assert plan.steps[0].prompt_file is not None
     assert "/prompt/research-brief/research-brief-plan.md" in plan.steps[0].prompt_file
+
+
+def test_codex_plan_argv_receives_model_reasoning_and_madmax_flags(
+    tmp_path: Path,
+) -> None:
+    _write_agent_config(tmp_path)
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:research-brief")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe,
+        cwd=tmp_path,
+        dry_run=True,
+        runtime_options=CommandRuntimeOptions(
+            model="gpt-5.5",
+            reasoning_effort=AgentEffort.XHIGH,
+            madmax=True,
+        ),
+    )
+
+    argv = plan.steps[0].native_argv
+    assert plan.runtime_options is not None
+    assert argv[0] == "codex"
+    assert argv[argv.index("--model") + 1] == "gpt-5.5"
+    assert "gpt-5.5" in argv
+    assert 'model_reasoning_effort="xhigh"' in argv
+    assert "--dangerously-bypass-approvals-and-sandbox" in argv
+    assert argv.index("--model") < argv.index("exec")
+    assert argv.index("--dangerously-bypass-approvals-and-sandbox") < argv.index(
+        "exec"
+    )
 
 
 def test_idea_to_prd_plan_declares_planning_artifacts(tmp_path: Path) -> None:

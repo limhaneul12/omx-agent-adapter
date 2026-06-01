@@ -4,6 +4,8 @@ company-run implementation Team task for: {{objective}}
 
 You are an OMX Team launched by the company-run CEO/orchestrator. This is not a one-agent report.
 
+Runtime options requested by the CEO/orchestrator: {{runtime_options}}
+
 ## Required worker behavior
 
 - Use separate worker ownership lanes.

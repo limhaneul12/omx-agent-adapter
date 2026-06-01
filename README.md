@@ -104,9 +104,25 @@ comx-agent run builtin:research-brief --cwd . --dry-run --task "current upstream
 comx-agent run builtin:idea-to-prd --cwd . --dry-run --task "turn this idea into a PRD" --json
 comx-agent run builtin:implementation-kickoff --cwd . --dry-run --task "coordinate implementation" --json
 comx-agent run builtin:company-run --cwd . --dry-run --task "build an agent company" --json
+comx-agent run builtin:company-run --cwd . --execute --autonomy agent --task "build an agent company" --model gpt-5.5 --xhigh --json
 comx-agent run 'builtin:adapter-ops mcp-audit' --cwd . --dry-run --task "audit MCP setup" --json
 comx-agent runs handoff <run-id> --cwd .
 ```
+
+Runtime options can be set per invocation instead of through environment variables:
+
+- `--model <model>` passes an explicit Codex model to Codex-backed recipe steps and company-run council lanes.
+- `--reasoning-effort low|medium|high|xhigh` passes `model_reasoning_effort` to Codex.
+- `--xhigh` is a shorthand for `--reasoning-effort xhigh`.
+- `--madmax` is dangerous: it implies xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. Use it only when that risk is intended.
+
+The same preview syntax is available from the TUI:
+
+```text
+/run builtin:company-run --task "build an agent company" --model gpt-5.5 --xhigh
+```
+
+For live `company-run` Team fanout, these options are also recorded in company-run artifacts and forwarded to OMX Team workers through a transient adapter-owned subprocess environment override; users do not need to set `OMX_TEAM_WORKER_LAUNCH_ARGS` manually.
 
 Useful adjacent surfaces:
 

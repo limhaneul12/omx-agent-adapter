@@ -176,6 +176,7 @@ class CompanyRunPhaseSequence:
                 step_index=1,
                 attempt_number=attempt_number,
                 mode=council_mode,
+                runtime_options=request.runtime_options,
             )
             for attempt_number, (role, relative_path, label, points) in enumerate(
                 research_specs,

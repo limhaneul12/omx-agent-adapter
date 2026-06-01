@@ -7,6 +7,11 @@ from omx_remote.runtime.commands.execution.subprocess_attempt_runner import (
     run_subprocess,
     write_attempt,
 )
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    runtime_options_summary_text,
+    team_worker_launch_args,
+    team_worker_launch_environment_name,
+)
 from omx_remote.runtime.company_run.company_run_artifacts import write_company_json
 from omx_remote.runtime.company_run.company_run_team_evidence import (
     latest_team_state_name,
@@ -29,9 +34,16 @@ from omx_remote.runtime.prompt_assets import render_prompt_model_asset
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandFailureClassification,
 )
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunTeamLaunchRecord,
     CompanyRunTeamPromptContext,
+)
+from omx_remote.schemas.process_environment_schemas import (
+    ProcessEnvironmentOverride,
+    ProcessEnvironmentOverrides,
 )
 from omx_remote.shared.omx_enums.command_enums import CommandFailureKind
 from omx_remote.shared.omx_enums.company_run_enums import CompanyRunTeamLaunchStatus
@@ -54,12 +66,44 @@ def _failure(reason: str) -> CommandFailureClassification:
     return failure
 
 
-def build_team_task(objective: str, company_root: Path) -> str:
+def _team_worker_environment_overrides(
+    runtime_options: CommandRuntimeOptions | None,
+) -> ProcessEnvironmentOverrides | None:
+    """Build transient environment overrides for native OMX Team worker launch.
+
+    Args:
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
+
+    Returns:
+        ProcessEnvironmentOverrides | None: Environment overrides when Team worker
+        launch args are needed.
+    """
+    launch_args = team_worker_launch_args(runtime_options=runtime_options)
+    if launch_args is None:
+        no_overrides: None = None
+        return no_overrides
+    overrides = ProcessEnvironmentOverrides(
+        values=(
+            ProcessEnvironmentOverride(
+                name=team_worker_launch_environment_name(),
+                value=launch_args,
+            ),
+        )
+    )
+    return overrides
+
+
+def build_team_task(
+    objective: str,
+    company_root: Path,
+    runtime_options: CommandRuntimeOptions | None = None,
+) -> str:
     """Build the OMX Team task sent by company-run.
 
     Args:
         objective [str]: User objective.
         company_root [Path]: Company-run artifact root.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         str: Team task prompt.
@@ -72,6 +116,7 @@ def build_team_task(objective: str, company_root: Path) -> str:
         execution_brief_path=str(company_root / "planning" / "execution-brief.md"),
         kickoff_path=str(company_root / "implementation" / "implementation-kickoff.md"),
         dispatch_path=str(company_root / "team" / "worker-dispatches.json"),
+        runtime_options=runtime_options_summary_text(runtime_options=runtime_options),
     )
     task = render_prompt_model_asset(
         parts=("company-run", "team-task.md"),
@@ -122,6 +167,7 @@ def launch_company_run_team(
     timeout_seconds: float,
     step_index: int,
     launch_mode: str,
+    runtime_options: CommandRuntimeOptions | None = None,
 ) -> tuple[CompanyRunTeamLaunchRecord, tuple]:
     """Launch and optionally await the OMX Team leg.
 
@@ -134,6 +180,7 @@ def launch_company_run_team(
         timeout_seconds [float]: Subprocess timeout.
         step_index [int]: Synthetic step index for attempt artifacts.
         launch_mode [str]: Whether to launch or write handoff only.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         tuple[CompanyRunTeamLaunchRecord, tuple]: Launch record and step attempts.
@@ -146,7 +193,9 @@ def launch_company_run_team(
     team_task = build_team_task(
         objective=objective,
         company_root=company_root,
+        runtime_options=runtime_options,
     )
+    worker_launch_args = team_worker_launch_args(runtime_options=runtime_options)
     command_arguments: tuple[str, ...] = (
         "omx",
         "team",
@@ -157,6 +206,8 @@ def launch_company_run_team(
         record = CompanyRunTeamLaunchRecord(
             status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
             command=command_arguments,
+            runtime_options=runtime_options,
+            worker_launch_args=worker_launch_args,
             worker_count=worker_count,
             dispatch_path=str(dispatch_path),
             launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),
@@ -169,6 +220,8 @@ def launch_company_run_team(
         record = CompanyRunTeamLaunchRecord(
             status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
             command=command_arguments,
+            runtime_options=runtime_options,
+            worker_launch_args=worker_launch_args,
             worker_count=worker_count,
             dispatch_path=str(dispatch_path),
             launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),
@@ -181,11 +234,22 @@ def launch_company_run_team(
         )
         return record, ()
 
-    launch_outcome = run_subprocess(
-        argv=command_arguments,
-        cwd=cwd,
-        timeout_seconds=timeout_seconds,
+    environment_overrides = _team_worker_environment_overrides(
+        runtime_options=runtime_options,
     )
+    if environment_overrides is None:
+        launch_outcome = run_subprocess(
+            argv=command_arguments,
+            cwd=cwd,
+            timeout_seconds=timeout_seconds,
+        )
+    else:
+        launch_outcome = run_subprocess(
+            argv=command_arguments,
+            cwd=cwd,
+            timeout_seconds=timeout_seconds,
+            environment_overrides=environment_overrides,
+        )
     launch_failure = None
     if launch_outcome.exit_code != 0 or launch_outcome.timed_out:
         launch_failure = _failure(
@@ -301,6 +365,8 @@ def launch_company_run_team(
     record = CompanyRunTeamLaunchRecord(
         status=status,
         command=command_arguments,
+        runtime_options=runtime_options,
+        worker_launch_args=worker_launch_args,
         worker_count=worker_count,
         team_name=team_name,
         dispatch_path=str(dispatch_path),

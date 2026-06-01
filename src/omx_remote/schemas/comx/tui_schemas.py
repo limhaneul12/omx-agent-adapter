@@ -1,3 +1,6 @@
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 
 
@@ -50,3 +53,11 @@ class ComxTuiCommandResult(StrictSchemaModel):
     read_only: bool = True
     artifact_path: NonEmptyString | None = None
     warnings: tuple[NonEmptyString, ...] = ()
+
+
+class ComxTuiRunPreviewArgs(StrictSchemaModel):
+    """Parsed `/run` preview arguments."""
+
+    recipe_id: NonEmptyString
+    task_text: NonEmptyString | None = None
+    runtime_options: CommandRuntimeOptions | None = None

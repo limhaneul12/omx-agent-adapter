@@ -6,6 +6,9 @@ from pydantic import ValidationError
 from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
     ActualRunPaths,
 )
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    team_worker_launch_args,
+)
 from omx_remote.runtime.company_run.company_run_artifacts import (
     artifact_record,
     write_company_json,
@@ -99,12 +102,14 @@ def run_team_gate_for_company_run(
     team_task = build_team_task(
         objective=request.objective,
         company_root=company_root,
+        runtime_options=request.runtime_options,
     )
     team_request = CompanyRunTeamRequest(
         native_argv=("omx", "team", f"{request.worker_count}:executor", team_task),
         worker_count=request.worker_count,
         objective=request.objective,
         team_task=team_task,
+        runtime_options=request.runtime_options,
     )
     completed_phases = tuple(record.phase for record in phase_records)
     order_verdict = validate_phase_gate_order(
@@ -151,6 +156,7 @@ def run_team_gate_for_company_run(
             timeout_seconds=request.timeout_seconds,
             step_index=2,
             launch_mode=str(request.team_launch_mode),
+            runtime_options=request.runtime_options,
         )
     else:
         team_record = _planned_team_record(
@@ -490,6 +496,10 @@ def _blocked_team_record(
     record = CompanyRunTeamLaunchRecord(
         status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
         command=request.native_argv,
+        runtime_options=request.runtime_options,
+        worker_launch_args=team_worker_launch_args(
+            runtime_options=request.runtime_options,
+        ),
         worker_count=request.worker_count,
         dispatch_path=str(dispatch_path),
         launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),
@@ -571,6 +581,10 @@ def _team_launch_record_from_dispatch(
     record = CompanyRunTeamLaunchRecord(
         status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
         command=request.native_argv,
+        runtime_options=request.runtime_options,
+        worker_launch_args=team_worker_launch_args(
+            runtime_options=request.runtime_options,
+        ),
         worker_count=request.worker_count,
         dispatch_path=str(dispatch_path),
         launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),

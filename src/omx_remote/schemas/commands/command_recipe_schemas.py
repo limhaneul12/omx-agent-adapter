@@ -2,6 +2,9 @@ from pydantic import Field, computed_field, model_validator
 
 from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.schemas.commands.command_role_schemas import CommandRoleLane
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.shared.omx_enums.command_enums import (
     CodexSandboxMode,
@@ -311,5 +314,6 @@ class CommandExecutionPlan(StrictSchemaModel):
     description: NonEmptyString
     risk: CommandRisk
     dry_run: bool
+    runtime_options: CommandRuntimeOptions | None = None
     steps: tuple[CommandPlanStep, ...]
     blocked_reasons: tuple[NonEmptyString, ...] = ()

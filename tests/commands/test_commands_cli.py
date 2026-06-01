@@ -239,6 +239,60 @@ def test_run_company_run_dry_run_renders_macro_gates_without_execution(
     assert payload["steps"][-1]["native_argv"] == ["omx", "team", "--help"]
 
 
+def test_run_dry_run_json_exposes_runtime_options(tmp_path: Path) -> None:
+    _write_agent_config(tmp_path)
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "builtin:research-brief",
+            "--cwd",
+            str(tmp_path),
+            "--dry-run",
+            "--task",
+            "compare runtime flags",
+            "--model",
+            "gpt-5.5",
+            "--madmax",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = orjson.loads(result.stdout)
+    assert payload["runtime_options"] == {
+        "model": "gpt-5.5",
+        "reasoning_effort": "xhigh",
+        "madmax": True,
+    }
+    argv = payload["steps"][0]["native_argv"]
+    assert argv[0] == "codex"
+    assert argv[argv.index("--model") + 1] == "gpt-5.5"
+    assert 'model_reasoning_effort="xhigh"' in argv
+    assert "--dangerously-bypass-approvals-and-sandbox" in argv
+
+
+def test_run_dry_run_json_keeps_runtime_options_null_by_default(
+    tmp_path: Path,
+) -> None:
+    _write_agent_config(tmp_path)
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "builtin:research-brief",
+            "--cwd",
+            str(tmp_path),
+            "--dry-run",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = orjson.loads(result.stdout)
+    assert payload["runtime_options"] is None
+
+
 def test_run_adapter_ops_dry_run_outputs_maintenance_plan(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,

@@ -348,6 +348,26 @@ def test_tui_run_previews_company_run_with_task_without_execution(
     assert "No command recipe was executed from the TUI." in result.warnings
 
 
+def test_tui_run_parses_and_previews_runtime_options(tmp_path: Path) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    result = route_tui_slash_command(
+        "/run builtin:research-brief --model gpt-5.5 --xhigh --madmax",
+        cwd=tmp_path,
+    )
+
+    assert result.command == "/run"
+    assert result.title == "command recipe preview"
+    assert (
+        "runtime_options: model=gpt-5.5, reasoning_effort=xhigh, madmax=true"
+        in result.body
+    )
+    assert "--model gpt-5.5" in result.body
+    assert 'model_reasoning_effort="xhigh"' in result.body
+    assert "--dangerously-bypass-approvals-and-sandbox" in result.body
+    assert "No command recipe was executed from the TUI." in result.warnings
+
+
 def test_tui_run_supports_unquoted_adapter_ops_space_form(
     tmp_path: Path,
 ) -> None:

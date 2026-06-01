@@ -1,6 +1,9 @@
 from pydantic import Field, model_validator
 
 from omx_remote.adapter_types.json_types import JsonObject
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunArtifactKind,
@@ -234,6 +237,8 @@ class CompanyRunTeamLaunchRecord(StrictSchemaModel):
 
     status: CompanyRunTeamLaunchStatus
     command: tuple[NonEmptyString, ...]
+    runtime_options: CommandRuntimeOptions | None = None
+    worker_launch_args: NonEmptyString | None = None
     worker_count: int = Field(ge=3)
     team_name: NonEmptyString | None = None
     dispatch_path: NonEmptyString
@@ -252,6 +257,7 @@ class CompanyRunState(StrictSchemaModel):
     run_id: NonEmptyString
     objective: NonEmptyString
     cwd: NonEmptyString
+    runtime_options: CommandRuntimeOptions | None = None
     status: CompanyRunFinalStatus
     current_phase: CompanyRunPhase
     roster: CompanyRunRoster
@@ -287,6 +293,7 @@ class CompanyRunExecutionRequest(StrictSchemaModel):
     team_launch_mode: CompanyRunTeamLaunchMode = CompanyRunTeamLaunchMode.LAUNCH
     worker_count: int = Field(ge=3, default=4)
     max_research_rounds: int = Field(ge=1, default=2)
+    runtime_options: CommandRuntimeOptions | None = None
     timeout_seconds: float = Field(
         ge=1.0,
         default=COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS,
@@ -300,6 +307,7 @@ class CompanyRunTeamRequest(StrictSchemaModel):
     worker_count: int = Field(ge=3)
     objective: NonEmptyString
     team_task: NonEmptyString
+    runtime_options: CommandRuntimeOptions | None = None
 
 
 class CompanyRunCouncilPromptContext(StrictSchemaModel):
@@ -321,6 +329,7 @@ class CompanyRunTeamPromptContext(StrictSchemaModel):
     execution_brief_path: NonEmptyString
     kickoff_path: NonEmptyString
     dispatch_path: NonEmptyString
+    runtime_options: NonEmptyString
 
 
 class CompanyRunResult(StrictSchemaModel):
@@ -331,6 +340,7 @@ class CompanyRunResult(StrictSchemaModel):
     qualified_id: NonEmptyString
     cwd: NonEmptyString
     dry_run: bool
+    runtime_options: CommandRuntimeOptions | None = None
     status: NonEmptyString
     run_dir: NonEmptyString
     result_path: NonEmptyString

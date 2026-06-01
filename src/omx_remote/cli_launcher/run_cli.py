@@ -15,6 +15,10 @@ from omx_remote.runtime.commands.catalog.command_recipe_loader import (
     CommandRecipeLoadError,
 )
 from omx_remote.runtime.commands.execution.command_executor import CommandExecutor
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    build_command_runtime_options,
+    runtime_options_summary_text,
+)
 from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
     build_one_off_prompt_recipe,
@@ -30,6 +34,9 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandCatalog,
     CommandExecutionPlan,
     CommandRecipe,
+)
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
 )
 from omx_remote.schemas.company_run_schemas import (
     COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS,
@@ -59,6 +66,7 @@ def _format_plan_human(plan: CommandExecutionPlan) -> str:
         f"command: {plan.qualified_id}",
         f"dry_run: {plan.dry_run}",
         f"risk: {plan.risk}",
+        f"runtime_options: {runtime_options_summary_text(plan.runtime_options)}",
     ]
     lines.extend(
         f"step {step.index}: {' '.join(step.native_argv)}" for step in plan.steps
@@ -80,6 +88,7 @@ def _format_actual_human(result: CommandActualRunResult) -> str:
     lines: list[str] = [
         f"command: {result.qualified_id}",
         f"status: {result.status}",
+        f"runtime_options: {runtime_options_summary_text(result.runtime_options)}",
         f"run_id: {result.run_id}",
         f"result: {result.result_path}",
     ]
@@ -137,6 +146,7 @@ def _format_company_run_human(result: CompanyRunResult) -> str:
     lines = [
         f"command: {result.qualified_id}",
         f"status: {result.status}",
+        f"runtime_options: {runtime_options_summary_text(result.runtime_options)}",
         f"run_id: {result.run_id}",
         f"company_run_root: {result.company_run_root}",
         f"result: {result.result_path}",
@@ -235,6 +245,26 @@ def run_command(
         "--worker-count",
         help="Company-run only: Team worker count, minimum 3.",
     ),
+    model: str | None = typer.Option(
+        None,
+        "--model",
+        help="Codex model override for Codex-backed steps, company-run council lanes, and Team workers.",
+    ),
+    reasoning_effort: str | None = typer.Option(
+        None,
+        "--reasoning-effort",
+        help="Codex reasoning effort override: low, medium, high, or xhigh.",
+    ),
+    xhigh: bool = typer.Option(
+        False,
+        "--xhigh",
+        help="Shortcut for --reasoning-effort xhigh.",
+    ),
+    madmax: bool = typer.Option(
+        False,
+        "--madmax",
+        help="DANGEROUS: request xhigh reasoning plus Codex approval/sandbox bypass.",
+    ),
 ) -> None:
     """Dry-run or execute a project-owned command recipe or one-off prompt.
 
@@ -257,6 +287,10 @@ def run_command(
         company_live_team [bool]: Whether company-run may launch native OMX Team.
         company_team_launch [str]: Company-run Team handling mode.
         company_worker_count [int]: Company-run Team worker count.
+        model [str | None]: Optional Codex model override.
+        reasoning_effort [str | None]: Optional Codex reasoning effort override.
+        xhigh [bool]: Shortcut for xhigh reasoning.
+        madmax [bool]: Dangerous approval/sandbox bypass shortcut.
     """
     run_record: RunRecord | None = None
     try:
@@ -268,6 +302,12 @@ def run_command(
             )
         if execute and autonomy is None:
             raise ValueError("--execute requires explicit --autonomy agent.")
+        runtime_options: CommandRuntimeOptions | None = build_command_runtime_options(
+            model=model,
+            reasoning_effort=reasoning_effort,
+            xhigh=xhigh,
+            madmax=madmax,
+        )
 
         if command_id is None:
             selected_provider: str = "codex" if provider is None else provider
@@ -288,6 +328,7 @@ def run_command(
             cwd=cwd,
             dry_run=dry_run,
             task_text=task,
+            runtime_options=runtime_options,
         )
         if dry_run and record_run:
             run_record = write_dry_run_record(plan, cwd=cwd)
@@ -310,6 +351,7 @@ def run_command(
                     team_launch_mode=parsed_team_launch,
                     worker_count=company_worker_count,
                     timeout_seconds=company_timeout_seconds,
+                    runtime_options=runtime_options,
                 )
                 company_result = company_run_engine.execute_company_run(company_request)
                 if json_output:

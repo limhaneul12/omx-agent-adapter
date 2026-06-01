@@ -27,10 +27,11 @@ TUI_SLASH_COMMANDS: tuple[ComxTuiSlashCommand, ...] = (
     ),
     ComxTuiSlashCommand(
         name="/run",
-        description="Preview a composed command recipe. Execution stays outside the TUI.",
+        description="Preview a composed command recipe with optional model/reasoning flags. Execution stays outside the TUI.",
         handler_key="run",
         group="commands",
         supports_inline_args=True,
+        usage="/run builtin:<recipe-id> --task <task> [--model <model>] [--reasoning-effort <level>|--xhigh] [--madmax]",
     ),
     ComxTuiSlashCommand(
         name="/route",

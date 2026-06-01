@@ -1,5 +1,8 @@
 from pydantic import Field
 
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
+)
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.shared.omx_enums.command_enums import (
     CommandActualRunStatus,
@@ -95,6 +98,7 @@ class CommandActualRunResult(StrictSchemaModel):
     qualified_id: NonEmptyString
     cwd: NonEmptyString
     dry_run: bool = False
+    runtime_options: CommandRuntimeOptions | None = None
     status: CommandActualRunStatus
     started_at: NonEmptyString
     finished_at: NonEmptyString

@@ -4,6 +4,9 @@ from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     load_command_catalog,
     resolve_command_recipe,
 )
+from omx_remote.runtime.commands.planning.command_runtime_options import (
+    runtime_options_summary_text,
+)
 from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
@@ -12,6 +15,9 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandExecutionPlan,
     CommandPlanStep,
     CommandRecipe,
+)
+from omx_remote.schemas.commands.command_runtime_option_schemas import (
+    CommandRuntimeOptions,
 )
 
 
@@ -54,6 +60,7 @@ def format_tui_run_plan(plan: CommandExecutionPlan) -> str:
         f"command: {plan.qualified_id}",
         "dry_run: true",
         f"risk: {plan.risk}",
+        f"runtime_options: {runtime_options_summary_text(plan.runtime_options)}",
     ]
     for step in plan.steps:
         lines.extend(_format_run_plan_step(step))
@@ -67,6 +74,7 @@ def build_tui_run_plan_preview(
     recipe_id: str,
     cwd: str | Path,
     task_text: str | None = None,
+    runtime_options: CommandRuntimeOptions | None = None,
 ) -> str:
     """Build a typed command recipe preview body for the TUI.
 
@@ -74,6 +82,7 @@ def build_tui_run_plan_preview(
         recipe_id [str]: Qualified or unambiguous command recipe id.
         cwd [str | Path]: Workspace root.
         task_text [str | None]: Optional task prompt for preview rendering.
+        runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
 
     Returns:
         str: Human-readable typed dry-run preview.
@@ -85,6 +94,7 @@ def build_tui_run_plan_preview(
         cwd=cwd,
         dry_run=True,
         task_text=task_text,
+        runtime_options=runtime_options,
     )
     preview_text: str = format_tui_run_plan(plan)
     return preview_text

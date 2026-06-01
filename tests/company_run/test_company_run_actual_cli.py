@@ -48,7 +48,8 @@ def test_cli_execute_company_run_passes_explicit_company_options(
     calls: list[dict[str, object]] = []
 
     def fake_execute_company_run(request):
-        calls.append(model_json_object(request))
+        request_payload = model_json_object(request)
+        calls.append(request_payload)
         run_dir = tmp_path / ".comx-agent" / "runs" / "fake-company-run"
         company_root = run_dir / "company-run"
         company_root.mkdir(parents=True)
@@ -67,6 +68,7 @@ def test_cli_execute_company_run_passes_explicit_company_options(
             "team_launch_attempted": False,
             "team_task": None,
             "artifacts": [str(company_root / "state.json")],
+            "runtime_options": request_payload["runtime_options"],
             "metadata": {},
         }
         result = result_schema.model_validate(payload)  # type: ignore[attr-defined]
@@ -95,6 +97,10 @@ def test_cli_execute_company_run_passes_explicit_company_options(
             "--worker-count",
             "6",
             "--live-team",
+            "--model",
+            "gpt-5.5",
+            "--xhigh",
+            "--madmax",
             "--json",
         ],
     )
@@ -112,9 +118,15 @@ def test_cli_execute_company_run_passes_explicit_company_options(
             "worker_count": 6,
             "max_research_rounds": 2,
             "timeout_seconds": 1800.0,
+            "runtime_options": {
+                "model": "gpt-5.5",
+                "reasoning_effort": "xhigh",
+                "madmax": True,
+            },
         }
     ]
     assert "fake-company-run" in result.output
+    assert '"runtime_options": {' in result.output
     assert '"dry_run": false' in result.output
 
 
@@ -172,6 +184,73 @@ def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_te
     ]
     assert required_artifacts
     assert all(artifact["exists"] for artifact in required_artifacts)
+
+
+def test_company_run_request_defaults_to_no_runtime_options(tmp_path: Path) -> None:
+    request_schema = _attr(
+        "omx_remote.schemas.company_run_schemas",
+        "CompanyRunExecutionRequest",
+    )
+
+    request = request_schema.model_validate(  # type: ignore[attr-defined]
+        {
+            "objective": "prove default company-run behavior is unchanged",
+            "cwd": str(tmp_path),
+            "autonomy": "agent",
+            "council_mode": "artifact",
+            "live_team_allowed": False,
+        }
+    )
+
+    payload = model_json_object(request)
+    assert payload["runtime_options"] is None
+    assert payload["team_launch_mode"] == "launch"
+    assert payload["worker_count"] == 4
+
+
+def test_company_run_preserves_runtime_options_in_result_and_team_records(
+    tmp_path: Path,
+) -> None:
+    request_schema = _attr(
+        "omx_remote.schemas.company_run_schemas",
+        "CompanyRunExecutionRequest",
+    )
+    engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
+    launched_requests: list[dict[str, object]] = []
+    expected_options = {
+        "model": "gpt-5.5",
+        "reasoning_effort": "xhigh",
+        "madmax": True,
+    }
+
+    def fake_team_launcher(team_request) -> None:
+        launched_requests.append(model_json_object(team_request))
+
+    request = request_schema.model_validate(  # type: ignore[attr-defined]
+        {
+            "objective": "prove runtime options survive company-run handoff",
+            "cwd": str(tmp_path),
+            "autonomy": "agent",
+            "council_mode": "artifact",
+            "live_team_allowed": False,
+            "runtime_options": expected_options,
+        }
+    )
+    engine = engine_class(team_launcher=fake_team_launcher)  # type: ignore[operator]
+
+    result = engine.execute(request)
+
+    result_payload = model_json_object(result)
+    state_path = Path(result.metadata["state_path"])
+    state_payload = json.loads(state_path.read_text(encoding="utf-8"))
+    assert result_payload["runtime_options"] == expected_options
+    assert launched_requests[0]["runtime_options"] == expected_options
+    assert state_payload["team_launch"]["runtime_options"] == expected_options
+    assert launched_requests[0]["native_argv"][:3] == [
+        "omx",
+        "team",
+        "4:executor",
+    ]
 
 
 def test_company_run_default_codex_council_blocks_when_subagents_fail(

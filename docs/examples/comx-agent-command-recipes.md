@@ -28,8 +28,25 @@ Human flow:
 comx-agent commands list --cwd .
 comx-agent commands show builtin:company-run --cwd . --json
 comx-agent run builtin:company-run --cwd . --dry-run --task "build an agent company" --json
+comx-agent run builtin:company-run --cwd . --execute --autonomy agent --task "build an agent company" --model gpt-5.5 --xhigh --json
 comx-agent run 'builtin:adapter-ops mcp-audit' --cwd . --dry-run --task "audit MCP setup" --json
 ```
+
+Runtime model controls are explicit CLI/TUI request options, not hidden project defaults:
+
+```bash
+comx-agent run builtin:research-brief --cwd . --dry-run --task "compare evidence" --model gpt-5.5 --reasoning-effort high --json
+comx-agent run builtin:company-run --cwd . --execute --autonomy agent --task "ship the plan" --model gpt-5.5 --xhigh --json
+```
+
+TUI `/run` preview supports the same option surface:
+
+```text
+/run builtin:research-brief --model gpt-5.5 --xhigh
+/run builtin:company-run --task "ship the plan" --model gpt-5.5 --xhigh
+```
+
+`--madmax` is intentionally explicit and dangerous. It requests xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. For `company-run`, the adapter also records the runtime option contract and forwards worker launch args to native OMX Team workers through a transient subprocess environment override.
 
 MCP flow for agents that should not memorize CLI syntax:
 
@@ -119,6 +136,7 @@ Dry-run plan example from `comx-agent run builtin:company-run --cwd . --dry-run 
   "description": "Run a company-style macro orchestration loop with gates, votes, Team, subagents, review, release, and Alexandria MCP tool points.",
   "risk": "launches_runtime",
   "dry_run": true,
+  "runtime_options": null,
   "steps": [
     {
       "index": 1,

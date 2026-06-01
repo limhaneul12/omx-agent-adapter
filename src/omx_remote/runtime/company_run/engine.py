@@ -109,6 +109,7 @@ class CompanyRunEngine:
                 run_id=run_id,
                 objective=request.objective,
                 cwd=str(cwd),
+                runtime_options=request.runtime_options,
                 status=CompanyRunFinalStatus.BLOCKED,
                 current_phase=CompanyRunPhase.RESEARCH_BRIEF_LOOP,
                 roster=roster,
@@ -136,7 +137,12 @@ class CompanyRunEngine:
                 company_run_root=str(company_root),
                 blocked_reasons=council_failures,
                 team_launch_attempted=False,
-                team_task=build_team_task(request.objective, company_root),
+                team_task=build_team_task(
+                    objective=request.objective,
+                    company_root=company_root,
+                    runtime_options=request.runtime_options,
+                ),
+                runtime_options=request.runtime_options,
                 artifacts=tuple(record.path for record in records),
                 metadata={
                     "state_path": str(state_path),
@@ -195,6 +201,7 @@ class CompanyRunEngine:
             run_id=run_id,
             objective=request.objective,
             cwd=str(cwd),
+            runtime_options=request.runtime_options,
             status=final_status,
             current_phase=CompanyRunPhase.MEMORY_CLOSEOUT,
             roster=roster,
@@ -223,7 +230,12 @@ class CompanyRunEngine:
             company_run_root=str(company_root),
             blocked_reasons=blocked_reasons,
             team_launch_attempted=live_team_allowed or self._team_launcher is not None,
-            team_task=build_team_task(request.objective, company_root),
+            team_task=build_team_task(
+                objective=request.objective,
+                company_root=company_root,
+                runtime_options=request.runtime_options,
+            ),
+            runtime_options=request.runtime_options,
             artifacts=tuple(record.path for record in records),
             metadata={
                 "state_path": str(state_path),
