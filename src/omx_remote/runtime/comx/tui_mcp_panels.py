@@ -7,7 +7,7 @@ from omx_remote.runtime.mcp.mcp_registry_reader import (
 )
 from omx_remote.runtime.mcp.mcp_tool_client import list_mcp_tools
 from omx_remote.schemas.comx.tui_schemas import ComxTuiCommandResult
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerListResult,
     McpToolListResult,

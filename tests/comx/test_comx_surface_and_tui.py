@@ -388,7 +388,7 @@ def test_tui_run_supports_unquoted_adapter_ops_space_form(
 
 
 def test_tui_snapshot_includes_command_and_mcp_counts(monkeypatch, tmp_path) -> None:
-    from omx_remote.schemas.mcp.client_schemas import McpServerListResult
+    from omx_remote.schemas.mcp_client_schemas import McpServerListResult
 
     monkeypatch.setattr(
         "omx_remote.runtime.comx.tui_renderer.read_mcp_servers",
@@ -414,7 +414,7 @@ def test_tui_router_lists_mcp_servers_with_redacted_targets(
     monkeypatch, tmp_path
 ) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
-    from omx_remote.schemas.mcp.client_schemas import (
+    from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
         McpServerListResult,
         McpServerSource,
@@ -453,7 +453,7 @@ def test_tui_router_lists_mcp_servers_with_redacted_targets(
 
 def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
-    from omx_remote.schemas.mcp.client_schemas import (
+    from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
         McpServerListResult,
         McpServerSource,
@@ -500,7 +500,7 @@ def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> Non
 
 def test_tui_router_lists_mcp_tools(monkeypatch, tmp_path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
-    from omx_remote.schemas.mcp.client_schemas import (
+    from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
         McpServerListResult,
         McpServerSource,
@@ -558,7 +558,7 @@ def test_tui_router_lists_mcp_tools(monkeypatch, tmp_path) -> None:
 
 def test_tui_router_surfaces_mcp_tool_listing_errors(monkeypatch, tmp_path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
-    from omx_remote.schemas.mcp.client_schemas import (
+    from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
         McpServerListResult,
         McpServerSource,
@@ -603,7 +603,7 @@ def test_tui_router_surfaces_mcp_tool_listing_errors(monkeypatch, tmp_path) -> N
 
 def test_tui_router_surfaces_mcp_http_exception_group(monkeypatch, tmp_path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
-    from omx_remote.schemas.mcp.client_schemas import (
+    from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
         McpServerListResult,
         McpServerSource,

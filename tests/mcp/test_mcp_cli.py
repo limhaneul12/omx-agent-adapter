@@ -4,7 +4,7 @@ import orjson
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerSource,
     McpServerTransport,
@@ -159,9 +159,15 @@ def test_mcp_call_cli_executes_when_requested(monkeypatch, tmp_path: Path) -> No
     assert payload["result"]["content"][0]["type"] == "text"
 
 
-def test_mcp_serve_cli_help_mentions_omx_agent_tools() -> None:
-    result = CliRunner().invoke(app, ["mcp", "serve", "--help"])
+def test_mcp_cli_help_is_client_only() -> None:
+    result = CliRunner().invoke(app, ["mcp", "--help"])
+    serve_result = CliRunner().invoke(app, ["mcp", "serve", "--help"])
 
     assert result.exit_code == 0
-    assert "omx-agent" in result.stdout
-    assert "--cwd" in result.stdout
+    assert "Consume external MCP servers/tools" in result.stdout
+    assert "servers" in result.stdout
+    assert "tools" in result.stdout
+    assert "call" in result.stdout
+    assert "omx_agent" not in result.stdout
+    assert "serve omx-agent" not in result.stdout
+    assert serve_result.exit_code != 0

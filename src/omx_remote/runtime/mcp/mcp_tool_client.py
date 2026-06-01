@@ -9,7 +9,7 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp import ClientSession, StdioServerParameters
 from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.mcp.mcp_json_payloads import normalize_mcp_json_object
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpToolCallResult,
     McpToolDescriptor,

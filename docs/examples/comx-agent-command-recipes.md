@@ -48,28 +48,17 @@ TUI `/run` preview supports the same option surface:
 
 `--madmax` is intentionally explicit and dangerous. It requests xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. For `company-run`, the adapter also records the runtime option contract and forwards worker launch args to native OMX Team workers through a transient subprocess environment override.
 
-MCP flow for agents that should not memorize CLI syntax:
+MCP client flow for agents that need external tool access:
 
 ```bash
-comx-agent mcp add omx_agent --cwd . -- comx-agent mcp serve --cwd "$PWD"
-comx-agent mcp tools omx_agent --cwd . --execute --json
-comx-agent mcp call omx_agent company_run \
-  --arguments-json '{"objective":"build an agent company"}' \
-  --execute --json
-comx-agent mcp call omx_agent omx_agent_preview_command \
-  --arguments-json '{"command_id":"builtin:review-gate","objective":"review current diff"}' \
+comx-agent mcp add local_docs --cwd . -- uvx example-mcp-server
+comx-agent mcp tools local_docs --cwd . --execute --json
+comx-agent mcp call local_docs search \
+  --arguments-json '{"query":"release checklist"}' \
   --execute --json
 ```
 
-The adapter-owned `omx_agent` MCP server exposes canonical helpers plus generic list/show/preview tools:
-
-- `omx_agent_list_commands`
-- `omx_agent_show_command`
-- `omx_agent_preview_command`
-- `research_brief`
-- `idea_to_prd`
-- `release_readiness`
-- `company_run`
+The adapter does not expose its own MCP server. Use `comx-agent commands show`, `comx-agent run --dry-run`, and TUI `/run` for adapter workflow previews; use `comx-agent mcp` only to consume external MCP servers such as Alexandria, Codex-registered servers, or repo-local tools.
 
 
 Agent JSON contract example from `comx-agent commands list --cwd . --json`:

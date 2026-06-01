@@ -8,7 +8,7 @@ from omx_remote.runtime.comx.tui_command_catalog import list_tui_slash_commands
 from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
 from omx_remote.schemas.comx.control_surface_schemas import ComxControlSurfaceInventory
 from omx_remote.schemas.comx.tui_schemas import ComxTuiSnapshot, ComxTuiStatusLine
-from omx_remote.schemas.mcp.client_schemas import McpServerListResult
+from omx_remote.schemas.mcp_client_schemas import McpServerListResult
 from omx_remote.schemas.next_action_schemas import NextActionResult
 
 

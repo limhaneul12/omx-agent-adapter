@@ -14,7 +14,7 @@ from omx_remote.runtime.mcp.mcp_config_writer import (
     McpConfigWriteError,
     register_repo_mcp_server,
 )
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerRegistrationResult,
     McpTransportKind,
     RepoMcpServerDefinition,

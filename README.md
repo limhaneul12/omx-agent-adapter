@@ -143,7 +143,6 @@ comx-agent surface --cwd . --json
 comx-agent mcp servers --cwd . --json
 comx-agent mcp tools <server-name> --cwd . --json
 comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --json
-comx-agent mcp serve --cwd .
 ```
 
 ## comx-agent TUI and MCP client
@@ -188,28 +187,23 @@ comx-agent daemon stop --cwd . --session-id daily
 
 `comx-agent surface` separates direct **native commands** from **composed commands** loaded from the built-in/repo recipe catalog.
 
-MCP support has two sides:
+MCP support is client/consumer-only: `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml`, list server tools, and execute a tool only when `--execute` is passed. The adapter does not expose its own MCP server; use `comx-agent commands show`, `comx-agent run --dry-run`, and TUI `/run` for adapter recipe previews.
 
-- **Client/consumer support**: `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml`, list server tools, and execute a tool only when `--execute` is passed.
-- **Adapter-owned server support**: `comx-agent mcp serve --cwd <repo>` exposes omx-agent command recipes as MCP stdio tools so Codex/other agents can call `research_brief`, `idea_to_prd`, `release_readiness`, `company_run`, and generic catalog/preview tools without memorizing CLI syntax. The nine public workflows and adapter-ops maintenance commands are previewable through the generic `omx_agent_preview_command` tool.
-
-Register the adapter-owned server repo-locally:
+Register an external MCP server repo-locally:
 
 ```bash
-comx-agent mcp add omx_agent --cwd . -- comx-agent mcp serve --cwd "$PWD"
-comx-agent mcp tools omx_agent --cwd . --execute --json
-comx-agent mcp call omx_agent omx_agent_preview_command --arguments-json '{"command_id":"review-gate","notes":"final check"}' --execute --json
-comx-agent mcp call omx_agent idea_to_prd --arguments-json '{"objective":"turn this idea into a validated PRD"}' --execute --json
+comx-agent mcp add local_docs --cwd . -- uvx example-mcp-server
+comx-agent mcp tools local_docs --cwd . --execute --json
+comx-agent mcp call local_docs search --arguments-json '{"query":"release checklist"}' --execute --json
 ```
 
-During local development, use the working tree entrypoint and pass `PYTHONPATH` into the registered stdio server:
+During local development, keep MCP registration pointed at the external server command you want to consume:
 
 ```bash
-comx-agent mcp add omx_agent --cwd . --env PYTHONPATH="$PWD/src:$PWD/src/omx_remote" --force -- \
-  uv run python omx_agent_adapter_cli.py mcp serve --cwd "$PWD"
+comx-agent mcp add local_docs --cwd . --force -- uv run docs-mcp --cwd "$PWD"
 ```
 
-The MCP tools are dry-run-first. They return typed plans, risk labels, blocked reasons, native command previews, artifact paths, and next-action hints; they do not directly launch high-risk native Codex/OMX commands.
+MCP calls are dry-run-first from the adapter side: `comx-agent mcp call` previews the resolved server, tool, and arguments until `--execute` is passed.
 
 The human-readable commands explain the route and risk. The `--json` surfaces provide typed fields, stable enums, artifact paths, warnings, blockers, and exit codes for automated agents.
 

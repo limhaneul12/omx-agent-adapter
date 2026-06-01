@@ -9,7 +9,7 @@ from omx_remote.runtime.mcp.mcp_registry_reader import (
     read_mcp_servers,
     resolve_mcp_server,
 )
-from omx_remote.schemas.mcp.client_schemas import McpServerSource, McpTransportKind
+from omx_remote.schemas.mcp_client_schemas import McpServerSource, McpTransportKind
 
 
 def test_repo_mcp_config_reads_comx_agent_toml(tmp_path: Path) -> None:

@@ -7,7 +7,7 @@ from omx_remote.runtime.mcp.mcp_config_writer import (
     register_repo_mcp_server,
     validate_repo_mcp_server_name,
 )
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerRegistrationResult,
     McpTransportKind,

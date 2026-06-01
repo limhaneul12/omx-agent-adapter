@@ -8,7 +8,7 @@ from omx_remote.runtime.mcp.mcp_config_loader import (
     McpConfigLoadError,
     load_repo_mcp_servers,
 )
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerListResult,
     McpServerSource,

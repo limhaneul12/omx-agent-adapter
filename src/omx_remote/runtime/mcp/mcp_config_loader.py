@@ -5,7 +5,7 @@ from omx_remote.runtime.agents.agent_config_loader import DEFAULT_AGENT_CONFIG_F
 from omx_remote.runtime.mcp.mcp_transport_resolution import (
     infer_repo_mcp_transport_kind,
 )
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpEnvironmentVariable,
     McpServerConfig,
     McpServerSource,

@@ -4,7 +4,7 @@ import orjson
 
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
 from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerListResult,
     McpServerRegistrationResult,

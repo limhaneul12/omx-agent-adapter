@@ -34,8 +34,7 @@ from omx_remote.runtime.mcp.mcp_tool_client import (
     call_mcp_tool,
     list_mcp_tools,
 )
-from omx_remote.runtime.mcp.omx_agent_mcp_server import run_omx_agent_mcp_stdio
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpServerConfig,
     McpServerListResult,
     McpServerRegistrationResult,
@@ -44,44 +43,11 @@ from omx_remote.schemas.mcp.client_schemas import (
     McpToolCallResult,
     McpToolListResult,
 )
-from omx_remote.shared.omx_enums.mcp_enums import McpLogLevel
 
 mcp_app = typer.Typer(
-    help="Consume external MCP servers/tools like Codex, or serve omx-agent tools.",
+    help="Consume external MCP servers/tools like Codex.",
     add_completion=False,
 )
-
-
-@mcp_app.command("serve")
-def mcp_serve(
-    cwd: Path = typer.Option(
-        Path("."),
-        "--cwd",
-        help="Default repository root used by omx-agent MCP command tools.",
-    ),
-    config_path: Path | None = typer.Option(
-        None,
-        "--config",
-        help="Optional command recipe config path used by omx-agent MCP tools.",
-    ),
-    log_level: McpLogLevel = typer.Option(
-        McpLogLevel.ERROR,
-        "--log-level",
-        help="FastMCP log level for the stdio server.",
-    ),
-) -> None:
-    """Serve omx-agent command tools over MCP stdio.
-
-    Args:
-        cwd [Path]: Default repository root.
-        config_path [Path | None]: Optional command recipe config path.
-        log_level [McpLogLevel]: FastMCP log level.
-    """
-    run_omx_agent_mcp_stdio(
-        cwd=cwd,
-        config_path=config_path,
-        log_level=log_level,
-    )
 
 
 mcp_app.command(

@@ -22,7 +22,7 @@ from omx_remote.schemas.comx.tui_schemas import (
     ComxTuiCommandResult,
     ComxTuiSlashCommand,
 )
-from omx_remote.schemas.mcp.client_schemas import McpServerListResult
+from omx_remote.schemas.mcp_client_schemas import McpServerListResult
 from omx_remote.schemas.next_action_schemas import NextActionResult
 
 

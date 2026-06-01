@@ -1,4 +1,4 @@
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpTransportKind,
     RepoMcpServerDefinition,
 )

@@ -8,7 +8,7 @@ from omx_remote.runtime.mcp.mcp_json_payloads import (
     normalize_mcp_json_object,
     normalize_mcp_json_object_list,
 )
-from omx_remote.schemas.mcp.client_schemas import (
+from omx_remote.schemas.mcp_client_schemas import (
     McpEnvironmentVariable,
     McpServerConfig,
     McpServerSource,
