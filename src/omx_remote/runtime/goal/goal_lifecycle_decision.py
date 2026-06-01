@@ -30,7 +30,9 @@ def build_goal_lifecycle_summary(
         summary = f"Goal {goal_id} needs a Ralph follow-up wave for {worker_count} worker result."
     else:
         blocker_count: int = len(request.ralph_review_result.review_blockers)
-        summary = f"Goal {goal_id} is waiting for human review on {blocker_count} blocker."
+        summary = (
+            f"Goal {goal_id} is waiting for human review on {blocker_count} blocker."
+        )
 
     return summary
 
@@ -118,20 +120,22 @@ def build_goal_lifecycle_decision(
     next_target: CodexGoalLifecycleTarget = goal_lifecycle_target_for_action(action)
     review_blockers: tuple[str, ...] = build_goal_review_blockers(request)
     ready_to_close: bool = action == CodexGoalLifecycleAction.CLOSE_GOAL
-    requires_follow_up_wave: bool = action == CodexGoalLifecycleAction.PREPARE_FOLLOW_UP_WAVE
-    requires_human_approval: bool = action == CodexGoalLifecycleAction.WAIT_FOR_HUMAN_REVIEW
+    requires_follow_up_wave: bool = (
+        action == CodexGoalLifecycleAction.PREPARE_FOLLOW_UP_WAVE
+    )
+    requires_human_approval: bool = (
+        action == CodexGoalLifecycleAction.WAIT_FOR_HUMAN_REVIEW
+    )
     summary: str = build_goal_lifecycle_summary(request, action)
-    decision: CodexGoalLifecycleDecisionResult = CodexGoalLifecycleDecisionResult.model_validate(
-        {
-            "goal_id": request.mirror_state.goal_id,
-            "action": action,
-            "next_target": next_target,
-            "ready_to_close": ready_to_close,
-            "requires_follow_up_wave": requires_follow_up_wave,
-            "requires_human_approval": requires_human_approval,
-            "follow_up_workers": request.ralph_review_result.follow_up_workers,
-            "review_blockers": review_blockers,
-            "summary": summary,
-        }
+    decision = CodexGoalLifecycleDecisionResult(
+        goal_id=request.mirror_state.goal_id,
+        action=action,
+        next_target=next_target,
+        ready_to_close=ready_to_close,
+        requires_follow_up_wave=requires_follow_up_wave,
+        requires_human_approval=requires_human_approval,
+        follow_up_workers=request.ralph_review_result.follow_up_workers,
+        review_blockers=review_blockers,
+        summary=summary,
     )
     return decision

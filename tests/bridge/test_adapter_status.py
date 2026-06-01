@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_status
-from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
+from omx_remote.schemas.bridge_adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
@@ -57,7 +57,9 @@ def test_read_adapter_status_rejects_unparseable_json_transport(monkeypatch) -> 
         )
 
 
-def test_read_adapter_status_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_adapter_status_preserves_required_contract_validation(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         adapter_status,
         "run_omx_command",
@@ -77,7 +79,9 @@ def test_load_adapter_status_transport_payload_rejects_non_object_transport() ->
         adapter_status._load_adapter_status_transport_payload("[]")
 
 
-def test_load_adapter_status_transport_payload_rejects_non_string_adapter_state() -> None:
+def test_load_adapter_status_transport_payload_rejects_non_string_adapter_state() -> (
+    None
+):
     with pytest.raises(BridgeSurfaceError):
         adapter_status._load_adapter_status_transport_payload(
             '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"adapter":{"state":42,"detail":"write init","configPath":"/tmp/adapter.json","envelopePath":"/tmp/envelope.json"},"targetRuntime":{"state":"unavailable","detail":"missing"}}'
@@ -91,7 +95,9 @@ def test_load_adapter_status_transport_payload_rejects_non_string_config_path() 
         )
 
 
-def test_load_adapter_status_transport_payload_preserves_live_required_bridge_fields() -> None:
+def test_load_adapter_status_transport_payload_preserves_live_required_bridge_fields() -> (
+    None
+):
     result = adapter_status._load_adapter_status_transport_payload(
         '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"adapter":{"state":"not-initialized","detail":"write init","configPath":"/tmp/adapter.json","envelopePath":"/tmp/envelope.json"},"targetRuntime":{"state":"unavailable","detail":"missing","evidence":{}},"schemaVersion":"1.0","timestamp":"2026-05-04T08:02:34.415Z"}'
     )

@@ -54,7 +54,9 @@ def test_daemon_status_reports_tmux_missing(monkeypatch, tmp_path: Path) -> None
     assert "tmux was not detected" in status.warnings[0]
 
 
-def test_daemon_start_reports_existing_tmux_session(monkeypatch, tmp_path: Path) -> None:
+def test_daemon_start_reports_existing_tmux_session(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(tui_daemon_control, "which", lambda _: "/usr/bin/tmux")
     observed_commands: list[tuple[str, ...]] = []
 
@@ -110,7 +112,9 @@ def test_daemon_start_launches_when_tmux_session_is_missing(
     assert observed_commands[2] == ("tmux", "has-session", "-t", "comx-agent-daily")
 
 
-def test_daemon_stop_is_noop_when_session_is_missing(monkeypatch, tmp_path: Path) -> None:
+def test_daemon_stop_is_noop_when_session_is_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
     monkeypatch.setattr(tui_daemon_control, "which", lambda _: "/usr/bin/tmux")
 
     def fake_run(command, **kwargs):

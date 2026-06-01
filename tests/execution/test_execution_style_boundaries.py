@@ -86,11 +86,15 @@ def test_execution_contract_constants_live_under_adapter_types() -> None:
     assert PROMOTABLE_EXECUTION_PAYLOAD_TYPES
     assert KNOWN_EXECUTION_EVENT_TYPES
     assert ANOMALY_SUMMARIES
-    assert not Path("src/omx_remote/adapter_types/execution_payload_contracts.py").exists()
+    assert not Path(
+        "src/omx_remote/adapter_types/execution_payload_contracts.py"
+    ).exists()
 
 
 def test_execution_contract_promotion_uses_explicit_dispatch_registry() -> None:
     from omx_remote.execution.contract_promotion import EXECUTION_CONTRACT_PROMOTERS
-    from omx_remote.shared.omx_enums.execution_enums import PromotableExecutionPayloadType
+    from omx_remote.shared.omx_enums.execution_enums import (
+        PromotableExecutionPayloadType,
+    )
 
     assert set(EXECUTION_CONTRACT_PROMOTERS) == set(PromotableExecutionPayloadType)

@@ -21,11 +21,23 @@ def test_goal_supervisor_prompt_rendering_is_split_by_subconcept() -> None:
     assert len(supervisor_path.read_text().splitlines()) < 520
 
 
-def test_json_extraction_hotspots_use_msgspec_contracts_instead_of_tracking_lists() -> None:
+def test_json_extraction_hotspots_use_msgspec_contracts_instead_of_tracking_lists() -> (
+    None
+):
     assert not (
-        SOURCE_ROOT / "adapter_types" / "type_contract" / "msgspec_tracking_contract_type.py"
+        SOURCE_ROOT
+        / "adapter_types"
+        / "type_contract"
+        / "msgspec_tracking_contract_type.py"
     ).exists()
 
-    assert "msgspec.convert" in (SOURCE_ROOT / "teamwork" / "team_api_transport.py").read_text()
-    assert "msgspec.convert" in (SOURCE_ROOT / "teamwork" / "team_snapshot.py").read_text()
-    assert "msgspec.convert" in (SOURCE_ROOT / "history" / "session_search.py").read_text()
+    assert (
+        "msgspec.convert"
+        in (SOURCE_ROOT / "teamwork" / "team_api_transport.py").read_text()
+    )
+    assert (
+        "msgspec.convert" in (SOURCE_ROOT / "teamwork" / "team_snapshot.py").read_text()
+    )
+    assert (
+        "msgspec.convert" in (SOURCE_ROOT / "history" / "session_search.py").read_text()
+    )

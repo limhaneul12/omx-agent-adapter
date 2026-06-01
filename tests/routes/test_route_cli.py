@@ -12,7 +12,7 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCommandRecipeSummary,
     CockpitRuntimeCapability,
 )
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes
 
 
 def _capabilities() -> CockpitCapabilitiesSnapshot:
@@ -64,7 +64,7 @@ def test_route_recommend_cli_outputs_json_policy(
         route_cli,
         "summarize_cockpit_agent_config",
         lambda cwd: CockpitAgentConfigSummary(
-            config_path=str(tmp_path / ".agent-remote.toml"),
+            config_path=str(tmp_path / ".comx-agent.toml"),
             total_count=0,
             enabled_count=0,
             disabled_count=0,
@@ -79,7 +79,7 @@ def test_route_recommend_cli_outputs_json_policy(
             available_count=2,
             builtin_count=2,
             repo_count=0,
-            qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
+            qualified_ids=("builtin:review-gate", "builtin:release-readiness"),
             warnings=(),
         ),
     )
@@ -101,7 +101,7 @@ def test_route_recommend_cli_outputs_json_policy(
     payload = orjson.loads(result.stdout)
     assert payload["classification"]["task_type"] == "review"
     assert payload["recommendations"][0]["route"] == "project_command"
-    assert payload["recommendations"][0]["command_id"] == "builtin:review-diff"
+    assert payload["recommendations"][0]["command_id"] == "builtin:review-gate"
 
 
 def test_route_explain_outputs_json_description() -> None:

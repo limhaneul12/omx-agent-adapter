@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -13,7 +12,8 @@ from omx_remote.runtime.ralph.ralph_control import build_ralph_team_launch_plan
 from omx_remote.runtime.ralph.ralph_team_owner_preflight import (
     require_ralph_team_live_launch_owner_support,
 )
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
+from omx_remote.shared.process_environment_settings import ProcessEnvironmentSettings
 
 runner = CliRunner()
 
@@ -47,7 +47,9 @@ def _write_valid_team_prd_artifact(tmp_path: Path) -> None:
     (prd_dir / "prd.json").write_text(json.dumps(prd_payload), encoding="utf-8")
 
 
-def _team_assignment(worker_id: str, lane_name: str, owned_file: str) -> dict[str, object]:
+def _team_assignment(
+    worker_id: str, lane_name: str, owned_file: str
+) -> dict[str, object]:
     assignment = {
         "worker_id": worker_id,
         "lane_name": lane_name,
@@ -56,11 +58,15 @@ def _team_assignment(worker_id: str, lane_name: str, owned_file: str) -> dict[st
         "read_only_context_files": ["README.md"],
         "forbidden_files": ["pyproject.toml"],
         "tdd_steps": ["Write failing regression", "Make regression pass"],
-        "verification_commands": ["uv run pytest tests/runtime/test_ralph_team_owner_preflight.py -q"],
+        "verification_commands": [
+            "uv run pytest tests/runtime/test_ralph_team_owner_preflight.py -q"
+        ],
         "handoff_summary_required": "Summarize changed files and verification output.",
         "authorization_policy": "preapproved",
         "authorization_scope": {
-            "allowed_commands": ["uv run pytest tests/runtime/test_ralph_team_owner_preflight.py -q"],
+            "allowed_commands": [
+                "uv run pytest tests/runtime/test_ralph_team_owner_preflight.py -q"
+            ],
             "forbidden_commands": ["git push"],
             "requires_human_for": ["modify forbidden files"],
             "requires_llm_review_for": ["local checkpoint commit"],
@@ -111,14 +117,18 @@ def _write_unsupported_omx_dist(root: Path) -> None:
     )
 
 
-def test_ralph_team_live_launch_owner_preflight_accepts_supported_omx_dist(tmp_path: Path) -> None:
+def test_ralph_team_live_launch_owner_preflight_accepts_supported_omx_dist(
+    tmp_path: Path,
+) -> None:
     omx_dist_root = tmp_path / "omx-dist"
     _write_supported_omx_dist(omx_dist_root)
 
     require_ralph_team_live_launch_owner_support(omx_dist_root=omx_dist_root)
 
 
-def test_ralph_team_live_launch_owner_preflight_rejects_unsupported_omx_dist(tmp_path: Path) -> None:
+def test_ralph_team_live_launch_owner_preflight_rejects_unsupported_omx_dist(
+    tmp_path: Path,
+) -> None:
     omx_dist_root = tmp_path / "omx-dist"
     _write_unsupported_omx_dist(omx_dist_root)
 
@@ -129,14 +139,16 @@ def test_ralph_team_live_launch_owner_preflight_rejects_unsupported_omx_dist(tmp
         require_ralph_team_live_launch_owner_support(omx_dist_root=omx_dist_root)
 
 
-def test_ralph_team_live_launch_owner_preflight_reports_missing_explicit_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_ralph_team_live_launch_owner_preflight_reports_missing_explicit_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     missing_root = tmp_path / "missing-omx-dist"
 
     with pytest.raises(ValueError) as exc_info:
         require_ralph_team_live_launch_owner_support(omx_dist_root=missing_root)
 
-    assert (
-        "explicit `omx_dist_root` argument was provided but missing" in str(exc_info.value)
+    assert "explicit `omx_dist_root` argument was provided but missing" in str(
+        exc_info.value
     )
     assert str(missing_root) in str(exc_info.value)
 
@@ -145,14 +157,14 @@ def test_ralph_team_live_launch_owner_preflight_reports_missing_env_root(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     missing_env_root = tmp_path / "missing-env-dist"
-    monkeypatch.setenv("AGENT_REMOTE_OMX_DIST_ROOT", str(missing_env_root))
+    monkeypatch.setenv("COMX_AGENT_OMX_DIST_ROOT", str(missing_env_root))
     monkeypatch.setenv("PATH", "")
 
     with pytest.raises(ValueError) as exc_info:
         require_ralph_team_live_launch_owner_support()
 
-    assert (
-        "AGENT_REMOTE_OMX_DIST_ROOT was set but path did not exist" in str(exc_info.value)
+    assert "COMX_AGENT_OMX_DIST_ROOT was set but path did not exist" in str(
+        exc_info.value
     )
 
 
@@ -162,7 +174,9 @@ def test_ralph_team_live_launch_owner_preflight_auto_detects_global_omx_from_pat
     omx_dist_root = tmp_path / "mock-omx" / "dist"
     _write_supported_omx_dist(omx_dist_root)
     (omx_dist_root / "cli").mkdir(parents=True)
-    (omx_dist_root / "cli" / "omx.js").write_text("console.log('fake omx');", encoding="utf-8")
+    (omx_dist_root / "cli" / "omx.js").write_text(
+        "console.log('fake omx');", encoding="utf-8"
+    )
 
     fake_omx_bin_dir = tmp_path / "bin"
     fake_omx_bin_dir.mkdir()
@@ -173,9 +187,9 @@ def test_ralph_team_live_launch_owner_preflight_auto_detects_global_omx_from_pat
     )
     fake_omx_binary.chmod(0o755)
 
-    current_path = os.environ.get("PATH", "")
+    current_path = ProcessEnvironmentSettings().dynamic_environment_value("PATH") or ""
     monkeypatch.setenv("PATH", f"{fake_omx_bin_dir}:{current_path}")
-    monkeypatch.delenv("AGENT_REMOTE_OMX_DIST_ROOT", raising=False)
+    monkeypatch.delenv("COMX_AGENT_OMX_DIST_ROOT", raising=False)
 
     require_ralph_team_live_launch_owner_support()
 
@@ -189,7 +203,9 @@ def test_build_ralph_team_launch_plan_blocks_live_owner_unsafe_runtime(
     _write_unsupported_omx_dist(omx_dist_root)
     _write_valid_team_prd_artifact(tmp_path)
 
-    with pytest.raises(ValueError, match=r"does not support preserving Team DAG node\.owner"):
+    with pytest.raises(
+        ValueError, match=r"does not support preserving Team DAG node\.owner"
+    ):
         build_ralph_team_launch_plan(
             allow_non_tty=True,
             require_live_owner_preflight=True,
@@ -206,14 +222,19 @@ def test_ralph_launch_team_cli_blocks_live_launch_before_running_omx(
     omx_dist_root = tmp_path / "omx-dist"
     _write_unsupported_omx_dist(omx_dist_root)
     _write_valid_team_prd_artifact(tmp_path)
-    monkeypatch.setenv("AGENT_REMOTE_OMX_DIST_ROOT", str(omx_dist_root))
+    monkeypatch.setenv("COMX_AGENT_OMX_DIST_ROOT", str(omx_dist_root))
     observed_commands: list[list[str]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: list[str], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="should-not-run", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(app, ["ralph", "launch-team", "--allow-non-tty"])
 
@@ -231,9 +252,11 @@ def test_ralph_launch_team_plan_only_still_writes_owner_dag_when_runtime_is_unsu
     omx_dist_root = tmp_path / "omx-dist"
     _write_unsupported_omx_dist(omx_dist_root)
     _write_valid_team_prd_artifact(tmp_path)
-    monkeypatch.setenv("AGENT_REMOTE_OMX_DIST_ROOT", str(omx_dist_root))
+    monkeypatch.setenv("COMX_AGENT_OMX_DIST_ROOT", str(omx_dist_root))
 
-    result = runner.invoke(app, ["ralph", "launch-team", "--allow-non-tty", "--plan-only"])
+    result = runner.invoke(
+        app, ["ralph", "launch-team", "--allow-non-tty", "--plan-only"]
+    )
 
     assert result.exit_code == 0
     assert '"planned_only": true' in result.stdout

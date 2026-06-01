@@ -11,7 +11,9 @@ from omx_remote.shared.omx_enums.execution_enums import (
 PROMOTABLE_EXECUTION_PAYLOAD_TYPES: PromotableExecutionPayloadTypeSet = frozenset(
     PromotableExecutionPayloadType
 )
-KNOWN_EXECUTION_EVENT_TYPES: KnownExecutionEventTypeSet = frozenset(KnownExecutionEventType)
+KNOWN_EXECUTION_EVENT_TYPES: KnownExecutionEventTypeSet = frozenset(
+    KnownExecutionEventType
+)
 
 ANOMALY_SUMMARIES: dict[ExecutionAnomalyCategory, str] = {
     ExecutionAnomalyCategory.DUPLICATE_RESULT: "additional tool result observed after first matched result",

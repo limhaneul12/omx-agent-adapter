@@ -51,6 +51,8 @@ Do not use default values casually.
 - Required fields should stay required unless there is a concrete contract reason to relax them.
 - Do not let defaults become a convenience escape hatch for incomplete schema design.
 - `validate_default=True` on the shared schema base exists to validate unavoidable defaults, not to encourage new defaults.
+- Prefer explicit caller-provided empty tuples or empty mappings over schema defaults when emptiness is a meaningful outcome rather than a protocol default.
+- `Field(default=...)` and `Field(default_factory=...)` must have a contract reason: external protocol default, backwards-compatible public surface default, or real optional collection semantics. Do not use them to make construction easier.
 
 If a default exists, it should be explainable as part of the contract, not merely as a coding convenience.
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from omx_remote.runtime.probes.probe_fixture_comparator import compare_probe_fixture
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     ProbeSupportStatus,
     UpstreamProbeCommandResult,
     UpstreamProbeSuiteResult,
@@ -20,7 +20,9 @@ def _probe(capability: str, status: ProbeSupportStatus) -> UpstreamProbeCommandR
     )
 
 
-def test_compare_probe_fixture_reports_added_removed_and_changed(tmp_path: Path) -> None:
+def test_compare_probe_fixture_reports_added_removed_and_changed(
+    tmp_path: Path,
+) -> None:
     fixture = UpstreamProbeSuiteResult(
         suite_id="omx-basic",
         target="omx",

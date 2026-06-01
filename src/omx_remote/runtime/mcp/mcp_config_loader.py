@@ -1,4 +1,3 @@
-import tomllib
 from pathlib import Path
 from typing import Final
 
@@ -14,8 +13,9 @@ from omx_remote.schemas.mcp.client_schemas import (
     McpTransportKind,
     RepoMcpServerDefinition,
 )
+from omx_remote.shared.exceptions import TomlDocumentLoadError
+from omx_remote.shared.utils.toml_document_loading import load_toml_document_object
 
-COMX_AGENT_CONFIG_FILENAME: Final[str] = ".comx-agent.toml"
 MCP_TOP_LEVEL_SECTION: Final[str] = "mcp"
 CODEX_MCP_TOP_LEVEL_SECTION: Final[str] = "mcp_servers"
 
@@ -46,34 +46,26 @@ def resolve_mcp_config_path(
         resolved_path = root_path / candidate_path
         return resolved_path
 
-    comx_config_path: Path = root_path / COMX_AGENT_CONFIG_FILENAME
-    if comx_config_path.exists():
-        return comx_config_path
-
-    agent_remote_config_path: Path = root_path / DEFAULT_AGENT_CONFIG_FILENAME
-    return agent_remote_config_path
+    default_config_path: Path = root_path / DEFAULT_AGENT_CONFIG_FILENAME
+    return default_config_path
 
 
 def _load_toml_object(config_path: Path) -> dict[str, object]:
-    """Load one TOML file into a raw object.
+    """Load one TOML root object.
 
     Args:
-        config_path [Path]: TOML path.
+        config_path [Path]: TOML path to read.
 
     Returns:
         dict[str, object]: Parsed TOML root object.
     """
     try:
-        config_text: str = config_path.read_text(encoding="utf-8")
-        parsed_toml: dict[str, object] = tomllib.loads(config_text)
-    except tomllib.TOMLDecodeError as error:
-        raise McpConfigLoadError(
-            f"MCP config at {config_path} contains malformed TOML: {error}"
-        ) from error
-    except OSError as error:
-        raise McpConfigLoadError(
-            f"MCP config at {config_path} could not be read: {error}"
-        ) from error
+        parsed_toml: dict[str, object] = load_toml_document_object(
+            config_path=config_path,
+            document_label="MCP config",
+        )
+    except TomlDocumentLoadError as error:
+        raise McpConfigLoadError(str(error)) from error
 
     return parsed_toml
 
@@ -210,7 +202,9 @@ def load_repo_mcp_servers(
     Returns:
         tuple[McpServerConfig, ...]: Repo-defined MCP server configs.
     """
-    resolved_config_path: Path = resolve_mcp_config_path(cwd=cwd, config_path=config_path)
+    resolved_config_path: Path = resolve_mcp_config_path(
+        cwd=cwd, config_path=config_path
+    )
     if not resolved_config_path.exists():
         empty_servers: tuple[McpServerConfig, ...] = ()
         return empty_servers

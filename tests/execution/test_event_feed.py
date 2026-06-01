@@ -16,9 +16,7 @@ def test_decode_event_lines_ignores_non_json_lines() -> None:
 
 
 def test_decode_event_lines_accepts_typed_request() -> None:
-    request = ExecutionEventDecodeRequest(
-        payload='note\n{"type": "turn.started"}\n'
-    )
+    request = ExecutionEventDecodeRequest(payload='note\n{"type": "turn.started"}\n')
 
     events = asyncio.run(decode_event_lines(request))
 
@@ -108,8 +106,8 @@ def test_decode_event_lines_splits_item_completed_command_execution_payloads() -
     payload = (
         "\n".join(
             [
-                "{\"type\":\"item.completed\",\"item\":{\"type\":\"command_execution\",\"command\":\"/bin/zsh -lc pwd\",\"aggregated_output\":\"/tmp\\n\",\"exit_code\":0,\"status\":\"completed\"}}",
-                "{\"type\":\"turn.completed\",\"id\":\"after\"}",
+                '{"type":"item.completed","item":{"type":"command_execution","command":"/bin/zsh -lc pwd","aggregated_output":"/tmp\\n","exit_code":0,"status":"completed"}}',
+                '{"type":"turn.completed","id":"after"}',
             ]
         )
         + "\n"
@@ -127,17 +125,20 @@ def test_decode_event_lines_splits_item_completed_command_execution_payloads() -
 
 
 def test_decode_event_lines_splits_item_completed_tool_call_payloads() -> None:
-    payload = json.dumps(
-        {
-            "type": "item.completed",
-            "item": {
-                "type": "tool_call",
-                "tool_name": "grep",
-                "call_id": "call-123",
-                "arguments": '{"pattern":"TODO"}',
-            },
-        }
-    ) + "\n"
+    payload = (
+        json.dumps(
+            {
+                "type": "item.completed",
+                "item": {
+                    "type": "tool_call",
+                    "tool_name": "grep",
+                    "call_id": "call-123",
+                    "arguments": '{"pattern":"TODO"}',
+                },
+            }
+        )
+        + "\n"
+    )
 
     events = asyncio.run(decode_event_lines(payload))
 

@@ -15,7 +15,7 @@ def _run_git_command(repo_root: str, arguments: tuple[str, ...]) -> str | None:
     Returns:
         str | None: Stripped stdout when the command succeeds with content, otherwise None.
     """
-    command_arguments: list[str] = ["git", *arguments]
+    command_arguments: tuple[str, ...] = ("git", *arguments)
     try:
         completed_process: subprocess.CompletedProcess[str] = subprocess.run(
             command_arguments,

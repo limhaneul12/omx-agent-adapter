@@ -10,7 +10,7 @@ from omx_remote.runtime.probes.probe_command_runner import (
     ProbeRunner,
     run_probe_command,
 )
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     ProbeProcessOutput,
     ProbeSupportStatus,
     UpstreamProbeCommandResult,
@@ -124,7 +124,9 @@ def _parsed_json(stdout: str) -> JsonValue | None:
     return parsed_json
 
 
-def _probe(capability: str, command: tuple[str, ...], runner: ProbeRunner) -> UpstreamProbeCommandResult:
+def _probe(
+    capability: str, command: tuple[str, ...], runner: ProbeRunner
+) -> UpstreamProbeCommandResult:
     """Run one Codex contract probe.
 
     Args:
@@ -148,7 +150,9 @@ def _probe(capability: str, command: tuple[str, ...], runner: ProbeRunner) -> Up
     return result
 
 
-def run_codex_probe_suite(runner: ProbeRunner = run_probe_command) -> UpstreamProbeSuiteResult:
+def run_codex_probe_suite(
+    runner: ProbeRunner = run_probe_command,
+) -> UpstreamProbeSuiteResult:
     """Run the basic Codex upstream contract probe suite.
 
     Args:

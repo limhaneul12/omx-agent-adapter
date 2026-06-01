@@ -23,7 +23,9 @@ def summarize_prd_validation_error(validation_error: ValidationError) -> str:
         if not isinstance(raw_location, tuple):
             continue
 
-        location_parts: list[str] = [str(location_token) for location_token in raw_location]
+        location_parts: list[str] = [
+            str(location_token) for location_token in raw_location
+        ]
         if not location_parts:
             error_message: object = error_payload.get("msg")
             if isinstance(error_message, str):
@@ -157,9 +159,9 @@ def validate_ralph_prd_gate() -> RalphPrdArtifact:
     if not prd_path.exists():
         raise ValueError(
             "Missing required PRD.json at .omx/prd.json. Ralph consumes an approved PRD; it does not author one. "
-            "Prepare a Goal-scoped PRD authoring prompt with `agent-remote goal prepare-prd-prompt`, "
+            "Prepare a Goal-scoped PRD authoring prompt with `comx-agent goal prepare-prd-prompt`, "
             "run that prompt with a Goal-scoped PRD authoring agent, then capture the generated JSON with "
-            "`agent-remote prd validate --input-path <generated-prd.json> --output-path .omx/prd.json` before running Ralph."
+            "`comx-agent prd validate --input-path <generated-prd.json> --output-path .omx/prd.json` before running Ralph."
         )
 
     artifact: RalphPrdArtifact = read_ralph_prd_artifact(prd_path)

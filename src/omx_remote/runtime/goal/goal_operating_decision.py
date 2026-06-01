@@ -31,7 +31,9 @@ def _omx_team_api_command(operation: str, payload: dict[str, str]) -> str:
     return command
 
 
-def _worker_status_commands(request: CodexGoalOperatingDecisionRequest) -> tuple[str, ...]:
+def _worker_status_commands(
+    request: CodexGoalOperatingDecisionRequest,
+) -> tuple[str, ...]:
     """Builds worker-status command hints from the restored Goal mirror state.
 
     Args:
@@ -40,7 +42,9 @@ def _worker_status_commands(request: CodexGoalOperatingDecisionRequest) -> tuple
     Returns:
         tuple[str, ...]: One command per expected worker.
     """
-    worker_count: int = request.restored_state.bundle.mirror_state.team_worker_count or 0
+    worker_count: int = (
+        request.restored_state.bundle.mirror_state.team_worker_count or 0
+    )
     commands: tuple[str, ...] = tuple(
         _omx_team_api_command(
             "read-worker-status",
@@ -95,19 +99,19 @@ def _evidence_requirement(
     Returns:
         CodexGoalEvidenceRequirement: Evidence requirement contract.
     """
-    requirement = CodexGoalEvidenceRequirement.model_validate(
-        {
-            "source": source,
-            "required": required,
-            "available": available,
-            "command": command,
-            "summary": summary,
-        }
+    requirement = CodexGoalEvidenceRequirement(
+        source=source,
+        required=required,
+        available=available,
+        command=command,
+        summary=summary,
     )
     return requirement
 
 
-def _artifact_evidence(restored_state: CodexGoalLifecycleRestoredState) -> tuple[CodexGoalEvidenceRequirement, ...]:
+def _artifact_evidence(
+    restored_state: CodexGoalLifecycleRestoredState,
+) -> tuple[CodexGoalEvidenceRequirement, ...]:
     """Builds available artifact evidence from restored lifecycle state.
 
     Args:
@@ -199,7 +203,9 @@ def _team_admin_missing_evidence(
     return evidence
 
 
-def _available_sources(evidence: tuple[CodexGoalEvidenceRequirement, ...]) -> tuple[str, ...]:
+def _available_sources(
+    evidence: tuple[CodexGoalEvidenceRequirement, ...],
+) -> tuple[str, ...]:
     """Collects available evidence source names.
 
     Args:
@@ -214,7 +220,9 @@ def _available_sources(evidence: tuple[CodexGoalEvidenceRequirement, ...]) -> tu
     return sources
 
 
-def _missing_sources(evidence: tuple[CodexGoalEvidenceRequirement, ...]) -> tuple[str, ...]:
+def _missing_sources(
+    evidence: tuple[CodexGoalEvidenceRequirement, ...],
+) -> tuple[str, ...]:
     """Collects missing required evidence source names.
 
     Args:
@@ -241,7 +249,9 @@ def _commands(evidence: tuple[CodexGoalEvidenceRequirement, ...]) -> tuple[str, 
         tuple[str, ...]: Recommended command hints.
     """
     commands: tuple[str, ...] = tuple(
-        requirement.command for requirement in evidence if requirement.command is not None
+        requirement.command
+        for requirement in evidence
+        if requirement.command is not None
     )
     return commands
 
@@ -324,7 +334,9 @@ def _requires_review(stage: CodexGoalOperatingStage) -> bool:
     return requires_review
 
 
-def _review_blockers(restored_state: CodexGoalLifecycleRestoredState) -> tuple[str, ...]:
+def _review_blockers(
+    restored_state: CodexGoalLifecycleRestoredState,
+) -> tuple[str, ...]:
     """Reads review blockers from the lifecycle decision when present.
 
     Args:
@@ -388,19 +400,17 @@ def build_goal_operating_decision(
     else:
         recommended_commands = _commands(evidence)
 
-    decision = CodexGoalOperatingDecisionResult.model_validate(
-        {
-            "goal_id": request.restored_state.bundle.goal_id,
-            "current_stage": stage,
-            "next_action": action,
-            "safe_to_mutate": _safe_to_mutate(stage),
-            "requires_review": _requires_review(stage),
-            "available_evidence": _available_sources(evidence),
-            "missing_evidence": _missing_sources(evidence),
-            "evidence_requirements": evidence,
-            "recommended_commands": recommended_commands,
-            "review_blockers": _review_blockers(request.restored_state),
-            "summary": _build_summary(request, stage, action),
-        }
+    decision = CodexGoalOperatingDecisionResult(
+        goal_id=request.restored_state.bundle.goal_id,
+        current_stage=stage,
+        next_action=action,
+        safe_to_mutate=_safe_to_mutate(stage),
+        requires_review=_requires_review(stage),
+        available_evidence=_available_sources(evidence),
+        missing_evidence=_missing_sources(evidence),
+        evidence_requirements=evidence,
+        recommended_commands=recommended_commands,
+        review_blockers=_review_blockers(request.restored_state),
+        summary=_build_summary(request, stage, action),
     )
     return decision

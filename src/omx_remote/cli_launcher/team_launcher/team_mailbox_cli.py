@@ -22,9 +22,15 @@ def register_team_mailbox_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("mailbox-mark-delivered")
     def team_mailbox_mark_delivered(
-        team: str = typer.Option(..., "--team", help="Team name that owns the mailbox."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity that owns the mailbox message."),
-        message_id: str = typer.Option(..., "--message-id", help="Mailbox message id to mark as delivered."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name that owns the mailbox."
+        ),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity that owns the mailbox message."
+        ),
+        message_id: str = typer.Option(
+            ..., "--message-id", help="Mailbox message id to mark as delivered."
+        ),
     ) -> None:
         """Mark one typed OMX mailbox message as delivered.
 
@@ -46,9 +52,15 @@ def register_team_mailbox_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("mailbox-mark-notified")
     def team_mailbox_mark_notified(
-        team: str = typer.Option(..., "--team", help="Team name that owns the mailbox."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity that owns the mailbox message."),
-        message_id: str = typer.Option(..., "--message-id", help="Mailbox message id to mark as notified."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name that owns the mailbox."
+        ),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity that owns the mailbox message."
+        ),
+        message_id: str = typer.Option(
+            ..., "--message-id", help="Mailbox message id to mark as notified."
+        ),
     ) -> None:
         """Mark one typed OMX mailbox message as notified.
 

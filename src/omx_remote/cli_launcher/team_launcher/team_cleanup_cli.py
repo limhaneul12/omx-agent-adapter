@@ -22,7 +22,9 @@ def register_team_cleanup_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("cleanup")
     def team_cleanup(
-        team: str = typer.Option(..., "--team", help="Team name whose runtime state should be cleaned up."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name whose runtime state should be cleaned up."
+        ),
         force: bool | None = typer.Option(
             None,
             "--force/--no-force",
@@ -54,7 +56,11 @@ def register_team_cleanup_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("orphan-cleanup")
     def team_orphan_cleanup(
-        team: str = typer.Option(..., "--team", help="Team name whose orphaned runtime state should be cleaned up."),
+        team: str = typer.Option(
+            ...,
+            "--team",
+            help="Team name whose orphaned runtime state should be cleaned up.",
+        ),
     ) -> None:
         """Run one typed OMX team orphan-cleanup call.
 

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     ActiveRuntimeModes,
     RuntimeModeSnapshot,
     RuntimeModeStateRequest,

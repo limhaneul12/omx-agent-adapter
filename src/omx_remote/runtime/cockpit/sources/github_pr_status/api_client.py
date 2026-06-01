@@ -37,7 +37,7 @@ def _read_github_api_json(repo_root: str, api_path: str) -> JsonValue | None:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "agent-remote-cockpit",
+            "User-Agent": "comx-agent-cockpit",
         },
         method="GET",
     )

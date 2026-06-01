@@ -18,7 +18,7 @@ from omx_remote.runtime.ralph.ralph_team_handoff import (
 from omx_remote.runtime.ralph.ralph_team_owner_preflight import (
     require_ralph_team_live_launch_owner_support,
 )
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.shared.omx_enums.ralph_enums import RalphStateClassification
 
@@ -27,7 +27,7 @@ def launch_ralph_command(
     task: str,
     force_cleanup: bool,
     allow_non_tty: bool,
-) -> list[str]:
+) -> tuple[str, ...]:
     """Builds the Ralph launch command after preflight validation.
 
     Args:
@@ -36,7 +36,7 @@ def launch_ralph_command(
         allow_non_tty [bool]: Whether non-interactive launch is explicitly allowed.
 
     Returns:
-        list[str]: OMX argv for the Ralph launch command.
+        tuple[str, ...]: OMX argv for the Ralph launch command.
 
     Raises:
         ValueError: If the task is blank or stale state exists without force.
@@ -53,7 +53,7 @@ def build_ralph_launch_plan(
     task: str,
     force_cleanup: bool,
     allow_non_tty: bool,
-) -> tuple[list[str], list[str]]:
+) -> tuple[tuple[str, ...], list[str]]:
     """Builds launch command and preflight warnings.
 
     Args:
@@ -62,7 +62,7 @@ def build_ralph_launch_plan(
         allow_non_tty [bool]: Whether non-interactive launch is explicitly allowed.
 
     Returns:
-        tuple[list[str], list[str]]: Command plus preflight warnings.
+        tuple[tuple[str, ...], list[str]]: Command plus preflight warnings.
 
     Raises:
         ValueError: If task is blank, TTY checks fail, PRD gate blocks, or stale active state blocks.
@@ -83,11 +83,11 @@ def build_ralph_launch_plan(
 
     if state_class == RalphStateClassification.RESUMABLE and not force_cleanup:
         raise ValueError(
-            "Existing resumable Ralph state detected. Run `agent-remote ralph cleanup-stale` "
+            "Existing resumable Ralph state detected. Run `comx-agent ralph cleanup-stale` "
             "or retry with --force-cleanup."
         )
 
-    launch_command: list[str] = ["ralph", "--prd", canonical_launch_task]
+    launch_command: tuple[str, ...] = ("ralph", "--prd", canonical_launch_task)
     return launch_command, warnings
 
 
@@ -95,7 +95,7 @@ def build_ralph_team_launch_plan(
     allow_non_tty: bool,
     require_live_owner_preflight: bool = False,
     omx_dist_root: Path | None = None,
-) -> tuple[list[str], list[str]]:
+) -> tuple[tuple[str, ...], list[str]]:
     """Builds Team launch command from the typed Ralph PRD artifact.
 
     Args:
@@ -104,7 +104,7 @@ def build_ralph_team_launch_plan(
         omx_dist_root [Path | None]: Optional OMX distribution root override for capability checks.
 
     Returns:
-        tuple[list[str], list[str]]: Team launch command plus preflight warnings.
+        tuple[tuple[str, ...], list[str]]: Team launch command plus preflight warnings.
     """
     require_ralph_launch_tty(allow_non_tty=allow_non_tty)
 
@@ -125,19 +125,19 @@ def build_ralph_team_launch_plan(
         workspace_root=Path.cwd(),
     )
 
-    launch_command: list[str] = [
+    launch_command: tuple[str, ...] = (
         "team",
         f"{team_worker_count}",
         canonical_launch_task,
-    ]
+    )
     return launch_command, warnings
 
 
-def resume_ralph_command() -> list[str]:
+def resume_ralph_command() -> tuple[str, ...]:
     """Builds the Ralph resume command after state preflight validation.
 
     Returns:
-        list[str]: OMX argv for the Ralph resume command.
+        tuple[str, ...]: OMX argv for the Ralph resume command.
 
     Raises:
         ValueError: If no Ralph state exists to resume from.
@@ -150,15 +150,15 @@ def resume_ralph_command() -> list[str]:
             )
         raise ValueError("No resumable Ralph session found for ralph.")
 
-    resume_command: list[str] = ["ralph"]
+    resume_command: tuple[str, ...] = ("ralph",)
     return resume_command
 
 
-def build_ralph_resume_plan() -> tuple[list[str], list[str]]:
+def build_ralph_resume_plan() -> tuple[tuple[str, ...], list[str]]:
     """Builds resume command and preflight warnings.
 
     Returns:
-        tuple[list[str], list[str]]: Command plus resumability warnings.
+        tuple[tuple[str, ...], list[str]]: Command plus resumability warnings.
 
     Raises:
         ValueError: If resume preflight fails.
@@ -171,7 +171,7 @@ def build_ralph_resume_plan() -> tuple[list[str], list[str]]:
             )
         raise ValueError("No resumable Ralph session found for ralph.")
 
-    resume_command: list[str] = ["ralph"]
+    resume_command: tuple[str, ...] = ("ralph",)
     return resume_command, warnings
 
 
@@ -185,7 +185,10 @@ def format_resume_outcome(command_result: OmxCommandResult) -> OmxCommandResult:
         OmxCommandResult: Original result or a normalized preflight-style failure.
     """
     normalized_stdout: str = command_result.stdout.strip().lower()
-    if command_result.exit_code == 0 and normalized_stdout == "no resumable team found for ralph":
+    if (
+        command_result.exit_code == 0
+        and normalized_stdout == "no resumable team found for ralph"
+    ):
         failure_result = format_preflight_failure(
             "No resumable Ralph session found. Launch Ralph first or restore a resumable Ralph runtime."
         )

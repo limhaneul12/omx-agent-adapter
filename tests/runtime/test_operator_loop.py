@@ -1,6 +1,6 @@
 import asyncio
 
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
     TeamOperatorDispatchOutcome,
@@ -33,14 +33,15 @@ def test_operate_ralph_launch_maps_success_to_observe(monkeypatch) -> None:
     assert result.next_action == "observe"
 
 
-
 def test_operate_ralph_resume_maps_missing_state_to_launch_hint(monkeypatch) -> None:
     def fake_build_ralph_resume_plan():
         raise ValueError(
             "No Ralph state found. Launch Ralph first or restore a resumable Ralph state."
         )
 
-    monkeypatch.setattr(operator_loop, "build_ralph_resume_plan", fake_build_ralph_resume_plan)
+    monkeypatch.setattr(
+        operator_loop, "build_ralph_resume_plan", fake_build_ralph_resume_plan
+    )
 
     result = operator_loop.operate_ralph_resume()
 
@@ -48,7 +49,6 @@ def test_operate_ralph_resume_maps_missing_state_to_launch_hint(monkeypatch) -> 
     assert result.next_action == "launch"
     assert result.recovery_hint is not None
     assert result.recovery_hint.next_action == "launch"
-
 
 
 def test_operate_ralph_team_launch_maps_success_to_observe(monkeypatch) -> None:
@@ -82,8 +82,9 @@ def test_operate_ralph_team_launch_maps_success_to_observe(monkeypatch) -> None:
     assert observed_preflight_flags == [True]
 
 
-
-def test_operate_ralph_team_launch_blocks_owner_unsafe_runtime_before_omx(monkeypatch) -> None:
+def test_operate_ralph_team_launch_blocks_owner_unsafe_runtime_before_omx(
+    monkeypatch,
+) -> None:
     observed_commands: list[list[str]] = []
 
     def fake_build_ralph_team_launch_plan(
@@ -92,7 +93,9 @@ def test_operate_ralph_team_launch_blocks_owner_unsafe_runtime_before_omx(monkey
     ):
         _ = allow_non_tty
         if require_live_owner_preflight:
-            raise ValueError("installed OMX does not support preserving Team DAG node.owner")
+            raise ValueError(
+                "installed OMX does not support preserving Team DAG node.owner"
+            )
         return ["team", "3", "Ship feature"], []
 
     def fake_run_omx_command(command: list[str]) -> OmxCommandResult:
@@ -113,12 +116,16 @@ def test_operate_ralph_team_launch_blocks_owner_unsafe_runtime_before_omx(monkey
     assert result.loop_state == "terminal_failure"
     assert result.next_action == "escalate"
     assert result.command_result is not None
-    assert "does not support preserving Team DAG node.owner" in result.command_result.stderr
+    assert (
+        "does not support preserving Team DAG node.owner"
+        in result.command_result.stderr
+    )
     assert observed_commands == []
 
 
-
-def test_operate_ultrawork_launch_maps_resumable_state_to_cleanup_hint(monkeypatch) -> None:
+def test_operate_ultrawork_launch_maps_resumable_state_to_cleanup_hint(
+    monkeypatch,
+) -> None:
     def fake_build_ultrawork_launch_plan(
         task: str,
         *,
@@ -129,7 +136,7 @@ def test_operate_ultrawork_launch_maps_resumable_state_to_cleanup_hint(monkeypat
     ):
         _ = (task, force_cleanup, allow_non_tty, team_size, team_role)
         raise ValueError(
-            "Existing resumable Ultrawork state detected. Run `agent-remote ultrawork cleanup-stale` or retry with --force-cleanup."
+            "Existing resumable Ultrawork state detected. Run `comx-agent ultrawork cleanup-stale` or retry with --force-cleanup."
         )
 
     monkeypatch.setattr(
@@ -152,7 +159,6 @@ def test_operate_ultrawork_launch_maps_resumable_state_to_cleanup_hint(monkeypat
     assert result.recovery_hint.cleanup_first is True
 
 
-
 def test_operate_ralph_cleanup_returns_retry_hint(monkeypatch) -> None:
     monkeypatch.setattr(
         operator_loop,
@@ -166,7 +172,6 @@ def test_operate_ralph_cleanup_returns_retry_hint(monkeypatch) -> None:
     assert result.next_action == "retry"
     assert result.recovery_hint is not None
     assert result.recovery_hint.next_action == "retry"
-
 
 
 def test_operate_team_instruction_maps_unverified_result_to_resumable_later(
@@ -203,7 +208,6 @@ def test_operate_team_instruction_maps_unverified_result_to_resumable_later(
     assert result.lane == "team"
     assert result.loop_state == "resumable_later"
     assert result.next_action == "observe"
-
 
 
 def test_operate_team_worker_recheck_uses_resume_hint_for_durable_follow_up(

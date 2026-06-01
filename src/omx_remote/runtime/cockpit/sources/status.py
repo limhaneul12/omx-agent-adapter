@@ -12,7 +12,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes, RuntimeStatus
 
 
 def _build_status_sources(
@@ -50,7 +50,9 @@ def _build_status_sources(
     if goal_mirror_state is not None:
         goal_status = CockpitStatusSourceState.OBSERVED
         goal_detail = f"Goal mirror state for {goal_mirror_state.goal_id} was read."
-        goal_evidence_path = f"{goal_mirror_state.working_directory}/.agent-remote/state/codex-goal.json"
+        goal_evidence_path = (
+            f"{goal_mirror_state.working_directory}/.comx-agent/state/codex-goal.json"
+        )
     elif team_discovery.goal_mirror_failure is not None:
         goal_status = CockpitStatusSourceState.FAILED
         goal_detail = team_discovery.goal_mirror_failure
@@ -64,23 +66,31 @@ def _build_status_sources(
         team_discovery_detail = f"Discovered linked Team names: {discovered_text}."
     elif team_discovery.warnings:
         team_discovery_status = CockpitStatusSourceState.FAILED
-        team_discovery_detail = "Team discovery inspected persisted state with warnings."
+        team_discovery_detail = (
+            "Team discovery inspected persisted state with warnings."
+        )
 
     team_selection_status: CockpitStatusSourceState = CockpitStatusSourceState.MISSING
     team_selection_detail = "No explicit or discovered Team names were selected."
     if selected_team_names:
         team_selection_status = CockpitStatusSourceState.OBSERVED
         selected_text: str = ", ".join(selected_team_names)
-        team_selection_detail = f"Selected Team names for evidence reads: {selected_text}."
+        team_selection_detail = (
+            f"Selected Team names for evidence reads: {selected_text}."
+        )
 
-    runtime_status_source_state: CockpitStatusSourceState = CockpitStatusSourceState.OBSERVED
+    runtime_status_source_state: CockpitStatusSourceState = (
+        CockpitStatusSourceState.OBSERVED
+    )
     if _runtime_status_has_uncertain_activity(runtime_status):
         runtime_status_source_state = CockpitStatusSourceState.UNKNOWN
 
     active_modes_detail = "No active runtime modes were reported."
     if active_runtime_modes.active_modes:
         active_modes_text: str = ", ".join(active_runtime_modes.active_modes)
-        active_modes_detail = f"Active runtime modes were reported: {active_modes_text}."
+        active_modes_detail = (
+            f"Active runtime modes were reported: {active_modes_text}."
+        )
 
     ultrawork_status: CockpitStatusSourceState = CockpitStatusSourceState.OBSERVED
     ultrawork_detail = "Ultrawork state was classified."
@@ -129,6 +139,7 @@ def _build_status_sources(
     )
     return sources
 
+
 def _build_github_pull_request_source(
     pull_request_status: CockpitPullRequestObservation,
 ) -> CockpitStatusSourceObservation:
@@ -155,6 +166,7 @@ def _build_github_pull_request_source(
         evidence_path=pull_request_status.url,
     )
     return source
+
 
 def _build_team_evidence_source(
     selected_team_names: tuple[str, ...],
@@ -204,6 +216,7 @@ def _build_team_evidence_source(
         detail=f"Team evidence was read for: {observed_team_text}.",
     )
     return observed_source
+
 
 def _build_top_level_warnings(
     warnings: tuple[str, ...],

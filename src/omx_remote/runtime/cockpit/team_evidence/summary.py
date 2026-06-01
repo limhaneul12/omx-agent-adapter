@@ -27,6 +27,7 @@ def _summarize_team_observations(
     summary: str = "; ".join(summary_parts)
     return summary
 
+
 def _collect_team_observation_warnings(
     team_observations: tuple[CockpitTeamObservation, ...],
 ) -> tuple[str, ...]:

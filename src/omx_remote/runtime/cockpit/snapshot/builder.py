@@ -21,8 +21,8 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.route_policy_schemas import RouteRecommendation
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes, RuntimeStatus
 from omx_remote.shared.omx_enums.ultrawork_enums import UltraworkStateClassification
 
 
@@ -101,8 +101,12 @@ def build_cockpit_snapshot(
         goal_mirror_state=goal_mirror_state,
         team_observations=team_observations,
     )
-    resolved_route_recommendations: tuple[RouteRecommendation, ...] = route_recommendations
-    resolved_blocked_route_alternatives: tuple[RouteRecommendation, ...] = blocked_route_alternatives
+    resolved_route_recommendations: tuple[RouteRecommendation, ...] = (
+        route_recommendations
+    )
+    resolved_blocked_route_alternatives: tuple[RouteRecommendation, ...] = (
+        blocked_route_alternatives
+    )
     if (
         capabilities is not None
         and configured_agents is not None

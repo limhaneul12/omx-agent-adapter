@@ -1,4 +1,3 @@
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -17,6 +16,7 @@ from omx_remote.schemas.mcp.client_schemas import (
     McpToolListResult,
     McpTransportKind,
 )
+from omx_remote.shared.process_environment_settings import ProcessEnvironmentSettings
 
 
 class McpToolClientError(ValueError):
@@ -67,6 +67,8 @@ def _stdio_env(server: McpServerConfig) -> dict[str, str] | None:
     Returns:
         dict[str, str] | None: Environment override or None to inherit.
     """
+    environment_settings = ProcessEnvironmentSettings()
+    environment_values = environment_settings.environment_values
     concrete_entries: dict[str, str] = {
         entry.name: entry.value
         for entry in server.transport.env
@@ -75,16 +77,16 @@ def _stdio_env(server: McpServerConfig) -> dict[str, str] | None:
     inherited_names: set[str] = {
         entry.name
         for entry in server.transport.env
-        if entry.value is None and entry.name in os.environ
+        if entry.value is None and entry.name in environment_values
     }
     if not concrete_entries and not inherited_names:
         inherited_environment: None = None
         return inherited_environment
 
-    env: dict[str, str] = dict(os.environ)
+    env: dict[str, str] = dict(environment_values)
     env.update(concrete_entries)
     for name in inherited_names:
-        env[name] = os.environ[name]
+        env[name] = environment_values[name]
     return env
 
 
@@ -102,7 +104,10 @@ def _bearer_headers(server: McpServerConfig) -> dict[str, str]:
         empty_headers: dict[str, str] = {}
         return empty_headers
 
-    token_value: str | None = os.environ.get(token_env_var)
+    environment_settings = ProcessEnvironmentSettings()
+    token_value: str | None = environment_settings.dynamic_environment_value(
+        token_env_var
+    )
     if not token_value:
         raise McpToolClientError(
             f"MCP bearer token environment variable {token_env_var} is not set."
@@ -140,14 +145,17 @@ async def _open_client_session(
             env=_stdio_env(server),
             cwd=server.transport.cwd,
         )
-        async with stdio_client(server_params) as (
-            read_stream,
-            write_stream,
-        ), ClientSession(
-            read_stream,
-            write_stream,
-            read_timeout_seconds=timeout,
-        ) as session:
+        async with (
+            stdio_client(server_params) as (
+                read_stream,
+                write_stream,
+            ),
+            ClientSession(
+                read_stream,
+                write_stream,
+                read_timeout_seconds=timeout,
+            ) as session,
+        ):
             await session.initialize()
             yield session
         return
@@ -156,18 +164,22 @@ async def _open_client_session(
         if server.transport.url is None:
             raise McpToolClientError("streamable_http MCP transport requires url.")
         http_headers: dict[str, str] = _bearer_headers(server)
-        async with httpx.AsyncClient(headers=http_headers) as http_client, streamable_http_client(
-            server.transport.url,
-            http_client=http_client,
-        ) as (
-            read_stream,
-            write_stream,
-            _get_session_id,
-        ), ClientSession(
-            read_stream,
-            write_stream,
-            read_timeout_seconds=timeout,
-        ) as session:
+        async with (
+            httpx.AsyncClient(headers=http_headers) as http_client,
+            streamable_http_client(
+                server.transport.url,
+                http_client=http_client,
+            ) as (
+                read_stream,
+                write_stream,
+                _get_session_id,
+            ),
+            ClientSession(
+                read_stream,
+                write_stream,
+                read_timeout_seconds=timeout,
+            ) as session,
+        ):
             await session.initialize()
             yield session
         return
@@ -189,7 +201,9 @@ async def list_mcp_tools(server: McpServerConfig) -> McpToolListResult:
 
     tools: list[McpToolDescriptor] = []
     for tool in tools_response.tools:
-        tool_payload: JsonObject = _json_object_from_model(tool.model_dump(by_alias=True))
+        tool_payload: JsonObject = _json_object_from_model(
+            tool.model_dump(by_alias=True)
+        )
         input_schema: JsonObject | None = _optional_json_object(
             tool_payload.get("inputSchema")
         )
@@ -200,7 +214,9 @@ async def list_mcp_tools(server: McpServerConfig) -> McpToolListResult:
             server_name=server.name,
             server_source=server.source,
             name=str(tool_payload["name"]),
-            title=None if tool_payload.get("title") is None else str(tool_payload["title"]),
+            title=None
+            if tool_payload.get("title") is None
+            else str(tool_payload["title"]),
             description=None
             if tool_payload.get("description") is None
             else str(tool_payload["description"]),

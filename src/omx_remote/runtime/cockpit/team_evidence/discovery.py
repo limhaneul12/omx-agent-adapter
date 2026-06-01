@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
 
-_CODEX_GOAL_MIRROR_STATE_PATH = Path(".agent-remote") / "state" / "codex-goal.json"
+_CODEX_GOAL_MIRROR_STATE_PATH = Path(".comx-agent") / "state" / "codex-goal.json"
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,5 @@
 from omx_remote.history.session_search import _normalize_session_search_results
-from omx_remote.schemas.history.session_schemas import SessionSearchResultSnapshot
+from omx_remote.schemas.history_session_schemas import SessionSearchResultSnapshot
 
 
 def test_history_type_aliases_cover_result_lists() -> None:

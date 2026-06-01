@@ -12,7 +12,7 @@ from omx_remote.adapter_types.history_types import (
 )
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.history.session_schemas import (
+from omx_remote.schemas.history_session_schemas import (
     SessionSearchRequest,
     SessionSearchResultSnapshot,
     SessionSearchSnapshot,
@@ -29,9 +29,14 @@ async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapsho
     Returns:
         SessionSearchSnapshot: Normalized session-search contract built from the live search payload.
     """
-    command_arguments: list[str] = ["session", "search", request.query, "--json"]
+    command_arguments: tuple[str, ...] = (
+        "session",
+        "search",
+        request.query,
+        "--json",
+    )
     if request.limit is not None:
-        command_arguments.extend(["--limit", str(request.limit)])
+        command_arguments = (*command_arguments, "--limit", str(request.limit))
 
     command_result = await run_blocking_call(run_omx_command, command_arguments)
     stdout: str = command_result.stdout.strip()
@@ -39,12 +44,14 @@ async def search_sessions(request: SessionSearchRequest) -> SessionSearchSnapsho
     return result
 
 
-def _load_session_search_transport_payload(stdout: str) -> SessionSearchTransportPayload:
+def _load_session_search_transport_payload(
+    stdout: str,
+) -> SessionSearchTransportPayload:
     """Loads one session-search transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         SessionSearchTransportPayload: Function return value.
     """
@@ -63,7 +70,9 @@ def _load_session_search_transport_payload(stdout: str) -> SessionSearchTranspor
         ) from error
 
     if not isinstance(decoded_payload, dict):
-        raise HistorySurfaceError("omx session search returned a non-object JSON payload")
+        raise HistorySurfaceError(
+            "omx session search returned a non-object JSON payload"
+        )
     if not isinstance(parsed_payload.query, str):
         raise HistorySurfaceError("omx session search returned a non-string query")
     if not isinstance(parsed_payload.searched_files, int):
@@ -75,7 +84,9 @@ def _load_session_search_transport_payload(stdout: str) -> SessionSearchTranspor
             "omx session search returned a non-integer matched_sessions"
         )
     if not isinstance(parsed_payload.results, list):
-        raise HistorySurfaceError("omx session search returned a non-list results payload")
+        raise HistorySurfaceError(
+            "omx session search returned a non-list results payload"
+        )
 
     result = SessionSearchTransportPayload(
         query=parsed_payload.query,
@@ -85,22 +96,23 @@ def _load_session_search_transport_payload(stdout: str) -> SessionSearchTranspor
     )
     return result
 
+
 def _normalize_session_search(stdout: str) -> SessionSearchSnapshot:
     """Normalizes one `omx session search ... --json` payload.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         SessionSearchSnapshot: Function return value.
     """
-    parsed_payload: SessionSearchTransportPayload = _load_session_search_transport_payload(
-        stdout
+    parsed_payload: SessionSearchTransportPayload = (
+        _load_session_search_transport_payload(stdout)
     )
 
     raw_results: SessionSearchTransportResults = parsed_payload["results"]
-    normalized_results: SessionSearchNormalizedResults = _normalize_session_search_results(
-        raw_results
+    normalized_results: SessionSearchNormalizedResults = (
+        _normalize_session_search_results(raw_results)
     )
 
     normalized_payload = SessionSearchNormalizedPayload(

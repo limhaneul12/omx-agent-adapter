@@ -46,9 +46,12 @@ async def _read_team_observations(
         return empty_observations
 
     observation_tasks = [
-        asyncio.create_task(_read_team_observation(team_name)) for team_name in team_names
+        asyncio.create_task(_read_team_observation(team_name))
+        for team_name in team_names
     ]
-    observations_list: list[CockpitTeamObservation] = list(await asyncio.gather(*observation_tasks))
+    observations_list: list[CockpitTeamObservation] = list(
+        await asyncio.gather(*observation_tasks)
+    )
     observations: tuple[CockpitTeamObservation, ...] = tuple(observations_list)
     return observations
 
@@ -91,7 +94,9 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
         tasks_snapshot=tasks_snapshot,
         events_snapshot=events_snapshot,
     )
-    worker_statuses: tuple[CockpitTeamWorkerObservation, ...] = await _read_team_worker_observations(
+    worker_statuses: tuple[
+        CockpitTeamWorkerObservation, ...
+    ] = await _read_team_worker_observations(
         team_name=team_name,
         worker_names=worker_names,
         warnings=warnings,
@@ -126,6 +131,7 @@ async def _read_team_observation(team_name: str) -> CockpitTeamObservation:
     )
     return observation
 
+
 def _derive_observed_worker_names(
     status_snapshot: TeamStatusSnapshot | None,
     tasks_snapshot: TeamApiListTasksSnapshot | None,
@@ -145,25 +151,35 @@ def _derive_observed_worker_names(
     seen_worker_names: set[str] = set()
 
     if status_snapshot is not None:
-        for worker_name in (*status_snapshot.dead_workers, *status_snapshot.non_reporting_workers):
+        for worker_name in (
+            *status_snapshot.dead_workers,
+            *status_snapshot.non_reporting_workers,
+        ):
             if worker_name not in seen_worker_names:
                 seen_worker_names.add(worker_name)
                 worker_names.append(worker_name)
 
     if tasks_snapshot is not None:
         for task_snapshot in tasks_snapshot.tasks:
-            if task_snapshot.owner is not None and task_snapshot.owner not in seen_worker_names:
+            if (
+                task_snapshot.owner is not None
+                and task_snapshot.owner not in seen_worker_names
+            ):
                 seen_worker_names.add(task_snapshot.owner)
                 worker_names.append(task_snapshot.owner)
 
     if events_snapshot is not None:
         for event_snapshot in events_snapshot.events:
-            if event_snapshot.worker is not None and event_snapshot.worker not in seen_worker_names:
+            if (
+                event_snapshot.worker is not None
+                and event_snapshot.worker not in seen_worker_names
+            ):
                 seen_worker_names.add(event_snapshot.worker)
                 worker_names.append(event_snapshot.worker)
 
     result: tuple[str, ...] = tuple(worker_names)
     return result
+
 
 async def _read_team_worker_observations(
     team_name: str,
@@ -183,8 +199,12 @@ async def _read_team_worker_observations(
     worker_observations: list[CockpitTeamWorkerObservation] = []
     for worker_name in worker_names:
         try:
-            worker_status: TeamApiWorkerStatusSnapshot = await read_team_api_read_worker_status(
-                TeamApiReadWorkerStatusRequest(team_name=team_name, worker=worker_name)
+            worker_status: TeamApiWorkerStatusSnapshot = (
+                await read_team_api_read_worker_status(
+                    TeamApiReadWorkerStatusRequest(
+                        team_name=team_name, worker=worker_name
+                    )
+                )
             )
         except TeamworkSurfaceError as error:
             warnings.append(

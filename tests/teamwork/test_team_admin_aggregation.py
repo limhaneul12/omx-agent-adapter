@@ -29,11 +29,15 @@ def _assignment(worker_id: str, owned_file: str) -> dict[str, object]:
         "read_only_context_files": ["AGENTS.md"],
         "forbidden_files": [".omx/**"],
         "tdd_steps": ["write failing test", "make it pass"],
-        "verification_commands": ["uv run pytest tests/teamwork/test_team_admin_aggregation.py -q"],
+        "verification_commands": [
+            "uv run pytest tests/teamwork/test_team_admin_aggregation.py -q"
+        ],
         "handoff_summary_required": "report verification and changed files",
         "authorization_policy": "llm_review",
         "authorization_scope": {
-            "allowed_commands": ["uv run pytest tests/teamwork/test_team_admin_aggregation.py -q"],
+            "allowed_commands": [
+                "uv run pytest tests/teamwork/test_team_admin_aggregation.py -q"
+            ],
             "forbidden_commands": ["git push"],
             "requires_human_for": ["change files outside owned_files"],
             "requires_llm_review_for": ["local checkpoint commit"],
@@ -59,8 +63,12 @@ def _prd_artifact() -> RalphPrdArtifact:
             "objective": "ship Team Admin aggregation report builder",
             "scope": ["aggregate Team worker results for Ralph review"],
             "constraints": ["Team Admin collects results; Ralph reviews the report"],
-            "execution_plan": ["build final aggregation report from Team API snapshots"],
-            "verification_expectations": ["report blocks merge when workers are missing"],
+            "execution_plan": [
+                "build final aggregation report from Team API snapshots"
+            ],
+            "verification_expectations": [
+                "report blocks merge when workers are missing"
+            ],
             "requires_team_fanout": True,
             "team_worker_count": 3,
             "continuation_policy": "review_required",
@@ -74,7 +82,9 @@ def _prd_artifact() -> RalphPrdArtifact:
     )
 
 
-def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review() -> None:
+def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review() -> (
+    None
+):
     report = build_team_admin_aggregation_report(
         ralph_prd_artifact=_prd_artifact(),
         task_snapshot=TeamApiListTasksSnapshot(
@@ -104,13 +114,21 @@ def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review()
             count=1,
             cursor="1",
             events=(
-                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-1", task_id="task-1"),
+                TeamApiEventSnapshot(
+                    type="handoff_submitted", worker="worker-1", task_id="task-1"
+                ),
             ),
         ),
         worker_statuses=(
-            TeamApiWorkerStatusSnapshot(worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"),
-            TeamApiWorkerStatusSnapshot(worker="worker-2", state="completed", updated_at="2026-05-06T00:00:00Z"),
-            TeamApiWorkerStatusSnapshot(worker="worker-3", state="success", updated_at="2026-05-06T00:00:00Z"),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-2", state="completed", updated_at="2026-05-06T00:00:00Z"
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-3", state="success", updated_at="2026-05-06T00:00:00Z"
+            ),
         ),
     )
 
@@ -124,7 +142,10 @@ def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review()
     assert report.incomplete_workers == ()
     assert report.requires_human_review is False
     assert report.requires_llm_review is True
-    assert report.summary == "Team Admin collected 3/3 completed worker results; ready for Ralph review."
+    assert (
+        report.summary
+        == "Team Admin collected 3/3 completed worker results; ready for Ralph review."
+    )
     assert tuple(layer.name for layer in report.proof_layers) == (
         "prd_dag_import",
         "assignment",
@@ -135,7 +156,9 @@ def test_team_admin_aggregation_report_marks_clean_wave_ready_for_ralph_review()
     assert {layer.state for layer in report.proof_layers} == {"passed"}
 
 
-def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_workers() -> None:
+def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_workers() -> (
+    None
+):
     report = build_team_admin_aggregation_report(
         ralph_prd_artifact=_prd_artifact(),
         task_snapshot=TeamApiListTasksSnapshot(
@@ -159,13 +182,21 @@ def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_work
             count=2,
             cursor="2",
             events=(
-                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-1", task_id="task-1"),
-                TeamApiEventSnapshot(type="blocked", worker="worker-2", task_id="task-2"),
+                TeamApiEventSnapshot(
+                    type="handoff_submitted", worker="worker-1", task_id="task-1"
+                ),
+                TeamApiEventSnapshot(
+                    type="blocked", worker="worker-2", task_id="task-2"
+                ),
             ),
         ),
         worker_statuses=(
-            TeamApiWorkerStatusSnapshot(worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"),
-            TeamApiWorkerStatusSnapshot(worker="worker-2", state="blocked", updated_at="2026-05-06T00:00:00Z"),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-2", state="blocked", updated_at="2026-05-06T00:00:00Z"
+            ),
         ),
     )
 
@@ -180,11 +211,15 @@ def test_team_admin_aggregation_report_blocks_merge_for_missing_and_blocked_work
     assert report.requires_llm_review is True
     assert report.task_count == 2
     assert report.event_count == 2
-    assert report.summary == "Team Admin found 1 completed, 1 blocked, and 1 missing worker result; human review required."
+    assert (
+        report.summary
+        == "Team Admin found 1 completed, 1 blocked, and 1 missing worker result; human review required."
+    )
 
 
-
-def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_up_not_human_review() -> None:
+def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_up_not_human_review() -> (
+    None
+):
     report = build_team_admin_aggregation_report(
         ralph_prd_artifact=_prd_artifact(),
         task_snapshot=TeamApiListTasksSnapshot(
@@ -208,15 +243,27 @@ def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_u
             count=3,
             cursor="3",
             events=(
-                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-1", task_id="task-1"),
-                TeamApiEventSnapshot(type="handoff_submitted", worker="worker-2", task_id="task-2"),
+                TeamApiEventSnapshot(
+                    type="handoff_submitted", worker="worker-1", task_id="task-1"
+                ),
+                TeamApiEventSnapshot(
+                    type="handoff_submitted", worker="worker-2", task_id="task-2"
+                ),
                 TeamApiEventSnapshot(type="ready_prompt_timeout", worker="worker-3"),
             ),
         ),
         worker_statuses=(
-            TeamApiWorkerStatusSnapshot(worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"),
-            TeamApiWorkerStatusSnapshot(worker="worker-2", state="idle", updated_at="2026-05-06T00:00:00Z"),
-            TeamApiWorkerStatusSnapshot(worker="worker-3", state="unknown", updated_at="1970-01-01T00:00:00.000Z"),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-1", state="idle", updated_at="2026-05-06T00:00:00Z"
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-2", state="idle", updated_at="2026-05-06T00:00:00Z"
+            ),
+            TeamApiWorkerStatusSnapshot(
+                worker="worker-3",
+                state="unknown",
+                updated_at="1970-01-01T00:00:00.000Z",
+            ),
         ),
     )
 
@@ -236,8 +283,9 @@ def test_team_admin_aggregation_report_surfaces_ready_prompt_timeout_as_follow_u
     assert "worker-3" in worker_readiness_layer.summary
 
 
-
-def test_team_admin_aggregation_report_keeps_worker_startup_timeout_in_readiness_layer() -> None:
+def test_team_admin_aggregation_report_keeps_worker_startup_timeout_in_readiness_layer() -> (
+    None
+):
     report = build_team_admin_aggregation_report(
         ralph_prd_artifact=_prd_artifact(),
         task_snapshot=TeamApiListTasksSnapshot(
@@ -288,7 +336,6 @@ def test_team_admin_aggregation_report_keeps_worker_startup_timeout_in_readiness
     assert "worker-3" in worker_readiness_layer.summary
 
 
-
 def test_read_team_admin_aggregation_report_uses_local_startup_timing_log(
     monkeypatch,
     tmp_path: Path,
@@ -333,8 +380,12 @@ def test_read_team_admin_aggregation_report_uses_local_startup_timing_log(
             updated_at="1970-01-01T00:00:00.000Z",
         )
 
-    monkeypatch.setattr(team_admin_aggregation, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(team_admin_aggregation, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_admin_aggregation, "read_team_api_list_tasks", fake_read_tasks
+    )
+    monkeypatch.setattr(
+        team_admin_aggregation, "read_team_api_read_events", fake_read_events
+    )
     monkeypatch.setattr(
         team_admin_aggregation,
         "read_team_api_read_worker_status",
@@ -357,8 +408,9 @@ def test_read_team_admin_aggregation_report_uses_local_startup_timing_log(
     assert report.requires_human_review is False
 
 
-
-def test_read_team_admin_aggregation_report_collects_worker_status_snapshots(monkeypatch) -> None:
+def test_read_team_admin_aggregation_report_collects_worker_status_snapshots(
+    monkeypatch,
+) -> None:
     calls: list[tuple[str, str]] = []
 
     async def fake_read_tasks(request):
@@ -433,7 +485,6 @@ def test_read_team_admin_aggregation_report_collects_worker_status_snapshots(mon
         ("read_worker_status", "alpha-team:worker-2"),
         ("read_worker_status", "alpha-team:worker-3"),
     ]
-
 
 
 def test_write_team_admin_aggregation_report_artifact_writes_json(tmp_path) -> None:

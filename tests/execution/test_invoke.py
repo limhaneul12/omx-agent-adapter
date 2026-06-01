@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.execution.invoke import run_omx_command, run_omx_command_inherited_stdio
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 
 def test_omx_command_result_accepts_exit_code_stdout_and_stderr() -> None:
@@ -69,7 +69,7 @@ def test_run_omx_command_passes_expected_subprocess_arguments(monkeypatch) -> No
 
     run_omx_command(["status"], cwd="/tmp/demo")
 
-    assert seen_arguments["args"] == (["omx", "status"],)
+    assert seen_arguments["args"] == (("omx", "status"),)
     assert seen_arguments["kwargs"] == {
         "cwd": "/tmp/demo",
         "text": True,
@@ -97,7 +97,7 @@ def test_run_omx_command_inherited_stdio_does_not_capture_terminal_streams(
         ["ralph", "--prd", "Launch task."], cwd="/tmp/demo"
     )
 
-    assert seen_arguments["args"] == (["omx", "ralph", "--prd", "Launch task."],)
+    assert seen_arguments["args"] == (("omx", "ralph", "--prd", "Launch task."),)
     assert seen_arguments["kwargs"] == {
         "cwd": "/tmp/demo",
         "text": True,

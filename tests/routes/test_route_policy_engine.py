@@ -8,7 +8,7 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCommandRecipeSummary,
     CockpitRuntimeCapability,
 )
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteName,
     RouteRecommendationStatus,
 )
@@ -83,7 +83,7 @@ def _capabilities_without_ultragoal() -> CockpitCapabilitiesSnapshot:
 
 def _agents() -> CockpitAgentConfigSummary:
     return CockpitAgentConfigSummary(
-        config_path=".agent-remote.toml",
+        config_path=".comx-agent.toml",
         total_count=2,
         enabled_count=1,
         disabled_count=1,
@@ -98,8 +98,8 @@ def _recipes() -> CockpitCommandRecipeSummary:
         builtin_count=2,
         repo_count=1,
         qualified_ids=(
-            "builtin:review-diff",
-            "builtin:verify-handoff-plus",
+            "builtin:review-gate",
+            "builtin:release-readiness",
             "repo:implement-with-review",
         ),
         warnings=(),
@@ -135,7 +135,9 @@ def test_policy_explains_missing_ultragoal_capability_for_roadmap(
         safe_to_mutate=True,
         active_runtime_modes=(),
     )
-    blocked_routes = {alternative.route: alternative for alternative in result.blocked_alternatives}
+    blocked_routes = {
+        alternative.route: alternative for alternative in result.blocked_alternatives
+    }
 
     assert result.recommendations[0].route == RouteName.CODEX_EXEC
     assert RouteName.OMX_ULTRAGOAL in blocked_routes
@@ -159,7 +161,7 @@ def test_policy_does_not_prefer_ultragoal_for_small_verification(
 
     assert result.recommendations[0].route != RouteName.OMX_ULTRAGOAL
     assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
-    assert result.recommendations[0].command_id == "builtin:verify-handoff-plus"
+    assert result.recommendations[0].command_id == "builtin:release-readiness"
 
 
 def test_policy_prefers_review_diff_recipe_for_review_task(tmp_path: Path) -> None:
@@ -174,7 +176,7 @@ def test_policy_prefers_review_diff_recipe_for_review_task(tmp_path: Path) -> No
     )
 
     assert result.recommendations[0].route == RouteName.PROJECT_COMMAND
-    assert result.recommendations[0].command_id == "builtin:review-diff"
+    assert result.recommendations[0].command_id == "builtin:review-gate"
 
 
 def test_policy_blocks_team_route_when_runtime_is_active(tmp_path: Path) -> None:
@@ -188,10 +190,14 @@ def test_policy_blocks_team_route_when_runtime_is_active(tmp_path: Path) -> None
         active_runtime_modes=("ultragoal",),
     )
 
-    blocked_routes = {alternative.route: alternative for alternative in result.blocked_alternatives}
+    blocked_routes = {
+        alternative.route: alternative for alternative in result.blocked_alternatives
+    }
 
     assert RouteName.OMX_TEAM in blocked_routes
-    assert blocked_routes[RouteName.OMX_TEAM].status == RouteRecommendationStatus.BLOCKED
+    assert (
+        blocked_routes[RouteName.OMX_TEAM].status == RouteRecommendationStatus.BLOCKED
+    )
     assert blocked_routes[RouteName.OMX_TEAM].blocked_by == (
         "active runtime modes: ultragoal",
     )

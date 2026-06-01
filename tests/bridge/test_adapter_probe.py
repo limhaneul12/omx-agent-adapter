@@ -9,7 +9,7 @@ from omx_remote.bridge.adapter_transport_payloads import (
     copy_runtime_evidence_payload,
     load_capabilities_payload,
 )
-from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
+from omx_remote.schemas.bridge_adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
@@ -39,7 +39,9 @@ def test_probe_adapter_returns_normalized_subset(monkeypatch) -> None:
         ),
     )
 
-    result = asyncio.run(adapter_probe.probe_adapter(AdapterProbeRequest(target="hermes")))
+    result = asyncio.run(
+        adapter_probe.probe_adapter(AdapterProbeRequest(target="hermes"))
+    )
 
     assert result.target == "hermes"
     assert result.phase == "foundation"
@@ -90,14 +92,18 @@ def test_load_adapter_probe_transport_payload_rejects_non_list_capabilities() ->
         )
 
 
-def test_load_adapter_probe_transport_payload_rejects_non_string_capability_id() -> None:
+def test_load_adapter_probe_transport_payload_rejects_non_string_capability_id() -> (
+    None
+):
     with pytest.raises(BridgeSurfaceError):
         adapter_probe._load_adapter_probe_transport_payload(
             '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[{"id":42,"label":"Foundation reporting surface","ownership":"shared-contract","status":"ready","summary":"ok"}],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
         )
 
 
-def test_load_adapter_probe_transport_payload_rejects_non_string_runtime_state() -> None:
+def test_load_adapter_probe_transport_payload_rejects_non_string_runtime_state() -> (
+    None
+):
     with pytest.raises(BridgeSurfaceError):
         adapter_probe._load_adapter_probe_transport_payload(
             '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":42,"detail":"missing"}}'
@@ -127,7 +133,9 @@ def test_load_capabilities_payload_accepts_schema_supported_missing_ownership() 
     ]
 
 
-def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> None:
+def test_load_adapter_probe_transport_payload_preserves_live_required_bridge_fields() -> (
+    None
+):
     result = adapter_probe._load_adapter_probe_transport_payload(
         '{"target":"hermes","phase":"foundation","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing","evidence":{}},"schemaVersion":"1.0","timestamp":"2026-05-04T08:02:34.260Z"}'
     )

@@ -5,7 +5,7 @@ from __future__ import annotations
 from omx_remote.adapter_types.type_contract import runtime_status_contract_type
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatus,
@@ -30,7 +30,7 @@ async def read_runtime_status(
         normalized_request = RuntimeStatusRequest()
     else:
         normalized_request = request
-    command_result = await run_blocking_call(run_omx_command, ["status"])
+    command_result = await run_blocking_call(run_omx_command, ("status",))
     stdout: str = command_result.stdout.strip()
     stderr: str = command_result.stderr.strip()
     summary: str
@@ -52,17 +52,15 @@ async def read_runtime_status(
     )
     has_anomalies: bool = bool(anomalies)
     anomaly_count: int = len(anomalies)
-    result: RuntimeStatus = RuntimeStatus.model_validate(
-        {
-            "summary": summary,
-            "has_active_modes": has_active_modes,
-            "active_mode_names": active_mode_names,
-            "mode_snapshots": mode_snapshots,
-            "mode_statuses": mode_statuses,
-            "anomalies": anomalies,
-            "has_anomalies": has_anomalies,
-            "anomaly_count": anomaly_count,
-        }
+    result = RuntimeStatus(
+        summary=summary,
+        has_active_modes=has_active_modes,
+        active_mode_names=active_mode_names,
+        mode_snapshots=mode_snapshots,
+        mode_statuses=mode_statuses,
+        anomalies=anomalies,
+        has_anomalies=has_anomalies,
+        anomaly_count=anomaly_count,
     )
     _ = normalized_request
     return result
@@ -159,8 +157,8 @@ def _extract_mode_statuses(stdout: str) -> dict[str, RuntimeModeStatus]:
     Returns:
         dict[str, RuntimeModeStatus]: Mapping from mode name to normalized runtime status token.
     """
-    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = _extract_mode_status_entries(
-        stdout
+    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = (
+        _extract_mode_status_entries(stdout)
     )
     mode_statuses: dict[str, RuntimeModeStatus] = {
         mode_name: status_text
@@ -180,8 +178,8 @@ def _build_mode_snapshots(
     Returns:
         list[RuntimeModeSnapshot]: Ordered runtime mode snapshots derived from parsed mode-status entries.
     """
-    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = _extract_mode_status_entries(
-        stdout
+    mode_status_entries: list[tuple[str, RuntimeModeStatus, str]] = (
+        _extract_mode_status_entries(stdout)
     )
     mode_snapshots: list[RuntimeModeSnapshot] = [
         RuntimeModeSnapshot(
@@ -232,7 +230,10 @@ def _build_runtime_status_anomalies(
         return anomalies
 
     mode_statuses: dict[str, RuntimeModeStatus] = _extract_mode_statuses(stdout)
-    if not mode_statuses and stdout != runtime_status_contract_type.IDLE_RUNTIME_SUMMARY:
+    if (
+        not mode_statuses
+        and stdout != runtime_status_contract_type.IDLE_RUNTIME_SUMMARY
+    ):
         anomalies.append(
             RuntimeStatusAnomaly(
                 category="unparseable_stdout",
@@ -242,7 +243,9 @@ def _build_runtime_status_anomalies(
 
     line: str
     for line in stdout.splitlines():
-        parsed_mode_status: tuple[str, RuntimeModeStatus] | None = _parse_mode_status(line)
+        parsed_mode_status: tuple[str, RuntimeModeStatus] | None = _parse_mode_status(
+            line
+        )
         if parsed_mode_status is None:
             continue
 
@@ -290,7 +293,10 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
 
     status_prefix: str
     normalized_status: RuntimeModeStatus
-    for status_prefix, normalized_status in runtime_status_contract_type.RUNTIME_STATUS_PREFIXES:
+    for (
+        status_prefix,
+        normalized_status,
+    ) in runtime_status_contract_type.RUNTIME_STATUS_PREFIXES:
         if normalized_status_text == status_prefix:
             parsed_mode_status_entry = (
                 normalized_mode_name,
@@ -316,10 +322,10 @@ def _parse_mode_status_entry(line: str) -> tuple[str, RuntimeModeStatus, str] | 
 
 def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
     """Parses one runtime mode status line into a typed pair.
-    
+
     Args:
         line [str]: Function argument.
-    
+
     Returns:
         tuple[str, RuntimeModeStatus] | None: Function return value.
     """
@@ -341,10 +347,10 @@ def _parse_mode_status(line: str) -> tuple[str, RuntimeModeStatus] | None:
 
 def _parse_active_mode_name(line: str) -> str | None:
     """Parses one active runtime mode name from a status line.
-    
+
     Args:
         line [str]: Function argument.
-    
+
     Returns:
         str | None: Function return value.
     """

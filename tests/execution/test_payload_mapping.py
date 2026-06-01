@@ -194,7 +194,9 @@ def test_normalize_execution_turn_completed_payload_preserves_usage() -> None:
     assert result["usage"]["cached_input_tokens"] == 7552
 
 
-def test_normalize_execution_event_payload_preserves_turn_completed_usage_shape() -> None:
+def test_normalize_execution_event_payload_preserves_turn_completed_usage_shape() -> (
+    None
+):
     transport_payload = _load_execution_transport_payload(
         {
             "type": "turn.completed",
@@ -255,7 +257,9 @@ def test_normalize_execution_item_completed_payload_preserves_item() -> None:
     assert result["item"]["exit_code"] == 0
 
 
-def test_normalize_execution_event_payload_preserves_item_completed_item_shape() -> None:
+def test_normalize_execution_event_payload_preserves_item_completed_item_shape() -> (
+    None
+):
     transport_payload = _load_execution_transport_payload(
         {
             "type": "item.completed",
@@ -437,7 +441,9 @@ def test_split_event_payloads_extracts_item_completed_output_item_payload() -> N
     assert result[0]["text"] == "stream line"
 
 
-def test_split_event_payloads_extracts_item_completed_command_execution_payload() -> None:
+def test_split_event_payloads_extracts_item_completed_command_execution_payload() -> (
+    None
+):
     payload = {
         "type": "item.completed",
         "item": {
@@ -479,7 +485,9 @@ def test_split_event_payloads_extracts_item_completed_tool_result_payload() -> N
     assert result[0]["text"] == "match"
 
 
-def test_split_event_payloads_keeps_item_completed_payload_when_item_is_not_dict() -> None:
+def test_split_event_payloads_keeps_item_completed_payload_when_item_is_not_dict() -> (
+    None
+):
     payload = {"type": "item.completed", "item": ["not", "a", "mapping"]}
 
     result = split_event_payloads(payload)
@@ -713,7 +721,9 @@ def test_promote_execution_contract_selects_tool_call_contract() -> None:
     assert result.__class__.__name__ == "ExecToolCall"
 
 
-def test_promote_execution_contract_selects_output_contract_for_item_completed_output() -> None:
+def test_promote_execution_contract_selects_output_contract_for_item_completed_output() -> (
+    None
+):
     event_payload = {
         "type": "item.completed",
         "item": {"type": "output_text", "text": "stream line"},
@@ -727,7 +737,9 @@ def test_promote_execution_contract_selects_output_contract_for_item_completed_o
     assert result.__class__.__name__ == "ExecOutput"
 
 
-def test_promote_execution_contract_selects_message_contract_for_item_completed_message() -> None:
+def test_promote_execution_contract_selects_message_contract_for_item_completed_message() -> (
+    None
+):
     event_payload = {
         "type": "item.completed",
         "item": {"type": "message", "text": "done"},
@@ -741,7 +753,9 @@ def test_promote_execution_contract_selects_message_contract_for_item_completed_
     assert result.__class__.__name__ == "ExecMessage"
 
 
-def test_promote_execution_contract_selects_command_execution_contract_for_item_completed_command_execution() -> None:
+def test_promote_execution_contract_selects_command_execution_contract_for_item_completed_command_execution() -> (
+    None
+):
     event_payload = {
         "type": "item.completed",
         "item": {
@@ -764,7 +778,9 @@ def test_promote_execution_contract_selects_command_execution_contract_for_item_
     assert result.__class__.__name__ == "ExecCommandExecution"
 
 
-def test_promote_execution_contract_selects_tool_result_contract_for_item_completed_tool_result() -> None:
+def test_promote_execution_contract_selects_tool_result_contract_for_item_completed_tool_result() -> (
+    None
+):
     event_payload = {
         "type": "item.completed",
         "item": {
@@ -785,7 +801,9 @@ def test_promote_execution_contract_selects_tool_result_contract_for_item_comple
     assert result.__class__.__name__ == "ExecToolResult"
 
 
-def test_promote_execution_contract_selects_tool_result_contract_for_item_completed_tool_call() -> None:
+def test_promote_execution_contract_selects_tool_result_contract_for_item_completed_tool_call() -> (
+    None
+):
     event_payload = {
         "type": "item.completed",
         "item": {
@@ -962,7 +980,9 @@ def test_build_tool_interaction_ignores_result_with_different_call_id() -> None:
     assert result.result is None
 
 
-def test_build_tool_interaction_uses_first_matching_result_for_duplicate_call_id() -> None:
+def test_build_tool_interaction_uses_first_matching_result_for_duplicate_call_id() -> (
+    None
+):
     tool_call = promote_execution_contract(
         {
             "type": "tool_call",
@@ -1021,7 +1041,9 @@ def test_build_tool_interaction_report_surfaces_unmatched_tool_result() -> None:
     assert len(report.unmatched_results) == 1
     assert report.unmatched_results[0].call_id == "call-999"
     assert report.unmatched_results[0].text == "orphan-match"
-    assert report.anomalies[0].summary == "tool result did not match any known tool call"
+    assert (
+        report.anomalies[0].summary == "tool result did not match any known tool call"
+    )
     assert report.has_anomalies is True
     assert report.anomaly_count == 2
 
@@ -1052,9 +1074,7 @@ def test_build_tool_interaction_report_surfaces_same_text_duplicate_result() -> 
         }
     )
 
-    report = build_tool_interaction_report(
-        [tool_call, first_result, duplicate_result]
-    )
+    report = build_tool_interaction_report([tool_call, first_result, duplicate_result])
 
     assert len(report.interactions) == 1
     assert report.interactions[0].result is not None
@@ -1091,9 +1111,7 @@ def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -
         }
     )
 
-    report = build_tool_interaction_report(
-        [tool_call, first_result, duplicate_result]
-    )
+    report = build_tool_interaction_report([tool_call, first_result, duplicate_result])
 
     assert len(report.interactions) == 1
     assert report.interactions[0].state == "completed"
@@ -1103,7 +1121,10 @@ def test_build_tool_interaction_report_surfaces_duplicate_results_separately() -
     assert len(report.duplicate_results) == 1
     assert report.duplicate_results[0].call_id == "call-123"
     assert report.duplicate_results[0].text == "duplicate-match"
-    assert report.anomalies[0].summary == "additional tool result observed after first matched result"
+    assert (
+        report.anomalies[0].summary
+        == "additional tool result observed after first matched result"
+    )
 
 
 def test_build_tool_interaction_report_separates_orphan_and_duplicate_results() -> None:
@@ -1187,7 +1208,10 @@ def test_build_tool_interaction_report_surfaces_missing_result_calls() -> None:
     assert report.interactions[1].state == "completed"
     assert len(report.missing_result_calls) == 1
     assert report.missing_result_calls[0].call_id == "call-123"
-    assert report.anomalies[-1].summary == "tool call completed without a matching tool result"
+    assert (
+        report.anomalies[-1].summary
+        == "tool call completed without a matching tool result"
+    )
     assert report.missing_result_calls[0].tool_name == "grep"
     assert report.interaction_count == 2
     assert report.completed_count == 1
@@ -1285,7 +1309,7 @@ def test_build_tool_interaction_report_marks_clean_report_without_anomalies() ->
             "type": "tool_call",
             "tool_name": "grep",
             "call_id": "call-123",
-            "arguments": "{\"pattern\":\"TODO\"}",
+            "arguments": '{"pattern":"TODO"}',
         }
     )
     tool_result = promote_execution_contract(

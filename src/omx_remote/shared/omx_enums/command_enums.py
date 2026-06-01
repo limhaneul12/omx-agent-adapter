@@ -9,6 +9,32 @@ class CommandSource(StrEnum):
     ONE_OFF = "one_off"
 
 
+class CommandNamespace(StrEnum):
+    """Top-level command namespaces exposed by the adapter."""
+
+    WORKFLOW = "workflow"
+    ADAPTER_OPS = "adapter-ops"
+
+
+class CommandRecipeCategory(StrEnum):
+    """Catalog grouping used by CLI, MCP, and TUI surfaces."""
+
+    LIFECYCLE = "lifecycle"
+    MACRO = "macro"
+    MAINTENANCE = "maintenance"
+    CUSTOM = "custom"
+
+
+class CommandAdapterOpsId(StrEnum):
+    """Namespace-local adapter-ops command ids."""
+
+    MCP_AUDIT = "mcp-audit"
+    CONTRACT_REFRESH = "contract-refresh"
+    SKILLIZE = "skillize"
+    RUN_LEDGER = "run-ledger"
+    MEMORY_CAPTURE = "memory-capture"
+
+
 class CommandRisk(StrEnum):
     """Command risk classes used for dry-run planning."""
 
@@ -121,3 +147,19 @@ class CommandRecoveryAction(StrEnum):
     WRITE_HANDOFF = "write_handoff"
     MATERIALIZE_ARTIFACTS = "materialize_artifacts"
     FINAL_FAIL = "final_fail"
+
+
+class CommandPlaceholderKey(StrEnum):
+    """Known placeholder keys supported by command execution."""
+
+    TASK = "task"
+    ROUTE = "route"
+    RUN_ID = "run-id"
+    SKILL_NAME = "skill-name"
+    PRODUCT_SLUG = "product_slug"
+    PRODUCT_SLUG_HYPHEN = "product-slug"
+    DATE_TASK_SLUG = "date-task-slug"
+    DATED_WORKSPACE = "dated-workspace"
+    DESCRIPTIVE_TITLE = "descriptive-title"
+    CLOSEOUT_TITLE = "closeout-title"
+    SLUG = "slug"

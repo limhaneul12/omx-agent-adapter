@@ -1,6 +1,6 @@
-from omx_remote.runtime.commands.command_output_redaction import redact_argv
+from omx_remote.runtime.commands.rendering.command_output_redaction import redact_argv
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
-from omx_remote.schemas.runs.run_record_schemas import RunNativeCommand
+from omx_remote.schemas.run_record_schemas import RunNativeCommand
 
 
 def collect_run_native_commands(

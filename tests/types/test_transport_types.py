@@ -218,7 +218,9 @@ def test_active_runtime_modes_and_execution_payload_shapes() -> None:
     assert runtime_transport["active_modes"] == ["ralph"]
     assert runtime_state_transport["mode"] == runtime_state_normalized["mode"]
     assert thread_started_transport["type"] == ExecutionEventKind.THREAD_STARTED
-    assert thread_started_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+    assert (
+        thread_started_transport["thread_id"] == "019df138-200f-7792-a307-5996bdf7b9d2"
+    )
     assert turn_completed_transport["usage"]["cached_input_tokens"] == 7552
     assert item_completed_transport["item"]["type"] == "agent_message"
     assert execution_transport["tool_name"] == tool_call_normalized["tool_name"]

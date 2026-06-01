@@ -6,17 +6,20 @@ from pydantic import ValidationError
 from omx_remote.cli_launcher.cli_error_payload import (
     format_failed_cli_error_payload as _format_error_payload,
 )
-from omx_remote.runtime.commands.command_catalog_resolver import (
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     CommandCatalogResolutionError,
     load_command_catalog,
     resolve_command_recipe,
 )
-from omx_remote.runtime.commands.command_executor import CommandExecutor
-from omx_remote.runtime.commands.command_recipe_loader import CommandRecipeLoadError
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.catalog.command_recipe_loader import (
+    CommandRecipeLoadError,
+)
+from omx_remote.runtime.commands.execution.command_executor import CommandExecutor
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
     build_one_off_prompt_recipe,
 )
+from omx_remote.runtime.company_run import engine as company_run_engine
 from omx_remote.runtime.runs.run_record_writer import write_dry_run_record
 from omx_remote.schemas.commands.command_execution_schemas import (
     CommandActualRunResult,
@@ -28,9 +31,18 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandExecutionPlan,
     CommandRecipe,
 )
-from omx_remote.schemas.runs.run_record_schemas import (
+from omx_remote.schemas.company_run_schemas import (
+    COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS,
+    CompanyRunExecutionRequest,
+    CompanyRunResult,
+)
+from omx_remote.schemas.run_record_schemas import (
     RunCommandRecordResult,
     RunRecord,
+)
+from omx_remote.shared.omx_enums.company_run_enums import (
+    CompanyRunCouncilMode,
+    CompanyRunTeamLaunchMode,
 )
 
 
@@ -95,6 +107,44 @@ def _actual_run_exit_code(status: CommandActualRunStatus) -> int:
     return 3
 
 
+def _company_run_exit_code(status: str) -> int:
+    """Return shell exit code for a company-run result status.
+
+    Args:
+        status [str]: Company-run result status.
+
+    Returns:
+        int: Shell exit code.
+    """
+    if status == "succeeded":
+        return 0
+    if status == "failed":
+        return 1
+    if status == "blocked":
+        return 2
+    return 3
+
+
+def _format_company_run_human(result: CompanyRunResult) -> str:
+    """Format a company-run engine result for humans.
+
+    Args:
+        result [CompanyRunResult]: Company-run result to render.
+
+    Returns:
+        str: Human-readable result summary.
+    """
+    lines = [
+        f"command: {result.qualified_id}",
+        f"status: {result.status}",
+        f"run_id: {result.run_id}",
+        f"company_run_root: {result.company_run_root}",
+        f"result: {result.result_path}",
+    ]
+    text = "\n".join(lines)
+    return text
+
+
 def run_command(
     command_id: str | None = typer.Argument(
         None,
@@ -130,10 +180,10 @@ def run_command(
         "--task",
         help="Optional task text used to fill recipe placeholders such as <task>.",
     ),
-    timeout_sec: float = typer.Option(
-        120.0,
+    timeout_sec: float | None = typer.Option(
+        None,
         "--timeout-sec",
-        help="Per-step subprocess timeout for actual execution.",
+        help="Per-step subprocess timeout for actual execution. If omitted, command-specific defaults apply.",
     ),
     max_attempts: int = typer.Option(
         2,
@@ -163,7 +213,27 @@ def run_command(
     record_run: bool = typer.Option(
         False,
         "--record-run",
-        help="Write a dry-run record under .agent-remote/runs. Actual execution always records.",
+        help="Write a dry-run record under .comx-agent/runs. Actual execution always records.",
+    ),
+    company_council_mode: str = typer.Option(
+        CompanyRunCouncilMode.CODEX.value,
+        "--council-mode",
+        help="Company-run only: council/subagent execution mode, codex or artifact.",
+    ),
+    company_live_team: bool = typer.Option(
+        False,
+        "--live-team",
+        help="Company-run only: allow native OMX Team launch instead of planned dispatch evidence.",
+    ),
+    company_team_launch: str = typer.Option(
+        CompanyRunTeamLaunchMode.LAUNCH.value,
+        "--team-launch",
+        help="Company-run only: Team handling mode, launch or handoff.",
+    ),
+    company_worker_count: int = typer.Option(
+        4,
+        "--worker-count",
+        help="Company-run only: Team worker count, minimum 3.",
     ),
 ) -> None:
     """Dry-run or execute a project-owned command recipe or one-off prompt.
@@ -176,13 +246,17 @@ def run_command(
         execute [bool]: Whether to execute the plan.
         autonomy [str | None]: Explicit autonomy mode for actual execution.
         task [str | None]: Optional task text for placeholder substitution.
-        timeout_sec [float]: Per-step subprocess timeout.
+        timeout_sec [float | None]: Per-step subprocess timeout.
         max_attempts [int]: Maximum attempts for retryable steps.
         provider [str | None]: One-off prompt provider.
         prompt_file [Path | None]: Optional one-off prompt file.
         inline_prompt [str | None]: Optional one-off inline prompt.
         json_output [bool]: Whether to print JSON.
         record_run [bool]: Whether to write a run record.
+        company_council_mode [str]: Company-run council mode.
+        company_live_team [bool]: Whether company-run may launch native OMX Team.
+        company_team_launch [str]: Company-run Team handling mode.
+        company_worker_count [int]: Company-run Team worker count.
     """
     run_record: RunRecord | None = None
     try:
@@ -219,8 +293,39 @@ def run_command(
             run_record = write_dry_run_record(plan, cwd=cwd)
         if execute:
             autonomy_mode = CommandAutonomyMode(autonomy)
+            if recipe.display_id == "company-run":
+                company_timeout_seconds = (
+                    COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS
+                    if timeout_sec is None
+                    else timeout_sec
+                )
+                parsed_council_mode = CompanyRunCouncilMode(company_council_mode)
+                parsed_team_launch = CompanyRunTeamLaunchMode(company_team_launch)
+                company_request = CompanyRunExecutionRequest(
+                    objective=task or recipe.description,
+                    cwd=str(Path(cwd).resolve()),
+                    autonomy=autonomy_mode.value,
+                    council_mode=parsed_council_mode,
+                    live_team_allowed=company_live_team,
+                    team_launch_mode=parsed_team_launch,
+                    worker_count=company_worker_count,
+                    timeout_seconds=company_timeout_seconds,
+                )
+                company_result = company_run_engine.execute_company_run(company_request)
+                if json_output:
+                    typer.echo(company_result.model_dump_json(indent=2))
+                    company_exit_code = _company_run_exit_code(company_result.status)
+                    if company_exit_code != 0:
+                        raise typer.Exit(code=company_exit_code)
+                    return
+                typer.echo(_format_company_run_human(company_result))
+                company_exit_code = _company_run_exit_code(company_result.status)
+                if company_exit_code != 0:
+                    raise typer.Exit(code=company_exit_code)
+                return
+            executor_timeout_seconds = 120.0 if timeout_sec is None else timeout_sec
             executor = CommandExecutor(
-                max_attempts=max_attempts, timeout_seconds=timeout_sec
+                max_attempts=max_attempts, timeout_seconds=executor_timeout_seconds
             )
             actual_result: CommandActualRunResult = executor.execute(
                 plan,

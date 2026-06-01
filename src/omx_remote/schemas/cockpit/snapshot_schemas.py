@@ -8,12 +8,12 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCommandRecipeSummary,
 )
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-from omx_remote.schemas.routes.route_policy_schemas import RouteRecommendation
+from omx_remote.schemas.route_policy_schemas import RouteRecommendation
 from omx_remote.schemas.teamwork.proof_layer_schemas import TeamProofLayerSummary
 
 
 class CockpitLaneName(StrEnum):
-    """Top-level operating lanes surfaced by the agent-remote cockpit."""
+    """Top-level operating lanes surfaced by the comx-agent cockpit."""
 
     GOAL_ONLY = "goal_only"
     GOAL_RALPH = "goal_to_ralph"

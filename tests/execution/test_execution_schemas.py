@@ -47,7 +47,9 @@ def test_promotable_execution_payload_type_enum_values_and_docstring() -> None:
 
 def test_execution_marker_sets_are_enum_backed() -> None:
     assert frozenset(KnownExecutionEventType) == KNOWN_EXECUTION_EVENT_TYPES
-    assert frozenset(PromotableExecutionPayloadType) == PROMOTABLE_EXECUTION_PAYLOAD_TYPES
+    assert (
+        frozenset(PromotableExecutionPayloadType) == PROMOTABLE_EXECUTION_PAYLOAD_TYPES
+    )
     assert all(
         isinstance(event_type, KnownExecutionEventType)
         for event_type in KNOWN_EXECUTION_EVENT_TYPES
@@ -154,9 +156,7 @@ def test_tool_interaction_rejects_completed_state_without_result() -> None:
         )
 
 
-def test_tool_interaction_rejects_missing_result_state_when_result_is_present() -> (
-    None
-):
+def test_tool_interaction_rejects_missing_result_state_when_result_is_present() -> None:
     tool_call = ExecToolCall.model_validate(
         {
             "kind": "tool_call",

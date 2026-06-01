@@ -1,5 +1,8 @@
+from collections.abc import Sequence
+
 import typer
 
+from omx_remote.cli_launcher import cli_facade_dependencies
 from omx_remote.runtime.ultrawork.ultrawork_control import (
     build_ultrawork_launch_plan,
     build_ultrawork_resume_plan,
@@ -8,23 +11,28 @@ from omx_remote.runtime.ultrawork.ultrawork_control import (
     format_resume_outcome as format_ultrawork_resume_outcome,
 )
 
-ultrawork_app = typer.Typer(help="Read/operate Ultrawork-related OMX runtime state.", add_completion=False)
+ultrawork_app = typer.Typer(
+    help="Read/operate Ultrawork-related OMX runtime state.", add_completion=False
+)
 
 
-def _run_omx_command(command: list[str]):
+def _run_omx_command(command: Sequence[str]):
     """Run one OMX command through the public CLI facade dependency.
 
     Args:
-        command [list[str]]: Function argument.
-    """
-    from omx_remote import cli as cli_facade
+        command [Sequence[str]]: Function argument.
 
-    return cli_facade.run_omx_command(command)
+    Returns:
+        object: CLI facade command result.
+    """
+    return cli_facade_dependencies.run_omx_command(command)
 
 
 @ultrawork_app.command("launch")
 def ultrawork_launch(
-    task: str = typer.Option(..., "--task", help="Task text to pass to `omx team [N:role] \"<task>\"`."),
+    task: str = typer.Option(
+        ..., "--task", help='Task text to pass to `omx team [N:role] "<task>"`.'
+    ),
     team_size: int = typer.Option(
         1,
         "--team-size",
@@ -47,7 +55,7 @@ def ultrawork_launch(
     ),
 ) -> None:
     """Launch Ultrawork through `omx team [N:role]` with state-aware guardrails.
-    
+
     Args:
         task [str]: Function argument.
         team_size [int]: Function argument.
@@ -80,7 +88,7 @@ def ultrawork_resume(
     team_name: str = typer.Option(..., "--team-name", help="Team name to resume."),
 ) -> None:
     """Resume Ultrawork through `omx team resume <team-name>`.
-    
+
     Args:
         team_name [str]: Function argument.
     """
@@ -95,7 +103,9 @@ def ultrawork_resume(
         typer.echo(f"warning: {warning}")
 
     command_result = _run_omx_command(command)
-    command_result = format_ultrawork_resume_outcome(command_result, team_name=team_name)
+    command_result = format_ultrawork_resume_outcome(
+        command_result, team_name=team_name
+    )
     typer.echo(command_result.model_dump_json(indent=2))
     if command_result.exit_code != 0:
         raise typer.Exit(code=command_result.exit_code)

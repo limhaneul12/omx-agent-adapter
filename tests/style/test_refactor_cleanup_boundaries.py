@@ -8,7 +8,10 @@ SOURCE_ROOT = REPO_ROOT / "src" / "omx_remote"
 def _function_if_count(source_path: Path, function_name: str) -> int:
     module_tree = ast.parse(source_path.read_text(), filename=str(source_path))
     for node in ast.walk(module_tree):
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) and node.name == function_name:
+        if (
+            isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+            and node.name == function_name
+        ):
             if_count: int = sum(isinstance(child, ast.If) for child in ast.walk(node))
             return if_count
     raise AssertionError(f"{function_name} not found in {source_path}")
@@ -38,7 +41,6 @@ def test_ralph_control_surface_is_split_by_responsibility() -> None:
     assert (ralph_root / "ralph_prd.py").exists()
     assert (ralph_root / "ralph_team_handoff.py").exists()
     assert len((ralph_root / "ralph_control.py").read_text().splitlines()) < 430
-
 
 
 def test_cockpit_snapshot_surface_is_grouped_by_concept_packages() -> None:
@@ -102,7 +104,9 @@ def test_runtime_classes_keep_small_cohesive_method_sets() -> None:
         SOURCE_ROOT / "runtime" / "ultrawork" / "ultrawork_state_classifier.py",
     ]
     for inspected_path in inspected_paths:
-        module_tree = ast.parse(inspected_path.read_text(), filename=str(inspected_path))
+        module_tree = ast.parse(
+            inspected_path.read_text(), filename=str(inspected_path)
+        )
         for node in module_tree.body:
             if not isinstance(node, ast.ClassDef):
                 continue
@@ -110,7 +114,10 @@ def test_runtime_classes_keep_small_cohesive_method_sets() -> None:
                 isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef)
                 for child in node.body
             )
-            assert method_count <= 6, f"{inspected_path}:{node.name} has {method_count} methods"
+            assert method_count <= 6, (
+                f"{inspected_path}:{node.name} has {method_count} methods"
+            )
+
 
 def test_no_reexport_or_marker_init_files_remain() -> None:
     unnecessary_init_files: list[str] = []
@@ -124,7 +131,10 @@ def test_no_reexport_or_marker_init_files_remain() -> None:
 
 def test_json_extraction_if_chains_use_msgspec_instead_of_tracking_lists() -> None:
     deleted_tracking_path = (
-        SOURCE_ROOT / "adapter_types" / "type_contract" / "msgspec_tracking_contract_type.py"
+        SOURCE_ROOT
+        / "adapter_types"
+        / "type_contract"
+        / "msgspec_tracking_contract_type.py"
     )
     renamed_tracking_path = (
         SOURCE_ROOT / "adapter_types" / "type_contract" / "tracking_contract_type.py"
@@ -142,19 +152,27 @@ def test_json_extraction_if_chains_use_msgspec_instead_of_tracking_lists() -> No
         source_text = loader_path.read_text()
         assert "msgspec.convert" in source_text
 
-    assert _function_if_count(
-        SOURCE_ROOT / "teamwork" / "team_api_transport.py",
-        "load_team_api_payload",
-    ) < 6
-    assert _function_if_count(
-        SOURCE_ROOT / "teamwork" / "team_api_transport.py",
-        "load_team_api_error_payload",
-    ) < 6
+    assert (
+        _function_if_count(
+            SOURCE_ROOT / "teamwork" / "team_api_transport.py",
+            "load_team_api_payload",
+        )
+        < 6
+    )
+    assert (
+        _function_if_count(
+            SOURCE_ROOT / "teamwork" / "team_api_transport.py",
+            "load_team_api_error_payload",
+        )
+        < 6
+    )
 
 
 def test_omx_task_quoting_is_shared() -> None:
     shared_quote_path = SOURCE_ROOT / "shared" / "utils" / "omx_task.py"
-    ralph_control_text = (SOURCE_ROOT / "runtime" / "ralph" / "ralph_control.py").read_text()
+    ralph_control_text = (
+        SOURCE_ROOT / "runtime" / "ralph" / "ralph_control.py"
+    ).read_text()
 
     assert shared_quote_path.exists()
     assert "def quote_omx_task" in shared_quote_path.read_text()

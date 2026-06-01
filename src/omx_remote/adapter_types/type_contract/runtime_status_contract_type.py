@@ -1,4 +1,4 @@
-from omx_remote.schemas.runtime.status_schemas import RuntimeModeStatus
+from omx_remote.schemas.runtime_status_schemas import RuntimeModeStatus
 
 IDLE_RUNTIME_SUMMARY = "No active modes."
 ACTIVE_MODE_MARKER = RuntimeModeStatus.ACTIVE

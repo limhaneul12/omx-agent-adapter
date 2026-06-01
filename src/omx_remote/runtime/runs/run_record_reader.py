@@ -7,7 +7,7 @@ from omx_remote.runtime.runs.run_artifact_store import (
     resolve_runs_root,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
-from omx_remote.schemas.runs.run_record_schemas import (
+from omx_remote.schemas.run_record_schemas import (
     RunListResult,
     RunRecord,
     RunReplayPlan,
@@ -43,7 +43,7 @@ def read_run_record(cwd: str | Path, run_id: str) -> RunRecord:
 
 
 def list_run_records(cwd: str | Path) -> RunListResult:
-    """List run records under `.agent-remote/runs`.
+    """List run records under `.comx-agent/runs`.
 
     Args:
         cwd [str | Path]: Repository root.

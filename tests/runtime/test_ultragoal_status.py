@@ -1,6 +1,6 @@
 from omx_remote.runtime.ultragoal.ultragoal_status import read_ultragoal_status
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
-from omx_remote.schemas.ultragoal.status_schemas import (
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
+from omx_remote.schemas.ultragoal_status_schemas import (
     UltragoalNativeState,
     UltragoalStatusResult,
 )

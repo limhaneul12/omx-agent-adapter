@@ -1,10 +1,12 @@
 from pathlib import Path
 
-from omx_remote.runtime.commands.command_catalog_resolver import load_command_catalog
-from omx_remote.schemas.commands.command_recipe_schemas import (
-    CommandCatalog,
-    CommandCatalogEntry,
+from omx_remote.runtime.commands.catalog.command_catalog_projection import (
+    catalog_list_result,
 )
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
+    load_command_catalog,
+)
+from omx_remote.schemas.commands.command_recipe_schemas import CommandCatalog
 from omx_remote.schemas.comx.control_surface_schemas import (
     ComxControlSurfaceInventory,
     ComxNativeCommand,
@@ -174,21 +176,10 @@ def build_comx_control_surface_inventory(
         ComxControlSurfaceInventory: Typed command surface inventory.
     """
     catalog: CommandCatalog = load_command_catalog(cwd=cwd, config_path=config_path)
-    composed_commands: tuple[CommandCatalogEntry, ...] = tuple(
-        CommandCatalogEntry(
-            id=recipe.id,
-            qualified_id=recipe.qualified_id,
-            source=recipe.source,
-            description=recipe.description,
-            risk=recipe.risk,
-            step_count=len(recipe.steps),
-        )
-        for recipe in catalog.commands
-    )
+    composed_commands = catalog_list_result(catalog).commands
     native_commands: tuple[ComxNativeCommand, ...] = build_native_command_inventory()
     inventory = ComxControlSurfaceInventory(
         product_name="comx-agent",
-        compatibility_aliases=("agent-remote",),
         native_commands=native_commands,
         composed_commands=composed_commands,
         native_count=len(native_commands),

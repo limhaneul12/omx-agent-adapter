@@ -7,10 +7,11 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes, RuntimeStatus
 from omx_remote.shared.omx_enums.codex_goal_enums import CodexGoalHandoffState
 
 _ACTIVE_TEAM_STATUSES: tuple[str, ...] = ("active",)
+
 
 def _build_runtime_contradictions(
     runtime_status: RuntimeStatus,
@@ -45,6 +46,7 @@ def _build_runtime_contradictions(
     result: tuple[CockpitContradiction, ...] = tuple(contradictions)
     return result
 
+
 def _runtime_status_has_uncertain_activity(runtime_status: RuntimeStatus) -> bool:
     """Return whether runtime activity is unknown enough to require inspection.
 
@@ -56,6 +58,7 @@ def _runtime_status_has_uncertain_activity(runtime_status: RuntimeStatus) -> boo
     """
     has_uncertain_activity: bool = runtime_status.has_active_modes is None
     return has_uncertain_activity
+
 
 def _derive_safe_to_mutate(
     contradictions: tuple[CockpitContradiction, ...],
@@ -74,7 +77,10 @@ def _derive_safe_to_mutate(
     Returns:
         bool: ``True`` only when no active runtime, active Team, or contradictions are visible.
     """
-    has_active_runtime: bool = bool(active_runtime_modes.active_modes) or runtime_status.has_active_modes is True
+    has_active_runtime: bool = (
+        bool(active_runtime_modes.active_modes)
+        or runtime_status.has_active_modes is True
+    )
     has_uncertain_runtime: bool = _runtime_status_has_uncertain_activity(runtime_status)
     has_active_team: bool = _team_observations_include_active_runtime(team_observations)
     safe_to_mutate: bool = (
@@ -84,6 +90,7 @@ def _derive_safe_to_mutate(
         and not has_active_team
     )
     return safe_to_mutate
+
 
 def _derive_recommended_next_action(
     contradictions: tuple[CockpitContradiction, ...],
@@ -116,12 +123,16 @@ def _derive_recommended_next_action(
     if _team_observations_include_active_runtime(team_observations):
         inspect_team_action: str = "inspect_team_evidence"
         return inspect_team_action
-    if goal_mirror_state and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH:
+    if (
+        goal_mirror_state
+        and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH
+    ):
         prepare_action: str = "prepare_ralph"
         return prepare_action
 
     default_action: str = "observe"
     return default_action
+
 
 def _build_decision_reasons(
     contradictions: tuple[CockpitContradiction, ...],
@@ -201,7 +212,10 @@ def _build_decision_reasons(
             )
         )
 
-    if goal_mirror_state and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH:
+    if (
+        goal_mirror_state
+        and goal_mirror_state.handoff_state == CodexGoalHandoffState.AWAITING_RALPH
+    ):
         reasons.append(
             CockpitDecisionReason(
                 category="goal_awaiting_ralph",
@@ -226,6 +240,7 @@ def _build_decision_reasons(
     result: tuple[CockpitDecisionReason, ...] = tuple(reasons)
     return result
 
+
 def _collect_active_team_names(
     team_observations: tuple[CockpitTeamObservation, ...],
 ) -> tuple[str, ...]:
@@ -245,6 +260,7 @@ def _collect_active_team_names(
     result: tuple[str, ...] = tuple(active_team_names)
     return result
 
+
 def _collect_active_team_source_names(
     team_observations: tuple[CockpitTeamObservation, ...],
 ) -> tuple[str, ...]:
@@ -261,7 +277,9 @@ def _collect_active_team_source_names(
     for observation in team_observations:
         if observation.status not in _ACTIVE_TEAM_STATUSES:
             continue
-        for proof_source_name in collect_blocking_team_proof_layer_source_names(observation):
+        for proof_source_name in collect_blocking_team_proof_layer_source_names(
+            observation
+        ):
             if proof_source_name in seen_source_names:
                 continue
             seen_source_names.add(proof_source_name)
@@ -269,6 +287,7 @@ def _collect_active_team_source_names(
 
     result: tuple[str, ...] = tuple(source_names)
     return result
+
 
 def _team_observations_include_active_runtime(
     team_observations: tuple[CockpitTeamObservation, ...],

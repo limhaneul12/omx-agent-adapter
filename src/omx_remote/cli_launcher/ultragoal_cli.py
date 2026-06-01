@@ -1,7 +1,7 @@
 import typer
 
 from omx_remote.runtime.ultragoal.ultragoal_status import read_ultragoal_status
-from omx_remote.schemas.ultragoal.status_schemas import UltragoalStatusResult
+from omx_remote.schemas.ultragoal_status_schemas import UltragoalStatusResult
 
 ultragoal_app = typer.Typer(
     help="Read native OMX UltraGoal capability and status.",

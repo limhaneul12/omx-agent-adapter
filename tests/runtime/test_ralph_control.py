@@ -15,7 +15,7 @@ from omx_remote.adapter_types.ralph_types import (
 )
 from omx_remote.cli import app
 from omx_remote.runtime.ralph.ralph_control import build_ralph_team_launch_plan
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 runner = CliRunner()
 
@@ -75,16 +75,24 @@ def _team_assignment(
         "lane_name": lane_name,
         "objective": f"Own {lane_name}",
         "owned_files": [owned_file],
-        "read_only_context_files": ["docs/jobs/schema-type-refactor-hardening/8_ralph-prd-to-team-worker-distribution-prompt.md"],
+        "read_only_context_files": [
+            "docs/jobs/schema-type-refactor-hardening/8_ralph-prd-to-team-worker-distribution-prompt.md"
+        ],
         "forbidden_files": ["src/omx_remote/runtime/codex_goal_supervisor.py"],
         "tdd_steps": ["Write a failing focused regression", "Make the regression pass"],
-        "verification_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+        "verification_commands": [
+            "uv run pytest tests/runtime/test_ralph_control.py -q"
+        ],
         "handoff_summary_required": "Summarize changed files and verification output.",
         "authorization_policy": "preapproved",
         "authorization_scope": {
-            "allowed_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+            "allowed_commands": [
+                "uv run pytest tests/runtime/test_ralph_control.py -q"
+            ],
             "forbidden_commands": ["git push"],
-            "requires_human_for": ["modify forbidden_files or files outside owned_files"],
+            "requires_human_for": [
+                "modify forbidden_files or files outside owned_files"
+            ],
             "requires_llm_review_for": ["local checkpoint commit"],
         },
     }
@@ -144,7 +152,9 @@ def test_ralph_launch_rejects_blank_task() -> None:
     assert "Task text must not be blank" in result.stdout
 
 
-def test_ralph_launch_rejects_non_tty_without_force_detach(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ralph_launch_rejects_non_tty_without_force_detach(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
 
     result = runner.invoke(app, ["ralph", "launch", "--task", "Ship feature"])
@@ -153,10 +163,14 @@ def test_ralph_launch_rejects_non_tty_without_force_detach(monkeypatch: pytest.M
     assert "requires an interactive TTY" in result.stdout
 
 
-def test_ralph_launch_rejects_missing_prd_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_ralph_launch_rejects_missing_prd_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
-    result = runner.invoke(app, ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"])
+    result = runner.invoke(
+        app, ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"]
+    )
 
     assert result.exit_code != 0
     assert "Missing required PRD.json" in result.stdout
@@ -171,7 +185,9 @@ def test_ralph_launch_rejects_invalid_structured_prd_file(
     prd_dir.mkdir()
     (prd_dir / "prd.json").write_text("{}", encoding="utf-8")
 
-    result = runner.invoke(app, ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"])
+    result = runner.invoke(
+        app, ["ralph", "launch", "--task", "Ship feature", "--allow-non-tty"]
+    )
 
     assert result.exit_code != 0
     assert "Invalid .omx/prd.json" in result.stdout
@@ -201,13 +217,18 @@ def test_ralph_launch_uses_canonical_prd_objective_when_task_matches_after_norma
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
     _write_valid_prd_artifact(tmp_path, objective="Ship feature")
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -215,7 +236,7 @@ def test_ralph_launch_uses_canonical_prd_objective_when_task_matches_after_norma
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["ralph", "--prd", "Ship feature"]]
+    assert observed_commands == [("ralph", "--prd", "Ship feature")]
 
 
 def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_count(
@@ -230,14 +251,18 @@ def test_build_ralph_team_launch_plan_uses_canonical_prd_objective_and_worker_co
         team_worker_count=3,
         team_worker_assignments=[
             _team_assignment("worker-1", owned_file="src/impl.py"),
-            _team_assignment("worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"),
-            _team_assignment("worker-3", lane_name="Docs lane", owned_file="docs/impl.md"),
+            _team_assignment(
+                "worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"
+            ),
+            _team_assignment(
+                "worker-3", lane_name="Docs lane", owned_file="docs/impl.md"
+            ),
         ],
     )
 
     command, warnings = build_ralph_team_launch_plan(allow_non_tty=True)
 
-    assert command == ["team", "3", "Ship feature"]
+    assert command == ("team", "3", "Ship feature")
     assert "allow-non-tty is enabled" in "\n".join(warnings)
 
 
@@ -252,10 +277,18 @@ def test_build_ralph_team_launch_plan_preserves_assignment_worker_ids_as_node_ow
         requires_team_fanout=True,
         team_worker_count=4,
         team_worker_assignments=[
-            _team_assignment("worker-1", lane_name="Backend lane", owned_file="backend/api.py"),
-            _team_assignment("worker-2", lane_name="Frontend API lane", owned_file="frontend/api.ts"),
-            _team_assignment("worker-3", lane_name="Frontend UI lane", owned_file="frontend/App.tsx"),
-            _team_assignment("worker-4", lane_name="Docs lane", owned_file="docs/smoke.md"),
+            _team_assignment(
+                "worker-1", lane_name="Backend lane", owned_file="backend/api.py"
+            ),
+            _team_assignment(
+                "worker-2", lane_name="Frontend API lane", owned_file="frontend/api.ts"
+            ),
+            _team_assignment(
+                "worker-3", lane_name="Frontend UI lane", owned_file="frontend/App.tsx"
+            ),
+            _team_assignment(
+                "worker-4", lane_name="Docs lane", owned_file="docs/smoke.md"
+            ),
         ],
     )
 
@@ -290,18 +323,20 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
     _write_valid_prd_artifact(
         tmp_path,
-        objective="Ship feature with \"quoted\" task",
+        objective='Ship feature with "quoted" task',
         requires_team_fanout=True,
         team_worker_count=2,
         team_worker_assignments=[
             _team_assignment("worker-1", owned_file="src/impl.py"),
-            _team_assignment("worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"),
+            _team_assignment(
+                "worker-2", lane_name="Test lane", owned_file="tests/test_impl.py"
+            ),
         ],
     )
 
     command, _warnings = build_ralph_team_launch_plan(allow_non_tty=True)
 
-    assert command == ["team", "2", "Ship feature with \"quoted\" task"]
+    assert command == ("team", "2", 'Ship feature with "quoted" task')
     plans_dir = tmp_path / ".omx" / "plans"
     prd_path = next(plans_dir.glob("prd-*-ralph-team.md"))
     test_spec_path = next(plans_dir.glob("test-spec-*-ralph-team.md"))
@@ -309,7 +344,9 @@ def test_build_ralph_team_launch_plan_writes_approved_team_dag_handoff_artifacts
 
     prd_text = prd_path.read_text(encoding="utf-8")
     assert 'Launch via omx team 2 "Ship feature with \\"quoted\\" task"' in prd_text
-    assert test_spec_path.read_text(encoding="utf-8").startswith("# Ralph Team Test Spec")
+    assert test_spec_path.read_text(encoding="utf-8").startswith(
+        "# Ralph Team Test Spec"
+    )
 
     dag_payload = json.loads(dag_path.read_text(encoding="utf-8"))
     assert dag_payload["schema_version"] == 1
@@ -366,7 +403,7 @@ def test_build_ralph_team_dag_omits_internal_report_paths_from_allocator_hints(
             _team_assignment(
                 "worker-3",
                 lane_name="Docs evidence",
-                owned_file=".agent-remote/reports/goal-evidence-worker-3.md",
+                owned_file=".comx-agent/reports/goal-evidence-worker-3.md",
             ),
         ],
     )
@@ -384,9 +421,11 @@ def test_build_ralph_team_dag_omits_internal_report_paths_from_allocator_hints(
         "worker-3",
     ]
     assert [node["acceptance"] for node in dag_payload["nodes"]] == [[], [], []]
-    assert dag_payload["nodes"][0]["description"] == "worker-1: Backend evidence. See PRD."
+    assert (
+        dag_payload["nodes"][0]["description"] == "worker-1: Backend evidence. See PRD."
+    )
     assert ".omx/reports/goal-evidence-worker-1.md" in prd_text
-    assert ".agent-remote/reports/goal-evidence-worker-3.md" in prd_text
+    assert ".comx-agent/reports/goal-evidence-worker-3.md" in prd_text
 
 
 def test_build_ralph_team_launch_plan_requires_worker_assignments(
@@ -450,16 +489,23 @@ def test_ralph_launch_reports_warning_for_terminal_stale_state(
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
     state_dir = tmp_path / ".omx" / "state"
     state_dir.mkdir(parents=True)
-    (state_dir / "ralph-state.json").write_text('{"active": false, "current_phase": "cancelled"}')
+    (state_dir / "ralph-state.json").write_text(
+        '{"active": false, "current_phase": "cancelled"}'
+    )
     _write_valid_prd_artifact(tmp_path)
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -473,7 +519,7 @@ def test_ralph_launch_reports_warning_for_terminal_stale_state(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["ralph", "--prd", "Ship feature"]]
+    assert observed_commands == [("ralph", "--prd", "Ship feature")]
     assert "Ralph state exists and is terminal/non-runnable." in result.stdout
 
 
@@ -484,16 +530,23 @@ def test_ralph_launch_runs_preflight_and_command_when_forced(
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
     state_dir = tmp_path / ".omx" / "state"
     state_dir.mkdir(parents=True)
-    (state_dir / "ralph-state.json").write_text('{"active": false, "current_phase": "cancelled"}')
+    (state_dir / "ralph-state.json").write_text(
+        '{"active": false, "current_phase": "cancelled"}'
+    )
     _write_valid_prd_artifact(tmp_path)
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -508,7 +561,7 @@ def test_ralph_launch_runs_preflight_and_command_when_forced(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["ralph", "--prd", "Ship feature"]]
+    assert observed_commands == [("ralph", "--prd", "Ship feature")]
     assert "Existing resumable" not in result.stdout
 
 
@@ -531,18 +584,23 @@ def test_ralph_resume_runs_command_when_state_exists(
     state_dir.mkdir(parents=True)
     (state_dir / "ralph-state.json").write_text('{"active":true}')
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(app, ["ralph", "resume"])
 
     assert result.exit_code == 0
-    assert observed_commands == [["ralph"]]
+    assert observed_commands == [("ralph",)]
 
 
 def test_ralph_resume_rejects_terminal_state(
@@ -551,7 +609,9 @@ def test_ralph_resume_rejects_terminal_state(
     monkeypatch.chdir(tmp_path)
     state_dir = tmp_path / ".omx" / "state"
     state_dir.mkdir(parents=True)
-    (state_dir / "ralph-state.json").write_text('{"active": false, "current_phase": "cancelled"}')
+    (state_dir / "ralph-state.json").write_text(
+        '{"active": false, "current_phase": "cancelled"}'
+    )
 
     result = runner.invoke(app, ["ralph", "resume"])
 
@@ -567,13 +627,18 @@ def test_ralph_launch_warns_when_tmux_missing(
     monkeypatch.setattr("omx_remote.runtime.ralph.ralph_state.which", lambda _: None)
     (tmp_path / ".omx").mkdir()
     _write_valid_prd_artifact(tmp_path)
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -581,7 +646,7 @@ def test_ralph_launch_warns_when_tmux_missing(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["ralph", "--prd", "Ship feature"]]
+    assert observed_commands == [("ralph", "--prd", "Ship feature")]
     assert "tmux was not detected" in result.stdout
 
 
@@ -593,14 +658,19 @@ def test_ralph_resume_promotes_no_resumable_state_to_preflight_failure(
     state_dir.mkdir(parents=True)
     (state_dir / "ralph-state.json").write_text('{"active": true}')
 
-    def fake_run_omx_command(command: list[str], cwd: str | None = None) -> OmxCommandResult:
+    def fake_run_omx_command(
+        command: tuple[str, ...], cwd: str | None = None
+    ) -> OmxCommandResult:
         return OmxCommandResult(
             exit_code=0,
             stdout="No resumable team found for ralph\n",
             stderr="",
         )
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(app, ["ralph", "resume"])
 

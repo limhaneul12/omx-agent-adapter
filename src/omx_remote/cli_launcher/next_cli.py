@@ -5,7 +5,7 @@ import typer
 from pydantic import ValidationError
 
 from omx_remote.runtime.next.next_action_reader import read_next_action
-from omx_remote.schemas.next.next_action_schemas import (
+from omx_remote.schemas.next_action_schemas import (
     NextActionRequest,
     NextActionResult,
 )

@@ -12,7 +12,7 @@ from omx_remote.runtime.probes.probe_fixture_comparator import (
     compare_probe_fixture,
     list_probe_fixtures,
 )
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     ProbeFixtureComparison,
     ProbeFixtureListResult,
     UpstreamProbeSuiteResult,

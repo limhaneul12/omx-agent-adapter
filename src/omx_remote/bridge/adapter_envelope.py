@@ -11,14 +11,16 @@ from omx_remote.bridge.adapter_transport_payloads import (
 )
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge.adapter_schemas import (
+from omx_remote.schemas.bridge_adapter_schemas import (
     AdapterEnvelopeSnapshot,
     AdapterProbeRequest,
 )
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
-async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelopeSnapshot:
+async def read_adapter_envelope(
+    request: AdapterProbeRequest,
+) -> AdapterEnvelopeSnapshot:
     """Reads one typed adapter envelope surface.
 
     Args:
@@ -29,19 +31,21 @@ async def read_adapter_envelope(request: AdapterProbeRequest) -> AdapterEnvelope
     """
     command_result = await run_blocking_call(
         run_omx_command,
-        ["adapt", request.target, "envelope", "--json"],
+        ("adapt", request.target, "envelope", "--json"),
     )
     stdout: str = command_result.stdout.strip()
     result: AdapterEnvelopeSnapshot = _normalize_adapter_envelope(stdout)
     return result
 
 
-def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTransportPayload:
+def _load_adapter_envelope_transport_payload(
+    stdout: str,
+) -> AdapterEnvelopeTransportPayload:
     """Loads one adapter envelope transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         AdapterEnvelopeTransportPayload: Function return value.
     """
@@ -56,7 +60,9 @@ def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTran
         ) from error
 
     if not isinstance(parsed_payload, dict):
-        raise BridgeSurfaceError("omx adapt envelope returned a non-object JSON payload")
+        raise BridgeSurfaceError(
+            "omx adapt envelope returned a non-object JSON payload"
+        )
 
     result = AdapterEnvelopeTransportPayload(
         target=require_string_field(parsed_payload, "target", "omx adapt envelope"),
@@ -80,15 +86,15 @@ def _load_adapter_envelope_transport_payload(stdout: str) -> AdapterEnvelopeTran
 
 def _normalize_adapter_envelope(stdout: str) -> AdapterEnvelopeSnapshot:
     """Normalizes one `omx adapt <target> envelope --json` payload.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         AdapterEnvelopeSnapshot: Function return value.
     """
-    parsed_payload: AdapterEnvelopeTransportPayload = _load_adapter_envelope_transport_payload(
-        stdout
+    parsed_payload: AdapterEnvelopeTransportPayload = (
+        _load_adapter_envelope_transport_payload(stdout)
     )
 
     target_runtime_payload = parsed_payload["targetRuntime"]

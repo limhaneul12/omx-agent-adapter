@@ -3,7 +3,7 @@ from omx_remote.runtime.probes.probe_command_runner import (
     ProbeRunner,
     run_probe_command,
 )
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     UpstreamProbeCommandResult,
     UpstreamProbeSuiteResult,
 )
@@ -22,7 +22,9 @@ _OMX_PROBES: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 
 
-def run_omx_probe_suite(runner: ProbeRunner = run_probe_command) -> UpstreamProbeSuiteResult:
+def run_omx_probe_suite(
+    runner: ProbeRunner = run_probe_command,
+) -> UpstreamProbeSuiteResult:
     """Run the basic OMX upstream contract probe suite.
 
     Args:

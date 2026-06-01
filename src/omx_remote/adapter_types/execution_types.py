@@ -22,11 +22,7 @@ type KnownExecutionEventTypeSet = frozenset[KnownExecutionEventType]
 type PromotableExecutionPayloadTypeSet = frozenset[PromotableExecutionPayloadType]
 type ExecutionPayload = ExecutionTransportPayload
 type ExecutionContract = (
-    ExecMessage
-    | ExecOutput
-    | ExecCommandExecution
-    | ExecToolCall
-    | ExecToolResult
+    ExecMessage | ExecOutput | ExecCommandExecution | ExecToolCall | ExecToolResult
 )
 type RoutedExecutionPayload = ExecutionContract | ExecutionPayload
 type ExecutionTransportPayloads = tuple[ExecutionTransportPayload, ...]

@@ -16,7 +16,7 @@ This repository builds an agent-facing control layer that helps agents use OMX +
   5. UltraGoal, native OMX surface
   6. Ralph → Team
 - `Ralph → Team` is a supported Ralph-owned lane, while `Goal → Ralph → Team(s)` is the Goal-supervised lane that uses Ralph-owned Team fanout internally.
-- Canonical lane/status details live in `docs/project-operating-lanes-status.md`.
+- Canonical lane/status details live in `README.md#operating-route-guide`.
 
 ## Rules Source of Truth
 

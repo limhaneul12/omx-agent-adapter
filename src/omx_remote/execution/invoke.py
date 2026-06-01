@@ -1,7 +1,7 @@
 import subprocess
 from collections.abc import Sequence
 
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 
 def _command_failure_exit_code(error: OSError) -> int:
@@ -50,7 +50,7 @@ def run_omx_command(
     Returns:
         OmxCommandResult: Completed OMX command result with shared exit-code, stdout, and stderr fields.
     """
-    command_arguments: list[str] = ["omx", *arguments]
+    command_arguments: tuple[str, ...] = ("omx", *arguments)
     try:
         completed_process: subprocess.CompletedProcess[str] = subprocess.run(
             command_arguments,
@@ -93,7 +93,7 @@ def run_omx_command_inherited_stdio(
     Returns:
         OmxCommandResult: Completed OMX command result with streams intentionally empty.
     """
-    command_arguments: list[str] = ["omx", *arguments]
+    command_arguments: tuple[str, ...] = ("omx", *arguments)
     try:
         completed_process: subprocess.CompletedProcess[str] = subprocess.run(
             command_arguments,

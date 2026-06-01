@@ -19,6 +19,14 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.omx_enums.team_admin_enums import TeamAdminAggregationState
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    BLOCKED_TASK_STATE_VALUES,
+    BLOCKED_WORKER_STATE_VALUES,
+    COMPLETED_TASK_STATE_VALUES,
+    STARTUP_ISSUE_EVENT_TYPE_VALUES,
+    STARTUP_ISSUE_WORKER_STATE_VALUES,
+)
+from omx_remote.shared.utils.json_file_store import json_file_stores
 from omx_remote.teamwork.team_api_snapshot import (
     read_team_api_list_tasks,
     read_team_api_read_events,
@@ -26,31 +34,9 @@ from omx_remote.teamwork.team_api_snapshot import (
 )
 from omx_remote.teamwork.team_proof_layers import build_team_proof_layers
 
-COMPLETED_TASK_STATES: frozenset[str] = frozenset({"complete", "completed", "done", "success", "succeeded"})
-BLOCKED_TASK_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
-BLOCKED_WORKER_STATES: frozenset[str] = frozenset({"blocked", "failed", "error", "cancelled", "dead"})
-STARTUP_ISSUE_WORKER_STATES: frozenset[str] = frozenset(
-    {
-        "ready_prompt_timeout",
-        "startup_prompt_timeout",
-        "startup_timeout",
-        "worker_startup_timeout",
-    }
-)
-STARTUP_ISSUE_EVENT_TYPES: frozenset[str] = frozenset(
-    {"ready_prompt_timeout", "startup_prompt_timeout", "worker_startup_timeout"}
-)
-
 
 def normalize_state_token(state_text: str) -> str:
-    """Normalizes external Team status text for classification.
-
-    Args:
-        state_text [str]: Raw status or state text.
-
-    Returns:
-        str: Lowercase state token used by the aggregation classifier.
-    """
+    """Normalizes external Team status text. Args: state_text. Returns: token."""
     normalized_state: str = state_text.strip().lower().replace("-", "_")
     return normalized_state
 
@@ -69,9 +55,13 @@ def assigned_worker_ids(ralph_prd_artifact: RalphPrdArtifact) -> tuple[str, ...]
     """
     assignments = ralph_prd_artifact.team_worker_assignments
     if assignments is None:
-        raise ValueError("Team Admin aggregation requires Ralph Team worker assignments.")
+        raise ValueError(
+            "Team Admin aggregation requires Ralph Team worker assignments."
+        )
 
-    worker_ids: tuple[str, ...] = tuple(assignment.worker_id for assignment in assignments)
+    worker_ids: tuple[str, ...] = tuple(
+        assignment.worker_id for assignment in assignments
+    )
     return worker_ids
 
 
@@ -90,7 +80,9 @@ def read_local_omx_team_startup_issue_workers(
     Returns:
         tuple[str, ...]: Ordered workers with local `ready_wait_end` startup failure evidence.
     """
-    candidate_logs_dir: Path = Path.cwd() / ".omx" / "logs" if logs_dir is None else logs_dir
+    candidate_logs_dir: Path = (
+        Path.cwd() / ".omx" / "logs" if logs_dir is None else logs_dir
+    )
     if not candidate_logs_dir.exists():
         return ()
 
@@ -112,7 +104,9 @@ def read_local_omx_team_startup_issue_workers(
                 continue
             if payload.get("result") != "failed":
                 continue
-            worker_value: object | None = payload.get("to_worker", payload.get("worker"))
+            worker_value: object | None = payload.get(
+                "to_worker", payload.get("worker")
+            )
             if not isinstance(worker_value, str):
                 continue
             if worker_value not in worker_id_set:
@@ -142,7 +136,7 @@ def worker_has_completed_task(
         if task.owner != worker_id:
             continue
         task_state: str = normalize_state_token(task.status)
-        if task_state in COMPLETED_TASK_STATES:
+        if task_state in COMPLETED_TASK_STATE_VALUES:
             return True
 
     return False
@@ -167,14 +161,14 @@ def worker_has_blocker(
         if task.owner != worker_id:
             continue
         task_state: str = normalize_state_token(task.status)
-        if task_state in BLOCKED_TASK_STATES:
+        if task_state in BLOCKED_TASK_STATE_VALUES:
             return True
 
     for worker_status in worker_statuses:
         if worker_status.worker != worker_id:
             continue
         worker_state: str = normalize_state_token(worker_status.state)
-        if worker_state in BLOCKED_WORKER_STATES:
+        if worker_state in BLOCKED_WORKER_STATE_VALUES:
             return True
 
     return False
@@ -199,29 +193,21 @@ def worker_has_startup_issue(
         if worker_status.worker != worker_id:
             continue
         worker_state: str = normalize_state_token(worker_status.state)
-        if worker_state in STARTUP_ISSUE_WORKER_STATES:
+        if worker_state in STARTUP_ISSUE_WORKER_STATE_VALUES:
             return True
 
     for event in event_snapshot.events:
         if event.worker != worker_id:
             continue
         event_type: str = normalize_state_token(event.type)
-        if event_type in STARTUP_ISSUE_EVENT_TYPES:
+        if event_type in STARTUP_ISSUE_EVENT_TYPE_VALUES:
             return True
 
     return False
 
 
 def worker_has_task(worker_id: str, task_snapshot: TeamApiListTasksSnapshot) -> bool:
-    """Checks whether a Ralph-assigned worker has any Team API task.
-
-    Args:
-        worker_id [str]: Ralph-assigned worker ID.
-        task_snapshot [TeamApiListTasksSnapshot]: Team API task listing snapshot.
-
-    Returns:
-        bool: True when at least one task is owned by the worker.
-    """
+    """Checks for owned Team API tasks. Args: worker_id, task_snapshot. Returns: bool."""
     has_task: bool = any(task.owner == worker_id for task in task_snapshot.tasks)
     return has_task
 
@@ -307,7 +293,9 @@ def build_team_admin_aggregation_report(
 
     for worker_id in worker_ids:
         has_task: bool = worker_has_task(worker_id, task_snapshot)
-        has_blocker: bool = worker_has_blocker(worker_id, task_snapshot, worker_statuses)
+        has_blocker: bool = worker_has_blocker(
+            worker_id, task_snapshot, worker_statuses
+        )
         has_startup_issue: bool = (not has_task) and (
             worker_id in local_startup_issue_worker_set
             or worker_has_startup_issue(
@@ -338,7 +326,9 @@ def build_team_admin_aggregation_report(
     else:
         aggregation_state = TeamAdminAggregationState.WAITING_FOR_WORKERS
 
-    merge_ready: bool = aggregation_state == TeamAdminAggregationState.READY_FOR_RALPH_REVIEW
+    merge_ready: bool = (
+        aggregation_state == TeamAdminAggregationState.READY_FOR_RALPH_REVIEW
+    )
     requires_llm_review: bool = team_admin.final_report_required and bool(
         team_admin.requires_llm_review_for
     )
@@ -351,30 +341,27 @@ def build_team_admin_aggregation_report(
         aggregation_state,
     )
 
-    initial_report: TeamAdminAggregationReport = TeamAdminAggregationReport.model_validate(
-        {
-            "admin_id": team_admin.admin_id,
-            "aggregation_state": aggregation_state,
-            "merge_ready": merge_ready,
-            "final_report_required": team_admin.final_report_required,
-            "completed_workers": tuple(completed_workers),
-            "missing_workers": tuple(missing_workers),
-            "blocked_workers": tuple(blocked_workers),
-            "startup_issue_workers": tuple(startup_issue_workers),
-            "incomplete_workers": tuple(incomplete_workers),
-            "requires_human_review": requires_human_review,
-            "requires_llm_review": requires_llm_review,
-            "task_count": task_snapshot.count,
-            "event_count": event_snapshot.count,
-            "summary": summary,
-        }
+    initial_report = TeamAdminAggregationReport(
+        admin_id=team_admin.admin_id,
+        aggregation_state=aggregation_state,
+        merge_ready=merge_ready,
+        final_report_required=team_admin.final_report_required,
+        completed_workers=tuple(completed_workers),
+        missing_workers=tuple(missing_workers),
+        blocked_workers=tuple(blocked_workers),
+        startup_issue_workers=tuple(startup_issue_workers),
+        incomplete_workers=tuple(incomplete_workers),
+        requires_human_review=requires_human_review,
+        requires_llm_review=requires_llm_review,
+        task_count=task_snapshot.count,
+        event_count=event_snapshot.count,
+        summary=summary,
     )
     proof_layers = build_team_proof_layers(initial_report)
     report: TeamAdminAggregationReport = initial_report.model_copy(
         update={"proof_layers": proof_layers}
     )
     return report
-
 
 
 async def read_team_admin_aggregation_report(
@@ -391,7 +378,9 @@ async def read_team_admin_aggregation_report(
     worker_ids: tuple[str, ...] = assigned_worker_ids(request.ralph_prd_artifact)
     task_snapshot, event_snapshot = await asyncio.gather(
         read_team_api_list_tasks(TeamApiListTasksRequest(team_name=request.team_name)),
-        read_team_api_read_events(TeamApiReadEventsRequest(team_name=request.team_name)),
+        read_team_api_read_events(
+            TeamApiReadEventsRequest(team_name=request.team_name)
+        ),
     )
     worker_statuses: tuple[TeamApiWorkerStatusSnapshot, ...] = tuple(
         await asyncio.gather(
@@ -406,9 +395,11 @@ async def read_team_admin_aggregation_report(
             )
         )
     )
-    local_startup_issue_workers: tuple[str, ...] = read_local_omx_team_startup_issue_workers(
-        request.team_name,
-        worker_ids,
+    local_startup_issue_workers: tuple[str, ...] = (
+        read_local_omx_team_startup_issue_workers(
+            request.team_name,
+            worker_ids,
+        )
     )
     report: TeamAdminAggregationReport = build_team_admin_aggregation_report(
         request.ralph_prd_artifact,
@@ -418,7 +409,6 @@ async def read_team_admin_aggregation_report(
         local_startup_issue_workers,
     )
     return report
-
 
 
 def write_team_admin_aggregation_report_artifact(
@@ -434,11 +424,9 @@ def write_team_admin_aggregation_report_artifact(
     Returns:
         Path: Destination path that was written.
     """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    serialized_report: bytes = orjson.dumps(
-        report.model_dump(mode="json"),
-        option=orjson.OPT_INDENT_2,
+    json_file_stores.for_path(output_path).write_model(
+        report,
+        trailing_newline=True,
     )
-    output_path.write_bytes(serialized_report + b"\n")
     written_path: Path = output_path
     return written_path

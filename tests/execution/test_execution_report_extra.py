@@ -10,7 +10,7 @@ def test_build_tool_interaction_report_preserves_anomaly_category_order() -> Non
             "type": "tool_call",
             "tool_name": "grep",
             "call_id": "call-123",
-                "arguments": '{"pattern":"TODO"}',
+            "arguments": '{"pattern":"TODO"}',
         }
     )
     matched_call = promote_execution_contract(
@@ -18,7 +18,7 @@ def test_build_tool_interaction_report_preserves_anomaly_category_order() -> Non
             "type": "tool_call",
             "tool_name": "sed",
             "call_id": "call-456",
-                "arguments": '{"expression":"s/a/b/"}',
+            "arguments": '{"expression":"s/a/b/"}',
         }
     )
     matched_result = promote_execution_contract(
@@ -70,7 +70,7 @@ def test_build_tool_interaction_report_preserves_duplicate_result_input_order() 
             "type": "tool_call",
             "tool_name": "grep",
             "call_id": "call-123",
-                "arguments": '{"pattern":"TODO"}',
+            "arguments": '{"pattern":"TODO"}',
         }
     )
     first_result = promote_execution_contract(

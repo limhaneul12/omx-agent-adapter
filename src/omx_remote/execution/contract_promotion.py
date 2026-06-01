@@ -171,6 +171,7 @@ def promote_execution_contract(payload: ExecutionPayload) -> ExecutionContract:
     result: ExecutionContract = promoter(payload)
     return result
 
+
 def split_event_payloads(payload: ExecutionPayload) -> list[ExecutionPayload]:
     """Splits wrapped execution events into promotable payloads.
 

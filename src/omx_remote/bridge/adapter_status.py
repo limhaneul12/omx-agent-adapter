@@ -12,7 +12,7 @@ from omx_remote.bridge.adapter_transport_payloads import (
 )
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge.adapter_schemas import (
+from omx_remote.schemas.bridge_adapter_schemas import (
     AdapterProbeRequest,
     AdapterStatusSnapshot,
 )
@@ -30,19 +30,21 @@ async def read_adapter_status(request: AdapterProbeRequest) -> AdapterStatusSnap
     """
     command_result = await run_blocking_call(
         run_omx_command,
-        ["adapt", request.target, "status", "--json"],
+        ("adapt", request.target, "status", "--json"),
     )
     stdout: str = command_result.stdout.strip()
     result: AdapterStatusSnapshot = _normalize_adapter_status(stdout)
     return result
 
 
-def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTransportPayload:
+def _load_adapter_status_transport_payload(
+    stdout: str,
+) -> AdapterStatusTransportPayload:
     """Loads one adapter status transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         AdapterStatusTransportPayload: Function return value.
     """
@@ -81,15 +83,15 @@ def _load_adapter_status_transport_payload(stdout: str) -> AdapterStatusTranspor
 
 def _normalize_adapter_status(stdout: str) -> AdapterStatusSnapshot:
     """Normalizes one `omx adapt <target> status --json` payload.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         AdapterStatusSnapshot: Function return value.
     """
-    parsed_payload: AdapterStatusTransportPayload = _load_adapter_status_transport_payload(
-        stdout
+    parsed_payload: AdapterStatusTransportPayload = (
+        _load_adapter_status_transport_payload(stdout)
     )
 
     adapter_payload = parsed_payload["adapter"]

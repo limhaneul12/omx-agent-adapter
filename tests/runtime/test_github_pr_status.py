@@ -4,7 +4,9 @@ import subprocess
 import omx_remote.runtime.cockpit.sources.github_pr_status.api_client as github_api_client
 import omx_remote.runtime.cockpit.sources.github_pr_status.credentials as github_credentials
 import omx_remote.runtime.cockpit.sources.github_pr_status.reader as github_pr_status
-from omx_remote.runtime.cockpit.sources.github_pr_status.reader import read_github_pull_request_status
+from omx_remote.runtime.cockpit.sources.github_pr_status.reader import (
+    read_github_pull_request_status,
+)
 
 
 def test_read_github_pull_request_status_reports_open_pr_review_and_checks(

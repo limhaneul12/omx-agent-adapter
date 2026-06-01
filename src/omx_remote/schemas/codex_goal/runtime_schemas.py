@@ -27,7 +27,7 @@ class CodexGoalLaunchRequest(StrictSchemaModel):
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> "CodexGoalLaunchRequest":
         """Handles validate team worker count.
-        
+
         Returns:
             'CodexGoalLaunchRequest': Function return value.
         """
@@ -74,7 +74,7 @@ class CodexGoalMirrorState(StrictSchemaModel):
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> "CodexGoalMirrorState":
         """Handles validate team worker count.
-        
+
         Returns:
             'CodexGoalMirrorState': Function return value.
         """

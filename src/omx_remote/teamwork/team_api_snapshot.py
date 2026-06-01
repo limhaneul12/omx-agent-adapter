@@ -5,6 +5,11 @@ from omx_remote.adapter_types.teams_type.team_api_raw_payloads import (
     TeamApiRawMailboxMessagePayload,
     TeamApiRawTaskPayload,
 )
+from omx_remote.adapter_types.teams_type.team_api_snapshot_payloads import (
+    TeamApiSnapshotPayload,
+    TeamApiTeamNamePayload,
+    TeamApiTeamWorkerPayload,
+)
 from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiErrorTransportPayload,
     TeamApiListTasksNormalizedPayload,
@@ -61,6 +66,32 @@ from omx_remote.teamwork.team_api_transport import (
 )
 
 
+async def _run_team_api_snapshot_command(
+    action: str,
+    payload: TeamApiSnapshotPayload,
+) -> str:
+    """Run one read-only Team API command and return stripped stdout.
+
+    Args:
+        action [str]: Team API action name.
+        payload [TeamApiSnapshotPayload]: Typed action payload.
+
+    Returns:
+        str: Stripped stdout from the OMX command.
+    """
+    command_arguments: tuple[str, ...] = (
+        "team",
+        "api",
+        action,
+        "--input",
+        orjson.dumps(payload).decode(),
+        "--json",
+    )
+    command_result = await run_blocking_call(run_omx_command, command_arguments)
+    stdout = command_result.stdout.strip()
+    return stdout
+
+
 def _validate_count_matches_length(
     operation_name: str,
     count_value: int,
@@ -92,19 +123,12 @@ async def read_team_api_list_tasks(
     Returns:
         TeamApiListTasksSnapshot: Normalized list-tasks snapshot built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "list-tasks",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "list-tasks",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     data_payload: TeamApiListTasksTransportPayload = load_team_api_list_tasks_payload(
-        command_result.stdout.strip()
+        stdout
     )
     raw_tasks: list[TeamApiRawTaskPayload] = data_payload["tasks"]
     count_value: int = data_payload["count"]
@@ -138,19 +162,12 @@ async def read_team_api_read_events(
     Returns:
         TeamApiReadEventsSnapshot: Normalized read-events snapshot built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-events",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-events",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     data_payload: TeamApiReadEventsTransportPayload = load_team_api_read_events_payload(
-        command_result.stdout.strip()
+        stdout
     )
     raw_events: list[TeamApiRawEventPayload] = data_payload["events"]
     count_value: int = data_payload["count"]
@@ -186,19 +203,12 @@ async def read_team_api_mailbox_list(
     Returns:
         TeamApiMailboxListSnapshot: Normalized mailbox-list snapshot built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "mailbox-list",
-            "--input",
-            orjson.dumps({"team_name": request.team_name, "worker": request.worker}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "mailbox-list",
+        TeamApiTeamWorkerPayload(team_name=request.team_name, worker=request.worker),
     )
-    data_payload: TeamApiMailboxListTransportPayload = load_team_api_mailbox_list_payload(
-        command_result.stdout.strip()
+    data_payload: TeamApiMailboxListTransportPayload = (
+        load_team_api_mailbox_list_payload(stdout)
     )
     raw_messages: list[TeamApiRawMailboxMessagePayload] = data_payload["messages"]
     worker_value: str = data_payload["worker"]
@@ -235,19 +245,12 @@ async def read_team_api_read_monitor_snapshot(
     Returns:
         TeamApiReadMonitorSnapshot: Normalized read-monitor-snapshot result built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-monitor-snapshot",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-monitor-snapshot",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     data_payload: TeamApiReadMonitorSnapshotTransportPayload = (
-        load_team_api_read_monitor_snapshot_payload(command_result.stdout.strip())
+        load_team_api_read_monitor_snapshot_payload(stdout)
     )
     result: TeamApiReadMonitorSnapshot = normalize_team_api_monitor_snapshot_result(
         data_payload
@@ -266,19 +269,12 @@ async def read_team_api_read_config_error(
     Returns:
         TeamApiReadConfigError: Normalized error envelope built from the nested unsuccessful `error` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-config",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-config",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     normalized_payload: TeamApiErrorTransportPayload = load_team_api_error_payload(
-        command_result.stdout.strip(),
+        stdout,
         "omx team api read-config",
     )
     result: TeamApiReadConfigError = TeamApiReadConfigError.model_validate(
@@ -298,19 +294,12 @@ async def read_team_api_read_config(
     Returns:
         TeamApiReadConfigSnapshot: Normalized config snapshot built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-config",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-config",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     data_payload: TeamApiReadConfigTransportPayload = load_team_api_read_config_payload(
-        command_result.stdout.strip()
+        stdout
     )
     result: TeamApiReadConfigSnapshot = normalize_team_api_config_snapshot_result(
         data_payload
@@ -329,19 +318,12 @@ async def read_team_api_read_manifest_error(
     Returns:
         TeamApiReadManifestError: Normalized error envelope built from the nested unsuccessful `error` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-manifest",
-            "--input",
-            orjson.dumps({"team_name": request.team_name}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-manifest",
+        TeamApiTeamNamePayload(team_name=request.team_name),
     )
     normalized_payload: TeamApiErrorTransportPayload = load_team_api_error_payload(
-        command_result.stdout.strip(),
+        stdout,
         "omx team api read-manifest",
     )
     result: TeamApiReadManifestError = TeamApiReadManifestError.model_validate(
@@ -361,19 +343,12 @@ async def read_team_api_read_worker_status(
     Returns:
         TeamApiWorkerStatusSnapshot: Normalized worker-status snapshot built from the nested successful `data` payload.
     """
-    command_result = await run_blocking_call(
-        run_omx_command,
-        [
-            "team",
-            "api",
-            "read-worker-status",
-            "--input",
-            orjson.dumps({"team_name": request.team_name, "worker": request.worker}).decode(),
-            "--json",
-        ],
+    stdout = await _run_team_api_snapshot_command(
+        "read-worker-status",
+        TeamApiTeamWorkerPayload(team_name=request.team_name, worker=request.worker),
     )
     data_payload: TeamApiReadWorkerStatusTransportPayload = (
-        load_team_api_read_worker_status_payload(command_result.stdout.strip())
+        load_team_api_read_worker_status_payload(stdout)
     )
     result: TeamApiWorkerStatusSnapshot = normalize_team_api_worker_status_payload(
         data_payload["worker"],

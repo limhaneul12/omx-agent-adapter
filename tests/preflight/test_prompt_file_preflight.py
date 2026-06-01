@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from omx_remote.runtime.preflight.prompt_file_preflight import check_prompt_file
-from omx_remote.schemas.preflight.preflight_schemas import PreflightSeverity
+from omx_remote.schemas.preflight_schemas import PreflightSeverity
 
 
 def test_existing_prompt_file_inside_cwd_passes(tmp_path: Path) -> None:

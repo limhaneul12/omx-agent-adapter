@@ -25,7 +25,9 @@ from omx_remote.cli_launcher.team_launcher.team_task_cli import (
     register_team_task_commands,
 )
 
-team_app = typer.Typer(help="Read OMX team runtime and team API state.", add_completion=False)
+team_app = typer.Typer(
+    help="Read OMX team runtime and team API state.", add_completion=False
+)
 
 register_team_read_commands(team_app)
 register_team_message_commands(team_app)

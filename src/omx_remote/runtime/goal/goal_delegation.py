@@ -13,12 +13,12 @@ from omx_remote.schemas.codex_goal.supervisor_schemas import (
     GoalDelegationTarget,
     GoalExecutionPolicy,
 )
-from omx_remote.schemas.multi_operator.snapshot_schemas import (
+from omx_remote.schemas.multi_operator_snapshot_schemas import (
     ManagedFlowKind,
     ManagedOmxFlow,
     MultiOperatorSnapshot,
 )
-from omx_remote.schemas.operator.action_schemas import OperatorActionResult
+from omx_remote.schemas.operator_action_schemas import OperatorActionResult
 from omx_remote.schemas.ralph.prd_schemas import (
     RalphPrdArtifact,
     RalphPrdContinuationPolicy,
@@ -27,26 +27,26 @@ from omx_remote.schemas.ralph.prd_schemas import (
 
 def _has_team_flow(multi_operator_snapshot: MultiOperatorSnapshot) -> bool:
     """Handles has team flow.
-    
+
     Args:
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         bool: Function return value.
     """
     has_team_flow: bool = any(
-        flow.flow_kind == ManagedFlowKind.TEAM for flow in multi_operator_snapshot.flows.root
+        flow.flow_kind == ManagedFlowKind.TEAM
+        for flow in multi_operator_snapshot.flows.root
     )
     return has_team_flow
 
 
-
 def _normalize_goal_objective_text(goal_objective_text: str) -> str:
     """Handles normalize goal objective text.
-    
+
     Args:
         goal_objective_text [str]: Function argument.
-    
+
     Returns:
         str: Function return value.
     """
@@ -54,17 +54,16 @@ def _normalize_goal_objective_text(goal_objective_text: str) -> str:
     return normalized_goal_objective_text
 
 
-
 def _ralph_prd_matches_goal_objective(
     goal_objective_text: str,
     ralph_prd_artifact: RalphPrdArtifact,
 ) -> bool:
     """Handles ralph prd matches goal objective.
-    
+
     Args:
         goal_objective_text [str]: Function argument.
         ralph_prd_artifact [RalphPrdArtifact]: Function argument.
-    
+
     Returns:
         bool: Function return value.
     """
@@ -74,19 +73,20 @@ def _ralph_prd_matches_goal_objective(
     normalized_prd_objective_text: str = _normalize_goal_objective_text(
         ralph_prd_artifact.objective
     )
-    objectives_match: bool = normalized_goal_objective_text == normalized_prd_objective_text
+    objectives_match: bool = (
+        normalized_goal_objective_text == normalized_prd_objective_text
+    )
     return objectives_match
-
 
 
 def _find_tracked_ralph_flow(
     multi_operator_snapshot: MultiOperatorSnapshot,
 ) -> ManagedOmxFlow | None:
     """Handles find tracked ralph flow.
-    
+
     Args:
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         ManagedOmxFlow | None: Function return value.
     """
@@ -103,15 +103,14 @@ def _find_tracked_ralph_flow(
     return tracked_ralph_flow
 
 
-
 def _ralph_flow_requires_cleanup(
     multi_operator_snapshot: MultiOperatorSnapshot,
 ) -> bool:
     """Handles ralph flow requires cleanup.
-    
+
     Args:
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         bool: Function return value.
     """
@@ -122,19 +121,20 @@ def _ralph_flow_requires_cleanup(
         requires_cleanup: bool = False
         return requires_cleanup
 
-    requires_cleanup = tracked_ralph_flow.flow_id in multi_operator_snapshot.cleanup_flow_ids
+    requires_cleanup = (
+        tracked_ralph_flow.flow_id in multi_operator_snapshot.cleanup_flow_ids
+    )
     return requires_cleanup
-
 
 
 def _ralph_flow_is_resumable(
     multi_operator_snapshot: MultiOperatorSnapshot,
 ) -> bool:
     """Handles ralph flow is resumable.
-    
+
     Args:
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         bool: Function return value.
     """
@@ -145,9 +145,10 @@ def _ralph_flow_is_resumable(
         is_resumable: bool = False
         return is_resumable
 
-    is_resumable = tracked_ralph_flow.flow_id in multi_operator_snapshot.resumable_flow_ids
+    is_resumable = (
+        tracked_ralph_flow.flow_id in multi_operator_snapshot.resumable_flow_ids
+    )
     return is_resumable
-
 
 
 def _apply_native_goal_review_policy(
@@ -155,11 +156,11 @@ def _apply_native_goal_review_policy(
     review_policy: CodexGoalReviewPolicy,
 ) -> GoalExecutionPolicy:
     """Handles apply native goal review policy.
-    
+
     Args:
         execution_policy [GoalExecutionPolicy]: Function argument.
         review_policy [CodexGoalReviewPolicy]: Function argument.
-    
+
     Returns:
         GoalExecutionPolicy: Function return value.
     """
@@ -184,7 +185,7 @@ def select_goal_delegation(
     ralph_prd_artifact: RalphPrdArtifact | None = None,
 ) -> GoalDelegationDecision:
     """Handles select goal delegation.
-    
+
     Args:
         goal_id [str]: Function argument.
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
@@ -195,7 +196,7 @@ def select_goal_delegation(
         requested_team_worker_count [int | None]: Function argument.
         goal_objective_text [str | None]: Function argument.
         ralph_prd_artifact [RalphPrdArtifact | None]: Function argument.
-    
+
     Returns:
         GoalDelegationDecision: Function return value.
     """
@@ -285,17 +286,11 @@ def select_goal_delegation(
 
     ralph_reason: str
     if requires_prd_refresh:
-        ralph_reason = (
-            "the goal needs Ralph to refresh a typed PRD artifact before execution proceeds"
-        )
+        ralph_reason = "the goal needs Ralph to refresh a typed PRD artifact before execution proceeds"
     elif requires_team_fanout:
-        ralph_reason = (
-            "the goal already has a matching Ralph PRD artifact and should continue into Team fanout"
-        )
+        ralph_reason = "the goal already has a matching Ralph PRD artifact and should continue into Team fanout"
     elif can_finish_without_team:
-        ralph_reason = (
-            "the goal already has a matching Ralph PRD artifact and can continue without Team fanout"
-        )
+        ralph_reason = "the goal already has a matching Ralph PRD artifact and can continue without Team fanout"
     else:
         ralph_reason = "the goal should proceed through the Ralph pipeline"
 
@@ -312,7 +307,6 @@ def select_goal_delegation(
     return ralph_pipeline_decision
 
 
-
 def dispatch_goal_delegation(
     decision: GoalDelegationDecision,
     multi_operator_snapshot: MultiOperatorSnapshot,
@@ -322,7 +316,7 @@ def dispatch_goal_delegation(
     goal_working_directory: str | None = None,
 ) -> GoalDelegationDispatchResult:
     """Handles dispatch goal delegation.
-    
+
     Args:
         decision [GoalDelegationDecision]: Function argument.
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
@@ -330,15 +324,17 @@ def dispatch_goal_delegation(
         force_cleanup [bool]: Function argument.
         allow_non_tty [bool]: Function argument.
         goal_working_directory [str | None]: Function argument.
-    
+
     Returns:
         GoalDelegationDispatchResult: Function return value.
     """
     if decision.selected_target != GoalDelegationTarget.RALPH_PIPELINE:
-        not_applicable_result: GoalDelegationDispatchResult = GoalDelegationDispatchResult(
-            goal_id=decision.goal_id,
-            selected_target=decision.selected_target,
-            dispatch_status=GoalDelegationDispatchStatus.NOT_APPLICABLE,
+        not_applicable_result: GoalDelegationDispatchResult = (
+            GoalDelegationDispatchResult(
+                goal_id=decision.goal_id,
+                selected_target=decision.selected_target,
+                dispatch_status=GoalDelegationDispatchStatus.NOT_APPLICABLE,
+            )
         )
         return not_applicable_result
 

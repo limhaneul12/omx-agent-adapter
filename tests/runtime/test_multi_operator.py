@@ -9,7 +9,7 @@ from omx_remote.runtime.operators.multi_operator import (
     MultiOperatorRegistry,
     read_live_multi_operator_snapshot,
 )
-from omx_remote.schemas.multi_operator.snapshot_schemas import (
+from omx_remote.schemas.multi_operator_snapshot_schemas import (
     FlowInterventionRequest,
     FlowSelector,
     ManagedFlowIdCollection,
@@ -20,16 +20,15 @@ from omx_remote.schemas.multi_operator.snapshot_schemas import (
     MultiOperatorSnapshot,
     MultiOperatorSnapshotReadRequest,
 )
-from omx_remote.schemas.operator.action_schemas import (
+from omx_remote.schemas.operator_action_schemas import (
     OperatorActionResult,
     OperatorRecoveryHint,
 )
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
 )
 from omx_remote.schemas.teamwork.status_schemas import TeamStatusSnapshot
-
 
 
 def test_managed_omx_repo_accepts_required_fields() -> None:
@@ -42,7 +41,6 @@ def test_managed_omx_repo_accepts_required_fields() -> None:
 
     assert result.repo_id == "repo-a"
     assert result.repo_root == "/tmp/repo-a"
-
 
 
 def test_managed_omx_flow_rejects_empty_flow_name() -> None:
@@ -130,13 +128,10 @@ def test_multi_operator_snapshot_collection_fields_are_required() -> None:
         assert MultiOperatorSnapshot.model_fields[field_name].is_required()
 
 
-
 def test_multi_operator_registry_registers_repo_and_flow() -> None:
     registry = MultiOperatorRegistry()
 
-    registry.register_repo(
-        ManagedOmxRepo(repo_id="repo-a", repo_root="/tmp/repo-a")
-    )
+    registry.register_repo(ManagedOmxRepo(repo_id="repo-a", repo_root="/tmp/repo-a"))
     registry.register_flow(
         ManagedOmxFlow(
             flow_id="repo-a:ralph",
@@ -153,8 +148,9 @@ def test_multi_operator_registry_registers_repo_and_flow() -> None:
     assert snapshot.flows[0].flow_id == "repo-a:ralph"
 
 
-
-def test_multi_operator_registry_summarize_constructs_collection_contracts_explicitly() -> None:
+def test_multi_operator_registry_summarize_constructs_collection_contracts_explicitly() -> (
+    None
+):
     summarize_source = inspect.getsource(MultiOperatorRegistry.summarize)
 
     assert "ManagedOmxRepoCollection" in summarize_source
@@ -162,7 +158,6 @@ def test_multi_operator_registry_summarize_constructs_collection_contracts_expli
     assert summarize_source.count("ManagedFlowIdCollection") >= 5
     assert "repos=list(self._repos.values())" not in summarize_source
     assert "flows=list(self._flows.values())" not in summarize_source
-
 
 
 def test_multi_operator_registry_rejects_flow_for_unknown_repo() -> None:
@@ -179,8 +174,9 @@ def test_multi_operator_registry_rejects_flow_for_unknown_repo() -> None:
         )
 
 
-
-def test_multi_operator_registry_summarizes_blocked_resumable_cleanup_and_terminal_states() -> None:
+def test_multi_operator_registry_summarizes_blocked_resumable_cleanup_and_terminal_states() -> (
+    None
+):
     registry = MultiOperatorRegistry()
     registry.register_repo(ManagedOmxRepo(repo_id="repo-a", repo_root="/tmp/repo-a"))
     registry.register_flow(
@@ -285,8 +281,9 @@ def test_multi_operator_registry_summarizes_blocked_resumable_cleanup_and_termin
     assert snapshot.terminal_flow_ids == ["repo-a:team-gamma"]
 
 
-
-def test_multi_operator_registry_builds_flow_intervention_request_from_next_action() -> None:
+def test_multi_operator_registry_builds_flow_intervention_request_from_next_action() -> (
+    None
+):
     registry = MultiOperatorRegistry()
     registry.register_repo(ManagedOmxRepo(repo_id="repo-a", repo_root="/tmp/repo-a"))
     registry.register_flow(
@@ -321,7 +318,6 @@ def test_multi_operator_registry_builds_flow_intervention_request_from_next_acti
     )
 
 
-
 def test_multi_operator_registry_returns_none_when_flow_is_only_observable() -> None:
     registry = MultiOperatorRegistry()
     registry.register_repo(ManagedOmxRepo(repo_id="repo-a", repo_root="/tmp/repo-a"))
@@ -351,7 +347,6 @@ def test_multi_operator_registry_returns_none_when_flow_is_only_observable() -> 
     assert result is None
 
 
-
 def test_multi_operator_snapshot_read_request_accepts_repo_and_team_names(
     tmp_path: Path,
 ) -> None:
@@ -363,7 +358,6 @@ def test_multi_operator_snapshot_read_request_accepts_repo_and_team_names(
 
     assert result.repo_id == "repo-a"
     assert result.team_names == ("alpha", "beta")
-
 
 
 def test_read_live_multi_operator_snapshot_reads_ralph_and_team_statuses(
@@ -421,7 +415,6 @@ def test_read_live_multi_operator_snapshot_reads_ralph_and_team_statuses(
         "repo-a:team-alpha",
     ]
     assert result.active_flow_ids == ["repo-a:ralph", "repo-a:team-alpha"]
-
 
 
 def test_read_live_multi_operator_snapshot_marks_inactive_ralph_launchable(

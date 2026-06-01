@@ -2,7 +2,7 @@ from typing import TypedDict
 
 import msgspec
 
-from omx_remote.schemas.history.session_schemas import SessionSearchResultSnapshot
+from omx_remote.schemas.history_session_schemas import SessionSearchResultSnapshot
 
 
 class SessionSearchResultSpec(msgspec.Struct, kw_only=True):
@@ -36,7 +36,9 @@ class SessionSearchTransportResultPayload(TypedDict):
     snippet: str | None
 
 
-type SessionSearchTransportResults = list[SessionSearchResultSpec] | list[SessionSearchTransportResultPayload]
+type SessionSearchTransportResults = (
+    list[SessionSearchResultSpec] | list[SessionSearchTransportResultPayload]
+)
 type SessionSearchNormalizedResults = list[SessionSearchResultSnapshot]
 
 

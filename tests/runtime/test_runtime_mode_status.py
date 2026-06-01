@@ -4,7 +4,7 @@ import inspect
 import pytest
 
 from omx_remote.runtime.status import runtime_mode_status
-from omx_remote.schemas.runtime.status_schemas import RuntimeModeStatusRequest
+from omx_remote.schemas.runtime_status_schemas import RuntimeModeStatusRequest
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 
@@ -106,11 +106,13 @@ def test_read_runtime_mode_status_treats_empty_phase_as_missing_for_nested_fallb
 
 
 def test_read_runtime_mode_status_invokes_expected_state_command(monkeypatch) -> None:
-    seen_arguments: list[list[str]] = []
+    seen_arguments: list[tuple[str, ...]] = []
 
-    def fake_run(arguments: list[str]) -> DummyResult:
+    def fake_run(arguments: tuple[str, ...]) -> DummyResult:
         seen_arguments.append(arguments)
-        return DummyResult(stdout='{"statuses":{"team":{"active":true,"phase":"team-exec","path":"/tmp/team-state.json"}}}\n')
+        return DummyResult(
+            stdout='{"statuses":{"team":{"active":true,"phase":"team-exec","path":"/tmp/team-state.json"}}}\n'
+        )
 
     monkeypatch.setattr(runtime_mode_status, "run_omx_command", fake_run)
 
@@ -122,13 +124,13 @@ def test_read_runtime_mode_status_invokes_expected_state_command(monkeypatch) ->
 
     assert result.found is True
     assert seen_arguments == [
-        [
+        (
             "state",
             "get-status",
             "--input",
             '{"mode":"team"}',
             "--json",
-        ]
+        )
     ]
 
 
@@ -189,21 +191,27 @@ def test_load_runtime_mode_status_payload_rejects_non_object_statuses_payload() 
         )
 
 
-def test_load_runtime_mode_status_payload_rejects_non_string_phase_when_present() -> None:
+def test_load_runtime_mode_status_payload_rejects_non_string_phase_when_present() -> (
+    None
+):
     with pytest.raises(RuntimeSurfaceError):
         runtime_mode_status._load_runtime_mode_status_payload(
             '{"statuses":{"ralph":{"active":true,"phase":42}}}'
         )
 
 
-def test_load_runtime_mode_status_payload_rejects_non_string_path_when_present() -> None:
+def test_load_runtime_mode_status_payload_rejects_non_string_path_when_present() -> (
+    None
+):
     with pytest.raises(RuntimeSurfaceError):
         runtime_mode_status._load_runtime_mode_status_payload(
             '{"statuses":{"ralph":{"active":true,"path":42}}}'
         )
 
 
-def test_load_runtime_mode_status_payload_rejects_non_string_current_phase_when_present() -> None:
+def test_load_runtime_mode_status_payload_rejects_non_string_current_phase_when_present() -> (
+    None
+):
     with pytest.raises(RuntimeSurfaceError):
         runtime_mode_status._load_runtime_mode_status_payload(
             '{"statuses":{"ralph":{"active":true,"data":{"current_phase":42}}}}'

@@ -12,7 +12,7 @@ from omx_remote.cli_launcher.comx_cli import (
 from omx_remote.cli_launcher.comx_daemon_cli import daemon_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
-from omx_remote.cli_launcher.mcp_cli import mcp_app
+from omx_remote.cli_launcher.mcp.mcp_cli import mcp_app
 from omx_remote.cli_launcher.next_cli import next_command
 from omx_remote.cli_launcher.prd_cli import prd_app
 from omx_remote.cli_launcher.preflight_cli import preflight_app
@@ -29,7 +29,6 @@ from omx_remote.cli_launcher.ultrawork_cli import ultrawork_app
 HELP_TEXT = """comx-agent: Agent-facing control layer for using OMX + Codex strongly.
 
 AI-friendly route guidance, typed state, evidence, MCP client access, and guardrails for Codex/OMX development lanes.
-The legacy agent-remote executable remains a compatibility alias for the same control surface.
 Composition flow: validate agents, inspect cockpit, recommend a route, preflight, dry-run, record, then hand off.
 Use subcommand --help to see available operations for each domain.
 """
@@ -75,4 +74,3 @@ def main(ctx: typer.Context) -> None:
 def version() -> None:
     """Show the current package version."""
     typer.echo("comx-agent 0.1.0")
-    typer.echo("agent-remote 0.1.0 (compatibility alias)")

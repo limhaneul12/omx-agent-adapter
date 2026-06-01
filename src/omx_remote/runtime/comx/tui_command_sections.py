@@ -12,40 +12,75 @@ class TuiCommandSectionLabel:
 
 
 TUI_COMMAND_SECTION_LABELS: Final[dict[str, TuiCommandSectionLabel]] = {
-    "collaboration-kickoff": TuiCommandSectionLabel(
-        group="Collaboration",
-        label="Collaboration → Kickoff",
-        warning="Team/UltraGoal launch remains a policy-gated handoff.",
+    "route-next": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Route Next",
+        warning="Route recommendation only; it does not mutate runtime state.",
     ),
-    "team-standup-sync": TuiCommandSectionLabel(
-        group="Collaboration",
-        label="Collaboration → Team Standup Sync",
+    "research-brief": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Research Brief",
+        warning="External/current research may be planned; verify sources before acting.",
+    ),
+    "idea-to-prd": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Idea to PRD",
+        warning="Planning artifacts only; implementation starts at implementation-kickoff.",
+    ),
+    "implementation-kickoff": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Collaboration / Implementation Kickoff",
+        warning="Runtime launch remains a policy-gated handoff.",
+    ),
+    "team-sync": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Team Sync",
         warning="Read-only Team evidence; suggested dispatches do not mutate mailboxes.",
     ),
-    "integration-room": TuiCommandSectionLabel(
-        group="Collaboration",
-        label="Collaboration → Integration Room",
-        warning="Integration changes require a separate explicit implementation command.",
+    "integration-plan": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Integration Plan",
+        warning="Planning only; it does not merge changes.",
     ),
-    "conflict-resolution-council": TuiCommandSectionLabel(
-        group="Collaboration",
-        label="Collaboration → Conflict Resolution Council",
-        warning="Decision record only; it does not apply patches.",
+    "review-gate": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Review Gate",
+        warning="Approve/block review verdict; release closeout is separate.",
     ),
-    "parallel-review-board": TuiCommandSectionLabel(
-        group="Review",
-        label="Review → Parallel Review Board",
-        warning="Review lanes are read-only and must cite evidence.",
+    "release-readiness": TuiCommandSectionLabel(
+        group="Lifecycle",
+        label="Lifecycle → Release Readiness",
+        warning="May include docs, run ledger, and Alexandria MCP closeout guidance.",
     ),
-    "release-readiness-room": TuiCommandSectionLabel(
-        group="Release",
-        label="Release → Release Readiness Room",
-        warning="Alexandria closeout writes summary-only memory; no secrets.",
+    "company-run": TuiCommandSectionLabel(
+        group="Macro",
+        label="Macro → Company Run",
+        warning="Macro orchestration with gates, voting, Team, subagents, and policy handoffs.",
     ),
-    "idea-to-prd-council": TuiCommandSectionLabel(
-        group="Research",
-        label="Research → Idea to PRD Council",
-        warning="Starts/ends with Alexandria and hands off UltraGoal only after agent validation.",
+    "adapter-ops mcp-audit": TuiCommandSectionLabel(
+        group="Adapter Ops",
+        label="Adapter Ops → MCP Audit",
+        warning="Maintenance namespace; not a public lifecycle workflow.",
+    ),
+    "adapter-ops contract-refresh": TuiCommandSectionLabel(
+        group="Adapter Ops",
+        label="Adapter Ops → Contract Refresh",
+        warning="Maintenance namespace; probe/fixture writes must be explicit.",
+    ),
+    "adapter-ops skillize": TuiCommandSectionLabel(
+        group="Adapter Ops",
+        label="Adapter Ops → Skillize",
+        warning="Writes skill files only through explicit execution.",
+    ),
+    "adapter-ops run-ledger": TuiCommandSectionLabel(
+        group="Adapter Ops",
+        label="Adapter Ops → Run Ledger",
+        warning="Read-only run record inspection by default.",
+    ),
+    "adapter-ops memory-capture": TuiCommandSectionLabel(
+        group="Adapter Ops",
+        label="Adapter Ops → Memory Capture",
+        warning="Uses Alexandria MCP tools for curated memory capture; avoid secrets.",
     ),
 }
 

@@ -1,6 +1,6 @@
-import os
 from pathlib import Path
 
+from omx_remote.runtime.comx.comx_display_settings import ComxDisplaySettings
 from omx_remote.runtime.comx.control_surface_inventory import (
     build_comx_control_surface_inventory,
 )
@@ -9,7 +9,7 @@ from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
 from omx_remote.schemas.comx.control_surface_schemas import ComxControlSurfaceInventory
 from omx_remote.schemas.comx.tui_schemas import ComxTuiSnapshot, ComxTuiStatusLine
 from omx_remote.schemas.mcp.client_schemas import McpServerListResult
-from omx_remote.schemas.next.next_action_schemas import NextActionResult
+from omx_remote.schemas.next_action_schemas import NextActionResult
 
 
 def _permission_label() -> str:
@@ -18,8 +18,9 @@ def _permission_label() -> str:
     Returns:
         str: Permission label for the TUI header.
     """
-    bypass_value: str | None = os.environ.get("CODEX_SANDBOX") or os.environ.get(
-        "OMX_PERMISSIONS"
+    display_settings = ComxDisplaySettings()
+    bypass_value: str | None = (
+        display_settings.codex_sandbox or display_settings.omx_permissions
     )
     if bypass_value is not None and bypass_value.lower() in {
         "yolo",
@@ -73,7 +74,7 @@ def build_tui_snapshot(
     warnings: tuple[str, ...] = tuple(warning_items)
 
     status_line = ComxTuiStatusLine(
-        model_label=os.environ.get("COMX_AGENT_MODEL", "gpt-5.5 xhigh"),
+        model_label=ComxDisplaySettings().model_label,
         workspace=workspace,
         permission_label=_permission_label(),
         runtime_label=runtime_label,

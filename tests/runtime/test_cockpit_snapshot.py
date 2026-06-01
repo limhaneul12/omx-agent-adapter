@@ -36,13 +36,13 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamWorkerObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteConfidence,
     RouteName,
     RouteRecommendation,
     RouteRecommendationStatus,
 )
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     ActiveRuntimeModes,
     RuntimeStatus,
     RuntimeStatusAnomaly,
@@ -89,7 +89,7 @@ def _goal_mirror_state(repo_root: Path) -> CodexGoalMirrorState:
         team_worker_count=4,
         working_directory=str(repo_root),
         codex_command=("codex", "--enable", "goals"),
-        session_locator="agent-remote-goal-goal-cockpit",
+        session_locator="comx-agent-goal-goal-cockpit",
         process_id=1234,
         launched_at="2026-05-08T00:00:00+00:00",
         handoff_state=CodexGoalHandoffState.AWAITING_RALPH,
@@ -132,7 +132,7 @@ def _patch_snapshot_capability_sources(monkeypatch, tmp_path: Path) -> None:
         ),
     )
     configured_agents = CockpitAgentConfigSummary(
-        config_path=str(tmp_path / ".agent-remote.toml"),
+        config_path=str(tmp_path / ".comx-agent.toml"),
         total_count=0,
         enabled_count=0,
         disabled_count=0,
@@ -143,11 +143,13 @@ def _patch_snapshot_capability_sources(monkeypatch, tmp_path: Path) -> None:
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
+        qualified_ids=("builtin:review-gate", "builtin:release-readiness"),
         warnings=(),
     )
 
-    monkeypatch.setattr(snapshot_reader, "read_cockpit_capabilities", lambda: capabilities)
+    monkeypatch.setattr(
+        snapshot_reader, "read_cockpit_capabilities", lambda: capabilities
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "summarize_cockpit_agent_config",
@@ -186,12 +188,16 @@ def test_cockpit_flags_conflicting_runtime_activity_sources(tmp_path: Path) -> N
         "active_runtime_modes",
     )
     assert snapshot.decision_reasons[1].category == "active_runtime_evidence"
-    assert snapshot.decision_reasons[1].recommended_next_action == "observe_active_runtime"
+    assert (
+        snapshot.decision_reasons[1].recommended_next_action == "observe_active_runtime"
+    )
     assert snapshot.decision_reasons[1].blocks_mutation is True
     assert snapshot.decision_reasons[1].source_names == ("active_runtime_modes",)
 
 
-def test_cockpit_flags_empty_parsed_runtime_with_active_state_list(tmp_path: Path) -> None:
+def test_cockpit_flags_empty_parsed_runtime_with_active_state_list(
+    tmp_path: Path,
+) -> None:
     runtime_status = RuntimeStatus(
         summary="native-stop: inactive (phase: n/a)\nNo active modes.",
         has_active_modes=True,
@@ -216,7 +222,9 @@ def test_cockpit_flags_empty_parsed_runtime_with_active_state_list(tmp_path: Pat
     assert "run" in snapshot.contradictions[0].message
 
 
-def test_cockpit_reports_all_operating_lanes_with_honest_baseline_states(tmp_path: Path) -> None:
+def test_cockpit_reports_all_operating_lanes_with_honest_baseline_states(
+    tmp_path: Path,
+) -> None:
     snapshot = build_cockpit_snapshot(
         repo_root=str(tmp_path),
         runtime_status=_idle_runtime_status(),
@@ -239,7 +247,9 @@ def test_cockpit_reports_all_operating_lanes_with_honest_baseline_states(tmp_pat
     )
     assert lane_states[CockpitLaneName.GOAL_ONLY] == CockpitLaneState.ENDED
     assert lane_states[CockpitLaneName.GOAL_RALPH] == CockpitLaneState.AWAITING_RALPH
-    assert lane_states[CockpitLaneName.GOAL_RALPH_TEAMS] == CockpitLaneState.AWAITING_RALPH
+    assert (
+        lane_states[CockpitLaneName.GOAL_RALPH_TEAMS] == CockpitLaneState.AWAITING_RALPH
+    )
     assert lane_states[CockpitLaneName.ULTRAWORK_ONLY] == CockpitLaneState.CLEAN
     assert lane_states[CockpitLaneName.ULTRAGOAL] == CockpitLaneState.UNKNOWN
     assert lane_states[CockpitLaneName.RALPH_TEAM] == CockpitLaneState.NEEDS_TEAM_NAME
@@ -326,7 +336,7 @@ def test_cockpit_snapshot_exposes_capabilities_config_recipes_and_routes(
         ),
     )
     configured_agents = CockpitAgentConfigSummary(
-        config_path=str(tmp_path / ".agent-remote.toml"),
+        config_path=str(tmp_path / ".comx-agent.toml"),
         total_count=2,
         enabled_count=1,
         disabled_count=1,
@@ -337,7 +347,7 @@ def test_cockpit_snapshot_exposes_capabilities_config_recipes_and_routes(
         available_count=3,
         builtin_count=2,
         repo_count=1,
-        qualified_ids=("builtin:review-diff", "repo:implement-with-review"),
+        qualified_ids=("builtin:review-gate", "repo:implement-with-review"),
         warnings=(),
     )
     route_recommendation = RouteRecommendation(
@@ -406,7 +416,7 @@ def test_cockpit_snapshot_derives_ultragoal_route_when_capability_is_available(
         ),
     )
     configured_agents = CockpitAgentConfigSummary(
-        config_path=str(tmp_path / ".agent-remote.toml"),
+        config_path=str(tmp_path / ".comx-agent.toml"),
         total_count=0,
         enabled_count=0,
         disabled_count=0,
@@ -417,7 +427,7 @@ def test_cockpit_snapshot_derives_ultragoal_route_when_capability_is_available(
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
+        qualified_ids=("builtin:review-gate", "builtin:release-readiness"),
         warnings=(),
     )
 
@@ -438,7 +448,9 @@ def test_cockpit_snapshot_derives_ultragoal_route_when_capability_is_available(
     assert "durable" in snapshot.route_recommendations[0].reason
 
 
-def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(tmp_path: Path) -> None:
+def test_cockpit_snapshot_all_status_fields_are_strict_and_frozen(
+    tmp_path: Path,
+) -> None:
     status_source = CockpitStatusSourceObservation(
         name="team_status",
         status=CockpitStatusSourceState.OBSERVED,
@@ -508,7 +520,7 @@ def _write_goal_mirror_state(
     team_worker_count: int | None,
     linked_team_names: tuple[str, ...] = (),
 ) -> Path:
-    state_path = repo_root / ".agent-remote" / "state" / "codex-goal.json"
+    state_path = repo_root / ".comx-agent" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
     payload = {
         "goal_id": "goal-cockpit-discovery",
@@ -519,7 +531,7 @@ def _write_goal_mirror_state(
         "team_worker_count": team_worker_count,
         "working_directory": str(repo_root),
         "codex_command": ["codex", "--enable", "goals"],
-        "session_locator": "agent-remote-goal-goal-cockpit-discovery",
+        "session_locator": "comx-agent-goal-goal-cockpit-discovery",
         "process_id": 1234,
         "launched_at": "2026-05-08T00:00:00+00:00",
         "handoff_state": "awaiting_ralph",
@@ -540,7 +552,7 @@ def test_discovery_treats_missing_goal_mirror_as_empty_evidence(
 ) -> None:
     result = discover_linked_team_names(tmp_path)
 
-    expected_source = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    expected_source = tmp_path / ".comx-agent" / "state" / "codex-goal.json"
 
     assert result.discovered_team_names == ()
     assert result.inspected_sources == (str(expected_source),)
@@ -581,7 +593,7 @@ def test_discovery_does_not_invent_team_names_from_goal_team_worker_count(
 def test_discovery_reports_malformed_goal_mirror_json_as_warning(
     tmp_path: Path,
 ) -> None:
-    state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    state_path = tmp_path / ".comx-agent" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
     state_path.write_text("{not-json", encoding="utf-8")
 
@@ -598,7 +610,7 @@ def test_discovery_reports_malformed_goal_mirror_json_as_warning(
 def test_discovery_reports_invalid_goal_mirror_object_as_warning(
     tmp_path: Path,
 ) -> None:
-    state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    state_path = tmp_path / ".comx-agent" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
     state_path.write_text(json.dumps({"goal_id": "goal-incomplete"}), encoding="utf-8")
 
@@ -641,7 +653,9 @@ def test_read_cockpit_snapshot_includes_github_pr_status_source(
         assert repo_root == str(tmp_path)
         return pull_request_status
 
-    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader, "read_runtime_status", fake_read_runtime_status
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "read_active_runtime_modes",
@@ -674,7 +688,7 @@ def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
     monkeypatch,
 ) -> None:
     _patch_snapshot_capability_sources(monkeypatch, tmp_path)
-    state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    state_path = tmp_path / ".comx-agent" / "state" / "codex-goal.json"
     state_path.parent.mkdir(parents=True)
     state_path.write_text("{not-json", encoding="utf-8")
 
@@ -684,7 +698,9 @@ def test_read_cockpit_snapshot_marks_malformed_goal_mirror_source_failed(
     async def fake_read_active_runtime_modes() -> ActiveRuntimeModes:
         return ActiveRuntimeModes(active_modes=())
 
-    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader, "read_runtime_status", fake_read_runtime_status
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "read_active_runtime_modes",
@@ -790,7 +806,9 @@ def test_cockpit_treats_active_team_evidence_as_mutation_blocker_and_top_action(
     assert snapshot.recommended_next_action == "inspect_team_evidence"
     assert snapshot.decision_reasons[0].category == "active_team_evidence"
     assert "alpha-team" in snapshot.decision_reasons[0].detail
-    assert snapshot.decision_reasons[0].recommended_next_action == "inspect_team_evidence"
+    assert (
+        snapshot.decision_reasons[0].recommended_next_action == "inspect_team_evidence"
+    )
     assert snapshot.decision_reasons[0].blocks_mutation is True
     assert snapshot.decision_reasons[0].source_names == ("team_evidence",)
 
@@ -817,7 +835,10 @@ def test_cockpit_links_active_team_decision_to_blocking_proof_layer(
                 name="worker_readiness",
                 state="failed",
                 summary="Worker readiness failed for startup issue workers: worker-3.",
-                source_names=("omx_team_api_read_worker_status", "omx_team_api_read_events"),
+                source_names=(
+                    "omx_team_api_read_worker_status",
+                    "omx_team_api_read_events",
+                ),
                 blocking=True,
             ),
         ),
@@ -844,7 +865,6 @@ def test_cockpit_links_active_team_decision_to_blocking_proof_layer(
     )
 
 
-
 def test_cockpit_team_proof_layers_keep_worker_startup_timeout_in_readiness() -> None:
     team_observation = CockpitTeamObservation(
         team_name="alpha-team",
@@ -869,7 +889,6 @@ def test_cockpit_team_proof_layers_keep_worker_startup_timeout_in_readiness() ->
     assert by_name["worker_readiness"].blocking is True
     assert "startup timeout evidence" in by_name["worker_readiness"].summary
     assert by_name["completion"].state != "passed"
-
 
 
 def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
@@ -906,11 +925,15 @@ def test_cockpit_prioritizes_status_runtime_evidence_over_active_team_reason(
     assert snapshot.safe_to_mutate is False
     assert snapshot.recommended_next_action == "observe_active_runtime"
     assert snapshot.decision_reasons[0].category == "active_runtime_evidence"
-    assert snapshot.decision_reasons[0].recommended_next_action == "observe_active_runtime"
+    assert (
+        snapshot.decision_reasons[0].recommended_next_action == "observe_active_runtime"
+    )
     assert snapshot.decision_reasons[0].blocks_mutation is True
     assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
     assert snapshot.decision_reasons[1].category == "active_team_evidence"
-    assert snapshot.decision_reasons[1].recommended_next_action == "inspect_team_evidence"
+    assert (
+        snapshot.decision_reasons[1].recommended_next_action == "inspect_team_evidence"
+    )
     assert snapshot.decision_reasons[1].blocks_mutation is True
 
 
@@ -945,7 +968,9 @@ def test_cockpit_treats_uncertain_runtime_status_as_mutation_blocker(
     assert snapshot.safe_to_mutate is False
     assert snapshot.recommended_next_action == "inspect_runtime_status"
     assert snapshot.decision_reasons[0].category == "runtime_status_uncertain"
-    assert snapshot.decision_reasons[0].recommended_next_action == "inspect_runtime_status"
+    assert (
+        snapshot.decision_reasons[0].recommended_next_action == "inspect_runtime_status"
+    )
     assert snapshot.decision_reasons[0].blocks_mutation is True
     assert snapshot.decision_reasons[0].source_names == ("runtime_status",)
 
@@ -1037,15 +1062,23 @@ def test_read_cockpit_snapshot_reads_team_surfaces_and_worker_statuses(
             updated_at="2026-05-08T00:00:00.000Z",
         )
 
-    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader, "read_runtime_status", fake_read_runtime_status
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
-    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_status", fake_read_team_status
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_list_tasks", fake_read_tasks
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_read_events", fake_read_events
+    )
     monkeypatch.setattr(
         team_observation_reader,
         "read_team_api_read_worker_status",
@@ -1094,7 +1127,9 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
         assert repo_root == str(tmp_path)
         return LinkedTeamDiscoveryResult(
             discovered_team_names=("discovered-team",),
-            inspected_sources=(str(tmp_path / ".agent-remote" / "state" / "codex-goal.json"),),
+            inspected_sources=(
+                str(tmp_path / ".comx-agent" / "state" / "codex-goal.json"),
+            ),
             warnings=(),
         )
 
@@ -1112,7 +1147,9 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
     async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
         return TeamApiReadEventsSnapshot(count=0, cursor="cursor-0", events=())
 
-    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader, "read_runtime_status", fake_read_runtime_status
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "read_active_runtime_modes",
@@ -1123,9 +1160,15 @@ def test_read_cockpit_snapshot_reads_discovered_team_without_explicit_name(
         "discover_linked_team_names",
         fake_discover_linked_team_names,
     )
-    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_status", fake_read_team_status
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_list_tasks", fake_read_tasks
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_read_events", fake_read_events
+    )
 
     snapshot = asyncio.run(
         read_cockpit_snapshot(CockpitSnapshotRequest(repo_root=str(tmp_path)))
@@ -1149,6 +1192,7 @@ def test_read_cockpit_snapshot_exposes_team_evidence_status_source(
     monkeypatch,
 ) -> None:
     _patch_snapshot_capability_sources(monkeypatch, tmp_path)
+
     async def fake_read_runtime_status() -> RuntimeStatus:
         return _idle_runtime_status()
 
@@ -1168,15 +1212,23 @@ def test_read_cockpit_snapshot_exposes_team_evidence_status_source(
     async def fake_read_events(request) -> TeamApiReadEventsSnapshot:
         return TeamApiReadEventsSnapshot(count=0, cursor="cursor-0", events=())
 
-    monkeypatch.setattr(snapshot_reader, "read_runtime_status", fake_read_runtime_status)
+    monkeypatch.setattr(
+        snapshot_reader, "read_runtime_status", fake_read_runtime_status
+    )
     monkeypatch.setattr(
         snapshot_reader,
         "read_active_runtime_modes",
         fake_read_active_runtime_modes,
     )
-    monkeypatch.setattr(team_observation_reader, "read_team_status", fake_read_team_status)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_list_tasks", fake_read_tasks)
-    monkeypatch.setattr(team_observation_reader, "read_team_api_read_events", fake_read_events)
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_status", fake_read_team_status
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_list_tasks", fake_read_tasks
+    )
+    monkeypatch.setattr(
+        team_observation_reader, "read_team_api_read_events", fake_read_events
+    )
 
     snapshot = asyncio.run(
         read_cockpit_snapshot(

@@ -8,6 +8,7 @@ from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
 from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
     TeamAdminAggregationReport,
 )
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 
 def _read_json_model_artifact[ModelT: BaseModel](
@@ -59,7 +60,9 @@ def read_team_admin_aggregation_report_artifact(
     return report
 
 
-def read_ralph_post_team_review_artifact(review_path: Path) -> RalphPostTeamReviewResult:
+def read_ralph_post_team_review_artifact(
+    review_path: Path,
+) -> RalphPostTeamReviewResult:
     """Reads a strict Ralph post-Team review result from a JSON file.
 
     Args:
@@ -88,11 +91,6 @@ def write_ralph_post_team_review_artifact(
     Returns:
         Path: Path written by the artifact writer.
     """
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_payload: bytes = orjson.dumps(
-        review_result.model_dump(mode="json"),
-        option=orjson.OPT_INDENT_2,
-    )
-    output_path.write_bytes(output_payload)
+    json_file_stores.for_path(output_path).write_model(review_result)
     written_path: Path = output_path
     return written_path

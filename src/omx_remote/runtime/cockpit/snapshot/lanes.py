@@ -51,6 +51,7 @@ def _build_lane_snapshots(
     )
     return lanes
 
+
 def _build_goal_only_lane(
     repo_root: str,
     goal_mirror_state: CodexGoalMirrorState | None,
@@ -64,7 +65,7 @@ def _build_goal_only_lane(
     Returns:
         CockpitLaneSnapshot: Goal-only lane summary.
     """
-    evidence_path: str = f"{repo_root}/.agent-remote/state/codex-goal.json"
+    evidence_path: str = f"{repo_root}/.comx-agent/state/codex-goal.json"
     if goal_mirror_state is None:
         lane = CockpitLaneSnapshot(
             name=CockpitLaneName.GOAL_ONLY,
@@ -88,6 +89,7 @@ def _build_goal_only_lane(
     )
     return lane
 
+
 def _build_goal_ralph_lane(
     repo_root: str,
     goal_mirror_state: CodexGoalMirrorState | None,
@@ -101,8 +103,11 @@ def _build_goal_ralph_lane(
     Returns:
         CockpitLaneSnapshot: Goal -> Ralph lane summary.
     """
-    evidence_path: str = f"{repo_root}/.agent-remote/state/codex-goal.json"
-    if goal_mirror_state is None or goal_mirror_state.execution_shape == CodexGoalExecutionShape.GOAL_ONLY:
+    evidence_path: str = f"{repo_root}/.comx-agent/state/codex-goal.json"
+    if (
+        goal_mirror_state is None
+        or goal_mirror_state.execution_shape == CodexGoalExecutionShape.GOAL_ONLY
+    ):
         lane = CockpitLaneSnapshot(
             name=CockpitLaneName.GOAL_RALPH,
             state=CockpitLaneState.MISSING,
@@ -118,9 +123,12 @@ def _build_goal_ralph_lane(
         state=state,
         summary=f"Goal handoff state is {goal_mirror_state.handoff_state}.",
         evidence_paths=(evidence_path,),
-        recommended_next_action="prepare_ralph" if state == CockpitLaneState.AWAITING_RALPH else "observe_ralph",
+        recommended_next_action="prepare_ralph"
+        if state == CockpitLaneState.AWAITING_RALPH
+        else "observe_ralph",
     )
     return lane
+
 
 def _build_goal_ralph_teams_lane(
     repo_root: str,
@@ -135,7 +143,7 @@ def _build_goal_ralph_teams_lane(
     Returns:
         CockpitLaneSnapshot: Goal -> Ralph -> Team(s) lane summary.
     """
-    evidence_path: str = f"{repo_root}/.agent-remote/state/codex-goal.json"
+    evidence_path: str = f"{repo_root}/.comx-agent/state/codex-goal.json"
     if goal_mirror_state is None or goal_mirror_state.team_worker_count is None:
         lane = CockpitLaneSnapshot(
             name=CockpitLaneName.GOAL_RALPH_TEAMS,
@@ -155,9 +163,12 @@ def _build_goal_ralph_teams_lane(
             f"{goal_mirror_state.team_worker_count} workers."
         ),
         evidence_paths=(evidence_path,),
-        recommended_next_action="prepare_ralph" if state == CockpitLaneState.AWAITING_RALPH else "inspect_team_evidence",
+        recommended_next_action="prepare_ralph"
+        if state == CockpitLaneState.AWAITING_RALPH
+        else "inspect_team_evidence",
     )
     return lane
+
 
 def _build_ultrawork_lane(
     ultrawork_state_classification: UltraworkStateClassification,
@@ -178,9 +189,12 @@ def _build_ultrawork_lane(
         state=state,
         summary=f"Ultrawork state is {ultrawork_state_classification}.",
         warnings=ultrawork_warnings,
-        recommended_next_action="launch_ultrawork" if state == CockpitLaneState.CLEAN else "inspect_ultrawork_state",
+        recommended_next_action="launch_ultrawork"
+        if state == CockpitLaneState.CLEAN
+        else "inspect_ultrawork_state",
     )
     return lane
+
 
 def _build_ultragoal_lane() -> CockpitLaneSnapshot:
     """Build the native UltraGoal lane summary.
@@ -195,6 +209,7 @@ def _build_ultragoal_lane() -> CockpitLaneSnapshot:
         recommended_next_action="inspect_ultragoal_status",
     )
     return lane
+
 
 def _build_ralph_team_lane(
     team_names: tuple[str, ...],
@@ -240,6 +255,7 @@ def _build_ralph_team_lane(
     )
     return lane
 
+
 def _derive_ralph_team_lane_state(
     team_observations: tuple[CockpitTeamObservation, ...],
 ) -> CockpitLaneState:
@@ -256,7 +272,9 @@ def _derive_ralph_team_lane_state(
         active_state: CockpitLaneState = CockpitLaneState.ACTIVE
         return active_state
 
-    all_missing: bool = all(observation.status == "missing" for observation in team_observations)
+    all_missing: bool = all(
+        observation.status == "missing" for observation in team_observations
+    )
     if all_missing:
         missing_state: CockpitLaneState = CockpitLaneState.MISSING
         return missing_state
@@ -264,7 +282,10 @@ def _derive_ralph_team_lane_state(
     unknown_state: CockpitLaneState = CockpitLaneState.UNKNOWN
     return unknown_state
 
-def _map_goal_tracking_state(tracking_state: CodexGoalTrackingState) -> CockpitLaneState:
+
+def _map_goal_tracking_state(
+    tracking_state: CodexGoalTrackingState,
+) -> CockpitLaneState:
     """Map native Goal tracking state into cockpit lane state.
 
     Args:
@@ -273,7 +294,10 @@ def _map_goal_tracking_state(tracking_state: CodexGoalTrackingState) -> CockpitL
     Returns:
         CockpitLaneState: Cockpit state marker.
     """
-    if tracking_state in (CodexGoalTrackingState.ACTIVE, CodexGoalTrackingState.STARTING):
+    if tracking_state in (
+        CodexGoalTrackingState.ACTIVE,
+        CodexGoalTrackingState.STARTING,
+    ):
         active_state: CockpitLaneState = CockpitLaneState.ACTIVE
         return active_state
     if tracking_state == CodexGoalTrackingState.ENDED:
@@ -282,6 +306,7 @@ def _map_goal_tracking_state(tracking_state: CodexGoalTrackingState) -> CockpitL
 
     unknown_state: CockpitLaneState = CockpitLaneState.UNKNOWN
     return unknown_state
+
 
 def _map_goal_handoff_state(handoff_state: CodexGoalHandoffState) -> CockpitLaneState:
     """Map Goal handoff state into cockpit lane state.
@@ -304,6 +329,7 @@ def _map_goal_handoff_state(handoff_state: CodexGoalHandoffState) -> CockpitLane
 
     unknown_state: CockpitLaneState = CockpitLaneState.UNKNOWN
     return unknown_state
+
 
 def _map_ultrawork_state(
     ultrawork_state_classification: UltraworkStateClassification,

@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 
 from omx_remote.cli import app
 from omx_remote.cli_launcher import next_cli
-from omx_remote.schemas.next.next_action_schemas import NextActionResult
+from omx_remote.schemas.next_action_schemas import NextActionResult
 
 
 def test_next_cli_outputs_read_only_json(monkeypatch, tmp_path: Path) -> None:
@@ -22,7 +22,7 @@ def test_next_cli_outputs_read_only_json(monkeypatch, tmp_path: Path) -> None:
             source_names=("runtime_status", "route_policy"),
             recommended_commands=(
                 (
-                    "agent-remote cockpit snapshot "
+                    "comx-agent cockpit snapshot "
                     f"--cwd {quote_shell_token(str(tmp_path.resolve()))} --json"
                 ),
             ),
@@ -52,7 +52,9 @@ def test_next_cli_outputs_read_only_json(monkeypatch, tmp_path: Path) -> None:
     assert '"safe_to_mutate": true' in result.stdout
 
 
-def test_next_cli_human_output_does_not_execute_mutation(monkeypatch, tmp_path: Path) -> None:
+def test_next_cli_human_output_does_not_execute_mutation(
+    monkeypatch, tmp_path: Path
+) -> None:
     async def fake_read_next_action(request):
         assert request.repo_root == str(tmp_path.resolve())
         return NextActionResult(
@@ -64,7 +66,7 @@ def test_next_cli_human_output_does_not_execute_mutation(monkeypatch, tmp_path: 
             source_names=("runtime_status",),
             recommended_commands=(
                 (
-                    "agent-remote cockpit snapshot "
+                    "comx-agent cockpit snapshot "
                     f"--cwd {quote_shell_token(str(tmp_path.resolve()))} --json"
                 ),
             ),
@@ -79,4 +81,4 @@ def test_next_cli_human_output_does_not_execute_mutation(monkeypatch, tmp_path: 
 
     assert result.exit_code == 0
     assert "recommended_action: observe" in result.stdout
-    assert "agent-remote cockpit snapshot" in result.stdout
+    assert "comx-agent cockpit snapshot" in result.stdout

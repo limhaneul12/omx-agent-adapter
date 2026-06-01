@@ -15,7 +15,7 @@ from omx_remote.schemas.agents.agent_config_schemas import (
 
 
 def test_minimal_enabled_codex_agent_parses(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents.architect]
@@ -50,7 +50,7 @@ persona = "Design typed boundaries."
 
 
 def test_disabled_agent_is_valid_but_not_enabled(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents.reviewer]
@@ -71,7 +71,7 @@ persona = "Review diffs."
 
 
 def test_unknown_agent_key_fails_validation(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents.architect]
@@ -90,7 +90,7 @@ unexpected = true
 
 
 def test_missing_persona_and_role_errors_are_readable(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents.architect]
@@ -110,7 +110,7 @@ effort = "high"
 
 
 def test_provider_enum_rejects_unsupported_value(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents.architect]
@@ -128,7 +128,7 @@ persona = "Design typed boundaries."
 
 
 def test_agent_id_rejects_path_traversal_segments(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text(
         """
 [agents."../escape"]
@@ -150,12 +150,12 @@ def test_missing_config_returns_empty_config_with_warning(tmp_path: Path) -> Non
 
     assert result.agents == ()
     assert result.warnings == (
-        f"No agent config found at {tmp_path / '.agent-remote.toml'}.",
+        f"No agent config found at {tmp_path / '.comx-agent.toml'}.",
     )
 
 
 def test_malformed_toml_raises_config_load_error(tmp_path: Path) -> None:
-    config_path = tmp_path / ".agent-remote.toml"
+    config_path = tmp_path / ".comx-agent.toml"
     config_path.write_text("[agents.architect\n")
 
     with pytest.raises(AgentConfigLoadError, match="malformed TOML"):

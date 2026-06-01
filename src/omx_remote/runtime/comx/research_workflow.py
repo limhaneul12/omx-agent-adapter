@@ -3,12 +3,11 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
-import orjson
-
 from omx_remote.schemas.comx.research_workflow_schemas import (
     ComxResearchSource,
     ComxResearchWorkflowPlan,
 )
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 RESEARCH_ARTIFACT_ROOT = ".comx-agent/research"
 SLUG_PATTERN = re.compile(r"[^a-z0-9]+")
@@ -134,7 +133,5 @@ def create_research_workflow_plan(
         ),
     )
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    artifact_path.write_bytes(
-        orjson.dumps(plan.model_dump(mode="json"), option=orjson.OPT_INDENT_2)
-    )
+    json_file_stores.for_path(artifact_path).write_model(plan)
     return plan

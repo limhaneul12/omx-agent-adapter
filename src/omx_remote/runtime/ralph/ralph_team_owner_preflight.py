@@ -1,22 +1,29 @@
 from __future__ import annotations
 
-import os
 import re
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
 
-AGENT_REMOTE_OMX_DIST_ROOT_ENV = "AGENT_REMOTE_OMX_DIST_ROOT"
-_OMX_CLI_PATH_PATTERN = re.compile(r"""["'](?P<cli_path>[^"']*?/dist/cli/[^"']+\.js)["']""")
+from omx_remote.runtime.ralph.ralph_owner_preflight_settings import (
+    RalphOwnerPreflightSettings,
+)
+
+COMX_AGENT_OMX_DIST_ROOT_ENV = "COMX_AGENT_OMX_DIST_ROOT"
+_OMX_CLI_PATH_PATTERN = re.compile(
+    r"""["'](?P<cli_path>[^"']*?/dist/cli/[^"']+\.js)["']"""
+)
 TEAM_DAG_OWNER_PRESERVATION_FAILURE = (
     "Ralph Team live launch is blocked: installed OMX does not support preserving "
     "Team DAG node.owner assignments, so multi-worker tasks may collapse to worker-1. "
-    "Use `agent-remote ralph launch-team --plan-only` to write and inspect the handoff "
+    "Use `comx-agent ralph launch-team --plan-only` to write and inspect the handoff "
     "artifacts, then upgrade OMX to a version that advertises owner-preserving DAG support."
 )
 
 
-def require_ralph_team_live_launch_owner_support(omx_dist_root: Path | None = None) -> None:
+def require_ralph_team_live_launch_owner_support(
+    omx_dist_root: Path | None = None,
+) -> None:
     """Blocks live Ralph Team launch when installed OMX cannot preserve DAG owners.
 
     Args:
@@ -34,8 +41,8 @@ def require_ralph_team_live_launch_owner_support(omx_dist_root: Path | None = No
             )
         )
 
-    owner_preservation_supported, missing_markers = _omx_dist_supports_team_dag_owner_preservation(
-        resolved_omx_dist_root
+    owner_preservation_supported, missing_markers = (
+        _omx_dist_supports_team_dag_owner_preservation(resolved_omx_dist_root)
     )
     if not owner_preservation_supported:
         raise ValueError(
@@ -59,26 +66,29 @@ def _resolve_omx_dist_root(omx_dist_root: Path | None) -> tuple[Path | None, str
     if omx_dist_root is not None:
         if omx_dist_root.exists():
             explicit_root: Path | None = omx_dist_root
-            return explicit_root, f"resolved from explicit `omx_dist_root` argument: {explicit_root}"
+            return (
+                explicit_root,
+                f"resolved from explicit `omx_dist_root` argument: {explicit_root}",
+            )
         missing_explicit_root: Path | None = None
         return (
             missing_explicit_root,
             f"explicit `omx_dist_root` argument was provided but missing: {omx_dist_root}",
         )
 
-    env_root_text: str | None = os.environ.get(AGENT_REMOTE_OMX_DIST_ROOT_ENV)
-    if env_root_text is not None:
-        env_root = Path(env_root_text)
+    preflight_settings = RalphOwnerPreflightSettings()
+    env_root: Path | None = preflight_settings.omx_dist_root
+    if env_root is not None:
         if env_root.exists():
             resolved_env_root: Path | None = env_root
             return (
                 resolved_env_root,
-                f"resolved from {AGENT_REMOTE_OMX_DIST_ROOT_ENV}={resolved_env_root}",
+                f"resolved from {COMX_AGENT_OMX_DIST_ROOT_ENV}={resolved_env_root}",
             )
         missing_env_root: Path | None = None
         return (
             missing_env_root,
-            f"{AGENT_REMOTE_OMX_DIST_ROOT_ENV} was set but path did not exist: {env_root_text}",
+            f"{COMX_AGENT_OMX_DIST_ROOT_ENV} was set but path did not exist: {env_root}",
         )
 
     omx_executable_text = shutil.which("omx")
@@ -95,7 +105,10 @@ def _resolve_omx_dist_root(omx_dist_root: Path | None) -> tuple[Path | None, str
             f"{resolved_omx_executable}"
         )
 
-    return None, "could not resolve OMX dist root from explicit override, env var, or PATH"
+    return (
+        None,
+        "could not resolve OMX dist root from explicit override, env var, or PATH",
+    )
 
 
 def _omx_dist_supports_team_dag_owner_preservation(
@@ -120,12 +133,16 @@ def _omx_dist_supports_team_dag_owner_preservation(
     decomposition_marker: str = "owner: node.owner"
     allocator_marker: str = "preserves explicit DAG owner"
 
-    type_contract_supports_owner: bool = _file_contains(dag_schema_type, type_contract_marker)
+    type_contract_supports_owner: bool = _file_contains(
+        dag_schema_type, type_contract_marker
+    )
     parser_preserves_owner: bool = _file_contains(dag_schema_runtime, parser_marker)
     decomposition_preserves_owner: bool = _file_contains(
         repo_aware_decomposition, decomposition_marker
     )
-    allocator_preserves_owner: bool = _file_contains(allocation_policy, allocator_marker) or _file_contains(
+    allocator_preserves_owner: bool = _file_contains(
+        allocation_policy, allocator_marker
+    ) or _file_contains(
         allocation_policy,
         "preserve explicit DAG owner",
     )
@@ -138,7 +155,9 @@ def _omx_dist_supports_team_dag_owner_preservation(
     )
     missing_markers: list[str] = []
     if not type_contract_supports_owner:
-        missing_markers.append(f"missing marker in `team/dag-schema.d.ts`: {type_contract_marker}")
+        missing_markers.append(
+            f"missing marker in `team/dag-schema.d.ts`: {type_contract_marker}"
+        )
     if not parser_preserves_owner:
         missing_markers.append(
             f"missing marker in `team/dag-schema.js`: {parser_marker}"
@@ -218,11 +237,15 @@ def _dist_root_from_omx_executable(omx_executable: Path) -> Path | None:
         Path | None: Resolved `.../dist` root, or None when inference fails.
     """
     resolved_executable: Path = _resolve_path(omx_executable)
-    direct_dist_root: Path | None = _extract_omx_dist_root_from_path(resolved_executable)
+    direct_dist_root: Path | None = _extract_omx_dist_root_from_path(
+        resolved_executable
+    )
     if direct_dist_root is not None:
         return direct_dist_root
 
-    launcher_dist_root: Path | None = _extract_omx_dist_root_from_launcher_script(resolved_executable)
+    launcher_dist_root: Path | None = _extract_omx_dist_root_from_launcher_script(
+        resolved_executable
+    )
     return launcher_dist_root
 
 

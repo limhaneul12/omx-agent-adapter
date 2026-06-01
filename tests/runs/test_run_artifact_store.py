@@ -3,10 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from omx_remote.runtime.commands.builtin_command_catalog import (
+from omx_remote.runtime.commands.catalog.builtin_command_catalog import (
     build_builtin_command_catalog,
 )
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
 from omx_remote.runtime.runs.run_artifact_store import (
@@ -39,9 +39,9 @@ def _repo_recipe(command_id: str, steps: tuple[CommandStep, ...]) -> CommandReci
 
 
 def test_build_run_id_sanitizes_command_id() -> None:
-    run_id = build_run_id("20260525T020000Z", "builtin:review-diff")
+    run_id = build_run_id("20260525T020000Z", "builtin:review-gate")
 
-    assert run_id == "20260525T020000Z-builtin-review-diff"
+    assert run_id == "20260525T020000Z-builtin-review-gate"
 
 
 def test_resolve_run_dir_rejects_path_traversal(tmp_path: Path) -> None:
@@ -50,7 +50,7 @@ def test_resolve_run_dir_rejects_path_traversal(tmp_path: Path) -> None:
 
 
 def test_write_and_read_dry_run_record(tmp_path: Path) -> None:
-    recipe = build_builtin_command_catalog().find("builtin:review-diff")
+    recipe = build_builtin_command_catalog().find("builtin:review-gate")
     assert recipe is not None
     plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
 
@@ -64,7 +64,7 @@ def test_write_and_read_dry_run_record(tmp_path: Path) -> None:
     listed_records = list_run_records(tmp_path)
     replay_plan = build_run_replay_plan(tmp_path, record.run_id)
 
-    assert record.run_id == "20260525T020000Z-review-diff"
+    assert record.run_id == "20260525T020000Z-review-gate"
     assert (run_dir / "run.json").exists()
     assert (run_dir / "plan.json").exists()
     assert (run_dir / "handoff.md").exists()
@@ -75,7 +75,7 @@ def test_write_and_read_dry_run_record(tmp_path: Path) -> None:
 
 
 def test_dry_run_record_collision_gets_unique_suffix(tmp_path: Path) -> None:
-    recipe = build_builtin_command_catalog().find("builtin:review-diff")
+    recipe = build_builtin_command_catalog().find("builtin:review-gate")
     assert recipe is not None
     plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
 
@@ -90,8 +90,8 @@ def test_dry_run_record_collision_gets_unique_suffix(tmp_path: Path) -> None:
         timestamp="20260525T020100Z",
     )
 
-    assert first.run_id == "20260525T020100Z-review-diff"
-    assert second.run_id == "20260525T020100Z-review-diff-02"
+    assert first.run_id == "20260525T020100Z-review-gate"
+    assert second.run_id == "20260525T020100Z-review-gate-02"
     assert resolve_run_dir(tmp_path, first.run_id).exists()
     assert resolve_run_dir(tmp_path, second.run_id).exists()
 

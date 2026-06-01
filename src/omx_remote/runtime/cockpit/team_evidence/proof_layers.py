@@ -4,19 +4,11 @@ from omx_remote.schemas.teamwork.proof_layer_schemas import (
     TeamProofLayerState,
     TeamProofLayerSummary,
 )
+from omx_remote.shared.omx_enums.teamwork_enums import (
+    COMPLETED_TASK_STATE_VALUES,
+    STARTUP_ISSUE_WORKER_STATE_VALUES,
+)
 from omx_remote.teamwork.team_proof_layers import normalize_proof_state_token
-
-STARTUP_ISSUE_WORKER_STATES: frozenset[str] = frozenset(
-    {
-        "ready_prompt_timeout",
-        "startup_prompt_timeout",
-        "startup_timeout",
-        "worker_startup_timeout",
-    }
-)
-COMPLETION_TEAM_STATUSES: frozenset[str] = frozenset(
-    {"complete", "completed", "done", "success", "succeeded"}
-)
 
 
 def build_cockpit_team_observation_proof_layers(
@@ -33,7 +25,7 @@ def build_cockpit_team_observation_proof_layers(
     worker_count: int = len(observation.worker_statuses)
     status_token: str = normalize_proof_state_token(observation.status)
     has_startup_issue: bool = any(
-        normalize_proof_state_token(worker.state) in STARTUP_ISSUE_WORKER_STATES
+        normalize_proof_state_token(worker.state) in STARTUP_ISSUE_WORKER_STATE_VALUES
         for worker in observation.worker_statuses
     )
 
@@ -58,11 +50,15 @@ def build_cockpit_team_observation_proof_layers(
     )
 
     readiness_state: TeamProofLayerState = TeamProofLayerState.UNKNOWN
-    readiness_summary: str = "Worker readiness has not been proven from cockpit evidence."
+    readiness_summary: str = (
+        "Worker readiness has not been proven from cockpit evidence."
+    )
     readiness_blocking: bool = False
     if has_startup_issue:
         readiness_state = TeamProofLayerState.FAILED
-        readiness_summary = "Worker readiness failed because startup timeout evidence is present."
+        readiness_summary = (
+            "Worker readiness failed because startup timeout evidence is present."
+        )
         readiness_blocking = True
     elif worker_count:
         readiness_state = TeamProofLayerState.PARTIAL
@@ -94,7 +90,7 @@ def build_cockpit_team_observation_proof_layers(
 
     completion_state: TeamProofLayerState = TeamProofLayerState.MISSING
     completion_blocking: bool = status_token == "active"
-    if status_token in COMPLETION_TEAM_STATUSES:
+    if status_token in COMPLETED_TASK_STATE_VALUES:
         completion_state = TeamProofLayerState.PASSED
         completion_blocking = False
     elif observation.task_count or observation.event_count:
@@ -103,7 +99,11 @@ def build_cockpit_team_observation_proof_layers(
         name=TeamProofLayerName.COMPLETION,
         state=completion_state,
         summary=f"Team status is {observation.status}; merge readiness is not inferred by cockpit.",
-        source_names=("omx_team_status", "omx_team_api_list_tasks", "omx_team_api_read_events"),
+        source_names=(
+            "omx_team_status",
+            "omx_team_api_list_tasks",
+            "omx_team_api_read_events",
+        ),
         blocking=completion_blocking,
     )
 

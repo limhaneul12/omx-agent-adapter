@@ -1,7 +1,8 @@
+from omx_remote.runtime.prompt_assets import render_prompt_model_asset
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalReviewPolicy
 from omx_remote.schemas.codex_goal.supervisor_schemas import (
+    GoalPrdAuthoringPromptContext,
     GoalPrdAuthoringPromptRequest,
-    GoalToRalphHandoffPromptRequest,
 )
 
 
@@ -36,7 +37,9 @@ class GoalPrdAuthoringPromptRenderer:
             str: Markdown bullet lines for handoff constraints.
         """
         if not self.request.constraints:
-            empty_constraint_lines: str = "- No additional handoff constraints supplied."
+            empty_constraint_lines: str = (
+                "- No additional handoff constraints supplied."
+            )
             return empty_constraint_lines
 
         constraint_lines: str = self._format_bullets(self.request.constraints)
@@ -54,9 +57,7 @@ class GoalPrdAuthoringPromptRenderer:
             )
             return review_instruction
 
-        review_instruction = (
-            "After producing the PRD JSON artifact, report whether it is ready for `agent-remote prd validate`."
-        )
+        review_instruction = "After producing the PRD JSON artifact, report whether it is ready for `comx-agent prd validate`."
         return review_instruction
 
     def _format_team_worker_count(self) -> str:
@@ -86,63 +87,21 @@ class GoalPrdAuthoringPromptRenderer:
         review_instruction: str = self._format_review_instruction()
         team_worker_count_line: str = self._format_team_worker_count()
 
-        prompt: str = f"""You are the Goal-scoped PRD authoring agent for this repo.
-
-Goal ID: {self.request.goal_id}
-
-Goal objective:
-{self.request.goal_objective_text}
-
-Requested slice:
-{self.request.requested_slice}
-
-Source of truth:
-{source_path_lines}
-
-Constraints:
-{constraint_lines}
-
-Verification expectations:
-{verification_lines}
-
-Task:
-Produce the PRD JSON that Ralph will consume. Return ONLY JSON matching RalphPrdArtifact. Do not wrap the JSON in markdown.
-
-The RalphPrdArtifact must include:
-- objective
-- scope
-- constraints
-- execution_plan
-- verification_expectations
-- requires_team_fanout
-- team_worker_count when Team fanout is required
-- team_worker_assignments when Team fanout is required
-- team_admin when Team fanout is required, including aggregation_policy, merge_policy, completion_policy, approval triggers, and final_report_required
-- continuation_policy
-
-Pipeline policy:
-- Goal owns objective/context/constraints; this pass turns that Goal into a typed PRD artifact.
-- Ralph consumes an approved PRD and drives execution; Do not act as Ralph.
-- Do not implement code from this PRD authoring prompt.
-- Do not launch Ralph from this PRD authoring prompt.
-- Do not launch Team from this PRD authoring prompt.
-- After generating JSON, validate/capture it with `agent-remote prd validate --input-path <generated.json> --output-path .omx/prd.json`.
-- {team_worker_count_line}
-- {review_instruction}
-""".strip()
+        prompt_context = GoalPrdAuthoringPromptContext(
+            goal_id=self.request.goal_id,
+            goal_objective_text=self.request.goal_objective_text,
+            requested_slice=self.request.requested_slice,
+            source_path_lines=source_path_lines,
+            constraint_lines=constraint_lines,
+            verification_lines=verification_lines,
+            team_worker_count_line=team_worker_count_line,
+            review_instruction=review_instruction,
+        )
+        prompt: str = render_prompt_model_asset(
+            parts=("goal", "prd-authoring.md"),
+            replacements=prompt_context,
+        )
         return prompt
-
-
-class GoalToRalphHandoffPromptRenderer(GoalPrdAuthoringPromptRenderer):
-    """Legacy renderer name for Goal-scoped PRD authoring prompts."""
-
-    def __init__(self, request: GoalToRalphHandoffPromptRequest) -> None:
-        """Initializes the legacy renderer name for one PRD authoring request.
-
-        Args:
-            request [GoalToRalphHandoffPromptRequest]: Legacy request name.
-        """
-        super().__init__(request)
 
 
 def build_goal_prd_authoring_prompt(
@@ -158,19 +117,4 @@ def build_goal_prd_authoring_prompt(
     """
     renderer = GoalPrdAuthoringPromptRenderer(request)
     prompt: str = renderer.render()
-    return prompt
-
-
-def build_goal_to_ralph_handoff_prompt(
-    request: GoalToRalphHandoffPromptRequest,
-) -> str:
-    """Render the legacy-named Goal-scoped PRD authoring prompt.
-
-    Args:
-        request [GoalToRalphHandoffPromptRequest]: Legacy request name.
-
-    Returns:
-        str: Prompt text a Goal-scoped authoring agent can use to produce PRD JSON.
-    """
-    prompt: str = build_goal_prd_authoring_prompt(request)
     return prompt

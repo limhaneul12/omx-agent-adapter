@@ -9,50 +9,19 @@ from omx_remote.runtime.mcp.omx_agent_command_tools import (
     safe_tool_error_payload,
     show_command_tool_payload,
 )
+from omx_remote.runtime.mcp.omx_agent_company_run_server_tools import (
+    register_company_run_tools,
+)
+from omx_remote.runtime.mcp.omx_agent_mcp_call_context import (
+    effective_config_path,
+    effective_cwd,
+)
 from omx_remote.shared.omx_enums.mcp_enums import McpLogLevel, mcp_log_level_value
 
 SERVER_INSTRUCTIONS = """omx-agent exposes omx-agent-adapter command recipes as MCP tools.
-All workflow command tools return typed dry-run plans first; they do not directly execute native Codex or OMX commands.
-Review blocked_reasons, risk, manual_commands, and next_actions before any handoff."""
-
-
-def _call_cwd(default_cwd: Path, cwd: str | None) -> str:
-    """Resolve per-call cwd override text.
-
-    Args:
-        default_cwd [Path]: Server default working directory.
-        cwd [str | None]: Per-tool override.
-
-    Returns:
-        str: Effective cwd text.
-    """
-    if cwd is None:
-        cwd_text = str(default_cwd)
-        return cwd_text
-    cwd_text = cwd
-    return cwd_text
-
-
-def _call_config_path(
-    default_config_path: Path | None, config_path: str | None
-) -> str | None:
-    """Resolve per-call config override text.
-
-    Args:
-        default_config_path [Path | None]: Server default config path.
-        config_path [str | None]: Per-tool override.
-
-    Returns:
-        str | None: Effective config path text.
-    """
-    if config_path is not None:
-        config_text: str | None = config_path
-        return config_text
-    if default_config_path is None:
-        missing_config: None = None
-        return missing_config
-    config_text = str(default_config_path)
-    return config_text
+Preview tools return typed dry-run plans and do not execute native Codex or OMX commands.
+company_run_execute is the explicit actual execution tool for the real company-run engine.
+Review blocked_reasons, risk, manual_commands, next_actions, run_id, status, and artifact paths before any handoff."""
 
 
 def build_omx_agent_mcp_server(
@@ -98,15 +67,17 @@ def build_omx_agent_mcp_server(
         Returns:
             JsonObject: Command catalog payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
-        effective_config = _call_config_path(default_config_path, config_path)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
+        call_config = effective_config_path(
+            default_config_path=default_config_path, config_path=config_path
+        )
         try:
             payload = list_command_tools_payload(
-                cwd=effective_cwd,
-                config_path=effective_config,
+                cwd=call_cwd,
+                config_path=call_config,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
 
     @server.tool(
@@ -128,16 +99,18 @@ def build_omx_agent_mcp_server(
         Returns:
             JsonObject: Command recipe payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
-        effective_config = _call_config_path(default_config_path, config_path)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
+        call_config = effective_config_path(
+            default_config_path=default_config_path, config_path=config_path
+        )
         try:
             payload = show_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=effective_config,
+                cwd=call_cwd,
+                config_path=call_config,
                 command_id=command_id,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
 
     @server.tool(
@@ -176,12 +149,14 @@ def build_omx_agent_mcp_server(
         Returns:
             JsonObject: Dry-run command plan payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
-        effective_config = _call_config_path(default_config_path, config_path)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
+        call_config = effective_config_path(
+            default_config_path=default_config_path, config_path=config_path
+        )
         try:
             payload = preview_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=effective_config,
+                cwd=call_cwd,
+                config_path=call_config,
                 command_id=command_id,
                 objective=objective,
                 topic=topic,
@@ -192,20 +167,20 @@ def build_omx_agent_mcp_server(
                 record_run=record_run,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
 
     @server.tool(
-        name="codex_deep_research",
-        description="Preview the custom codex-deep-research workflow with an objective.",
+        name="research_brief",
+        description="Preview the canonical research-brief workflow with an objective.",
     )
-    def codex_deep_research(
+    def research_brief(
         objective: str,
         notes: str | None = None,
         record_run: bool = False,
         cwd: str | None = None,
     ) -> JsonObject:
-        """Preview codex-deep-research.
+        """Preview research-brief.
 
         Args:
             objective [str]: Research objective.
@@ -216,72 +191,36 @@ def build_omx_agent_mcp_server(
         Returns:
             JsonObject: Dry-run command plan payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
         try:
             payload = preview_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=str(default_config_path) if default_config_path else None,
-                command_id="builtin:codex-deep-research",
+                cwd=call_cwd,
+                config_path=str(default_config_path)
+                if default_config_path is not None
+                else None,
+                command_id="builtin:research-brief",
                 objective=objective,
                 notes=notes,
                 record_run=record_run,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
 
     @server.tool(
-        name="omx_autoresearch_loop",
-        description="Preview the custom omx-autoresearch-loop workflow with topic/rubric context.",
+        name="idea_to_prd",
+        description="Preview the canonical idea-to-prd planning workflow.",
     )
-    def omx_autoresearch_loop(
-        topic: str,
-        rubric: str | None = None,
-        slug: str | None = None,
-        record_run: bool = False,
-        cwd: str | None = None,
-    ) -> JsonObject:
-        """Preview omx-autoresearch-loop.
-
-        Args:
-            topic [str]: Durable research topic.
-            rubric [str | None]: Critic rubric.
-            slug [str | None]: Durable research slug.
-            record_run [bool]: Whether to record the dry-run.
-            cwd [str | None]: Optional repo root override.
-
-        Returns:
-            JsonObject: Dry-run command plan payload.
-        """
-        effective_cwd = _call_cwd(default_cwd, cwd)
-        try:
-            payload = preview_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=str(default_config_path) if default_config_path else None,
-                command_id="builtin:omx-autoresearch-loop",
-                topic=topic,
-                rubric=rubric,
-                slug=slug,
-                record_run=record_run,
-            )
-        except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
-        return payload
-
-    @server.tool(
-        name="research_interview_prd",
-        description="Preview the custom research-interview-prd workflow from an ambiguous objective.",
-    )
-    def research_interview_prd(
+    def idea_to_prd(
         objective: str,
         notes: str | None = None,
         record_run: bool = False,
         cwd: str | None = None,
     ) -> JsonObject:
-        """Preview research-interview-prd.
+        """Preview idea-to-prd.
 
         Args:
-            objective [str]: Product/research objective.
+            objective [str]: Product or feature objective.
             notes [str | None]: Additional constraints or context.
             record_run [bool]: Whether to record the dry-run.
             cwd [str | None]: Optional repo root override.
@@ -289,51 +228,61 @@ def build_omx_agent_mcp_server(
         Returns:
             JsonObject: Dry-run command plan payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
         try:
             payload = preview_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=str(default_config_path) if default_config_path else None,
-                command_id="builtin:research-interview-prd",
+                cwd=call_cwd,
+                config_path=str(default_config_path)
+                if default_config_path is not None
+                else None,
+                command_id="builtin:idea-to-prd",
                 objective=objective,
                 notes=notes,
                 record_run=record_run,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
 
     @server.tool(
-        name="verify_handoff_plus",
-        description="Preview the custom verify-handoff-plus final verification workflow.",
+        name="release_readiness",
+        description="Preview the canonical release-readiness workflow.",
     )
-    def verify_handoff_plus(
+    def release_readiness(
         notes: str | None = None,
         record_run: bool = False,
         cwd: str | None = None,
     ) -> JsonObject:
-        """Preview verify-handoff-plus.
+        """Preview release-readiness.
 
         Args:
-            notes [str | None]: Optional review context.
+            notes [str | None]: Optional release context.
             record_run [bool]: Whether to record the dry-run.
             cwd [str | None]: Optional repo root override.
 
         Returns:
             JsonObject: Dry-run command plan payload.
         """
-        effective_cwd = _call_cwd(default_cwd, cwd)
+        call_cwd = effective_cwd(default_cwd=default_cwd, cwd=cwd)
         try:
             payload = preview_command_tool_payload(
-                cwd=effective_cwd,
-                config_path=str(default_config_path) if default_config_path else None,
-                command_id="builtin:verify-handoff-plus",
+                cwd=call_cwd,
+                config_path=str(default_config_path)
+                if default_config_path is not None
+                else None,
+                command_id="builtin:release-readiness",
                 notes=notes,
                 record_run=record_run,
             )
         except Exception as error:  # dynamic MCP tool boundary
-            payload = safe_tool_error_payload(error, cwd=effective_cwd)
+            payload = safe_tool_error_payload(error, cwd=call_cwd)
         return payload
+
+    register_company_run_tools(
+        server=server,
+        default_cwd=default_cwd,
+        default_config_path=default_config_path,
+    )
 
     return server
 

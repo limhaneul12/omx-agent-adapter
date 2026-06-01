@@ -1,10 +1,9 @@
 from pathlib import Path
 
-import orjson
-
 from omx_remote.runtime.ralph.ralph_prd import read_ralph_prd_artifact
-from omx_remote.schemas.prd.capture_schemas import PrdValidationCaptureResult
+from omx_remote.schemas.prd_capture_schemas import PrdValidationCaptureResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 
 def _extract_assignment_worker_ids(
@@ -45,12 +44,7 @@ def validate_and_capture_prd_artifact(
     ralph_prd_artifact: RalphPrdArtifact = read_ralph_prd_artifact(input_path)
 
     if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_payload: bytes = orjson.dumps(
-            ralph_prd_artifact.model_dump(mode="json"),
-            option=orjson.OPT_INDENT_2,
-        )
-        output_path.write_bytes(output_payload)
+        json_file_stores.for_path(output_path).write_model(ralph_prd_artifact)
 
     result = PrdValidationCaptureResult(
         valid=True,

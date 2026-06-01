@@ -9,6 +9,7 @@ from omx_remote.schemas.comx.session_schemas import (
     ComxTuiSessionRecord,
     ComxTuiSessionStatus,
 )
+from omx_remote.shared.utils.json_file_store import json_file_stores
 from omx_remote.shared.utils.runtime_identity import utcnow_text
 from omx_remote.shared.utils.session_identifiers import validate_session_identifier
 
@@ -94,10 +95,7 @@ def _write_tui_session(cwd: str | Path, session: ComxTuiSessionRecord) -> Path:
         Path: Written session path.
     """
     session_path: Path = resolve_session_path(cwd, session.session_id)
-    session_path.parent.mkdir(parents=True, exist_ok=True)
-    session_path.write_bytes(
-        orjson.dumps(session.model_dump(mode="json"), option=orjson.OPT_INDENT_2)
-    )
+    json_file_stores.for_path(session_path).write_model(session)
     return session_path
 
 

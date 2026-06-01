@@ -54,9 +54,7 @@ def test_team_api_list_tasks_request_rejects_empty_team_name() -> None:
 
 
 def test_team_api_list_tasks_snapshot_accepts_empty_task_list() -> None:
-    result = TeamApiListTasksSnapshot.model_validate(
-        {"count": 0, "tasks": []}
-    )
+    result = TeamApiListTasksSnapshot.model_validate({"count": 0, "tasks": []})
 
     assert result.count == 0
     assert result.tasks == ()
@@ -264,7 +262,6 @@ def test_team_api_transition_task_status_request_rejects_empty_claim_token() -> 
         )
 
 
-
 def test_team_api_update_task_request_accepts_optional_metadata_fields() -> None:
     result = TeamApiUpdateTaskRequest.model_validate(
         {
@@ -283,11 +280,9 @@ def test_team_api_update_task_request_accepts_optional_metadata_fields() -> None
     assert result.requires_code_change is False
 
 
-
 def test_team_api_update_task_request_rejects_empty_task_id() -> None:
     with pytest.raises(ValidationError):
         TeamApiUpdateTaskRequest.model_validate({"team_name": "alpha", "task_id": ""})
-
 
 
 def test_team_api_claim_task_request_accepts_optional_expected_version() -> None:
@@ -306,7 +301,6 @@ def test_team_api_claim_task_request_accepts_optional_expected_version() -> None
     assert result.expected_version == 3
 
 
-
 def test_team_api_claim_task_request_rejects_negative_expected_version() -> None:
     with pytest.raises(ValidationError):
         TeamApiClaimTaskRequest.model_validate(
@@ -317,7 +311,6 @@ def test_team_api_claim_task_request_rejects_negative_expected_version() -> None
                 "expected_version": -1,
             }
         )
-
 
 
 def test_team_api_release_task_claim_request_accepts_required_fields() -> None:
@@ -336,7 +329,6 @@ def test_team_api_release_task_claim_request_accepts_required_fields() -> None:
     assert result.worker == "worker-1"
 
 
-
 def test_team_api_release_task_claim_request_rejects_empty_worker() -> None:
     with pytest.raises(ValidationError):
         TeamApiReleaseTaskClaimRequest.model_validate(
@@ -349,7 +341,6 @@ def test_team_api_release_task_claim_request_rejects_empty_worker() -> None:
         )
 
 
-
 def test_team_api_read_task_approval_request_accepts_required_fields() -> None:
     result = TeamApiReadTaskApprovalRequest.model_validate(
         {"team_name": "alpha", "task_id": "1"}
@@ -359,11 +350,11 @@ def test_team_api_read_task_approval_request_accepts_required_fields() -> None:
     assert result.task_id == "1"
 
 
-
 def test_team_api_read_task_approval_request_rejects_empty_task_id() -> None:
     with pytest.raises(ValidationError):
-        TeamApiReadTaskApprovalRequest.model_validate({"team_name": "alpha", "task_id": ""})
-
+        TeamApiReadTaskApprovalRequest.model_validate(
+            {"team_name": "alpha", "task_id": ""}
+        )
 
 
 def test_team_api_write_task_approval_request_accepts_required_fields() -> None:
@@ -386,7 +377,6 @@ def test_team_api_write_task_approval_request_accepts_required_fields() -> None:
     assert result.required is True
 
 
-
 def test_team_api_write_task_approval_request_rejects_empty_decision_reason() -> None:
     with pytest.raises(ValidationError):
         TeamApiWriteTaskApprovalRequest.model_validate(
@@ -398,7 +388,6 @@ def test_team_api_write_task_approval_request_rejects_empty_decision_reason() ->
                 "decision_reason": "",
             }
         )
-
 
 
 def test_team_api_mailbox_mark_delivered_request_accepts_required_fields() -> None:
@@ -415,7 +404,6 @@ def test_team_api_mailbox_mark_delivered_request_accepts_required_fields() -> No
     assert result.message_id == "message-1"
 
 
-
 def test_team_api_mailbox_mark_delivered_request_rejects_empty_message_id() -> None:
     with pytest.raises(ValidationError):
         TeamApiMailboxMarkDeliveredRequest.model_validate(
@@ -425,7 +413,6 @@ def test_team_api_mailbox_mark_delivered_request_rejects_empty_message_id() -> N
                 "message_id": "",
             }
         )
-
 
 
 def test_team_api_mailbox_mark_notified_request_accepts_required_fields() -> None:
@@ -442,7 +429,6 @@ def test_team_api_mailbox_mark_notified_request_accepts_required_fields() -> Non
     assert result.message_id == "message-1"
 
 
-
 def test_team_api_mailbox_mark_notified_request_rejects_empty_worker() -> None:
     with pytest.raises(ValidationError):
         TeamApiMailboxMarkNotifiedRequest.model_validate(
@@ -452,7 +438,6 @@ def test_team_api_mailbox_mark_notified_request_rejects_empty_worker() -> None:
                 "message_id": "message-1",
             }
         )
-
 
 
 def test_team_api_write_shutdown_request_accepts_required_fields() -> None:
@@ -469,7 +454,6 @@ def test_team_api_write_shutdown_request_accepts_required_fields() -> None:
     assert result.requested_by == "leader-fixed"
 
 
-
 def test_team_api_write_shutdown_request_rejects_empty_requested_by() -> None:
     with pytest.raises(ValidationError):
         TeamApiWriteShutdownRequest.model_validate(
@@ -479,7 +463,6 @@ def test_team_api_write_shutdown_request_rejects_empty_requested_by() -> None:
                 "requested_by": "",
             }
         )
-
 
 
 def test_team_api_read_shutdown_ack_request_accepts_optional_min_updated_at() -> None:
@@ -496,7 +479,6 @@ def test_team_api_read_shutdown_ack_request_accepts_optional_min_updated_at() ->
     assert result.min_updated_at == "2026-05-05T00:00:00Z"
 
 
-
 def test_team_api_read_shutdown_ack_request_rejects_empty_worker() -> None:
     with pytest.raises(ValidationError):
         TeamApiReadShutdownAckRequest.model_validate(
@@ -505,7 +487,6 @@ def test_team_api_read_shutdown_ack_request_rejects_empty_worker() -> None:
                 "worker": "",
             }
         )
-
 
 
 def test_team_api_cleanup_request_accepts_optional_flags() -> None:
@@ -522,11 +503,9 @@ def test_team_api_cleanup_request_accepts_optional_flags() -> None:
     assert result.confirm_issues is True
 
 
-
 def test_team_api_cleanup_request_rejects_empty_team_name() -> None:
     with pytest.raises(ValidationError):
         TeamApiCleanupRequest.model_validate({"team_name": ""})
-
 
 
 def test_team_api_orphan_cleanup_request_accepts_required_team_name() -> None:
@@ -535,11 +514,9 @@ def test_team_api_orphan_cleanup_request_accepts_required_team_name() -> None:
     assert result.team_name == "alpha"
 
 
-
 def test_team_api_orphan_cleanup_request_rejects_empty_team_name() -> None:
     with pytest.raises(ValidationError):
         TeamApiOrphanCleanupRequest.model_validate({"team_name": ""})
-
 
 
 def test_team_api_mailbox_list_request_accepts_required_fields() -> None:
@@ -553,9 +530,7 @@ def test_team_api_mailbox_list_request_accepts_required_fields() -> None:
 
 def test_team_api_mailbox_list_request_rejects_empty_worker() -> None:
     with pytest.raises(ValidationError):
-        TeamApiMailboxListRequest.model_validate(
-            {"team_name": "alpha", "worker": ""}
-        )
+        TeamApiMailboxListRequest.model_validate({"team_name": "alpha", "worker": ""})
 
 
 def test_team_api_read_worker_status_request_accepts_required_fields() -> None:
@@ -658,8 +633,9 @@ def test_team_api_read_events_snapshot_accepts_normalized_live_event_shape() -> 
     assert result.events[0].message_id == "message-1"
 
 
-
-def test_team_operator_dispatch_instruction_request_accepts_optional_worker_target() -> None:
+def test_team_operator_dispatch_instruction_request_accepts_optional_worker_target() -> (
+    None
+):
     result = TeamOperatorDispatchInstructionRequest.model_validate(
         {
             "team_name": "alpha",
@@ -675,7 +651,6 @@ def test_team_operator_dispatch_instruction_request_accepts_optional_worker_targ
     assert result.durable_delivery is True
 
 
-
 def test_team_operator_dispatch_task_request_rejects_empty_subject() -> None:
     with pytest.raises(ValidationError):
         TeamOperatorDispatchTaskRequest.model_validate(
@@ -685,7 +660,6 @@ def test_team_operator_dispatch_task_request_rejects_empty_subject() -> None:
                 "description": "ship slice",
             }
         )
-
 
 
 def test_team_operator_task_approval_request_accepts_required_fields() -> None:
@@ -703,7 +677,6 @@ def test_team_operator_task_approval_request_accepts_required_fields() -> None:
     assert result.status == "approved"
 
 
-
 def test_team_operator_worker_recheck_request_rejects_empty_body() -> None:
     with pytest.raises(ValidationError):
         TeamOperatorWorkerRecheckRequest.model_validate(
@@ -714,7 +687,6 @@ def test_team_operator_worker_recheck_request_rejects_empty_body() -> None:
                 "body": "",
             }
         )
-
 
 
 def test_team_operator_dispatch_outcome_accepts_command_result() -> None:
@@ -736,8 +708,9 @@ def test_team_operator_dispatch_outcome_accepts_command_result() -> None:
     assert result.command_result.exit_code == 0
 
 
-
-def test_team_operator_worker_follow_up_outcome_accepts_nested_dispatch_result() -> None:
+def test_team_operator_worker_follow_up_outcome_accepts_nested_dispatch_result() -> (
+    None
+):
     result = TeamOperatorWorkerFollowUpOutcome.model_validate(
         {
             "worker_state": "unknown",

@@ -2,7 +2,7 @@ from pathlib import Path
 
 import orjson
 
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     ProbeFixtureComparison,
     ProbeFixtureListResult,
     ProbeStatusChange,
@@ -58,8 +58,12 @@ def compare_probe_fixture(
         ProbeFixtureComparison: Added, removed, and changed capabilities.
     """
     fixture: UpstreamProbeSuiteResult = _read_fixture(fixture_path)
-    fixture_by_capability: dict[str, UpstreamProbeCommandResult] = _capability_map(fixture)
-    current_by_capability: dict[str, UpstreamProbeCommandResult] = _capability_map(current)
+    fixture_by_capability: dict[str, UpstreamProbeCommandResult] = _capability_map(
+        fixture
+    )
+    current_by_capability: dict[str, UpstreamProbeCommandResult] = _capability_map(
+        current
+    )
     fixture_capabilities: set[str] = set(fixture_by_capability)
     current_capabilities: set[str] = set(current_by_capability)
     added_capabilities: tuple[str, ...] = tuple(
@@ -81,7 +85,9 @@ def compare_probe_fixture(
     comparison = ProbeFixtureComparison(
         fixture_path=str(fixture_path),
         current_suite_id=current.suite_id,
-        matches=not added_capabilities and not removed_capabilities and not status_changes,
+        matches=not added_capabilities
+        and not removed_capabilities
+        and not status_changes,
         added_capabilities=added_capabilities,
         removed_capabilities=removed_capabilities,
         status_changes=status_changes,

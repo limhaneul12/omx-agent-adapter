@@ -42,7 +42,7 @@ from omx_remote.schemas.comx.session_schemas import (
     ComxTuiSessionRecord,
 )
 from omx_remote.schemas.comx.tui_schemas import ComxTuiCommandResult
-from omx_remote.schemas.next.next_action_schemas import (
+from omx_remote.schemas.next_action_schemas import (
     NextActionRequest,
     NextActionResult,
 )
@@ -94,7 +94,6 @@ def _format_surface_human(inventory: ComxControlSurfaceInventory) -> str:
     """
     lines: list[str] = [
         f"product: {inventory.product_name}",
-        f"compatibility_aliases: {', '.join(inventory.compatibility_aliases)}",
         "native_commands:",
     ]
     lines.extend(
@@ -184,7 +183,9 @@ def _run_tui_loop(
             )
         except (EOFError, KeyboardInterrupt):
             typer.echo("")
-            closed_session = close_tui_session(cwd, current_session, "terminal interrupt")
+            closed_session = close_tui_session(
+                cwd, current_session, "terminal interrupt"
+            )
             return closed_session
 
         normalized_command: str = normalize_tui_command_text(command_text)

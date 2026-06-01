@@ -74,7 +74,7 @@ docs/jobs/
 docs/reviews/
 docs/review/
 dev_timeline/
-.agent-remote/
+.codex/
 
 # PyBuilder
 .pybuilder/
@@ -214,5 +214,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# comx-agent runtime state
+# comx-agent / OMX runtime state
 .comx-agent/
+.omx/
+.uv-cache/

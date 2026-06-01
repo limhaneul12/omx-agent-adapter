@@ -24,8 +24,7 @@ def is_json_value(value: object) -> TypeGuard[JsonValue]:
         return is_valid
     if isinstance(value, dict):
         is_valid = all(
-            isinstance(key, str) and is_json_value(item)
-            for key, item in value.items()
+            isinstance(key, str) and is_json_value(item) for key, item in value.items()
         )
         return is_valid
     is_valid = False

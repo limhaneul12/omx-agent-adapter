@@ -2,7 +2,7 @@ import asyncio
 import inspect
 
 from omx_remote.runtime.status import runtime_snapshot
-from omx_remote.schemas.runtime.status_schemas import RuntimeStatusRequest
+from omx_remote.schemas.runtime_status_schemas import RuntimeStatusRequest
 
 
 class DummyResult:
@@ -33,9 +33,7 @@ def test_read_runtime_status_accepts_typed_request(monkeypatch) -> None:
         lambda args: DummyResult(stdout="No active modes.\n"),
     )
 
-    result = asyncio.run(
-        runtime_snapshot.read_runtime_status(RuntimeStatusRequest())
-    )
+    result = asyncio.run(runtime_snapshot.read_runtime_status(RuntimeStatusRequest()))
 
     assert result.summary == "No active modes."
     assert result.has_active_modes is False
@@ -117,12 +115,16 @@ def test_read_runtime_status_builds_per_mode_snapshots_for_mixed_statuses(
         "paused",
         "idle",
     ]
-    assert [mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots] == [
+    assert [
+        mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots
+    ] == [
         "active",
         "paused",
         "idle",
     ]
-    assert [mode_snapshot.has_uncertainty for mode_snapshot in result.mode_snapshots] == [
+    assert [
+        mode_snapshot.has_uncertainty for mode_snapshot in result.mode_snapshots
+    ] == [
         False,
         False,
         False,
@@ -154,7 +156,9 @@ def test_read_runtime_status_parses_inactive_phase_lines_without_unknown_anomali
         "active",
         "idle",
     ]
-    assert [mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots] == [
+    assert [
+        mode_snapshot.raw_status_text for mode_snapshot in result.mode_snapshots
+    ] == [
         "inactive (phase: n/a)",
         "ACTIVE (phase: starting)",
         "inactive (phase: cancelled)",
@@ -239,7 +243,9 @@ def test_read_runtime_status_reports_empty_transport_output(monkeypatch) -> None
     assert result.mode_statuses == {}
     assert len(result.anomalies) == 1
     assert result.anomalies[0].category == "empty_transport_output"
-    assert result.anomalies[0].message == "omx status returned no stdout or stderr output"
+    assert (
+        result.anomalies[0].message == "omx status returned no stdout or stderr output"
+    )
     assert result.anomalies[0].mode_name is None
 
 
@@ -275,8 +281,6 @@ def test_read_runtime_status_reports_no_anomalies_for_idle_stdout(monkeypatch) -
     assert result.anomalies == ()
     assert result.has_anomalies is False
     assert result.anomaly_count == 0
-
-
 
 
 def test_extract_active_mode_names_ignores_non_status_lines() -> None:

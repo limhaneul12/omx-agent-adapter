@@ -22,23 +22,22 @@ from omx_remote.shared.utils.json_file_store import json_file_stores
 from omx_remote.shared.utils.runtime_identity import build_scoped_id, utcnow_text
 
 
-def _build_codex_goal_command() -> list[str]:
+def _build_codex_goal_command() -> tuple[str, ...]:
     """Handles build codex goal command.
-    
-    Returns:
-        list[str]: Function return value.
-    """
-    codex_command: list[str] = ["codex", "--enable", "goals"]
-    return codex_command
 
+    Returns:
+        tuple[str, ...]: Function return value.
+    """
+    codex_command: tuple[str, ...] = ("codex", "--enable", "goals")
+    return codex_command
 
 
 def _build_slash_command_text(objective_text: str) -> str:
     """Handles build slash command text.
-    
+
     Args:
         objective_text [str]: Function argument.
-    
+
     Returns:
         str: Function return value.
     """
@@ -47,15 +46,14 @@ def _build_slash_command_text(objective_text: str) -> str:
     return slash_command_text
 
 
-
 def _build_goal_handoff_state(
     execution_shape: CodexGoalExecutionShape,
 ) -> CodexGoalHandoffState:
     """Handles build goal handoff state.
-    
+
     Args:
         execution_shape [CodexGoalExecutionShape]: Function argument.
-    
+
     Returns:
         CodexGoalHandoffState: Function return value.
     """
@@ -67,15 +65,14 @@ def _build_goal_handoff_state(
     return handoff_state
 
 
-
 def _build_tracking_state(
     spawn_result: CodexGoalSpawnResult,
 ) -> CodexGoalTrackingState:
     """Handles build tracking state.
-    
+
     Args:
         spawn_result [CodexGoalSpawnResult]: Function argument.
-    
+
     Returns:
         CodexGoalTrackingState: Function return value.
     """
@@ -87,14 +84,12 @@ def _build_tracking_state(
     return tracking_state
 
 
-
-
 def _resolve_working_directory(working_directory: str | None) -> str:
     """Handles resolve working directory.
-    
+
     Args:
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         str: Function return value.
     """
@@ -113,12 +108,15 @@ class CodexGoalMirrorStateStore:
         """Initializes a mirror-state store for one workspace.
 
         Args:
-            working_directory [str | None]: Optional workspace whose `.agent-remote` state should be used.
+            working_directory [str | None]: Optional workspace whose `.comx-agent` state should be used.
         """
         resolved_working_directory: str = _resolve_working_directory(working_directory)
         self.working_directory: str = resolved_working_directory
         self.state_path: Path = (
-            Path(resolved_working_directory) / ".agent-remote" / "state" / "codex-goal.json"
+            Path(resolved_working_directory)
+            / ".comx-agent"
+            / "state"
+            / "codex-goal.json"
         )
 
     def write_mirror_state(self, mirror_state: CodexGoalMirrorState) -> None:
@@ -141,7 +139,7 @@ class CodexGoalMirrorStateStore:
         """
         if not self.state_path.exists():
             raise ValueError(
-                "Missing native Codex Goal mirror state at .agent-remote/state/codex-goal.json."
+                "Missing native Codex Goal mirror state at .comx-agent/state/codex-goal.json."
             )
 
         state_store = json_file_stores.for_path(self.state_path)
@@ -198,13 +196,12 @@ class CodexGoalMirrorStateStore:
         return updated_state
 
 
-
 def get_codex_goal_state_path(working_directory: str | None = None) -> Path:
     """Return the adapter-owned mirror-state path for native Codex Goal.
-    
+
     Args:
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         Path: Function return value.
     """
@@ -214,10 +211,9 @@ def get_codex_goal_state_path(working_directory: str | None = None) -> Path:
     return state_path
 
 
-
 def write_codex_goal_mirror_state(mirror_state: CodexGoalMirrorState) -> None:
     """Persist the latest adapter-owned native Codex Goal mirror state.
-    
+
     Args:
         mirror_state [CodexGoalMirrorState]: Function argument.
     """
@@ -225,15 +221,14 @@ def write_codex_goal_mirror_state(mirror_state: CodexGoalMirrorState) -> None:
     store.write_mirror_state(mirror_state)
 
 
-
 def read_codex_goal_mirror_state(
     working_directory: str | None = None,
 ) -> CodexGoalMirrorState:
     """Read the latest adapter-owned native Codex Goal mirror state.
-    
+
     Args:
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         CodexGoalMirrorState: Function return value.
     """
@@ -242,19 +237,20 @@ def read_codex_goal_mirror_state(
     return result
 
 
-
 def start_codex_goal(request: CodexGoalLaunchRequest) -> CodexGoalLaunchResult:
     """Start one adapter-tracked native Codex Goal session.
-    
+
     Args:
         request [CodexGoalLaunchRequest]: Function argument.
-    
+
     Returns:
         CodexGoalLaunchResult: Function return value.
     """
     goal_id: str = build_scoped_id("goal")
-    resolved_working_directory: str = _resolve_working_directory(request.working_directory)
-    codex_command: list[str] = _build_codex_goal_command()
+    resolved_working_directory: str = _resolve_working_directory(
+        request.working_directory
+    )
+    codex_command: tuple[str, ...] = _build_codex_goal_command()
     slash_command_text: str = _build_slash_command_text(request.objective_text)
     spawn_result: CodexGoalSpawnResult = spawn_codex_goal_session(
         goal_id=goal_id,
@@ -294,13 +290,14 @@ def start_codex_goal(request: CodexGoalLaunchRequest) -> CodexGoalLaunchResult:
     return result
 
 
-
-def read_codex_goal_status(working_directory: str | None = None) -> CodexGoalMirrorState:
+def read_codex_goal_status(
+    working_directory: str | None = None,
+) -> CodexGoalMirrorState:
     """Read the latest native Codex Goal mirror state and refresh its tracking state.
-    
+
     Args:
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         CodexGoalMirrorState: Function return value.
     """
@@ -309,17 +306,16 @@ def read_codex_goal_status(working_directory: str | None = None) -> CodexGoalMir
     return refreshed_state
 
 
-
 def mark_codex_goal_handoff_started(
     goal_id: str,
     working_directory: str | None = None,
 ) -> CodexGoalMirrorState:
     """Mark the adapter-owned native Goal mirror state as handed off into Ralph-owned execution.
-    
+
     Args:
         goal_id [str]: Function argument.
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         CodexGoalMirrorState: Function return value.
     """

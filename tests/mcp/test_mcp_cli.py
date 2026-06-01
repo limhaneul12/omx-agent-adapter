@@ -74,7 +74,7 @@ def test_mcp_tools_cli_uses_client_reader(monkeypatch, tmp_path: Path) -> None:
         )
 
     monkeypatch.setattr(
-        "omx_remote.cli_launcher.mcp_cli.list_mcp_tools",
+        "omx_remote.cli_launcher.mcp.mcp_cli.list_mcp_tools",
         fake_list_mcp_tools,
     )
 
@@ -132,7 +132,7 @@ def test_mcp_call_cli_executes_when_requested(monkeypatch, tmp_path: Path) -> No
         )
 
     monkeypatch.setattr(
-        "omx_remote.cli_launcher.mcp_cli.call_mcp_tool",
+        "omx_remote.cli_launcher.mcp.mcp_cli.call_mcp_tool",
         fake_call_mcp_tool,
     )
 

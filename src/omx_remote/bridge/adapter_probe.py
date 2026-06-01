@@ -11,7 +11,7 @@ from omx_remote.bridge.adapter_transport_payloads import (
 )
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.bridge.adapter_schemas import (
+from omx_remote.schemas.bridge_adapter_schemas import (
     AdapterProbeRequest,
     AdapterProbeSnapshot,
 )
@@ -29,7 +29,7 @@ async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
     """
     command_result = await run_blocking_call(
         run_omx_command,
-        ["adapt", request.target, "probe", "--json"],
+        ("adapt", request.target, "probe", "--json"),
     )
     stdout: str = command_result.stdout.strip()
     result: AdapterProbeSnapshot = _normalize_adapter_probe(stdout)
@@ -38,10 +38,10 @@ async def probe_adapter(request: AdapterProbeRequest) -> AdapterProbeSnapshot:
 
 def _load_adapter_probe_transport_payload(stdout: str) -> AdapterProbeTransportPayload:
     """Loads one adapter probe transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         AdapterProbeTransportPayload: Function return value.
     """
@@ -51,7 +51,9 @@ def _load_adapter_probe_transport_payload(stdout: str) -> AdapterProbeTransportP
     try:
         parsed_payload: object = orjson.loads(stdout)
     except orjson.JSONDecodeError as error:
-        raise BridgeSurfaceError("omx adapt probe returned unparseable JSON output") from error
+        raise BridgeSurfaceError(
+            "omx adapt probe returned unparseable JSON output"
+        ) from error
 
     if not isinstance(parsed_payload, dict):
         raise BridgeSurfaceError("omx adapt probe returned a non-object JSON payload")
@@ -84,8 +86,8 @@ def _normalize_adapter_probe(stdout: str) -> AdapterProbeSnapshot:
     Raises:
         BridgeSurfaceError: Raised when the transport is empty, not JSON, or not a JSON object.
     """
-    parsed_payload: AdapterProbeTransportPayload = _load_adapter_probe_transport_payload(
-        stdout
+    parsed_payload: AdapterProbeTransportPayload = (
+        _load_adapter_probe_transport_payload(stdout)
     )
 
     target_runtime_payload = parsed_payload["targetRuntime"]

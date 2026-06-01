@@ -22,9 +22,17 @@ def register_team_shutdown_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("write-shutdown-request")
     def team_write_shutdown_request(
-        team: str = typer.Option(..., "--team", help="Team name that owns the worker shutdown lane."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity receiving the shutdown request."),
-        requested_by: str = typer.Option(..., "--requested-by", help="Requester identity writing the shutdown request."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name that owns the worker shutdown lane."
+        ),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity receiving the shutdown request."
+        ),
+        requested_by: str = typer.Option(
+            ...,
+            "--requested-by",
+            help="Requester identity writing the shutdown request.",
+        ),
     ) -> None:
         """Write one typed OMX team shutdown request.
 
@@ -46,9 +54,15 @@ def register_team_shutdown_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("read-shutdown-ack")
     def team_read_shutdown_ack(
-        team: str = typer.Option(..., "--team", help="Team name that owns the worker shutdown lane."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity whose shutdown ack should be read."),
-        min_updated_at: str | None = typer.Option(None, "--min-updated-at", help="Optional minimum ack updated_at watermark."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name that owns the worker shutdown lane."
+        ),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity whose shutdown ack should be read."
+        ),
+        min_updated_at: str | None = typer.Option(
+            None, "--min-updated-at", help="Optional minimum ack updated_at watermark."
+        ),
     ) -> None:
         """Read one typed OMX team shutdown ack command result.
 

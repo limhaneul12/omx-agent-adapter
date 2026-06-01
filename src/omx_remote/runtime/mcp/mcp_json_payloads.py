@@ -43,7 +43,9 @@ def normalize_mcp_json_object(value: object, error_message: str) -> JsonObject:
     return payload
 
 
-def normalize_mcp_json_object_list(value: object, error_message: str) -> list[JsonObject]:
+def normalize_mcp_json_object_list(
+    value: object, error_message: str
+) -> list[JsonObject]:
     """Round-trip a dynamic MCP payload into a list of JSON objects.
 
     Args:

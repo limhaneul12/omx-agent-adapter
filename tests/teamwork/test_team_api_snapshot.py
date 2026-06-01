@@ -26,6 +26,7 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
+from omx_remote.shared.utils.json_model_dump import model_json_object
 from omx_remote.teamwork import (
     team_api_normalizers,
     team_api_snapshot,
@@ -52,33 +53,79 @@ def test_team_api_transport_uses_operation_specific_msgspec_data_specs() -> None
     assert issubclass(team_api_data_specs.TeamApiListTasksDataSpec, msgspec.Struct)
     assert issubclass(team_api_data_specs.TeamApiReadEventsDataSpec, msgspec.Struct)
     assert issubclass(team_api_data_specs.TeamApiMailboxListDataSpec, msgspec.Struct)
-    assert issubclass(team_api_data_specs.TeamApiReadMonitorSnapshotDataSpec, msgspec.Struct)
+    assert issubclass(
+        team_api_data_specs.TeamApiReadMonitorSnapshotDataSpec, msgspec.Struct
+    )
     assert hasattr(team_api_transport, "load_team_api_list_tasks_payload")
     assert hasattr(team_api_transport, "load_team_api_read_events_payload")
     assert hasattr(team_api_transport, "load_team_api_mailbox_list_payload")
     assert hasattr(team_api_transport, "load_team_api_read_monitor_snapshot_payload")
 
 
-def test_team_api_data_specs_reject_scalar_collection_items_at_transport_boundary() -> None:
+def test_team_api_data_specs_reject_scalar_collection_items_at_transport_boundary() -> (
+    None
+):
     tasks_hint = team_api_data_specs.TeamApiListTasksDataSpec.__annotations__["tasks"]
-    events_hint = team_api_data_specs.TeamApiReadEventsDataSpec.__annotations__["events"]
-    messages_hint = team_api_data_specs.TeamApiMailboxListDataSpec.__annotations__["messages"]
+    events_hint = team_api_data_specs.TeamApiReadEventsDataSpec.__annotations__[
+        "events"
+    ]
+    messages_hint = team_api_data_specs.TeamApiMailboxListDataSpec.__annotations__[
+        "messages"
+    ]
 
     assert get_args(tasks_hint) == (team_api_raw_payloads.TeamApiRawTaskPayload,)
     assert get_args(events_hint) == (team_api_raw_payloads.TeamApiRawEventPayload,)
-    assert get_args(messages_hint) == (team_api_raw_payloads.TeamApiRawMailboxMessagePayload,)
+    assert get_args(messages_hint) == (
+        team_api_raw_payloads.TeamApiRawMailboxMessagePayload,
+    )
 
 
 def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
     envelope_hints = team_api_envelope.TeamApiDecodedEnvelope.__annotations__
 
     assert envelope_hints["ok"] is bool
-    assert getattr(team_api_transport_payloads.TeamApiEnvelopePayload, "__extra_items__", None) == JsonValue
-    assert getattr(team_api_transport_payloads.TeamApiTransportPayload, "__extra_items__", None) == JsonValue
-    assert getattr(team_api_transport_payloads.TeamApiErrorTransportPayload, "__closed__", None) is True
-    assert getattr(team_api_transport_payloads.TeamApiListTasksTransportPayload, "__closed__", None) is True
-    assert getattr(team_api_transport_payloads.TeamApiReadEventsTransportPayload, "__closed__", None) is True
-    assert getattr(team_api_transport_payloads.TeamApiMailboxListTransportPayload, "__closed__", None) is True
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiEnvelopePayload, "__extra_items__", None
+        )
+        == JsonValue
+    )
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiTransportPayload, "__extra_items__", None
+        )
+        == JsonValue
+    )
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiErrorTransportPayload, "__closed__", None
+        )
+        is True
+    )
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiListTasksTransportPayload,
+            "__closed__",
+            None,
+        )
+        is True
+    )
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiReadEventsTransportPayload,
+            "__closed__",
+            None,
+        )
+        is True
+    )
+    assert (
+        getattr(
+            team_api_transport_payloads.TeamApiMailboxListTransportPayload,
+            "__closed__",
+            None,
+        )
+        is True
+    )
     assert (
         getattr(
             team_api_transport_payloads.TeamApiReadMonitorSnapshotTransportPayload,
@@ -88,7 +135,11 @@ def test_team_api_transport_contracts_mark_stable_and_raw_boundaries() -> None:
         is True
     )
     assert (
-        getattr(team_api_transport_payloads.TeamApiReadWorkerStatusTransportPayload, "__closed__", None)
+        getattr(
+            team_api_transport_payloads.TeamApiReadWorkerStatusTransportPayload,
+            "__closed__",
+            None,
+        )
         is True
     )
 
@@ -102,9 +153,13 @@ def test_team_api_normalizer_preserves_missing_monitor_snapshot_as_none() -> Non
 
 
 def test_team_api_normalizer_drops_non_object_config_payload() -> None:
-    data_payload = team_api_transport.TeamApiTransportPayload(config=["not", "a", "config"])
+    data_payload = team_api_transport.TeamApiTransportPayload(
+        config=["not", "a", "config"]
+    )
 
-    result = team_api_normalizers.normalize_team_api_config_snapshot_result(data_payload)
+    result = team_api_normalizers.normalize_team_api_config_snapshot_result(
+        data_payload
+    )
 
     assert result.config is None
 
@@ -137,7 +192,9 @@ def test_read_team_api_list_tasks_returns_empty_snapshot(monkeypatch) -> None:
     assert result.tasks == ()
 
 
-def test_read_team_api_list_tasks_rejects_unparseable_json_transport(monkeypatch) -> None:
+def test_read_team_api_list_tasks_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -152,7 +209,9 @@ def test_read_team_api_list_tasks_rejects_unparseable_json_transport(monkeypatch
         )
 
 
-def test_read_team_api_list_tasks_rejects_missing_tasks_at_transport_boundary(monkeypatch) -> None:
+def test_read_team_api_list_tasks_rejects_missing_tasks_at_transport_boundary(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -249,7 +308,7 @@ def test_read_team_api_list_tasks_drops_unstable_task_transport_fields(
         )
     )
 
-    assert result.model_dump(mode="json") == {
+    assert model_json_object(result) == {
         "count": 1,
         "tasks": [
             {
@@ -374,7 +433,7 @@ def test_read_team_api_read_events_drops_unstable_event_transport_fields(
         )
     )
 
-    assert result.model_dump(mode="json") == {
+    assert model_json_object(result) == {
         "count": 1,
         "cursor": "cursor-1",
         "events": [
@@ -391,7 +450,7 @@ def test_read_team_api_read_events_drops_unstable_event_transport_fields(
 def test_load_team_api_payload_rejects_null_transport_payload() -> None:
     with pytest.raises(TeamworkSurfaceError):
         team_api_transport.load_team_api_payload(
-            'null',
+            "null",
             "omx team api list-tasks",
         )
 
@@ -527,7 +586,9 @@ def test_read_team_api_mailbox_list_returns_empty_snapshot(monkeypatch) -> None:
     assert result.messages == ()
 
 
-def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -542,7 +603,9 @@ def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypat
         )
 
 
-def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -559,7 +622,9 @@ def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary
         )
 
 
-def test_read_team_api_mailbox_list_normalizes_live_message_payload_shape(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_normalizes_live_message_payload_shape(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -619,7 +684,9 @@ def test_read_team_api_mailbox_list_rejects_non_object_message_payload_item(
 
 
 def test_read_team_api_read_monitor_snapshot_is_async() -> None:
-    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_monitor_snapshot)
+    assert inspect.iscoroutinefunction(
+        team_api_snapshot.read_team_api_read_monitor_snapshot
+    )
 
 
 def test_read_team_api_read_monitor_snapshot_accepts_typed_request() -> None:
@@ -649,7 +716,9 @@ def test_read_team_api_read_monitor_snapshot_returns_null_snapshot(monkeypatch) 
     assert result.snapshot is None
 
 
-def test_read_team_api_read_monitor_snapshot_rejects_unparseable_json_transport(monkeypatch) -> None:
+def test_read_team_api_read_monitor_snapshot_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -670,7 +739,9 @@ def test_read_team_api_read_monitor_snapshot_preserves_missing_snapshot_as_none(
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"schema_version":"1.0","ok":true,"data":{}}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"schema_version":"1.0","ok":true,"data":{}}\n'
+        ),
     )
 
     result = asyncio.run(
@@ -683,7 +754,9 @@ def test_read_team_api_read_monitor_snapshot_preserves_missing_snapshot_as_none(
 
 
 def test_read_team_api_read_config_error_is_async() -> None:
-    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_config_error)
+    assert inspect.iscoroutinefunction(
+        team_api_snapshot.read_team_api_read_config_error
+    )
 
 
 def test_read_team_api_read_config_error_accepts_typed_request() -> None:
@@ -695,7 +768,9 @@ def test_read_team_api_read_config_error_accepts_typed_request() -> None:
     asyncio.run(coroutine)
 
 
-def test_read_team_api_read_config_error_returns_typed_error_payload(monkeypatch) -> None:
+def test_read_team_api_read_config_error_returns_typed_error_payload(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -739,7 +814,9 @@ def test_read_team_api_read_config_returns_typed_snapshot(monkeypatch) -> None:
 
 
 def test_read_team_api_read_manifest_error_is_async() -> None:
-    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_manifest_error)
+    assert inspect.iscoroutinefunction(
+        team_api_snapshot.read_team_api_read_manifest_error
+    )
 
 
 def test_read_team_api_read_manifest_error_accepts_typed_request() -> None:
@@ -751,7 +828,9 @@ def test_read_team_api_read_manifest_error_accepts_typed_request() -> None:
     asyncio.run(coroutine)
 
 
-def test_read_team_api_read_manifest_error_returns_typed_error_payload(monkeypatch) -> None:
+def test_read_team_api_read_manifest_error_returns_typed_error_payload(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -772,7 +851,9 @@ def test_read_team_api_read_manifest_error_returns_typed_error_payload(monkeypat
 
 
 def test_read_team_api_read_worker_status_is_async() -> None:
-    assert inspect.iscoroutinefunction(team_api_snapshot.read_team_api_read_worker_status)
+    assert inspect.iscoroutinefunction(
+        team_api_snapshot.read_team_api_read_worker_status
+    )
 
 
 def test_read_team_api_read_worker_status_accepts_typed_request() -> None:

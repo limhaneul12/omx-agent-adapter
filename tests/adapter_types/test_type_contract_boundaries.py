@@ -28,9 +28,14 @@ def test_execution_value_contracts_live_under_type_contract_package() -> None:
     assert PROMOTABLE_EXECUTION_PAYLOAD_TYPES
     assert KNOWN_EXECUTION_EVENT_TYPES
     assert ANOMALY_SUMMARIES
-    assert not Path("src/omx_remote/adapter_types/execution_payload_contracts.py").exists()
+    assert not Path(
+        "src/omx_remote/adapter_types/execution_payload_contracts.py"
+    ).exists()
     assert ExecutionItemStableFieldKey.ID.value in EXECUTION_ITEM_STABLE_FIELD_KEYS
-    assert ExecutionTransportStableFieldKey.THREAD_ID.value in EXECUTION_TRANSPORT_STABLE_FIELD_KEYS
+    assert (
+        ExecutionTransportStableFieldKey.THREAD_ID.value
+        in EXECUTION_TRANSPORT_STABLE_FIELD_KEYS
+    )
     assert ExecutionEventKind.ITEM_COMPLETED in EXECUTION_EVENT_PAYLOAD_NORMALIZERS
     assert not hasattr(payload_transport, "EXECUTION_ITEM_STABLE_FIELD_KEYS")
     assert not hasattr(payload_transport, "EXECUTION_TRANSPORT_STABLE_FIELD_KEYS")
@@ -45,7 +50,7 @@ def test_runtime_status_value_contracts_live_under_type_contract_package() -> No
         KNOWN_MODE_STATUS_MARKERS,
         RUNTIME_STATUS_PREFIXES,
     )
-    from omx_remote.schemas.runtime.status_schemas import RuntimeModeStatus
+    from omx_remote.schemas.runtime_status_schemas import RuntimeModeStatus
 
     assert IDLE_RUNTIME_SUMMARY == "No active modes."
     assert ACTIVE_MODE_MARKER == RuntimeModeStatus.ACTIVE
@@ -88,7 +93,9 @@ def test_operator_value_contracts_live_under_type_contract_package() -> None:
         ACTIVE_LOOP_STATES,
         BLOCKING_LOOP_STATES,
     )
-    from omx_remote.shared.omx_enums.multi_operator_enums import ManagedInterventionAction
+    from omx_remote.shared.omx_enums.multi_operator_enums import (
+        ManagedInterventionAction,
+    )
     from omx_remote.shared.omx_enums.operator_enums import OperatorLoopState
 
     assert ManagedInterventionAction.LAUNCH in ACTIONABLE_NEXT_ACTIONS

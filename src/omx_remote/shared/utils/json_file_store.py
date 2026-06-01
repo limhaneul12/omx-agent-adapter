@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from omx_remote.adapter_types.json_types import JsonObject, JsonValue
 from omx_remote.shared.json_transport import is_json_value, json_object_or_none
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 class JsonFileStore:
@@ -39,11 +40,16 @@ class JsonFileStore:
         object_payload: JsonObject | None = json_object_or_none(parsed_payload)
         return object_payload
 
-    def write_mapping(self, payload: Mapping[str, JsonValue]) -> None:
+    def write_mapping(
+        self,
+        payload: Mapping[str, JsonValue],
+        trailing_newline: bool = False,
+    ) -> None:
         """Write a mapping as indented JSON to the owned path.
 
         Args:
             payload [Mapping[str, JsonValue]]: Mapping to serialize.
+            trailing_newline [bool]: Whether to append one trailing newline byte.
         """
         if not all(
             isinstance(key, str) and is_json_value(value)
@@ -52,19 +58,19 @@ class JsonFileStore:
             raise ValueError("mapping payload must contain JSON-compatible values")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         serialized_payload: bytes = orjson.dumps(payload, option=orjson.OPT_INDENT_2)
+        if trailing_newline:
+            serialized_payload += b"\n"
         self.path.write_bytes(serialized_payload)
 
-    def write_model(self, model: BaseModel) -> None:
+    def write_model(self, model: BaseModel, trailing_newline: bool = False) -> None:
         """Write a Pydantic model as JSON with enum-safe transport values.
 
         Args:
             model [BaseModel]: Pydantic model to serialize with ``mode=\"json\"``.
+            trailing_newline [bool]: Whether to append one trailing newline byte.
         """
-        raw_payload: object = model.model_dump(mode="json")
-        payload: JsonObject | None = json_object_or_none(raw_payload)
-        if payload is None:
-            raise ValueError("model dump did not produce a JSON object")
-        self.write_mapping(payload)
+        payload = model_json_object(model)
+        self.write_mapping(payload, trailing_newline=trailing_newline)
 
 
 class JsonFileStoreRegistry:
@@ -94,3 +100,18 @@ class JsonFileStoreRegistry:
 
 
 json_file_stores = JsonFileStoreRegistry()
+
+
+def read_required_json_object(path: Path) -> JsonObject:
+    """Read a JSON object from disk or raise a boundary error.
+
+    Args:
+        path [Path]: JSON file path to read.
+
+    Returns:
+        JsonObject: Parsed JSON object.
+    """
+    payload: JsonObject | None = json_file_stores.for_path(path).read_object()
+    if payload is None:
+        raise ValueError(f"Expected JSON object in {path}")
+    return payload

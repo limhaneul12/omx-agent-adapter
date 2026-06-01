@@ -16,7 +16,7 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCommandRecipeSummary,
     CockpitRuntimeCapability,
 )
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteConfidence,
     RouteName,
     RoutePolicyResult,
@@ -48,7 +48,9 @@ def _runtime_command_available(
     return command_available
 
 
-def _recipe_available(recipe_summary: CockpitCommandRecipeSummary, qualified_id: str) -> bool:
+def _recipe_available(
+    recipe_summary: CockpitCommandRecipeSummary, qualified_id: str
+) -> bool:
     """Return whether a command recipe is available.
 
     Args:
@@ -80,9 +82,21 @@ def _route_blockers(
         tuple[str, ...]: Human-readable route blockers.
     """
     blockers: list[str] = []
-    if route in {RouteName.CODEX_EXEC, RouteName.CODEX_SUBAGENT} and not capabilities.codex.available:
+    if (
+        route in {RouteName.CODEX_EXEC, RouteName.CODEX_SUBAGENT}
+        and not capabilities.codex.available
+    ):
         blockers.append("codex executable is unavailable")
-    if route in {RouteName.OMX_EXEC, RouteName.OMX_ULTRAGOAL, RouteName.OMX_TEAM, RouteName.OMX_RALPH} and not capabilities.omx.available:
+    if (
+        route
+        in {
+            RouteName.OMX_EXEC,
+            RouteName.OMX_ULTRAGOAL,
+            RouteName.OMX_TEAM,
+            RouteName.OMX_RALPH,
+        }
+        and not capabilities.omx.available
+    ):
         blockers.append("omx executable is unavailable")
     if route == RouteName.OMX_ULTRAGOAL and not _runtime_command_available(
         capabilities.omx,
@@ -224,20 +238,23 @@ def _build_recommendations(
     if classification.task_type == RouteTaskType.REVIEW:
         project_review = _recommend_project_command(
             recipe_summary,
-            "builtin:review-diff",
-            "The task is a review and the built-in diff review recipe is available.",
+            "builtin:review-gate",
+            "The task is a review and the built-in review gate recipe is available.",
         )
         if project_review is not None:
             recommendations.append(project_review)
     elif classification.task_type == RouteTaskType.VERIFICATION:
         project_verify = _recommend_project_command(
             recipe_summary,
-            "builtin:verify-handoff-plus",
-            "The task is verification and the built-in handoff verification recipe is available.",
+            "builtin:release-readiness",
+            "The task is verification and the built-in release-readiness recipe is available.",
         )
         if project_verify is not None:
             recommendations.append(project_verify)
-    elif classification.size == RouteTaskSize.ROADMAP or classification.needs_durable_state:
+    elif (
+        classification.size == RouteTaskSize.ROADMAP
+        or classification.needs_durable_state
+    ):
         _append_route_if_available(
             recommendations,
             blocked,
@@ -287,7 +304,9 @@ def _build_recommendations(
         safe_to_mutate,
         active_runtime_modes,
     )
-    if team_blockers and all(alternative.route != RouteName.OMX_TEAM for alternative in blocked):
+    if team_blockers and all(
+        alternative.route != RouteName.OMX_TEAM for alternative in blocked
+    ):
         blocked.append(
             _blocked_recommendation(
                 RouteName.OMX_TEAM,
@@ -333,7 +352,9 @@ def build_route_policy_result(
         summarize_cockpit_agent_config(cwd) if agent_summary is None else agent_summary
     )
     resolved_recipe_summary: CockpitCommandRecipeSummary = (
-        summarize_cockpit_command_recipes(cwd) if recipe_summary is None else recipe_summary
+        summarize_cockpit_command_recipes(cwd)
+        if recipe_summary is None
+        else recipe_summary
     )
     classification: TaskClassification = classify_task_signals(task)
     recommendations, blocked = _build_recommendations(

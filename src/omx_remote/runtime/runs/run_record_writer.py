@@ -1,34 +1,21 @@
 from pathlib import Path
-from typing import cast
 
-import orjson
-
-from omx_remote.adapter_types.json_types import JsonValue
-from omx_remote.runtime.commands.command_output_redaction import (
-    redact_json_artifact,
+from omx_remote.runtime.commands.artifacts.redacted_command_artifact_writer import (
+    write_redacted_json_artifact,
+)
+from omx_remote.runtime.commands.rendering.command_output_redaction import (
     redact_text,
 )
 from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
 from omx_remote.runtime.runs.run_native_commands import collect_run_native_commands
 from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
-from omx_remote.schemas.runs.run_record_schemas import (
+from omx_remote.schemas.run_record_schemas import (
     RunArtifact,
     RunRecord,
     RunRecordStatus,
     RunVerification,
 )
 from omx_remote.shared.utils.runtime_identity import utc_compact_timestamp, utcnow_text
-
-
-def _write_json(path: Path, value: object) -> None:
-    """Write JSON to one artifact path.
-
-    Args:
-        path [Path]: Destination path.
-        value [object]: JSON-compatible value.
-    """
-    redacted_value: JsonValue = redact_json_artifact(cast(JsonValue, value))
-    path.write_bytes(orjson.dumps(redacted_value, option=orjson.OPT_INDENT_2))
 
 
 def render_run_handoff(record: RunRecord, plan: CommandExecutionPlan) -> str:
@@ -118,10 +105,10 @@ def write_dry_run_record(
     )
     handoff_text: str = render_run_handoff(record, plan)
 
-    _write_json(plan_path, plan.model_dump(mode="json"))
+    write_redacted_json_artifact(plan_path, plan)
     stdout_path.write_text("", encoding="utf-8")
     stderr_path.write_text("", encoding="utf-8")
     final_message_path.write_text("", encoding="utf-8")
     handoff_path.write_text(handoff_text, encoding="utf-8")
-    _write_json(run_path, record.model_dump(mode="json"))
+    write_redacted_json_artifact(run_path, record)
     return record

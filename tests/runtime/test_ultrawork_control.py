@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 runner = CliRunner()
 
@@ -76,15 +76,18 @@ def test_ultrawork_launch_reports_warning_for_terminal_stale_state(
         '{"active": false, "current_phase": "cancelled"}'
     )
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
     def fake_run_omx_command(
-        command: list[str], cwd: str | None = None
+        command: tuple[str, ...], cwd: str | None = None
     ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -102,7 +105,7 @@ def test_ultrawork_launch_reports_warning_for_terminal_stale_state(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["team", "2:executor", "Run integration check"]]
+    assert observed_commands == [("team", "2:executor", "Run integration check")]
     assert "Ultrawork state exists and is terminal/non-runnable." in result.stdout
 
 
@@ -118,15 +121,18 @@ def test_ultrawork_launch_runs_preflight_and_command_when_forced(
         '{"active": false, "current_phase": "cancelled"}'
     )
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
     def fake_run_omx_command(
-        command: list[str], cwd: str | None = None
+        command: tuple[str, ...], cwd: str | None = None
     ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -141,7 +147,7 @@ def test_ultrawork_launch_runs_preflight_and_command_when_forced(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["team", "1:executor", "Run integration check"]]
+    assert observed_commands == [("team", "1:executor", "Run integration check")]
     assert "Existing resumable" not in result.stdout
 
 
@@ -151,17 +157,22 @@ def test_ultrawork_launch_warns_when_tmux_missing(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr("omx_remote.runtime.ultrawork.ultrawork_control.which", lambda _: None)
+    monkeypatch.setattr(
+        "omx_remote.runtime.ultrawork.ultrawork_control.which", lambda _: None
+    )
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
     def fake_run_omx_command(
-        command: list[str], cwd: str | None = None
+        command: tuple[str, ...], cwd: str | None = None
     ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(
         app,
@@ -175,7 +186,7 @@ def test_ultrawork_launch_warns_when_tmux_missing(
     )
 
     assert result.exit_code == 0
-    assert observed_commands == [["team", "1:executor", "Run integration check"]]
+    assert observed_commands == [("team", "1:executor", "Run integration check")]
     assert "tmux was not detected" in result.stdout
 
 
@@ -199,20 +210,23 @@ def test_ultrawork_resume_runs_command_when_state_exists(
     state_dir.mkdir(parents=True)
     (state_dir / "ultrawork-state.json").write_text('{"active":true}')
 
-    observed_commands: list[list[str]] = []
+    observed_commands: list[tuple[str, ...]] = []
 
     def fake_run_omx_command(
-        command: list[str], cwd: str | None = None
+        command: tuple[str, ...], cwd: str | None = None
     ) -> OmxCommandResult:
         observed_commands.append(command)
         return OmxCommandResult(exit_code=0, stdout="ok", stderr="")
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(app, ["ultrawork", "resume", "--team-name", "team-7"])
 
     assert result.exit_code == 0
-    assert observed_commands == [["team", "resume", "team-7"]]
+    assert observed_commands == [("team", "resume", "team-7")]
 
 
 def test_ultrawork_resume_rejects_terminal_state(
@@ -242,7 +256,7 @@ def test_ultrawork_resume_promotes_no_resumable_state_to_preflight_failure(
     (state_dir / "ultrawork-state.json").write_text('{"active":true}')
 
     def fake_run_omx_command(
-        command: list[str], cwd: str | None = None
+        command: tuple[str, ...], cwd: str | None = None
     ) -> OmxCommandResult:
         return OmxCommandResult(
             exit_code=0,
@@ -250,7 +264,10 @@ def test_ultrawork_resume_promotes_no_resumable_state_to_preflight_failure(
             stderr="",
         )
 
-    monkeypatch.setattr("omx_remote.cli.run_omx_command", fake_run_omx_command)
+    monkeypatch.setattr(
+        "omx_remote.cli_launcher.cli_facade_dependencies.run_omx_command",
+        fake_run_omx_command,
+    )
 
     result = runner.invoke(app, ["ultrawork", "resume", "--team-name", "team-7"])
 

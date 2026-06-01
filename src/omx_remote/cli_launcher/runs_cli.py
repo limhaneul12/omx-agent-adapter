@@ -13,14 +13,14 @@ from omx_remote.runtime.runs.run_record_reader import (
     read_run_handoff,
     read_run_record,
 )
-from omx_remote.schemas.runs.run_record_schemas import (
+from omx_remote.schemas.run_record_schemas import (
     RunListResult,
     RunRecord,
     RunReplayPlan,
 )
 
 runs_app = typer.Typer(
-    help="Inspect recorded composed-command runs under .agent-remote/runs.",
+    help="Inspect recorded composed-command runs under .comx-agent/runs.",
     add_completion=False,
 )
 
@@ -134,7 +134,9 @@ def runs_handoff(
 def runs_replay_plan(
     run_id: str = typer.Argument(..., help="Run id to replay."),
     cwd: Path = typer.Option(Path("."), "--cwd", help="Repository root to inspect."),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Required replay safety flag."),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Required replay safety flag."
+    ),
     json_output: bool = typer.Option(False, "--json", help="Print JSON output."),
 ) -> None:
     """Build a dry-run replay plan from a recorded run.

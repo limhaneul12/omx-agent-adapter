@@ -42,13 +42,15 @@ class TeamWorkerAssignment(StrictSchemaModel):
     authorization_scope: TeamWorkerAuthorizationScope
 
 
-class RalphTeamDistributionPlan(StrictRootSchemaModel[tuple[TeamWorkerAssignment, ...]]):
+class RalphTeamDistributionPlan(
+    StrictRootSchemaModel[tuple[TeamWorkerAssignment, ...]]
+):
     """Root collection of Ralph-owned Team worker assignments."""
 
     @model_validator(mode="after")
     def validate_unique_worker_and_file_ownership(self) -> Self:
         """Handles validate unique worker and file ownership.
-        
+
         Returns:
             Self: Function return value.
         """
@@ -75,7 +77,9 @@ class RalphTeamDistributionPlan(StrictRootSchemaModel[tuple[TeamWorkerAssignment
 
         if duplicate_files:
             duplicate_summary: str = ", ".join(duplicate_files)
-            raise ValueError(f"duplicate owned_files across workers: {duplicate_summary}")
+            raise ValueError(
+                f"duplicate owned_files across workers: {duplicate_summary}"
+            )
 
         return self
 
@@ -109,7 +113,7 @@ class RalphPrdArtifact(StrictSchemaModel):
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> Self:
         """Handles validate team worker count.
-        
+
         Returns:
             Self: Function return value.
         """
@@ -129,7 +133,9 @@ class RalphPrdArtifact(StrictSchemaModel):
             )
 
         if self.requires_team_fanout and self.team_admin is None:
-            raise ValueError("team_admin is required when requires_team_fanout is true.")
+            raise ValueError(
+                "team_admin is required when requires_team_fanout is true."
+            )
 
         if self.team_worker_assignments is not None:
             RalphTeamDistributionPlan(root=self.team_worker_assignments)
@@ -147,6 +153,8 @@ class RalphPrdArtifact(StrictSchemaModel):
             )
 
         if not self.requires_team_fanout and self.team_admin is not None:
-            raise ValueError("team_admin must be omitted when requires_team_fanout is false.")
+            raise ValueError(
+                "team_admin must be omitted when requires_team_fanout is false."
+            )
 
         return self

@@ -1,16 +1,22 @@
 from omx_remote.runtime.goal.codex_goal_supervisor import (
     build_goal_operating_decision as supervisor_build_goal_operating_decision,
 )
-from omx_remote.runtime.goal.goal_operating_decision import build_goal_operating_decision
+from omx_remote.runtime.goal.goal_operating_decision import (
+    build_goal_operating_decision,
+)
 from omx_remote.schemas.codex_goal.lifecycle_schemas import (
     CodexGoalLifecycleArtifactBundle,
     CodexGoalLifecycleDecisionResult,
     CodexGoalLifecycleRestoredState,
 )
-from omx_remote.schemas.codex_goal.operating_schemas import CodexGoalOperatingDecisionRequest
+from omx_remote.schemas.codex_goal.operating_schemas import (
+    CodexGoalOperatingDecisionRequest,
+)
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
-from omx_remote.schemas.teamwork.admin_aggregation_schemas import TeamAdminAggregationReport
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReport,
+)
 
 
 def _mirror_state(goal_id: str = "goal-operating") -> CodexGoalMirrorState:
@@ -23,7 +29,7 @@ def _mirror_state(goal_id: str = "goal-operating") -> CodexGoalMirrorState:
         team_worker_count=2,
         working_directory="/tmp/project",
         codex_command=["codex", "--enable", "goals"],
-        session_locator=f"agent-remote-goal-{goal_id}",
+        session_locator=f"comx-agent-goal-{goal_id}",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="ralph_started",
@@ -97,7 +103,7 @@ def _restored_state(
         lifecycle_decision=lifecycle_decision,
     )
     return CodexGoalLifecycleRestoredState(
-        artifact_path="/tmp/project/.agent-remote/state/goal-lifecycle/goal-operating.json",
+        artifact_path="/tmp/project/.comx-agent/state/goal-lifecycle/goal-operating.json",
         bundle=bundle,
         next_resume_target=next_resume_target,
         ready_to_resume=True,
@@ -123,10 +129,10 @@ def test_goal_operating_decision_collects_team_admin_evidence_before_review() ->
         "omx_team_api_read_worker_status",
     )
     assert result.recommended_commands == (
-        "omx team api list-tasks --input '{\"team_name\":\"team-alpha\"}' --json",
-        "omx team api read-events --input '{\"team_name\":\"team-alpha\"}' --json",
-        "omx team api read-worker-status --input '{\"team_name\":\"team-alpha\",\"worker\":\"worker-1\"}' --json",
-        "omx team api read-worker-status --input '{\"team_name\":\"team-alpha\",\"worker\":\"worker-2\"}' --json",
+        'omx team api list-tasks --input \'{"team_name":"team-alpha"}\' --json',
+        'omx team api read-events --input \'{"team_name":"team-alpha"}\' --json',
+        'omx team api read-worker-status --input \'{"team_name":"team-alpha","worker":"worker-1"}\' --json',
+        'omx team api read-worker-status --input \'{"team_name":"team-alpha","worker":"worker-2"}\' --json',
     )
 
 
@@ -143,7 +149,10 @@ def test_goal_operating_decision_runs_ralph_review_after_aggregation_artifact() 
 
     assert result.current_stage == "ralph_post_team_review_pending"
     assert result.next_action == "run_ralph_post_team_review"
-    assert result.available_evidence == ("goal_lifecycle_artifact", "team_admin_aggregation_report")
+    assert result.available_evidence == (
+        "goal_lifecycle_artifact",
+        "team_admin_aggregation_report",
+    )
     assert result.missing_evidence == ()
     assert result.safe_to_mutate is False
 
@@ -170,7 +179,9 @@ def test_goal_operating_decision_builds_lifecycle_decision_after_ralph_review() 
     assert result.safe_to_mutate is False
 
 
-def test_goal_operating_decision_allows_close_only_after_complete_lifecycle_decision() -> None:
+def test_goal_operating_decision_allows_close_only_after_complete_lifecycle_decision() -> (
+    None
+):
     result = build_goal_operating_decision(
         CodexGoalOperatingDecisionRequest(
             restored_state=_restored_state(

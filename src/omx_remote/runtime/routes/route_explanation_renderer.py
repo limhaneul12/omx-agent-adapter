@@ -1,4 +1,4 @@
-from omx_remote.schemas.routes.route_policy_schemas import RouteExplanation, RouteName
+from omx_remote.schemas.route_policy_schemas import RouteExplanation, RouteName
 
 _ROUTE_EXPLANATIONS: dict[RouteName, tuple[str, str, str | None]] = {
     RouteName.CODEX_EXEC: (

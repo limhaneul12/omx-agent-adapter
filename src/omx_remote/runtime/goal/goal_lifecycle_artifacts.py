@@ -18,7 +18,9 @@ from omx_remote.shared.omx_enums.codex_goal_enums import (
 from omx_remote.shared.utils.json_file_store import json_file_stores
 
 
-def resolve_goal_lifecycle_working_directory(working_directory: str | None = None) -> Path:
+def resolve_goal_lifecycle_working_directory(
+    working_directory: str | None = None,
+) -> Path:
     """Resolves the workspace that owns durable Goal lifecycle artifacts.
 
     Args:
@@ -46,11 +48,15 @@ def get_goal_lifecycle_artifact_path(
         working_directory [str | None]: Optional workspace path.
 
     Returns:
-        Path: `.agent-remote` JSON artifact path for the Goal lifecycle bundle.
+        Path: `.comx-agent` JSON artifact path for the Goal lifecycle bundle.
     """
     workspace_path: Path = resolve_goal_lifecycle_working_directory(working_directory)
     artifact_path: Path = (
-        workspace_path / ".agent-remote" / "state" / "goal-lifecycle" / f"{goal_id}.json"
+        workspace_path
+        / ".comx-agent"
+        / "state"
+        / "goal-lifecycle"
+        / f"{goal_id}.json"
     )
     return artifact_path
 
@@ -164,7 +170,9 @@ class CodexGoalLifecycleArtifactStore:
         )
         return bundle
 
-    def read_or_initialize_bundle(self, goal_id: str) -> CodexGoalLifecycleArtifactBundle:
+    def read_or_initialize_bundle(
+        self, goal_id: str
+    ) -> CodexGoalLifecycleArtifactBundle:
         """Reads a lifecycle bundle or initializes it from the Goal mirror state.
 
         Args:
@@ -202,20 +210,16 @@ class CodexGoalLifecycleArtifactStore:
             CodexGoalLifecycleRestoredState: Restored lifecycle state and resume target.
         """
         bundle: CodexGoalLifecycleArtifactBundle = self.read_bundle(goal_id)
-        next_resume_target: CodexGoalLifecycleRestoreTarget = restore_target_from_bundle(
-            bundle
+        next_resume_target: CodexGoalLifecycleRestoreTarget = (
+            restore_target_from_bundle(bundle)
         )
         summary: str = build_restored_goal_lifecycle_summary(bundle, next_resume_target)
-        restored_state: CodexGoalLifecycleRestoredState = (
-            CodexGoalLifecycleRestoredState.model_validate(
-                {
-                    "artifact_path": str(self.artifact_path_for_goal(goal_id)),
-                    "bundle": bundle,
-                    "next_resume_target": next_resume_target,
-                    "ready_to_resume": True,
-                    "summary": summary,
-                }
-            )
+        restored_state = CodexGoalLifecycleRestoredState(
+            artifact_path=str(self.artifact_path_for_goal(goal_id)),
+            bundle=bundle,
+            next_resume_target=next_resume_target,
+            ready_to_resume=True,
+            summary=summary,
         )
         return restored_state
 
@@ -233,7 +237,9 @@ class CodexGoalLifecycleArtifactStore:
         Returns:
             CodexGoalLifecycleDecisionResult: Persisted Goal lifecycle decision.
         """
-        bundle: CodexGoalLifecycleArtifactBundle = self.read_or_initialize_bundle(goal_id)
+        bundle: CodexGoalLifecycleArtifactBundle = self.read_or_initialize_bundle(
+            goal_id
+        )
         request = CodexGoalLifecycleDecisionRequest(
             mirror_state=bundle.mirror_state,
             ralph_review_result=ralph_review_result,

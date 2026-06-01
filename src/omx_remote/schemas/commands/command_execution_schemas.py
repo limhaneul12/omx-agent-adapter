@@ -33,6 +33,12 @@ class CommandArtifactCheck(StrictSchemaModel):
     note: NonEmptyString | None = None
 
 
+class CommandArtifactChecksPayload(StrictSchemaModel):
+    """Run-level payload containing expected/produced artifact checks."""
+
+    artifacts: tuple[CommandArtifactCheck, ...]
+
+
 class CommandFailureClassification(StrictSchemaModel):
     """Normalized classification for a step failure."""
 
@@ -82,7 +88,7 @@ class CommandStepExecutionResult(StrictSchemaModel):
 
 
 class CommandActualRunResult(StrictSchemaModel):
-    """Typed public result for `agent-remote run --execute`."""
+    """Typed public result for `comx-agent run --execute`."""
 
     run_id: NonEmptyString
     command_id: NonEmptyString

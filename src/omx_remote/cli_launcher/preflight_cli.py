@@ -11,7 +11,7 @@ from omx_remote.runtime.preflight.command_preflight_runner import (
     run_route_preflight,
 )
 from omx_remote.runtime.preflight.prompt_file_preflight import check_prompt_file
-from omx_remote.schemas.preflight.preflight_schemas import (
+from omx_remote.schemas.preflight_schemas import (
     PreflightCheckResult,
     PreflightReport,
 )

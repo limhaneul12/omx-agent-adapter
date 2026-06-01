@@ -42,6 +42,14 @@ Directory names should help a reader answer:
 - what problem space is this code about?
 - what kind of responsibility lives here?
 
+### CLI launcher feature folders
+
+`src/omx_remote/cli_launcher/` should stay thin at the top level. When a CLI
+surface gains multiple cooperating files for one feature area, put those files
+under a feature directory such as `cli_launcher/mcp/` or
+`cli_launcher/team_launcher/` instead of adding more flat siblings. Do not add
+nested folders for appearance only; the folder must own a real feature boundary.
+
 ## `__init__.py` Rule
 
 Do **not** create `__init__.py` files by default.

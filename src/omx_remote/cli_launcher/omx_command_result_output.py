@@ -1,6 +1,6 @@
 import typer
 
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 
 def echo_omx_command_result(result: OmxCommandResult) -> None:

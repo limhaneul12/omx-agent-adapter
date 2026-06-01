@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from omx_remote.runtime.commands.command_catalog_resolver import (
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     load_command_catalog,
     resolve_command_recipe,
 )
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import (

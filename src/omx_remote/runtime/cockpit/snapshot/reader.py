@@ -45,7 +45,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitTeamObservation,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes, RuntimeStatus
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes, RuntimeStatus
 
 
 async def read_cockpit_snapshot(
@@ -78,7 +78,9 @@ async def read_cockpit_snapshot(
     pull_request_status_task = asyncio.create_task(
         read_github_pull_request_status(request.repo_root)
     )
-    capabilities_task = asyncio.create_task(run_blocking_call(read_cockpit_capabilities))
+    capabilities_task = asyncio.create_task(
+        run_blocking_call(read_cockpit_capabilities)
+    )
     configured_agents_task = asyncio.create_task(
         run_blocking_call(summarize_cockpit_agent_config, request.repo_root)
     )

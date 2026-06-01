@@ -1,5 +1,3 @@
-from typing import cast
-
 import msgspec
 import orjson
 
@@ -15,7 +13,6 @@ from omx_remote.adapter_types.teams_type.team_api_data_specs import (
 )
 from omx_remote.adapter_types.teams_type.team_api_envelope import TeamApiDecodedEnvelope
 from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
-    TeamApiEnvelopePayload,
     TeamApiErrorTransportPayload,
     TeamApiListTasksTransportPayload,
     TeamApiMailboxListTransportPayload,
@@ -26,9 +23,16 @@ from omx_remote.adapter_types.teams_type.team_api_transport_payloads import (
     TeamApiTransportPayload,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
+from omx_remote.shared.json_transport import (
+    is_json_object,
+    is_json_value,
+    json_object_or_none,
+)
 
 
-def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiDecodedEnvelope:
+def _decode_team_api_envelope(
+    stdout: str, operation_name: str
+) -> TeamApiDecodedEnvelope:
     """Decodes one team-api JSON envelope with manual JSON validation.
 
     Args:
@@ -52,18 +56,16 @@ def _decode_team_api_envelope(stdout: str, operation_name: str) -> TeamApiDecode
         ) from error
 
     if not isinstance(parsed_payload, dict):
-        raise TeamworkSurfaceError(
-            f"{operation_name} returned unparseable JSON output"
-        )
+        raise TeamworkSurfaceError(f"{operation_name} returned unparseable JSON output")
 
     ok_value: object = parsed_payload.get("ok")
     if not isinstance(ok_value, bool):
-        raise TeamworkSurfaceError(
-            f"{operation_name} returned unparseable JSON output"
-        )
+        raise TeamworkSurfaceError(f"{operation_name} returned unparseable JSON output")
 
-    data_value = cast(JsonValue, parsed_payload.get("data"))
-    error_value = cast(JsonValue, parsed_payload.get("error"))
+    data_value = parsed_payload.get("data")
+    error_value = parsed_payload.get("error")
+    if not is_json_value(data_value) or not is_json_value(error_value):
+        raise TeamworkSurfaceError(f"{operation_name} returned unparseable JSON output")
     envelope = TeamApiDecodedEnvelope(ok=ok_value, data=data_value, error=error_value)
 
     return envelope
@@ -87,14 +89,12 @@ def _load_team_api_data_object(stdout: str, operation_name: str) -> JsonObject:
         raise TeamworkSurfaceError(f"{operation_name} returned an unsuccessful payload")
 
     data_payload: JsonValue = envelope.data
-    if not isinstance(data_payload, dict):
+    if not is_json_object(data_payload):
         raise TeamworkSurfaceError(
             f"{operation_name} returned a non-object data payload"
         )
 
-    data_object = cast(JsonObject, data_payload)
-    top_level_payload = TeamApiEnvelopePayload(ok=True, data=data_object)
-    result: JsonObject = top_level_payload["data"]
+    result: JsonObject = data_payload
     return result
 
 
@@ -163,7 +163,9 @@ def load_team_api_read_events_payload(stdout: str) -> TeamApiReadEventsTransport
     return result
 
 
-def load_team_api_mailbox_list_payload(stdout: str) -> TeamApiMailboxListTransportPayload:
+def load_team_api_mailbox_list_payload(
+    stdout: str,
+) -> TeamApiMailboxListTransportPayload:
     """Loads one mailbox-list data payload with an operation-specific msgspec contract.
 
     Args:
@@ -213,7 +215,11 @@ def load_team_api_read_monitor_snapshot_payload(
     operation_name = "omx team api read-monitor-snapshot"
     data_payload: JsonObject = _load_team_api_data_object(stdout, operation_name)
     snapshot_value = data_payload.get("snapshot")
-    data_spec = TeamApiReadMonitorSnapshotDataSpec(snapshot=cast(JsonValue, snapshot_value))
+    if not is_json_value(snapshot_value):
+        raise TeamworkSurfaceError(
+            f"{operation_name} returned a malformed data payload"
+        )
+    data_spec = TeamApiReadMonitorSnapshotDataSpec(snapshot=snapshot_value)
 
     result = TeamApiReadMonitorSnapshotTransportPayload(snapshot=data_spec.snapshot)
     return result
@@ -234,11 +240,11 @@ def load_team_api_read_config_payload(stdout: str) -> TeamApiReadConfigTransport
     operation_name = "omx team api read-config"
     data_payload: JsonObject = _load_team_api_data_object(stdout, operation_name)
     config_value = data_payload.get("config")
-    if config_value is not None and not isinstance(config_value, dict):
+    config_payload = None if config_value is None else json_object_or_none(config_value)
+    if config_value is not None and config_payload is None:
         raise TeamworkSurfaceError(
             f"{operation_name} returned a malformed data payload"
         )
-    config_payload = cast(JsonObject | None, config_value)
     data_spec = TeamApiReadConfigDataSpec(config=config_payload)
 
     result = TeamApiReadConfigTransportPayload(config=data_spec.config)
@@ -280,7 +286,7 @@ def load_team_api_read_worker_status_payload(
 
 
 def load_team_api_payload(stdout: str, operation_name: str) -> TeamApiTransportPayload:
-    """Loads one successful team-api nested data object for legacy generic callers.
+    """Loads one successful team-api nested data object for generic transport callers.
 
     Args:
         stdout [str]: Raw stdout text returned from one `omx team api ... --json` command.

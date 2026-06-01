@@ -8,7 +8,7 @@ from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.runtime.ultrawork.ultrawork_state_classifier import (
     UltraworkStateClassifier,
 )
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 from omx_remote.shared.omx_enums.ultrawork_enums import UltraworkStateClassification
 from omx_remote.shared.utils.json_file_store import json_file_stores
 
@@ -23,10 +23,10 @@ def _classify_ultrawork_state_snapshot(
     state_payload: JsonObject,
 ) -> UltraworkStateClassification:
     """Handles classify ultrawork state snapshot.
-    
+
     Args:
         state_payload [dict[str, object]]: Function argument.
-    
+
     Returns:
         UltraworkStateClassification: Function return value.
     """
@@ -36,9 +36,11 @@ def _classify_ultrawork_state_snapshot(
     return classification
 
 
-def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
+def _assess_ultrawork_launch_preflight_state() -> tuple[
+    UltraworkStateClassification, list[str]
+]:
     """Handles assess ultrawork launch preflight state.
-    
+
     Returns:
         tuple[UltraworkStateClassification, list[str]]: Function return value.
     """
@@ -52,7 +54,7 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
         return UltraworkStateClassification.STALE, [
             "Existing Ultrawork state files were found, but no ultrawork-state.json was present.",
             f"Known stale files: {joined_paths}",
-            "If these are stale, run `agent-remote ultrawork cleanup-stale` before re-launching.",
+            "If these are stale, run `comx-agent ultrawork cleanup-stale` before re-launching.",
         ]
 
     ultrawork_state_store = json_file_stores.for_path(ultrawork_state_path)
@@ -62,7 +64,7 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
         return UltraworkStateClassification.TERMINAL, [
             "Ultrawork state artifact is present but unreadable.",
             f"Paths: {joined_paths}",
-            "Clean stale Ultrawork artifacts and retry with `agent-remote ultrawork cleanup-stale`.",
+            "Clean stale Ultrawork artifacts and retry with `comx-agent ultrawork cleanup-stale`.",
         ]
 
     state_class: UltraworkStateClassification = _classify_ultrawork_state_snapshot(
@@ -74,7 +76,7 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
         return UltraworkStateClassification.RESUMABLE, [
             "Ultrawork appears resumable from existing state.",
             f"Paths: {joined_paths}",
-            "If you intend to start a new session, run `agent-remote ultrawork cleanup-stale` or use --force-cleanup.",
+            "If you intend to start a new session, run `comx-agent ultrawork cleanup-stale` or use --force-cleanup.",
         ]
 
     if state_class == UltraworkStateClassification.TERMINAL:
@@ -91,9 +93,11 @@ def _assess_ultrawork_launch_preflight_state() -> tuple[UltraworkStateClassifica
     ]
 
 
-def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassification, list[str]]:
+def _assess_ultrawork_resume_preflight_state() -> tuple[
+    UltraworkStateClassification, list[str]
+]:
     """Handles assess ultrawork resume preflight state.
-    
+
     Returns:
         tuple[UltraworkStateClassification, list[str]]: Function return value.
     """
@@ -118,7 +122,9 @@ def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassifica
             f"Path: {ultrawork_state_path}",
         ]
 
-    state_class: UltraworkStateClassification = _classify_ultrawork_state_snapshot(state_payload)
+    state_class: UltraworkStateClassification = _classify_ultrawork_state_snapshot(
+        state_payload
+    )
     if state_class != UltraworkStateClassification.RESUMABLE:
         return state_class, [
             f"Ultrawork state file class is '{state_class}'.",
@@ -137,10 +143,10 @@ def _assess_ultrawork_resume_preflight_state() -> tuple[UltraworkStateClassifica
 
 def _detect_tty_tmux_gate(allow_non_tty: bool) -> list[str]:
     """Handles detect tty tmux gate.
-    
+
     Args:
         allow_non_tty [bool]: Function argument.
-    
+
     Returns:
         list[str]: Function return value.
     """
@@ -161,10 +167,10 @@ def _detect_tty_tmux_gate(allow_non_tty: bool) -> list[str]:
 
 def get_ultrawork_state_root(workspace_root: Path | None = None) -> Path:
     """Return the OMX state directory for the current workspace.
-    
+
     Args:
         workspace_root [Path | None]: Function argument.
-    
+
     Returns:
         Path: Function return value.
     """
@@ -180,10 +186,10 @@ def get_ultrawork_state_root(workspace_root: Path | None = None) -> Path:
 
 def list_ultrawork_state_paths(workspace_root: Path | None = None) -> list[Path]:
     """List known Ultrawork state paths that currently exist.
-    
+
     Args:
         workspace_root [Path | None]: Function argument.
-    
+
     Returns:
         list[Path]: Function return value.
     """
@@ -201,7 +207,7 @@ def list_ultrawork_state_paths(workspace_root: Path | None = None) -> list[Path]
 
 def require_ultrawork_launch_tty(allow_non_tty: bool) -> None:
     """Validate whether Ultrawork launch may proceed in the current stdin mode.
-    
+
     Args:
         allow_non_tty [bool]: Function argument.
     """
@@ -217,10 +223,10 @@ def require_ultrawork_launch_tty(allow_non_tty: bool) -> None:
 
 def validate_ultrawork_launch_task(task: str) -> str:
     """Normalize and validate task text for Ultrawork launch.
-    
+
     Args:
         task [str]: Function argument.
-    
+
     Returns:
         str: Function return value.
     """
@@ -233,11 +239,11 @@ def validate_ultrawork_launch_task(task: str) -> str:
 
 def validate_ultrawork_team_prefix(team_size: int, team_role: str) -> str:
     """Normalize and validate one ultrawork `N:role` prefix.
-    
+
     Args:
         team_size [int]: Function argument.
         team_role [str]: Function argument.
-    
+
     Returns:
         str: Function return value.
     """
@@ -258,18 +264,18 @@ def build_ultrawork_launch_plan(
     allow_non_tty: bool,
     team_size: int,
     team_role: str,
-) -> tuple[list[str], list[str]]:
+) -> tuple[tuple[str, ...], list[str]]:
     """Build launch command and preflight warnings for Ultrawork.
-    
+
     Args:
         task [str]: Function argument.
         force_cleanup [bool]: Function argument.
         allow_non_tty [bool]: Function argument.
         team_size [int]: Function argument.
         team_role [str]: Function argument.
-    
+
     Returns:
-        tuple[list[str], list[str]]: Function return value.
+        tuple[tuple[str, ...], list[str]]: Function return value.
     """
     normalized_task: str = validate_ultrawork_launch_task(task)
     require_ultrawork_launch_tty(allow_non_tty=allow_non_tty)
@@ -283,22 +289,22 @@ def build_ultrawork_launch_plan(
     if state_class == UltraworkStateClassification.RESUMABLE and not force_cleanup:
         raise ValueError(
             "Existing resumable Ultrawork state detected. "
-            "Run `agent-remote ultrawork cleanup-stale` or retry with --force-cleanup."
+            "Run `comx-agent ultrawork cleanup-stale` or retry with --force-cleanup."
         )
 
     team_prefix: str = validate_ultrawork_team_prefix(team_size, team_role)
-    launch_command: list[str] = ["team", team_prefix, normalized_task]
+    launch_command: tuple[str, ...] = ("team", team_prefix, normalized_task)
     return launch_command, warnings
 
 
-def build_ultrawork_resume_plan(team_name: str) -> tuple[list[str], list[str]]:
+def build_ultrawork_resume_plan(team_name: str) -> tuple[tuple[str, ...], list[str]]:
     """Build resume command and preflight warnings for Ultrawork.
-    
+
     Args:
         team_name [str]: Function argument.
-    
+
     Returns:
-        tuple[list[str], list[str]]: Function return value.
+        tuple[tuple[str, ...], list[str]]: Function return value.
     """
     normalized_team_name: str = team_name.strip()
     if normalized_team_name == "":
@@ -312,20 +318,22 @@ def build_ultrawork_resume_plan(team_name: str) -> tuple[list[str], list[str]]:
             )
         raise ValueError("No resumable Ultrawork session found.")
 
-    resume_command: list[str] = ["team", "resume", normalized_team_name]
+    resume_command: tuple[str, ...] = ("team", "resume", normalized_team_name)
     return resume_command, warnings
 
 
 def cleanup_ultrawork_state(workspace_root: Path | None = None) -> list[str]:
     """Remove known Ultrawork stale-state files.
-    
+
     Args:
         workspace_root [Path | None]: Function argument.
-    
+
     Returns:
         list[str]: Function return value.
     """
-    existing_state_paths: list[Path] = list_ultrawork_state_paths(workspace_root=workspace_root)
+    existing_state_paths: list[Path] = list_ultrawork_state_paths(
+        workspace_root=workspace_root
+    )
     removed_paths: list[str] = []
 
     state_path: Path
@@ -341,11 +349,11 @@ def format_resume_outcome(
     team_name: str,
 ) -> OmxCommandResult:
     """Normalize known Ultrawork resume non-resumable responses into a failure envelope.
-    
+
     Args:
         command_result [OmxCommandResult]: Function argument.
         team_name [str]: Function argument.
-    
+
     Returns:
         OmxCommandResult: Function return value.
     """
@@ -364,10 +372,10 @@ def format_resume_outcome(
 
 def format_preflight_failure(message: str) -> OmxCommandResult:
     """Return a typed command result for Ultrawork preflight failures.
-    
+
     Args:
         message [str]: Function argument.
-    
+
     Returns:
         OmxCommandResult: Function return value.
     """

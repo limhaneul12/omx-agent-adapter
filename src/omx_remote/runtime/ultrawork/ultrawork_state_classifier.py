@@ -14,10 +14,10 @@ from omx_remote.shared.omx_enums.ultrawork_enums import (
 
 def _normalize_token(value: object) -> str | None:
     """Handles normalize token.
-    
+
     Args:
         value [object]: Function argument.
-    
+
     Returns:
         str | None: Function return value.
     """
@@ -28,8 +28,6 @@ def _normalize_token(value: object) -> str | None:
     token = value.strip().lower()
     normalized_token: str | None = token or None
     return normalized_token
-
-
 
 
 class UltraworkStateTokenClassifier:
@@ -87,12 +85,10 @@ class UltraworkStateTokenClassifier:
         Returns:
             ``True`` when the phase maps to a terminal Ultrawork phase.
         """
-        phase: UltraworkRuntimePhase | None = UltraworkStateTokenClassifier.normalize_phase(
-            phase_value
+        phase: UltraworkRuntimePhase | None = (
+            UltraworkStateTokenClassifier.normalize_phase(phase_value)
         )
-        is_terminal_phase = bool(
-            phase and phase in ULTRAWORK_TERMINAL_PHASES
-        )
+        is_terminal_phase = bool(phase and phase in ULTRAWORK_TERMINAL_PHASES)
         return is_terminal_phase
 
     @staticmethod
@@ -105,12 +101,10 @@ class UltraworkStateTokenClassifier:
         Returns:
             ``True`` when the outcome maps to a terminal Ultrawork outcome.
         """
-        outcome: UltraworkRunOutcome | None = UltraworkStateTokenClassifier.normalize_outcome(
-            outcome_value
+        outcome: UltraworkRunOutcome | None = (
+            UltraworkStateTokenClassifier.normalize_outcome(outcome_value)
         )
-        is_terminal_outcome = bool(
-            outcome and outcome in ULTRAWORK_TERMINAL_OUTCOMES
-        )
+        is_terminal_outcome = bool(outcome and outcome in ULTRAWORK_TERMINAL_OUTCOMES)
         return is_terminal_outcome
 
     @staticmethod
@@ -123,8 +117,8 @@ class UltraworkStateTokenClassifier:
         Returns:
             ``True`` when the phase maps to a non-terminal Ultrawork phase.
         """
-        phase: UltraworkRuntimePhase | None = UltraworkStateTokenClassifier.normalize_phase(
-            phase_value
+        phase: UltraworkRuntimePhase | None = (
+            UltraworkStateTokenClassifier.normalize_phase(phase_value)
         )
         is_active_phase = bool(phase and phase in ULTRAWORK_NON_TERMINAL_PHASES)
         return is_active_phase
@@ -139,14 +133,11 @@ class UltraworkStateTokenClassifier:
         Returns:
             ``True`` when the outcome maps to a non-terminal Ultrawork outcome.
         """
-        outcome: UltraworkRunOutcome | None = UltraworkStateTokenClassifier.normalize_outcome(
-            outcome_value
+        outcome: UltraworkRunOutcome | None = (
+            UltraworkStateTokenClassifier.normalize_outcome(outcome_value)
         )
-        is_active_outcome = bool(
-            outcome and outcome in ULTRAWORK_NON_TERMINAL_OUTCOMES
-        )
+        is_active_outcome = bool(outcome and outcome in ULTRAWORK_NON_TERMINAL_OUTCOMES)
         return is_active_outcome
-
 
 
 class UltraworkStateClassifier:
@@ -186,10 +177,10 @@ class UltraworkStateClassifier:
         state_payload: JsonObject,
     ) -> UltraworkStateClassification:
         """Handles classify inactive state.
-        
+
         Args:
             state_payload [JsonObject]: Function argument.
-        
+
         Returns:
             UltraworkStateClassification: Function return value.
         """
@@ -215,10 +206,10 @@ class UltraworkStateClassifier:
         state_payload: JsonObject,
     ) -> UltraworkStateClassification:
         """Handles classify marker state.
-        
+
         Args:
             state_payload [JsonObject]: Function argument.
-        
+
         Returns:
             UltraworkStateClassification: Function return value.
         """
@@ -243,10 +234,10 @@ class UltraworkStateClassifier:
     @staticmethod
     def _read_outcome_value(state_payload: JsonObject) -> object | None:
         """Handles read outcome value.
-        
+
         Args:
             state_payload [JsonObject]: Function argument.
-        
+
         Returns:
             object | None: Function return value.
         """

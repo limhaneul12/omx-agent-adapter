@@ -53,19 +53,25 @@ def _string_tuple(value: JsonValue | None) -> tuple[str, ...]:
         empty: tuple[str, ...] = ()
         return empty
     if not isinstance(value, list):
-        raise CodexMcpRegistryError("Expected a list of strings in Codex MCP transport.")
+        raise CodexMcpRegistryError(
+            "Expected a list of strings in Codex MCP transport."
+        )
 
     values: list[str] = []
     for item in value:
         if not isinstance(item, str):
-            raise CodexMcpRegistryError("Expected only strings in Codex MCP transport list.")
+            raise CodexMcpRegistryError(
+                "Expected only strings in Codex MCP transport list."
+            )
         values.append(item)
 
     normalized_values: tuple[str, ...] = tuple(values)
     return normalized_values
 
 
-def _env_tuple(env_value: JsonValue | None, env_vars_value: JsonValue | None) -> tuple[McpEnvironmentVariable, ...]:
+def _env_tuple(
+    env_value: JsonValue | None, env_vars_value: JsonValue | None
+) -> tuple[McpEnvironmentVariable, ...]:
     """Normalize Codex MCP env payloads into typed environment entries.
 
     Args:
@@ -80,7 +86,9 @@ def _env_tuple(env_value: JsonValue | None, env_vars_value: JsonValue | None) ->
         for name, value in env_value.items():
             entries[name] = None if value is None else str(value)
     elif env_value is not None:
-        raise CodexMcpRegistryError("Codex MCP transport env must be an object or null.")
+        raise CodexMcpRegistryError(
+            "Codex MCP transport env must be an object or null."
+        )
 
     if isinstance(env_vars_value, list):
         for item in env_vars_value:
@@ -88,7 +96,9 @@ def _env_tuple(env_value: JsonValue | None, env_vars_value: JsonValue | None) ->
                 raise CodexMcpRegistryError("Codex MCP env_vars must contain strings.")
             entries.setdefault(item, None)
     elif env_vars_value is not None:
-        raise CodexMcpRegistryError("Codex MCP transport env_vars must be a list or null.")
+        raise CodexMcpRegistryError(
+            "Codex MCP transport env_vars must be a list or null."
+        )
 
     env_entries: tuple[McpEnvironmentVariable, ...] = tuple(
         McpEnvironmentVariable(name=name, value=value)
@@ -176,7 +186,9 @@ def server_from_codex_payload(payload: JsonObject) -> McpServerConfig:
 
     transport_value: JsonValue | None = payload.get("transport")
     if not isinstance(transport_value, dict):
-        raise CodexMcpRegistryError("Codex MCP server payload requires transport object.")
+        raise CodexMcpRegistryError(
+            "Codex MCP server payload requires transport object."
+        )
     try:
         transport_payload: JsonObject = normalize_mcp_json_object(
             transport_value,
@@ -187,7 +199,9 @@ def server_from_codex_payload(payload: JsonObject) -> McpServerConfig:
 
     enabled_value: JsonValue | None = payload.get("enabled")
     if not isinstance(enabled_value, bool):
-        raise CodexMcpRegistryError("Codex MCP server payload requires boolean enabled.")
+        raise CodexMcpRegistryError(
+            "Codex MCP server payload requires boolean enabled."
+        )
     enabled: bool = enabled_value
     startup_timeout_value: JsonValue | None = payload.get("startup_timeout_sec")
     tool_timeout_value: JsonValue | None = payload.get("tool_timeout_sec")
@@ -249,7 +263,9 @@ def read_codex_mcp_servers(
             check=False,
         )
     except OSError as error:
-        raise CodexMcpRegistryError(f"Could not run codex MCP registry command: {error}") from error
+        raise CodexMcpRegistryError(
+            f"Could not run codex MCP registry command: {error}"
+        ) from error
 
     if completed_process.returncode != 0:
         stderr: str = completed_process.stderr.strip()

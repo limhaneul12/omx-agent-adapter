@@ -15,7 +15,7 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitDecisionReason,
     CockpitSnapshot,
 )
-from omx_remote.schemas.routes.route_policy_schemas import RouteName
+from omx_remote.schemas.route_policy_schemas import RouteName
 
 
 def _capabilities() -> CockpitCapabilitiesSnapshot:
@@ -56,7 +56,7 @@ def _capabilities() -> CockpitCapabilitiesSnapshot:
 
 def _agents() -> CockpitAgentConfigSummary:
     return CockpitAgentConfigSummary(
-        config_path=".agent-remote.toml",
+        config_path=".comx-agent.toml",
         total_count=1,
         enabled_count=1,
         disabled_count=0,
@@ -70,7 +70,7 @@ def _recipes() -> CockpitCommandRecipeSummary:
         available_count=2,
         builtin_count=2,
         repo_count=0,
-        qualified_ids=("builtin:review-diff", "builtin:verify-handoff-plus"),
+        qualified_ids=("builtin:review-gate", "builtin:release-readiness"),
         warnings=(),
     )
 
@@ -109,7 +109,9 @@ def _cockpit(
     return snapshot
 
 
-def test_next_action_observes_when_repo_has_no_blocking_evidence(tmp_path: Path) -> None:
+def test_next_action_observes_when_repo_has_no_blocking_evidence(
+    tmp_path: Path,
+) -> None:
     result = build_next_action_result(cockpit_snapshot=_cockpit(tmp_path))
 
     assert result.recommended_action == "observe"
@@ -117,7 +119,7 @@ def test_next_action_observes_when_repo_has_no_blocking_evidence(tmp_path: Path)
     assert result.requires_review is False
     assert result.source_names == ("runtime_status", "active_runtime_modes")
     assert result.recommended_commands == (
-        f"agent-remote cockpit snapshot --cwd {quote_shell_token(str(tmp_path))} --json",
+        f"comx-agent cockpit snapshot --cwd {quote_shell_token(str(tmp_path))} --json",
     )
 
 
@@ -202,21 +204,23 @@ def test_next_action_includes_ultragoal_route_for_durable_task(tmp_path: Path) -
     assert result.recommended_action == "prepare_ultragoal_handoff"
     assert result.route_recommendations[0].route == RouteName.OMX_ULTRAGOAL
     assert result.recommended_commands == (
-        f"agent-remote cockpit snapshot --cwd {quote_shell_token(str(tmp_path))} --json",
+        f"comx-agent cockpit snapshot --cwd {quote_shell_token(str(tmp_path))} --json",
         (
-            "agent-remote route recommend "
+            "comx-agent route recommend "
             f"--cwd {quote_shell_token(str(tmp_path))} "
             f"--task {quote_shell_token(task)} --json"
         ),
-        f"agent-remote ultragoal status --cwd {quote_shell_token(str(tmp_path))} --json",
+        f"comx-agent ultragoal status --cwd {quote_shell_token(str(tmp_path))} --json",
         (
-            "agent-remote preflight route omx-ultragoal "
+            "comx-agent preflight route omx-ultragoal "
             f"--cwd {quote_shell_token(str(tmp_path))} --json"
         ),
     )
 
 
-def test_next_action_keeps_verification_recommendations_dry_run_first(tmp_path: Path) -> None:
+def test_next_action_keeps_verification_recommendations_dry_run_first(
+    tmp_path: Path,
+) -> None:
     task = "verify current handoff"
     route_policy = build_route_policy_result(
         task=task,
@@ -235,5 +239,7 @@ def test_next_action_keeps_verification_recommendations_dry_run_first(tmp_path: 
     )
 
     assert result.recommended_action == "inspect_route_recommendation"
-    assert all("omx team launch" not in command for command in result.recommended_commands)
+    assert all(
+        "omx team launch" not in command for command in result.recommended_commands
+    )
     assert any("--dry-run" in command for command in result.recommended_commands)

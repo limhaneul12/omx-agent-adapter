@@ -11,8 +11,8 @@ from omx_remote.schemas.common_schemas import (
     NonEmptyStrings,
     StrictSchemaModel,
 )
-from omx_remote.schemas.multi_operator.snapshot_schemas import MultiOperatorSnapshot
-from omx_remote.schemas.operator.action_schemas import OperatorActionResult
+from omx_remote.schemas.multi_operator_snapshot_schemas import MultiOperatorSnapshot
+from omx_remote.schemas.operator_action_schemas import OperatorActionResult
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.shared.omx_enums.codex_goal_enums import (
     CodexGoalSource,
@@ -71,7 +71,7 @@ class GoalDelegationDecision(StrictSchemaModel):
     @model_validator(mode="after")
     def validate_team_worker_count(self) -> Self:
         """Handles validate team worker count.
-        
+
         Returns:
             Self: Function return value.
         """
@@ -112,23 +112,24 @@ class GoalPrdAuthoringPromptRequest(StrictSchemaModel):
     team_worker_count: int | None = Field(ge=1)
 
 
+class GoalPrdAuthoringPromptContext(StrictSchemaModel):
+    """Rendered string context for the Goal PRD prompt asset."""
+
+    goal_id: NonEmptyString
+    goal_objective_text: NonEmptyString
+    requested_slice: NonEmptyString
+    source_path_lines: NonEmptyString
+    constraint_lines: NonEmptyString
+    verification_lines: NonEmptyString
+    team_worker_count_line: NonEmptyString
+    review_instruction: NonEmptyString
+
+
 class GoalPrdAuthoringPromptResult(StrictSchemaModel):
     """Represents one prepared Goal-scoped PRD authoring prompt."""
 
     mirror_state: CodexGoalMirrorState
     prompt_request: GoalPrdAuthoringPromptRequest
-    prompt: NonEmptyString
-
-
-class GoalToRalphHandoffPromptRequest(GoalPrdAuthoringPromptRequest):
-    """Legacy request name for the Goal-scoped PRD authoring prompt."""
-
-
-class GoalToRalphHandoffPromptResult(StrictSchemaModel):
-    """Legacy result name for the Goal-scoped PRD authoring prompt."""
-
-    mirror_state: CodexGoalMirrorState
-    prompt_request: GoalToRalphHandoffPromptRequest
     prompt: NonEmptyString
 
 

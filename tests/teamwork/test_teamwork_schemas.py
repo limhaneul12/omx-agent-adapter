@@ -15,6 +15,7 @@ from omx_remote.schemas.teamwork.status_schemas import (
     TeamStatusRequest,
     TeamStatusSnapshot,
 )
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 def test_team_status_request_accepts_required_team_name() -> None:
@@ -115,7 +116,7 @@ def test_team_status_snapshot_accepts_worker_edge_lists() -> None:
 
     assert result.dead_workers == ("worker-2",)
     assert result.non_reporting_workers == ("worker-3",)
-    json_payload = result.model_dump(mode="json")
+    json_payload = model_json_object(result)
     assert json_payload["dead_workers"] == ["worker-2"]
     assert json_payload["non_reporting_workers"] == ["worker-3"]
 

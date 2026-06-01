@@ -32,7 +32,7 @@ class ToolInteraction(StrictSchemaModel):
     @model_validator(mode="after")
     def _validate_state(self) -> ToolInteraction:
         """Validates that the state of the interaction matches whether a result is present.
-        
+
         Returns:
             ToolInteraction: Function return value.
         """
@@ -76,7 +76,7 @@ class ToolInteractionReport(StrictSchemaModel):
     @model_validator(mode="after")
     def _validate_summary_counts(self) -> ToolInteractionReport:
         """Validates that derived summary counters match the underlying lists.
-        
+
         Returns:
             ToolInteractionReport: Function return value.
         """
@@ -127,9 +127,7 @@ class ToolInteractionReport(StrictSchemaModel):
                 "ToolInteractionReport.anomalies must include one entry per derived anomaly"
             )
         if self.anomaly_count != expected_anomaly_count:
-            raise ValueError(
-                "ToolInteractionReport.anomaly_count must match anomalies"
-            )
+            raise ValueError("ToolInteractionReport.anomaly_count must match anomalies")
         expected_has_anomalies = expected_anomaly_count > 0
         if self.has_anomalies != expected_has_anomalies:
             raise ValueError(

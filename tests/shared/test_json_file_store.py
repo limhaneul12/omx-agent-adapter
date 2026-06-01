@@ -12,7 +12,9 @@ class ExampleJsonModel(BaseModel):
     count: int
 
 
-def test_json_file_store_registry_reuses_store_for_equivalent_paths(tmp_path: Path) -> None:
+def test_json_file_store_registry_reuses_store_for_equivalent_paths(
+    tmp_path: Path,
+) -> None:
     state_path = tmp_path / "state" / "payload.json"
     equivalent_path = tmp_path / "state" / "nested" / ".." / "payload.json"
 
@@ -23,7 +25,9 @@ def test_json_file_store_registry_reuses_store_for_equivalent_paths(tmp_path: Pa
     assert first_store.path == state_path.resolve()
 
 
-def test_json_file_store_writes_and_reads_mapping_without_repassing_path(tmp_path: Path) -> None:
+def test_json_file_store_writes_and_reads_mapping_without_repassing_path(
+    tmp_path: Path,
+) -> None:
     state_path = tmp_path / "state" / "payload.json"
     store = JsonFileStore(state_path)
 

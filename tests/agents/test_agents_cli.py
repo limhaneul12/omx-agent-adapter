@@ -29,7 +29,7 @@ persona = "Review diffs."
 
 
 def test_agents_list_json_includes_disabled_by_default(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(
         app,
@@ -44,7 +44,7 @@ def test_agents_list_json_includes_disabled_by_default(tmp_path: Path) -> None:
 
 
 def test_agents_list_enabled_only_filters_disabled_agents(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(
         app,
@@ -57,7 +57,7 @@ def test_agents_list_enabled_only_filters_disabled_agents(tmp_path: Path) -> Non
 
 
 def test_agents_list_human_output_marks_enabled_and_disabled(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(app, ["agents", "list", "--cwd", str(tmp_path)])
 
@@ -69,7 +69,7 @@ def test_agents_list_human_output_marks_enabled_and_disabled(tmp_path: Path) -> 
 
 
 def test_agents_show_outputs_one_agent_json(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(
         app,
@@ -83,7 +83,7 @@ def test_agents_show_outputs_one_agent_json(tmp_path: Path) -> None:
 
 
 def test_agents_show_missing_agent_exits_nonzero(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(
         app,
@@ -96,7 +96,7 @@ def test_agents_show_missing_agent_exits_nonzero(tmp_path: Path) -> None:
 
 
 def test_agents_validate_reports_valid_config(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
 
     result = CliRunner().invoke(
         app,
@@ -110,7 +110,7 @@ def test_agents_validate_reports_valid_config(tmp_path: Path) -> None:
 
 
 def test_agents_validate_exits_nonzero_on_schema_error(tmp_path: Path) -> None:
-    (tmp_path / ".agent-remote.toml").write_text(
+    (tmp_path / ".comx-agent.toml").write_text(
         """
 [agents.architect]
 enabled = true
@@ -148,7 +148,7 @@ developer_instructions = """Act as sample."""
 
 
 def test_agents_plan_apply_codex_outputs_materialization_plan(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
     codex_home = tmp_path / "codex-home"
     _write_codex_contract(codex_home)
 
@@ -176,7 +176,7 @@ def test_agents_plan_apply_codex_outputs_materialization_plan(tmp_path: Path) ->
 
 
 def test_agents_plan_apply_codex_can_target_global_namespace(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
     codex_home = tmp_path / "codex-home"
     _write_codex_contract(codex_home)
 
@@ -208,7 +208,7 @@ def test_agents_plan_apply_codex_can_target_global_namespace(tmp_path: Path) -> 
 
 
 def test_agents_apply_codex_dry_run_does_not_write(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
     codex_home = tmp_path / "codex-home"
     _write_codex_contract(codex_home)
 
@@ -235,7 +235,7 @@ def test_agents_apply_codex_dry_run_does_not_write(tmp_path: Path) -> None:
 
 
 def test_agents_codex_status_reports_generated_artifact_match(tmp_path: Path) -> None:
-    _write_agent_config(tmp_path / ".agent-remote.toml")
+    _write_agent_config(tmp_path / ".comx-agent.toml")
     codex_home = tmp_path / "codex-home"
     _write_codex_contract(codex_home)
 

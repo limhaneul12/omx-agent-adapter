@@ -23,7 +23,9 @@ def register_team_approval_commands(team_app: typer.Typer) -> None:
     @team_app.command("read-task-approval")
     def team_read_task_approval(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
-        task_id: str = typer.Option(..., "--task-id", help="Task id whose approval state should be read."),
+        task_id: str = typer.Option(
+            ..., "--task-id", help="Task id whose approval state should be read."
+        ),
     ) -> None:
         """Read one typed OMX team task approval command result.
 
@@ -41,10 +43,16 @@ def register_team_approval_commands(team_app: typer.Typer) -> None:
     @team_app.command("write-task-approval")
     def team_write_task_approval(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
-        task_id: str = typer.Option(..., "--task-id", help="Task id whose approval state should be written."),
+        task_id: str = typer.Option(
+            ..., "--task-id", help="Task id whose approval state should be written."
+        ),
         status: str = typer.Option(..., "--status", help="Approval status to record."),
-        reviewer: str = typer.Option(..., "--reviewer", help="Reviewer identity writing the approval record."),
-        decision_reason: str = typer.Option(..., "--decision-reason", help="Approval decision reason text."),
+        reviewer: str = typer.Option(
+            ..., "--reviewer", help="Reviewer identity writing the approval record."
+        ),
+        decision_reason: str = typer.Option(
+            ..., "--decision-reason", help="Approval decision reason text."
+        ),
         required: bool | None = typer.Option(
             None,
             "--required/--not-required",

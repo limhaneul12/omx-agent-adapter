@@ -24,7 +24,6 @@ def _normalize_stream_text(stream_text: str | None) -> str:
     return normalized_stream_text
 
 
-
 def _read_process_id_from_tmux_session(session_locator: str) -> int | None:
     """Reads the pane process id for one tmux-backed Codex Goal session.
 
@@ -49,7 +48,6 @@ def _read_process_id_from_tmux_session(session_locator: str) -> int | None:
     return process_id
 
 
-
 def spawn_codex_goal_session(
     goal_id: str,
     codex_command: Sequence[str],
@@ -67,8 +65,14 @@ def spawn_codex_goal_session(
     Returns:
         CodexGoalSpawnResult: Spawn status, session locator, process id, and any tmux error text.
     """
-    session_locator: str = f"agent-remote-goal-{goal_id}"
-    new_session_command: list[str] = ["tmux", "new-session", "-d", "-s", session_locator]
+    session_locator: str = f"comx-agent-goal-{goal_id}"
+    new_session_command: list[str] = [
+        "tmux",
+        "new-session",
+        "-d",
+        "-s",
+        session_locator,
+    ]
     if working_directory is not None:
         new_session_command.extend(["-c", working_directory])
     new_session_command.extend(list(codex_command))
@@ -80,7 +84,9 @@ def spawn_codex_goal_session(
         check=False,
     )
     if completed_process.returncode != 0:
-        launch_error_text: str = _normalize_stream_text(completed_process.stderr).strip()
+        launch_error_text: str = _normalize_stream_text(
+            completed_process.stderr
+        ).strip()
         if launch_error_text == "":
             launch_error_text = _normalize_stream_text(completed_process.stdout).strip()
         if launch_error_text == "":
@@ -119,7 +125,6 @@ def spawn_codex_goal_session(
         error_text=send_keys_error_text,
     )
     return result
-
 
 
 def is_codex_goal_session_active(session_locator: str) -> bool:

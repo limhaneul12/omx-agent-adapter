@@ -1,10 +1,10 @@
 from pathlib import Path
 
-from omx_remote.runtime.commands.command_catalog_resolver import (
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     load_command_catalog,
     resolve_command_recipe,
 )
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
 from omx_remote.runtime.preflight.git_preflight import check_git_state
@@ -16,7 +16,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandRecipe,
     CommandRisk,
 )
-from omx_remote.schemas.preflight.preflight_schemas import (
+from omx_remote.schemas.preflight_schemas import (
     PreflightCategory,
     PreflightCheckResult,
     PreflightReport,
@@ -80,7 +80,9 @@ def _build_report(
     return report
 
 
-def _plan_blocker_checks(plan: CommandExecutionPlan) -> tuple[PreflightCheckResult, ...]:
+def _plan_blocker_checks(
+    plan: CommandExecutionPlan,
+) -> tuple[PreflightCheckResult, ...]:
     """Convert plan blockers into preflight checks.
 
     Args:
@@ -105,7 +107,9 @@ def _plan_blocker_checks(plan: CommandExecutionPlan) -> tuple[PreflightCheckResu
     return plan_checks
 
 
-def _tool_checks(plan_steps: tuple[CommandPlanStep, ...]) -> tuple[PreflightCheckResult, ...]:
+def _tool_checks(
+    plan_steps: tuple[CommandPlanStep, ...],
+) -> tuple[PreflightCheckResult, ...]:
     """Build tool availability checks from planned argv.
 
     Args:
@@ -114,7 +118,9 @@ def _tool_checks(plan_steps: tuple[CommandPlanStep, ...]) -> tuple[PreflightChec
     Returns:
         tuple[PreflightCheckResult, ...]: Tool availability checks.
     """
-    tool_names: list[str] = [step.native_argv[0] for step in plan_steps if step.native_argv]
+    tool_names: list[str] = [
+        step.native_argv[0] for step in plan_steps if step.native_argv
+    ]
 
     seen_tools: set[str] = set()
     checks: list[PreflightCheckResult] = []
@@ -128,7 +134,9 @@ def _tool_checks(plan_steps: tuple[CommandPlanStep, ...]) -> tuple[PreflightChec
     return tool_checks
 
 
-def _prompt_checks(plan_steps: tuple[CommandPlanStep, ...], cwd: str | Path) -> tuple[PreflightCheckResult, ...]:
+def _prompt_checks(
+    plan_steps: tuple[CommandPlanStep, ...], cwd: str | Path
+) -> tuple[PreflightCheckResult, ...]:
     """Build prompt-file checks from planned steps.
 
     Args:
@@ -164,7 +172,9 @@ def run_command_preflight(
     """
     catalog = load_command_catalog(cwd=cwd, config_path=config_path)
     recipe: CommandRecipe = resolve_command_recipe(catalog, command_id)
-    plan: CommandExecutionPlan = build_command_execution_plan(recipe, cwd=cwd, dry_run=True)
+    plan: CommandExecutionPlan = build_command_execution_plan(
+        recipe, cwd=cwd, dry_run=True
+    )
     checks: tuple[PreflightCheckResult, ...] = (
         check_git_state(cwd, recipe.risk),
         *_tool_checks(plan.steps),

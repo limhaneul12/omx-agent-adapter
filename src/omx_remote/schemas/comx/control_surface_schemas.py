@@ -27,7 +27,6 @@ class ComxControlSurfaceInventory(StrictSchemaModel):
     """Represents the complete comx-agent command surface inventory."""
 
     product_name: NonEmptyString
-    compatibility_aliases: tuple[NonEmptyString, ...]
     native_commands: tuple[ComxNativeCommand, ...]
     composed_commands: tuple[CommandCatalogEntry, ...]
     native_count: int = Field(ge=0)

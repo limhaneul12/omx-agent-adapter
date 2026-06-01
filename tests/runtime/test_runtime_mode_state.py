@@ -4,7 +4,7 @@ import inspect
 import pytest
 
 from omx_remote.runtime.status import runtime_mode_state
-from omx_remote.schemas.runtime.status_schemas import RuntimeModeStateRequest
+from omx_remote.schemas.runtime_status_schemas import RuntimeModeStateRequest
 from omx_remote.shared.exceptions import RuntimeSurfaceError
 
 
@@ -44,7 +44,9 @@ def test_read_runtime_mode_state_returns_present_state_result(monkeypatch) -> No
     )
 
     result = asyncio.run(
-        runtime_mode_state.read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph"))
+        runtime_mode_state.read_runtime_mode_state(
+            RuntimeModeStateRequest(mode="ralph")
+        )
     )
 
     assert result.mode == "ralph"
@@ -62,7 +64,9 @@ def test_read_runtime_mode_state_accepts_direct_omx_state_payload(monkeypatch) -
     )
 
     result = asyncio.run(
-        runtime_mode_state.read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph"))
+        runtime_mode_state.read_runtime_mode_state(
+            RuntimeModeStateRequest(mode="ralph")
+        )
     )
 
     assert result.mode == "ralph"
@@ -95,7 +99,9 @@ def test_read_runtime_mode_state_rejects_non_object_state_payload(monkeypatch) -
     monkeypatch.setattr(
         runtime_mode_state,
         "run_omx_command",
-        lambda arguments: DummyResult(stdout='{"exists":true,"mode":"ralph","state":[]}\n'),
+        lambda arguments: DummyResult(
+            stdout='{"exists":true,"mode":"ralph","state":[]}\n'
+        ),
     )
 
     with pytest.raises(RuntimeSurfaceError):

@@ -22,7 +22,9 @@ def expected_team_worker_ids(request: RalphPostTeamReviewRequest) -> tuple[str, 
     if assignments is None:
         raise ValueError("Ralph post-Team review requires Team worker assignments.")
 
-    worker_ids: tuple[str, ...] = tuple(assignment.worker_id for assignment in assignments)
+    worker_ids: tuple[str, ...] = tuple(
+        assignment.worker_id for assignment in assignments
+    )
     return worker_ids
 
 
@@ -94,7 +96,9 @@ def unexpected_report_workers(request: RalphPostTeamReviewRequest) -> tuple[str,
     """
     expected_workers: set[str] = set(expected_team_worker_ids(request))
     unexpected_workers: tuple[str, ...] = tuple(
-        worker_id for worker_id in report_worker_tokens(request) if worker_id not in expected_workers
+        worker_id
+        for worker_id in report_worker_tokens(request)
+        if worker_id not in expected_workers
     )
     return unexpected_workers
 
@@ -148,7 +152,8 @@ def report_conflicts_with_prd(request: RalphPostTeamReviewRequest) -> bool:
     """
     team_admin = request.ralph_prd_artifact.team_admin
     admin_id_mismatch: bool = bool(
-        team_admin is not None and request.aggregation_report.admin_id != team_admin.admin_id
+        team_admin is not None
+        and request.aggregation_report.admin_id != team_admin.admin_id
     )
     has_worker_conflict: bool = bool(
         missing_expected_workers(request) or unexpected_report_workers(request)
@@ -223,7 +228,9 @@ def build_ralph_post_team_review(
         decision = RalphPostTeamReviewDecision.COMPLETE
 
     complete: bool = decision == RalphPostTeamReviewDecision.COMPLETE
-    follow_up_required: bool = decision == RalphPostTeamReviewDecision.FOLLOW_UP_WAVE_REQUIRED
+    follow_up_required: bool = (
+        decision == RalphPostTeamReviewDecision.FOLLOW_UP_WAVE_REQUIRED
+    )
     merge_approved: bool = complete and report.merge_ready
     summary: str = build_ralph_post_team_review_summary(
         decision,
@@ -231,18 +238,16 @@ def build_ralph_post_team_review(
         follow_up_workers,
         review_blockers,
     )
-    result: RalphPostTeamReviewResult = RalphPostTeamReviewResult.model_validate(
-        {
-            "decision": decision,
-            "complete": complete,
-            "follow_up_required": follow_up_required,
-            "human_review_required": requires_human_review,
-            "merge_approved": merge_approved,
-            "completed_workers": report.completed_workers,
-            "follow_up_workers": follow_up_workers,
-            "startup_issue_workers": report.startup_issue_workers,
-            "review_blockers": review_blockers,
-            "summary": summary,
-        }
+    result = RalphPostTeamReviewResult(
+        decision=decision,
+        complete=complete,
+        follow_up_required=follow_up_required,
+        human_review_required=requires_human_review,
+        merge_approved=merge_approved,
+        completed_workers=report.completed_workers,
+        follow_up_workers=follow_up_workers,
+        startup_issue_workers=report.startup_issue_workers,
+        review_blockers=review_blockers,
+        summary=summary,
     )
     return result

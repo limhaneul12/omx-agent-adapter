@@ -3,7 +3,7 @@ from omx_remote.schemas.common_schemas import (
     NonEmptyStrings,
     StrictSchemaModel,
 )
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 from omx_remote.shared.omx_enums.teamwork_enums import (
     TeamOperatorDeliveryMode,
     TeamOperatorDispatchOperation,

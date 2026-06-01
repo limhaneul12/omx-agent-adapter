@@ -33,10 +33,10 @@ async def decode_event_lines(
 
 def _decode_event_lines_sync(payload: str) -> list[ExecutionPayload]:
     """Handles decode event lines sync.
-    
+
     Args:
         payload [str]: Function argument.
-    
+
     Returns:
         list[ExecutionPayload]: Function return value.
     """

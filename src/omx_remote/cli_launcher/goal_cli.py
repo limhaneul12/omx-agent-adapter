@@ -10,13 +10,13 @@ from omx_remote.runtime.goal.codex_goal_runtime import (
 )
 from omx_remote.runtime.goal.codex_goal_supervisor import (
     build_goal_operating_decision,
-    prepare_tracked_codex_goal_ralph_handoff_prompt,
     prepare_tracked_goal_prd_authoring_prompt,
     restore_goal_lifecycle_state,
 )
 from omx_remote.runtime.goal.goal_lifecycle_artifacts import (
     write_goal_lifecycle_decision_from_ralph_review,
 )
+from omx_remote.runtime.prompt_assets import load_prompt_asset
 from omx_remote.runtime.ralph.ralph_review_artifacts import (
     read_ralph_post_team_review_artifact,
 )
@@ -29,40 +29,14 @@ from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalReviewPolicy,
     CodexGoalSpawnStatus,
 )
+from omx_remote.shared.utils.json_file_store import json_file_stores
 
 GOAL_HELP_TEXT = """Start and inspect adapter-tracked native Codex Goal sessions.
 
 Lanes: Goal only; Goal → Ralph; Goal → Ralph → Team(s); Ultrawork only; UltraGoal via native OMX; Ralph → Team. Use explicit lane status docs before treating a route as complete.
 """
 
-GOAL_TEMPLATE_TEXT = """# Codex /goal Prompt Template
-
-Goal:
-  <What should be completed, and where should the agent stop?>
-
-Context:
-  <Relevant files, directories, current state, prior decisions, and known evidence.>
-
-Constraints:
-  <Architecture rules, non-goals, safety boundaries, and testing expectations.>
-
-Done When:
-  <Concrete completion criteria, including verification commands and behavior that must not regress.>
-
-Route guide:
-  - Goal only: small, clear, single-agent task.
-  - Goal → Ralph: unclear scope, PRD/owner planning, or execution structure needed.
-  - Goal → Ralph → Team: Ralph can split independent worker ownership for real fanout.
-  - Ralph → Team: Ralph-owned team fanout without wrapping it as a Goal route.
-  - Ultrawork only: focused deep-work executor by itself.
-  - UltraGoal: native OMX durable multi-goal workflow; inspect `agent-remote ultragoal status`.
-
-Verification checklist:
-  - Targeted tests pass.
-  - Static checks pass.
-  - Full test suite passes when code changed.
-  - Handoff notes explain what changed, what was verified, and what remains.
-"""
+GOAL_TEMPLATE_TEXT = load_prompt_asset("goal", "goal-template.md")
 
 goal_app = typer.Typer(help=GOAL_HELP_TEXT, add_completion=False)
 
@@ -71,10 +45,10 @@ def _parse_goal_execution_shape(
     execution_shape_text: str,
 ) -> CodexGoalExecutionShape:
     """Handles parse goal execution shape.
-    
+
     Args:
         execution_shape_text [str]: Function argument.
-    
+
     Returns:
         CodexGoalExecutionShape: Function return value.
     """
@@ -85,20 +59,17 @@ def _parse_goal_execution_shape(
         execution_shape = CodexGoalExecutionShape.RALPH_PIPELINE
         return execution_shape
 
-    raise ValueError(
-        "execution_shape must be one of: goal_only, ralph_pipeline"
-    )
-
+    raise ValueError("execution_shape must be one of: goal_only, ralph_pipeline")
 
 
 def _parse_goal_review_policy(
     review_policy_text: str,
 ) -> CodexGoalReviewPolicy:
     """Handles parse goal review policy.
-    
+
     Args:
         review_policy_text [str]: Function argument.
-    
+
     Returns:
         CodexGoalReviewPolicy: Function return value.
     """
@@ -186,7 +157,7 @@ def goal_status(
     ),
 ) -> None:
     """Read the latest adapter-owned native Codex Goal mirror state.
-    
+
     Args:
         cwd [str | None]: Function argument.
     """
@@ -257,57 +228,6 @@ def goal_prepare_prd_prompt(
     typer.echo(result.model_dump_json(indent=2))
 
 
-@goal_app.command("prepare-ralph")
-def goal_prepare_ralph(
-    source_paths: list[str] = typer.Option(
-        ...,
-        "--source-path",
-        help="Source path Ralph must read. Pass multiple times for multiple paths.",
-    ),
-    requested_slice: str = typer.Option(
-        ...,
-        "--requested-slice",
-        help="One implementation slice Ralph should structure into a PRD artifact.",
-    ),
-    constraints: list[str] | None = typer.Option(
-        None,
-        "--constraint",
-        help="Constraint Ralph must preserve. Pass multiple times for multiple constraints.",
-    ),
-    verification_expectations: list[str] = typer.Option(
-        ...,
-        "--verification-expectation",
-        help="Verification gate Ralph must include. Pass multiple times for multiple gates.",
-    ),
-    cwd: str | None = typer.Option(
-        None,
-        "--cwd",
-        help="Optional working directory whose adapter-owned goal mirror state should be read.",
-    ),
-) -> None:
-    """Prepare a read-only Ralph PRD handoff prompt from the tracked Goal.
-    
-    Args:
-        source_paths [list[str]]: Source paths Ralph must read.
-        requested_slice [str]: Function argument.
-        constraints [list[str] | None]: Optional handoff constraints.
-        verification_expectations [list[str]]: Verification gates Ralph must include.
-        cwd [str | None]: Function argument.
-    """
-    try:
-        result = prepare_tracked_codex_goal_ralph_handoff_prompt(
-            working_directory=cwd,
-            source_paths=tuple(source_paths),
-            requested_slice=requested_slice,
-            constraints=tuple([] if constraints is None else constraints),
-            verification_expectations=tuple(verification_expectations),
-        )
-    except (ValidationError, ValueError) as error:
-        typer.echo(str(error))
-        raise typer.Exit(code=2) from error
-
-    typer.echo(result.model_dump_json(indent=2))
-
 @goal_app.command("restore-lifecycle")
 def goal_restore_lifecycle(
     goal_id: str = typer.Option(
@@ -375,12 +295,7 @@ def goal_lifecycle_decision(
             working_directory=cwd,
         )
         if output_path is not None:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_payload: bytes = orjson.dumps(
-                result.model_dump(mode="json"),
-                option=orjson.OPT_INDENT_2,
-            )
-            output_path.write_bytes(output_payload)
+            json_file_stores.for_path(output_path).write_model(result)
     except (OSError, orjson.JSONDecodeError, ValidationError, ValueError) as error:
         typer.echo(str(error))
         raise typer.Exit(code=2) from error

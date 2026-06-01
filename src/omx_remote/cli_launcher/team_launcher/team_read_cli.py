@@ -27,7 +27,9 @@ def register_team_read_commands(team_app: typer.Typer) -> None:
     """
 
     @team_app.command("status")
-    def team_status(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
+    def team_status(
+        team: str = typer.Option(..., "--team", help="Team name to inspect."),
+    ) -> None:
         """Read normalized OMX team status.
 
         Args:
@@ -39,36 +41,46 @@ def register_team_read_commands(team_app: typer.Typer) -> None:
     @team_app.command("await-event")
     def team_await_event(
         team: str = typer.Option(..., "--team", help="Team name to inspect."),
-        timeout_ms: int = typer.Option(1000, "--timeout-ms", help="Wait timeout in milliseconds."),
+        timeout_ms: int = typer.Option(
+            1000, "--timeout-ms", help="Wait timeout in milliseconds."
+        ),
     ) -> None:
         """Read one normalized OMX team await snapshot.
 
         Args:
             team [str]: Team name to inspect.
-            timeout_ms [int]: Wait timeout accepted for CLI compatibility.
+            timeout_ms [int]: Wait timeout accepted by the Team await command.
         """
         _ = timeout_ms
         result = asyncio.run(await_team_status(TeamAwaitRequest(team_name=team)))
         typer.echo(result.model_dump_json(indent=2))
 
     @team_app.command("tasks")
-    def team_tasks(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
+    def team_tasks(
+        team: str = typer.Option(..., "--team", help="Team name to inspect."),
+    ) -> None:
         """Read normalized OMX team task list.
 
         Args:
             team [str]: Team name to inspect.
         """
-        result = asyncio.run(read_team_api_list_tasks(TeamApiListTasksRequest(team_name=team)))
+        result = asyncio.run(
+            read_team_api_list_tasks(TeamApiListTasksRequest(team_name=team))
+        )
         typer.echo(result.model_dump_json(indent=2))
 
     @team_app.command("events")
-    def team_events(team: str = typer.Option(..., "--team", help="Team name to inspect.")) -> None:
+    def team_events(
+        team: str = typer.Option(..., "--team", help="Team name to inspect."),
+    ) -> None:
         """Read normalized OMX team event list.
 
         Args:
             team [str]: Team name to inspect.
         """
-        result = asyncio.run(read_team_api_read_events(TeamApiReadEventsRequest(team_name=team)))
+        result = asyncio.run(
+            read_team_api_read_events(TeamApiReadEventsRequest(team_name=team))
+        )
         typer.echo(result.model_dump_json(indent=2))
 
     @team_app.command("worker-status")

@@ -4,17 +4,17 @@ from pathlib import Path
 
 import pytest
 
-from omx_remote.runtime.commands.agent_autonomy_policy import AgentAutonomyPolicy
-from omx_remote.runtime.commands.artifact_verifier import ArtifactVerifier
-from omx_remote.runtime.commands.builtin_command_catalog import (
+from omx_remote.runtime.commands.execution.agent_autonomy_policy import AgentAutonomyPolicy
+from omx_remote.runtime.commands.artifacts.artifact_verifier import ArtifactVerifier
+from omx_remote.runtime.commands.catalog.builtin_command_catalog import (
     build_builtin_command_catalog,
 )
-from omx_remote.runtime.commands.command_executor import CommandExecutor
-from omx_remote.runtime.commands.command_output_redaction import redact_text
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.execution.command_executor import CommandExecutor
+from omx_remote.runtime.commands.rendering.command_output_redaction import redact_text
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
-from omx_remote.runtime.commands.subprocess_attempt_runner import (
+from omx_remote.runtime.commands.execution.subprocess_attempt_runner import (
     SubprocessAttemptOutcome,
     run_subprocess,
 )
@@ -51,17 +51,14 @@ effort = "high"
 persona = "Test {agent_id} persona."
 """.strip()
         for agent_id in (
-            "architect",
-            "critic",
-            "planner",
-            "researcher",
-            "team-executor",
-            "test-engineer",
-            "verifier",
-            "writer",
+            "route_strategist",
+            "research_analyst",
+            "implementation_architect",
+            "integration_steward",
+            "quality_gatekeeper",
         )
     ]
-    (workspace / ".agent-remote.toml").write_text(
+    (workspace / ".comx-agent.toml").write_text(
         "\n\n".join(agent_blocks), encoding="utf-8"
     )
 
@@ -243,7 +240,7 @@ def test_agent_policy_allows_recoverable_generated_brief_handoff(
             CommandStep(
                 command=CommandStepCommand.OMX_ULTRAGOAL,
                 inline_prompt="Create an UltraGoal when the generated brief is ready.",
-                brief_file=".agent-remote/runs/runtime-handoff/brief.md",
+                brief_file=".comx-agent/runs/runtime-handoff/brief.md",
             ),
         ),
     )
@@ -264,7 +261,7 @@ def test_agent_policy_allows_generated_brief_handoff_with_relative_cwd(
 ) -> None:
     monkeypatch.chdir(tmp_path)
     _write_builtin_agent_config(tmp_path)
-    recipe = build_builtin_command_catalog().find("builtin:idea-to-prd-council")
+    recipe = build_builtin_command_catalog().find("builtin:implementation-kickoff")
     plan = build_command_execution_plan(
         recipe,
         cwd=Path("."),
@@ -280,6 +277,15 @@ def test_agent_policy_allows_generated_brief_handoff_with_relative_cwd(
             output_path = Path(argv[output_index])
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text("# generated\n", encoding="utf-8")
+            for artifact_name in (
+                "owner-lanes.md",
+                "verification-commands.md",
+                "rollback-points.md",
+                "runtime-handoff.md",
+            ):
+                (output_path.parent / artifact_name).write_text(
+                    "# generated\n", encoding="utf-8"
+                )
         if len(argv) >= 5 and "artifact_path = Path(sys.argv[1])" in argv[2]:
             output_path = Path(argv[3])
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -297,7 +303,7 @@ def test_agent_policy_allows_generated_brief_handoff_with_relative_cwd(
         return outcome
 
     monkeypatch.setattr(
-        "omx_remote.runtime.commands.command_executor.run_subprocess",
+        "omx_remote.runtime.commands.execution.command_step_executor.run_subprocess",
         fake_run_subprocess,
     )
 

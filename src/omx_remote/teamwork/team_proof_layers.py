@@ -188,7 +188,9 @@ def _build_dispatch_layer(
         f"{report.event_count} Team event record."
     )
     blocking: bool = False
-    if assigned_worker_count == 0 or (report.task_count == 0 and report.event_count == 0):
+    if assigned_worker_count == 0 or (
+        report.task_count == 0 and report.event_count == 0
+    ):
         state = TeamProofLayerState.MISSING
         summary = "No Team dispatch, task, or hook receipt evidence is present."
         blocking = True

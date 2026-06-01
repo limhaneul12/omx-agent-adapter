@@ -83,6 +83,23 @@ Repository expectation:
 
 When settings need validation or structured defaults, use a typed contract surface and keep configuration interpretation out of arbitrary call sites.
 
+Environment variables are a settings boundary. Production modules must not call
+`os.environ.get`, `os.getenv`, or equivalent ad-hoc reads at arbitrary runtime
+sites. Add environment-backed fields to a `pydantic-settings` contract and pass
+that settings object, or instantiate the shared settings contract at the module
+boundary. Direct `os.environ` access is allowed only inside the settings contract
+that snapshots/validates process environment, or in tests that intentionally
+prepare subprocess environments.
+
+Keep settings contracts concept-owned. Do not add unrelated feature options,
+credentials, or UX display hints to one catch-all environment settings object.
+Use the shared process-environment snapshot only when a subprocess, MCP server,
+or external tool boundary needs inherited environment values. Prefer explicit
+command/request options for execution policy such as launch modes, reasoning
+effort, or runtime behavior switches; reserve environment aliases for true
+process/credential/display boundaries where hidden fallback behavior is safer or
+more portable than command-line flags.
+
 ## Contract Clarity Rule
 
 Every important schema should answer:
@@ -164,6 +181,10 @@ Examples:
 - `bridge_schemas.py`
 
 Do not centralize unrelated contracts in one giant schema file.
+
+Do not create or keep a schema subfolder for a single Python schema file unless
+there is an immediate, documented split by sub-concept. A one-file schema folder
+should be flattened to `schemas/{concept}_schemas.py`.
 
 ## Schema Growth Rule
 

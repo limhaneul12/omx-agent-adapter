@@ -1,7 +1,6 @@
 import asyncio
 
 import pytest
-from pydantic import ValidationError
 
 from omx_remote.runtime.status import active_runtime_modes
 from omx_remote.shared.exceptions import RuntimeSurfaceError
@@ -57,7 +56,9 @@ def test_read_active_runtime_modes_preserves_contract_validation_boundary(
     monkeypatch.setattr(
         active_runtime_modes,
         "run_omx_command",
-        lambda args: DummyResult(stdout='{"active_modes":["ralph"],"unexpected":true}\n'),
+        lambda args: DummyResult(
+            stdout='{"active_modes":["ralph"],"unexpected":true}\n'
+        ),
     )
 
     result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
@@ -66,9 +67,9 @@ def test_read_active_runtime_modes_preserves_contract_validation_boundary(
 
 
 def test_read_active_runtime_modes_invokes_expected_state_command(monkeypatch) -> None:
-    seen_arguments: list[list[str]] = []
+    seen_arguments: list[tuple[str, ...]] = []
 
-    def fake_run(arguments: list[str]) -> DummyResult:
+    def fake_run(arguments: tuple[str, ...]) -> DummyResult:
         seen_arguments.append(arguments)
         return DummyResult(stdout='{"active_modes":["run","team"]}\n')
 
@@ -77,7 +78,7 @@ def test_read_active_runtime_modes_invokes_expected_state_command(monkeypatch) -
     result = asyncio.run(active_runtime_modes.read_active_runtime_modes())
 
     assert result.active_modes == ("run", "team")
-    assert seen_arguments == [["state", "list-active", "--json"]]
+    assert seen_arguments == [("state", "list-active", "--json")]
 
 
 def test_load_active_runtime_modes_payload_rejects_non_object_transport() -> None:
@@ -85,6 +86,8 @@ def test_load_active_runtime_modes_payload_rejects_non_object_transport() -> Non
         active_runtime_modes._load_active_runtime_modes_payload("[]")
 
 
-def test_load_active_runtime_modes_payload_rejects_missing_active_modes_payload() -> None:
+def test_load_active_runtime_modes_payload_rejects_missing_active_modes_payload() -> (
+    None
+):
     with pytest.raises(RuntimeSurfaceError):
         active_runtime_modes._normalize_active_runtime_modes("{}")

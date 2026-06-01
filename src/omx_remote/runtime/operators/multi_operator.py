@@ -3,7 +3,7 @@ from omx_remote.adapter_types.type_contract.operator_contract_type import (
     ACTIVE_LOOP_STATES,
 )
 from omx_remote.runtime.status.runtime_mode_status import read_runtime_mode_status
-from omx_remote.schemas.multi_operator.snapshot_schemas import (
+from omx_remote.schemas.multi_operator_snapshot_schemas import (
     FlowInterventionRequest,
     FlowSelector,
     ManagedFlowIdCollection,
@@ -16,14 +16,14 @@ from omx_remote.schemas.multi_operator.snapshot_schemas import (
     MultiOperatorSnapshot,
     MultiOperatorSnapshotReadRequest,
 )
-from omx_remote.schemas.operator.action_schemas import (
+from omx_remote.schemas.operator_action_schemas import (
     OperatorActionResult,
     OperatorLane,
     OperatorLoopState,
     OperatorNextAction,
     OperatorRecoveryHint,
 )
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
@@ -41,12 +41,12 @@ def _build_observable_status_result(
     summary: str,
 ) -> OperatorActionResult:
     """Handles build observable status result.
-    
+
     Args:
         lane [OperatorLane]: Function argument.
         action [str]: Function argument.
         summary [str]: Function argument.
-    
+
     Returns:
         OperatorActionResult: Function return value.
     """
@@ -60,19 +60,18 @@ def _build_observable_status_result(
     return result
 
 
-
 def _build_launchable_status_result(
     lane: OperatorLane,
     action: str,
     summary: str,
 ) -> OperatorActionResult:
     """Handles build launchable status result.
-    
+
     Args:
         lane [OperatorLane]: Function argument.
         action [str]: Function argument.
         summary [str]: Function argument.
-    
+
     Returns:
         OperatorActionResult: Function return value.
     """
@@ -91,21 +90,22 @@ def _build_launchable_status_result(
     return result
 
 
-
 def _build_ralph_status_result(
     status_result: RuntimeModeStatusResult,
 ) -> OperatorActionResult:
     """Handles build ralph status result.
-    
+
     Args:
         status_result [RuntimeModeStatusResult]: Function argument.
-    
+
     Returns:
         OperatorActionResult: Function return value.
     """
     mode_snapshot: RuntimeModeStatusSnapshot | None = status_result.mode_snapshot
     if status_result.found and mode_snapshot is not None and mode_snapshot.is_active:
-        summary: str = "ralph status is active from the live OMX runtime status surface."
+        summary: str = (
+            "ralph status is active from the live OMX runtime status surface."
+        )
         result: OperatorActionResult = _build_observable_status_result(
             lane=OperatorLane.RALPH,
             action="status",
@@ -124,13 +124,12 @@ def _build_ralph_status_result(
     return result
 
 
-
 def _team_status_is_active(team_status: TeamStatusSnapshot) -> bool:
     """Handles team status is active.
-    
+
     Args:
         team_status [TeamStatusSnapshot]: Function argument.
-    
+
     Returns:
         bool: Function return value.
     """
@@ -152,20 +151,17 @@ def _team_status_is_active(team_status: TeamStatusSnapshot) -> bool:
     return status_is_active
 
 
-
 def _build_team_status_result(team_status: TeamStatusSnapshot) -> OperatorActionResult:
     """Handles build team status result.
-    
+
     Args:
         team_status [TeamStatusSnapshot]: Function argument.
-    
+
     Returns:
         OperatorActionResult: Function return value.
     """
     if _team_status_is_active(team_status):
-        summary: str = (
-            f"team {team_status.team_name} status is active from the live OMX team status surface."
-        )
+        summary: str = f"team {team_status.team_name} status is active from the live OMX team status surface."
         result: OperatorActionResult = _build_observable_status_result(
             lane=OperatorLane.TEAM,
             action="status",
@@ -173,9 +169,7 @@ def _build_team_status_result(team_status: TeamStatusSnapshot) -> OperatorAction
         )
         return result
 
-    inactive_summary: str = (
-        f"team {team_status.team_name} status is not active from the live OMX team status surface."
-    )
+    inactive_summary: str = f"team {team_status.team_name} status is not active from the live OMX team status surface."
     result = _build_launchable_status_result(
         lane=OperatorLane.TEAM,
         action="status",
@@ -184,15 +178,14 @@ def _build_team_status_result(team_status: TeamStatusSnapshot) -> OperatorAction
     return result
 
 
-
 async def read_live_multi_operator_snapshot(
     request: MultiOperatorSnapshotReadRequest,
 ) -> MultiOperatorSnapshot:
     """Read live Ralph/team status surfaces into one repo-scoped multi-operator snapshot.
-    
+
     Args:
         request [MultiOperatorSnapshotReadRequest]: Function argument.
-    
+
     Returns:
         MultiOperatorSnapshot: Function return value.
     """
@@ -241,13 +234,11 @@ async def read_live_multi_operator_snapshot(
     return snapshot
 
 
-
 class MultiOperatorRegistry:
     """Track repo-scoped OMX flows and summarize their current operator states."""
 
     def __init__(self) -> None:
-        """Initializes the object.
-        """
+        """Initializes the object."""
         self._repos: dict[str, ManagedOmxRepo] = {}
         self._flows: dict[str, ManagedOmxFlow] = {}
 

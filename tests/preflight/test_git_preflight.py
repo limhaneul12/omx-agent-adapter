@@ -3,7 +3,7 @@ from pathlib import Path
 
 from omx_remote.runtime.preflight.git_preflight import check_git_state
 from omx_remote.schemas.commands.command_recipe_schemas import CommandRisk
-from omx_remote.schemas.preflight.preflight_schemas import PreflightSeverity
+from omx_remote.schemas.preflight_schemas import PreflightSeverity
 
 
 def test_clean_git_state_passes(tmp_path: Path, monkeypatch) -> None:
@@ -23,7 +23,9 @@ def test_clean_git_state_passes(tmp_path: Path, monkeypatch) -> None:
     assert result.blocks_execution is False
 
 
-def test_dirty_git_state_warns_for_read_only_commands(tmp_path: Path, monkeypatch) -> None:
+def test_dirty_git_state_warns_for_read_only_commands(
+    tmp_path: Path, monkeypatch
+) -> None:
     def fake_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(
             args=["git", "status", "--short"],

@@ -93,7 +93,7 @@ def agents_list(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -144,7 +144,7 @@ def agents_show(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -198,7 +198,7 @@ def agents_validate(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -248,7 +248,7 @@ def agents_plan_apply_codex(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     codex_home: Path | None = typer.Option(
         None,
@@ -310,7 +310,7 @@ def agents_apply_codex(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     codex_home: Path | None = typer.Option(
         None,
@@ -369,7 +369,7 @@ def agents_codex_status(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     codex_home: Path | None = typer.Option(
         None,

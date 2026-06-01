@@ -4,7 +4,7 @@ import inspect
 import pytest
 
 from omx_remote.history import session_search
-from omx_remote.schemas.history.session_schemas import SessionSearchRequest
+from omx_remote.schemas.history_session_schemas import SessionSearchRequest
 from omx_remote.shared.exceptions import HistorySurfaceError
 
 
@@ -34,7 +34,9 @@ def test_search_sessions_returns_zero_result_snapshot(monkeypatch) -> None:
         ),
     )
 
-    result = asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+    result = asyncio.run(
+        session_search.search_sessions(SessionSearchRequest(query="hermes"))
+    )
 
     assert result.query == "hermes"
     assert result.matched_sessions == 0
@@ -50,7 +52,9 @@ def test_search_sessions_returns_populated_snapshot(monkeypatch) -> None:
         ),
     )
 
-    result = asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+    result = asyncio.run(
+        session_search.search_sessions(SessionSearchRequest(query="hermes"))
+    )
 
     assert result.matched_sessions == 1
     assert isinstance(result.results, tuple)
@@ -66,7 +70,9 @@ def test_search_sessions_rejects_unparseable_json_transport(monkeypatch) -> None
     )
 
     with pytest.raises(HistorySurfaceError):
-        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+        asyncio.run(
+            session_search.search_sessions(SessionSearchRequest(query="hermes"))
+        )
 
 
 def test_search_sessions_rejects_missing_searched_files_field(monkeypatch) -> None:
@@ -77,7 +83,9 @@ def test_search_sessions_rejects_missing_searched_files_field(monkeypatch) -> No
     )
 
     with pytest.raises(HistorySurfaceError):
-        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+        asyncio.run(
+            session_search.search_sessions(SessionSearchRequest(query="hermes"))
+        )
 
 
 def test_search_sessions_rejects_non_mapping_result_items_at_transport_boundary(
@@ -92,7 +100,9 @@ def test_search_sessions_rejects_non_mapping_result_items_at_transport_boundary(
     )
 
     with pytest.raises(HistorySurfaceError):
-        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+        asyncio.run(
+            session_search.search_sessions(SessionSearchRequest(query="hermes"))
+        )
 
 
 def test_search_sessions_rejects_wrong_typed_result_fields_at_transport_boundary(
@@ -107,7 +117,9 @@ def test_search_sessions_rejects_wrong_typed_result_fields_at_transport_boundary
     )
 
     with pytest.raises(HistorySurfaceError):
-        asyncio.run(session_search.search_sessions(SessionSearchRequest(query="hermes")))
+        asyncio.run(
+            session_search.search_sessions(SessionSearchRequest(query="hermes"))
+        )
 
 
 def test_load_session_search_transport_payload_rejects_non_object_transport() -> None:

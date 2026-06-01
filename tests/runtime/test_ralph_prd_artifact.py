@@ -12,6 +12,7 @@ from omx_remote.schemas.ralph.prd_schemas import (
     TeamAdminMergePolicy,
     TeamWorkerAuthorizationPolicy,
 )
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -24,19 +25,26 @@ def _team_assignment(worker_id: str, owned_file: str) -> dict[str, object]:
         "lane_name": f"{worker_id} lane",
         "objective": "own one safe lane",
         "owned_files": [owned_file],
-        "read_only_context_files": ["docs/jobs/schema-type-refactor-hardening/8_ralph-prd-to-team-worker-distribution-prompt.md"],
+        "read_only_context_files": [
+            "docs/jobs/schema-type-refactor-hardening/8_ralph-prd-to-team-worker-distribution-prompt.md"
+        ],
         "forbidden_files": ["src/omx_remote/runtime/codex_goal_supervisor.py"],
         "tdd_steps": ["write failing regression", "make it pass"],
-        "verification_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+        "verification_commands": [
+            "uv run pytest tests/runtime/test_ralph_control.py -q"
+        ],
         "handoff_summary_required": "report changed files and verification output",
         "authorization_policy": "llm_review",
         "authorization_scope": {
-            "allowed_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
+            "allowed_commands": [
+                "uv run pytest tests/runtime/test_ralph_control.py -q"
+            ],
             "forbidden_commands": ["git push"],
             "requires_human_for": ["modify files outside owned_files"],
             "requires_llm_review_for": ["local checkpoint commit"],
         },
     }
+
 
 def _team_admin() -> dict[str, object]:
     return {
@@ -48,7 +56,6 @@ def _team_admin() -> dict[str, object]:
         "requires_llm_review_for": ["final aggregation report before Ralph review"],
         "final_report_required": True,
     }
-
 
 
 def test_ralph_prd_artifact_rejects_missing_execution_plan() -> None:
@@ -63,8 +70,9 @@ def test_ralph_prd_artifact_rejects_missing_execution_plan() -> None:
         )
 
 
-
-def test_ralph_prd_artifact_requires_team_worker_count_when_team_fanout_is_enabled() -> None:
+def test_ralph_prd_artifact_requires_team_worker_count_when_team_fanout_is_enabled() -> (
+    None
+):
     with pytest.raises(ValidationError):
         RalphPrdArtifact(
             objective="ship the first typed prd artifact gate",
@@ -92,7 +100,9 @@ def test_ralph_prd_artifact_requires_team_admin_when_team_fanout_is_enabled() ->
         )
 
 
-def test_ralph_prd_artifact_rejects_assignment_count_that_mismatches_worker_count() -> None:
+def test_ralph_prd_artifact_rejects_assignment_count_that_mismatches_worker_count() -> (
+    None
+):
     with pytest.raises(ValidationError, match="team_worker_assignments length"):
         RalphPrdArtifact(
             objective="ship the first typed prd artifact gate",
@@ -127,8 +137,9 @@ def test_ralph_prd_artifact_rejects_duplicate_owned_files_across_assignments() -
         )
 
 
-
-def test_read_ralph_prd_artifact_returns_typed_contract_for_valid_file(tmp_path: Path) -> None:
+def test_read_ralph_prd_artifact_returns_typed_contract_for_valid_file(
+    tmp_path: Path,
+) -> None:
     prd_path = tmp_path / ".omx" / "prd.json"
     prd_path.parent.mkdir(parents=True)
     _write_json(
@@ -168,7 +179,7 @@ def test_ralph_prd_artifact_promotes_sequence_fields_to_tuple_contracts() -> Non
         continuation_policy="review_required",
     )
 
-    dumped_artifact = artifact.model_dump(mode="json")
+    dumped_artifact = model_json_object(artifact)
 
     assert artifact.scope == ("replace schema-bound raw lists",)
     assert artifact.constraints == ("preserve JSON wire arrays",)
@@ -177,7 +188,9 @@ def test_ralph_prd_artifact_promotes_sequence_fields_to_tuple_contracts() -> Non
     assert dumped_artifact["scope"] == ["replace schema-bound raw lists"]
     assert dumped_artifact["constraints"] == ["preserve JSON wire arrays"]
     assert dumped_artifact["execution_plan"] == ["write failing tuple contract test"]
-    assert dumped_artifact["verification_expectations"] == ["tuple fields dump as JSON arrays"]
+    assert dumped_artifact["verification_expectations"] == [
+        "tuple fields dump as JSON arrays"
+    ]
 
 
 def test_team_worker_assignment_authorization_policy_emits_stable_wire_value() -> None:
@@ -197,10 +210,13 @@ def test_team_worker_assignment_authorization_policy_emits_stable_wire_value() -
     )
 
     assignment = artifact.team_worker_assignments[0]
-    dumped_artifact = artifact.model_dump(mode="json")
+    dumped_artifact = model_json_object(artifact)
 
     assert assignment.authorization_policy == TeamWorkerAuthorizationPolicy.LLM_REVIEW
-    assert dumped_artifact["team_worker_assignments"][0]["authorization_policy"] == "llm_review"
+    assert (
+        dumped_artifact["team_worker_assignments"][0]["authorization_policy"]
+        == "llm_review"
+    )
     assert dumped_artifact["team_worker_assignments"][0]["authorization_scope"] == {
         "allowed_commands": ["uv run pytest tests/runtime/test_ralph_control.py -q"],
         "forbidden_commands": ["git push"],
@@ -223,7 +239,7 @@ def test_team_admin_contract_emits_stable_wire_values() -> None:
         team_admin=_team_admin(),
     )
 
-    dumped_artifact = artifact.model_dump(mode="json")
+    dumped_artifact = model_json_object(artifact)
 
     assert artifact.team_admin is not None
     assert (
@@ -247,7 +263,9 @@ def test_team_admin_contract_emits_stable_wire_values() -> None:
 
 
 def test_team_worker_assignment_rejects_missing_authorization_policy() -> None:
-    assignment_payload = _team_assignment("worker-1", "src/omx_remote/schemas/ralph/prd_schemas.py")
+    assignment_payload = _team_assignment(
+        "worker-1", "src/omx_remote/schemas/ralph/prd_schemas.py"
+    )
     assignment_payload.pop("authorization_policy")
 
     with pytest.raises(ValidationError, match="authorization_policy"):

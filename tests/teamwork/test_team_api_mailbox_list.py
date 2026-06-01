@@ -47,7 +47,9 @@ def test_read_team_api_mailbox_list_returns_empty_snapshot(monkeypatch) -> None:
     assert result.messages == ()
 
 
-def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -62,7 +64,9 @@ def test_read_team_api_mailbox_list_rejects_unparseable_json_transport(monkeypat
         )
 
 
-def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",
@@ -79,7 +83,9 @@ def test_read_team_api_mailbox_list_rejects_missing_worker_at_transport_boundary
         )
 
 
-def test_read_team_api_mailbox_list_normalizes_live_message_payload_shape(monkeypatch) -> None:
+def test_read_team_api_mailbox_list_normalizes_live_message_payload_shape(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         team_api_snapshot,
         "run_omx_command",

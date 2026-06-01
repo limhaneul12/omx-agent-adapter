@@ -120,8 +120,13 @@ def test_execution_transport_payload_types_keep_raw_passthrough_extras() -> None
     }
 
     assert getattr(ExecutionUsageTransportPayload, "__closed__", False) is True
-    assert getattr(ExecutionAgentMessageItemTransportPayload, "__closed__", False) is True
-    assert getattr(ExecutionCommandExecutionItemTransportPayload, "__closed__", False) is True
+    assert (
+        getattr(ExecutionAgentMessageItemTransportPayload, "__closed__", False) is True
+    )
+    assert (
+        getattr(ExecutionCommandExecutionItemTransportPayload, "__closed__", False)
+        is True
+    )
     assert getattr(RuntimeModeStateDataPayload, "__extra_items__", None) == JsonValue
     assert getattr(AdapterRuntimeEvidencePayload, "__extra_items__", None) == JsonValue
     assert getattr(ExecutionItemTransportPayload, "__extra_items__", None) == JsonValue

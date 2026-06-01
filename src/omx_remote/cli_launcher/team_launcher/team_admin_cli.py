@@ -45,9 +45,11 @@ def register_team_admin_commands(team_app: typer.Typer) -> None:
         """
         try:
             prd_artifact: RalphPrdArtifact = read_ralph_prd_artifact_file(prd_path)
-            request: TeamAdminAggregationReportRequest = TeamAdminAggregationReportRequest(
-                team_name=team,
-                ralph_prd_artifact=prd_artifact,
+            request: TeamAdminAggregationReportRequest = (
+                TeamAdminAggregationReportRequest(
+                    team_name=team,
+                    ralph_prd_artifact=prd_artifact,
+                )
             )
             report = asyncio.run(read_team_admin_aggregation_report(request))
             if output_path is not None:

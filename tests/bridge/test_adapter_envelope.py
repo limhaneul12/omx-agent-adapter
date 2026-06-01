@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from omx_remote.bridge import adapter_envelope
-from omx_remote.schemas.bridge.adapter_schemas import AdapterProbeRequest
+from omx_remote.schemas.bridge_adapter_schemas import AdapterProbeRequest
 from omx_remote.shared.exceptions import BridgeSurfaceError
 
 
@@ -20,7 +20,9 @@ def test_read_adapter_envelope_is_async() -> None:
 
 
 def test_read_adapter_envelope_accepts_typed_request() -> None:
-    coroutine = adapter_envelope.read_adapter_envelope(AdapterProbeRequest(target="hermes"))
+    coroutine = adapter_envelope.read_adapter_envelope(
+        AdapterProbeRequest(target="hermes")
+    )
 
     assert inspect.isawaitable(coroutine)
     asyncio.run(coroutine)
@@ -57,7 +59,9 @@ def test_read_adapter_envelope_rejects_unparseable_json_transport(monkeypatch) -
         )
 
 
-def test_read_adapter_envelope_preserves_required_contract_validation(monkeypatch) -> None:
+def test_read_adapter_envelope_preserves_required_contract_validation(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         adapter_envelope,
         "run_omx_command",
@@ -77,21 +81,27 @@ def test_load_adapter_envelope_transport_payload_rejects_non_object_transport() 
         adapter_envelope._load_adapter_envelope_transport_payload("[]")
 
 
-def test_load_adapter_envelope_transport_payload_rejects_non_string_display_name() -> None:
+def test_load_adapter_envelope_transport_payload_rejects_non_string_display_name() -> (
+    None
+):
     with pytest.raises(BridgeSurfaceError):
         adapter_envelope._load_adapter_envelope_transport_payload(
             '{"target":"hermes","displayName":42,"summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing"}}'
         )
 
 
-def test_load_adapter_envelope_transport_payload_rejects_non_string_runtime_detail() -> None:
+def test_load_adapter_envelope_transport_payload_rejects_non_string_runtime_detail() -> (
+    None
+):
     with pytest.raises(BridgeSurfaceError):
         adapter_envelope._load_adapter_envelope_transport_payload(
             '{"target":"hermes","displayName":"Hermes","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":42}}'
         )
 
 
-def test_load_adapter_envelope_transport_payload_preserves_live_required_bridge_fields() -> None:
+def test_load_adapter_envelope_transport_payload_preserves_live_required_bridge_fields() -> (
+    None
+):
     result = adapter_envelope._load_adapter_envelope_transport_payload(
         '{"target":"hermes","displayName":"Hermes","summary":"ok","capabilities":[],"targetRuntime":{"state":"unavailable","detail":"missing","evidence":{}},"schemaVersion":"1.0","generatedAt":"2026-05-04T08:02:34.585Z"}'
     )

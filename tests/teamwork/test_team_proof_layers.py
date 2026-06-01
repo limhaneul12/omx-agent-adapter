@@ -1,4 +1,6 @@
-from omx_remote.schemas.teamwork.admin_aggregation_schemas import TeamAdminAggregationReport
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReport,
+)
 from omx_remote.teamwork.team_proof_layers import build_team_proof_layers
 
 
@@ -14,7 +16,9 @@ def _report(
     event_count: int = 0,
     requires_human_review: bool = False,
 ) -> TeamAdminAggregationReport:
-    aggregation_state = "ready_for_ralph_review" if merge_ready else "waiting_for_workers"
+    aggregation_state = (
+        "ready_for_ralph_review" if merge_ready else "waiting_for_workers"
+    )
     if requires_human_review:
         aggregation_state = "human_review_required"
 
@@ -55,7 +59,9 @@ def test_team_proof_layers_mark_all_missing_without_assignment_evidence() -> Non
     }
 
 
-def test_team_proof_layers_mark_assignment_only_as_waiting_for_runtime_evidence() -> None:
+def test_team_proof_layers_mark_assignment_only_as_waiting_for_runtime_evidence() -> (
+    None
+):
     states = _states(
         _report(
             missing_workers=("worker-1", "worker-2"),
@@ -104,7 +110,9 @@ def test_team_proof_layers_mark_partial_completion_without_merge_claim() -> None
     assert states["completion"] == "failed"
 
 
-def test_team_proof_layers_mark_merge_ready_when_all_completion_evidence_passes() -> None:
+def test_team_proof_layers_mark_merge_ready_when_all_completion_evidence_passes() -> (
+    None
+):
     layers = build_team_proof_layers(
         _report(
             merge_ready=True,
@@ -117,4 +125,7 @@ def test_team_proof_layers_mark_merge_ready_when_all_completion_evidence_passes(
 
     assert {layer.state for layer in layers} == {"passed"}
     assert all(layer.blocking is False for layer in layers)
-    assert by_name["completion"].summary == "All 3 assigned workers completed; merge-ready evidence is present."
+    assert (
+        by_name["completion"].summary
+        == "All 3 assigned workers completed; merge-ready evidence is present."
+    )

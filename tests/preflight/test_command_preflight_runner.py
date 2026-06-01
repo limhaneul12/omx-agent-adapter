@@ -5,13 +5,13 @@ from typer.testing import CliRunner
 
 from omx_remote.cli import app
 from omx_remote.runtime.preflight.command_preflight_runner import run_command_preflight
-from omx_remote.schemas.preflight.preflight_schemas import PreflightReportStatus
+from omx_remote.schemas.preflight_schemas import PreflightReportStatus
 
 
 def test_command_preflight_reports_builtin_read_only_command(tmp_path: Path) -> None:
-    report = run_command_preflight("builtin:review-diff", cwd=tmp_path)
+    report = run_command_preflight("builtin:review-gate", cwd=tmp_path)
 
-    assert report.command_id == "review-diff"
+    assert report.command_id == "review-gate"
     assert report.status in {
         PreflightReportStatus.PASSED,
         PreflightReportStatus.WARNING,
@@ -21,7 +21,7 @@ def test_command_preflight_reports_builtin_read_only_command(tmp_path: Path) -> 
 
 
 def test_command_preflight_blocks_missing_prompt_file(tmp_path: Path) -> None:
-    (tmp_path / ".agent-remote.toml").write_text(
+    (tmp_path / ".comx-agent.toml").write_text(
         """
 [commands.codex_review]
 description = "Review current diff."
@@ -43,7 +43,14 @@ def test_preflight_prompt_file_cli_outputs_json(tmp_path: Path) -> None:
 
     result = CliRunner().invoke(
         app,
-        ["preflight", "prompt-file", str(prompt_path), "--cwd", str(tmp_path), "--json"],
+        [
+            "preflight",
+            "prompt-file",
+            str(prompt_path),
+            "--cwd",
+            str(tmp_path),
+            "--json",
+        ],
     )
 
     assert result.exit_code == 0
@@ -55,12 +62,12 @@ def test_preflight_prompt_file_cli_outputs_json(tmp_path: Path) -> None:
 def test_preflight_run_cli_outputs_json(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
-        ["preflight", "run", "builtin:review-diff", "--cwd", str(tmp_path), "--json"],
+        ["preflight", "run", "builtin:review-gate", "--cwd", str(tmp_path), "--json"],
     )
 
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
-    assert payload["command_id"] == "review-diff"
+    assert payload["command_id"] == "review-gate"
     assert "checks" in payload
 
 

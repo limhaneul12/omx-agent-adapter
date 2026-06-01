@@ -30,10 +30,16 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
 
     @team_app.command("create-task")
     def team_create_task(
-        team: str = typer.Option(..., "--team", help="Team name that should own the task."),
+        team: str = typer.Option(
+            ..., "--team", help="Team name that should own the task."
+        ),
         subject: str = typer.Option(..., "--subject", help="Task subject line."),
-        description: str = typer.Option(..., "--description", help="Task description/body."),
-        owner: str | None = typer.Option(None, "--owner", help="Optional worker owner to assign."),
+        description: str = typer.Option(
+            ..., "--description", help="Task description/body."
+        ),
+        owner: str | None = typer.Option(
+            None, "--owner", help="Optional worker owner to assign."
+        ),
     ) -> None:
         """Create one typed OMX team task.
 
@@ -75,9 +81,13 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
     def team_transition_task_status(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
         task_id: str = typer.Option(..., "--task-id", help="Task id to transition."),
-        from_status: str = typer.Option(..., "--from-status", help="Expected current task status."),
+        from_status: str = typer.Option(
+            ..., "--from-status", help="Expected current task status."
+        ),
         to_status: str = typer.Option(..., "--to-status", help="Next task status."),
-        claim_token: str = typer.Option(..., "--claim-token", help="Task claim token required by OMX."),
+        claim_token: str = typer.Option(
+            ..., "--claim-token", help="Task claim token required by OMX."
+        ),
     ) -> None:
         """Transition one typed OMX team task status.
 
@@ -105,9 +115,17 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
     def team_update_task(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
         task_id: str = typer.Option(..., "--task-id", help="Task id to update."),
-        subject: str | None = typer.Option(None, "--subject", help="Updated task subject line."),
-        description: str | None = typer.Option(None, "--description", help="Updated task description/body."),
-        blocked_by: list[str] | None = typer.Option(None, "--blocked-by", help="Optional upstream task ids that block this task."),
+        subject: str | None = typer.Option(
+            None, "--subject", help="Updated task subject line."
+        ),
+        description: str | None = typer.Option(
+            None, "--description", help="Updated task description/body."
+        ),
+        blocked_by: list[str] | None = typer.Option(
+            None,
+            "--blocked-by",
+            help="Optional upstream task ids that block this task.",
+        ),
         requires_code_change: bool | None = typer.Option(
             None,
             "--requires-code-change/--no-requires-code-change",
@@ -142,8 +160,12 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
     def team_claim_task(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
         task_id: str = typer.Option(..., "--task-id", help="Task id to claim."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity claiming the task."),
-        expected_version: int | None = typer.Option(None, "--expected-version", help="Optional expected task version guard."),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity claiming the task."
+        ),
+        expected_version: int | None = typer.Option(
+            None, "--expected-version", help="Optional expected task version guard."
+        ),
     ) -> None:
         """Claim one typed OMX team task.
 
@@ -168,9 +190,15 @@ def register_team_task_commands(team_app: typer.Typer) -> None:
     @team_app.command("release-task-claim")
     def team_release_task_claim(
         team: str = typer.Option(..., "--team", help="Team name that owns the task."),
-        task_id: str = typer.Option(..., "--task-id", help="Task id whose claim should be released."),
-        claim_token: str = typer.Option(..., "--claim-token", help="Task claim token to release."),
-        worker: str = typer.Option(..., "--worker", help="Worker identity releasing the claim."),
+        task_id: str = typer.Option(
+            ..., "--task-id", help="Task id whose claim should be released."
+        ),
+        claim_token: str = typer.Option(
+            ..., "--claim-token", help="Task claim token to release."
+        ),
+        worker: str = typer.Option(
+            ..., "--worker", help="Worker identity releasing the claim."
+        ),
     ) -> None:
         """Release one typed OMX team task claim.
 

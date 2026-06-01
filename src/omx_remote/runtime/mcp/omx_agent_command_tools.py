@@ -3,18 +3,22 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from omx_remote.adapter_types.json_types import JsonObject
-from omx_remote.runtime.commands.command_catalog_resolver import (
+from omx_remote.runtime.commands.catalog.command_catalog_projection import (
+    catalog_list_result,
+)
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     CommandCatalogResolutionError,
     load_command_catalog,
     resolve_command_recipe,
 )
-from omx_remote.runtime.commands.command_recipe_loader import CommandRecipeLoadError
-from omx_remote.runtime.commands.command_step_planner import (
+from omx_remote.runtime.commands.catalog.command_recipe_loader import (
+    CommandRecipeLoadError,
+)
+from omx_remote.runtime.commands.planning.command_step_planner import (
     build_command_execution_plan,
 )
 from omx_remote.runtime.mcp.omx_agent_command_context import recipe_with_context
 from omx_remote.runtime.mcp.omx_agent_tool_payloads import (
-    catalog_list_result,
     manual_commands,
     next_actions,
     tool_payload,
@@ -27,36 +31,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandRecipe,
 )
 from omx_remote.schemas.mcp.omx_agent_tool_schemas import OmxAgentMcpToolResult
-from omx_remote.schemas.runs.run_record_schemas import RunRecord
-
-CUSTOM_WORKFLOW_COMMAND_IDS: tuple[str, ...] = (
-    "codex-deep-research",
-    "omx-autoresearch-loop",
-    "research-interview-prd",
-    "verify-handoff-plus",
-    "route-doctor",
-    "mcp-onboard-audit",
-    "subagent-review-wave",
-    "upstream-contract-refresh",
-    "skillize-workflow",
-    "run-ledger-closeout",
-    "alexandria-memory-capture",
-    "docs-sync-guardian",
-    "dependency-incident-audit",
-    "migration-checkpoint-loop",
-    "company-discovery-loop",
-    "company-build-loop-plus",
-    "product-council",
-    "team-sprint-plan",
-    "subagent-research-swarm",
-    "ultragoal-story-factory",
-    "qa-war-room",
-    "librarian-closeout",
-)
-
-
-class OmxAgentMcpCommandError(ValueError):
-    """Raised when an omx-agent MCP command tool cannot build a safe plan."""
+from omx_remote.schemas.run_record_schemas import RunRecord
 
 
 def _resolved_cwd(cwd: str | Path) -> Path:
@@ -167,12 +142,12 @@ def show_command_tool_payload(
     recipe = _load_recipe(root, config, command_id)
     result = OmxAgentMcpToolResult(
         cwd=str(root),
-        command_id=recipe.id,
-        qualified_id=recipe.qualified_id,
+        command_id=recipe.display_id,
+        qualified_id=recipe.display_qualified_id,
         recipe=recipe,
         usage=usage(root),
         next_actions=(
-            f"Preview this recipe with omx_agent_preview_command command_id={recipe.qualified_id}.",
+            f"Preview this recipe with omx_agent_preview_command command_id={recipe.display_qualified_id}.",
         ),
     )
     payload = tool_payload(result)
@@ -230,8 +205,8 @@ def preview_command_tool_payload(
         run_record = write_dry_run_record(plan, cwd=root)
     result = OmxAgentMcpToolResult(
         cwd=str(root),
-        command_id=recipe.id,
-        qualified_id=recipe.qualified_id,
+        command_id=recipe.display_id,
+        qualified_id=recipe.display_qualified_id,
         plan=plan,
         run_record=run_record,
         usage=usage(root),

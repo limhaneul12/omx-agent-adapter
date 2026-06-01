@@ -32,6 +32,86 @@ Preferred flow:
 Do not keep raw dictionaries moving through multiple layers when a stable schema can be defined.
 Do not force every inbound payload into a canonical schema before transport parsing and routing are complete.
 
+## Model Construction vs. Raw Validation Rule
+
+Use Pydantic validation APIs for raw or untrusted boundary values, not as a
+generic way to construct known internal payloads.
+
+### Raw or untrusted inputs
+
+Use `model_validate(...)` or `model_validate_json(...)` when the value came from
+outside the trusted internal construction path.
+
+Good candidates:
+- CLI or MCP input payloads
+- JSON files read from disk
+- OMX JSON/JSONL output
+- subprocess output
+- runtime state loaded from artifacts
+- caller-provided dictionaries
+
+Preferred examples:
+
+```python
+request = CommandRequest.model_validate(raw_payload)
+event = RuntimeEvent.model_validate_json(raw_event_bytes)
+```
+
+### Internal schema construction
+
+When production code is assembling a schema from known internal values, prefer
+the Pydantic constructor with explicit keyword arguments.
+
+Preferred:
+
+```python
+state = CodexGoalLifecycleRestoredState(
+    artifact_path=str(self.artifact_path_for_goal(goal_id)),
+    bundle=bundle,
+    next_resume_target=next_resume_target,
+    ready_to_resume=True,
+    summary=summary,
+)
+```
+
+Avoid using `model_validate({...})` as a convenience wrapper around a dictionary
+literal that was built in the same function from already-typed local values.
+That pattern makes a trusted internal construction path look like a raw boundary
+parse and encourages known payload dictionaries to spread.
+
+### Dumping and writing
+
+Do not make call sites choose ad-hoc dumping behavior every time a schema must
+be written or returned.
+
+Preferred direction:
+- construct the schema with explicit keyword arguments,
+- pass the schema object to a concept-owned writer or response builder,
+- let that writer/builder call `model_dump(mode="json")` or
+  `model_dump_json()` consistently.
+
+This keeps call sites readable while preserving one clear serialization policy.
+
+Example:
+
+```python
+write_schema_json(
+    path=artifact_path,
+    model=CodexGoalLifecycleRestoredState(
+        artifact_path=str(self.artifact_path_for_goal(goal_id)),
+        bundle=bundle,
+        next_resume_target=next_resume_target,
+        ready_to_resume=True,
+        summary=summary,
+    ),
+)
+```
+
+If a JSON string is the final output, prefer `model_dump_json()` over
+`model_dump(mode="json")` followed by a second JSON serialization step.
+If a JSON-compatible Python mapping is required, use `model_dump(mode="json")`
+at the writer/transport boundary.
+
 ## Schema Placement Rule
 
 Keep schemas under `schemas/`.

@@ -20,9 +20,7 @@ from omx_remote.runtime.goal.goal_operating_decision import (
 )
 from omx_remote.runtime.goal.ralph_handoff_prompt import (
     GoalPrdAuthoringPromptRenderer,
-    GoalToRalphHandoffPromptRenderer,
     build_goal_prd_authoring_prompt,
-    build_goal_to_ralph_handoff_prompt,
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalExecutionShape,
@@ -40,26 +38,21 @@ from omx_remote.schemas.codex_goal.supervisor_schemas import (
     GoalExecutionPolicy,
     GoalPrdAuthoringPromptRequest,
     GoalPrdAuthoringPromptResult,
-    GoalToRalphHandoffPromptRequest,
-    GoalToRalphHandoffPromptResult,
 )
-from omx_remote.schemas.multi_operator.snapshot_schemas import (
+from omx_remote.schemas.multi_operator_snapshot_schemas import (
     ManagedOmxFlow,
     MultiOperatorSnapshot,
 )
-from omx_remote.schemas.operator.action_schemas import OperatorActionResult
+from omx_remote.schemas.operator_action_schemas import OperatorActionResult
 
 __all__ = (
     "GoalPrdAuthoringPromptRenderer",
-    "GoalToRalphHandoffPromptRenderer",
     "advance_tracked_codex_goal",
     "build_codex_goal_snapshot",
     "build_goal_lifecycle_decision",
     "build_goal_operating_decision",
     "build_goal_prd_authoring_prompt",
-    "build_goal_to_ralph_handoff_prompt",
     "dispatch_goal_delegation",
-    "prepare_tracked_codex_goal_ralph_handoff_prompt",
     "prepare_tracked_goal_prd_authoring_prompt",
     "restore_goal_lifecycle_state",
     "select_goal_delegation",
@@ -68,10 +61,10 @@ __all__ = (
 
 def _build_open_blockers(multi_operator_snapshot: MultiOperatorSnapshot) -> list[str]:
     """Handles build open blockers.
-    
+
     Args:
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         list[str]: Function return value.
     """
@@ -92,7 +85,6 @@ def _build_open_blockers(multi_operator_snapshot: MultiOperatorSnapshot) -> list
     return open_blockers
 
 
-
 def build_codex_goal_snapshot(
     goal_id: str,
     objective_text: str,
@@ -100,17 +92,19 @@ def build_codex_goal_snapshot(
     multi_operator_snapshot: MultiOperatorSnapshot,
 ) -> CodexGoalSnapshot:
     """Handles build codex goal snapshot.
-    
+
     Args:
         goal_id [str]: Function argument.
         objective_text [str]: Function argument.
         capability [CodexGoalCapabilitySnapshot]: Function argument.
         multi_operator_snapshot [MultiOperatorSnapshot]: Function argument.
-    
+
     Returns:
         CodexGoalSnapshot: Function return value.
     """
-    tracked_flow_ids: list[str] = [flow.flow_id for flow in multi_operator_snapshot.flows.root]
+    tracked_flow_ids: list[str] = [
+        flow.flow_id for flow in multi_operator_snapshot.flows.root
+    ]
     active_flow_ids: list[str] = list(multi_operator_snapshot.active_flow_ids.root)
     open_blockers: list[str] = _build_open_blockers(multi_operator_snapshot)
 
@@ -125,45 +119,6 @@ def build_codex_goal_snapshot(
         open_blockers=open_blockers,
     )
     return result
-
-
-
-
-def prepare_tracked_codex_goal_ralph_handoff_prompt(
-    source_paths: tuple[str, ...],
-    requested_slice: str,
-    constraints: tuple[str, ...],
-    verification_expectations: tuple[str, ...],
-    working_directory: str | None = None,
-) -> GoalToRalphHandoffPromptResult:
-    """Prepare a legacy-named Goal-scoped PRD authoring prompt.
-
-    Args:
-        source_paths [tuple[str, ...]]: Source-of-truth files or directories the authoring agent must read.
-        requested_slice [str]: One implementation slice the PRD should cover.
-        constraints [tuple[str, ...]]: Constraints the PRD must preserve.
-        verification_expectations [tuple[str, ...]]: Verification gates the PRD must include.
-        working_directory [str | None]: Optional workspace whose Goal mirror state should be read.
-
-    Returns:
-        GoalToRalphHandoffPromptResult: Mirror state plus rendered PRD authoring prompt.
-    """
-    prd_result: GoalPrdAuthoringPromptResult = prepare_tracked_goal_prd_authoring_prompt(
-        working_directory=working_directory,
-        source_paths=source_paths,
-        requested_slice=requested_slice,
-        constraints=constraints,
-        verification_expectations=verification_expectations,
-    )
-    legacy_request = GoalToRalphHandoffPromptRequest.model_validate(
-        prd_result.prompt_request.model_dump(mode="json")
-    )
-    legacy_result = GoalToRalphHandoffPromptResult(
-        mirror_state=prd_result.mirror_state,
-        prompt_request=legacy_request,
-        prompt=prd_result.prompt,
-    )
-    return legacy_result
 
 
 def prepare_tracked_goal_prd_authoring_prompt(
@@ -205,17 +160,16 @@ def prepare_tracked_goal_prd_authoring_prompt(
     return result
 
 
-
 def advance_tracked_codex_goal(
     request: CodexGoalAdvanceRequest,
     working_directory: str | None = None,
 ) -> CodexGoalAdvanceResult:
     """Handles advance tracked codex goal.
-    
+
     Args:
         request [CodexGoalAdvanceRequest]: Function argument.
         working_directory [str | None]: Function argument.
-    
+
     Returns:
         CodexGoalAdvanceResult: Function return value.
     """
@@ -259,6 +213,3 @@ def advance_tracked_codex_goal(
         dispatch_result=dispatch_result,
     )
     return result
-
-
-

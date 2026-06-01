@@ -1,4 +1,4 @@
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteTaskSize,
     RouteTaskType,
     TaskClassification,

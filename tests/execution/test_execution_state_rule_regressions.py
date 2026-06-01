@@ -7,7 +7,9 @@ from omx_remote.schemas.execution.event_schemas import (
 )
 
 
-def test_build_tool_interaction_returns_completed_state_without_ternary_shortcuts() -> None:
+def test_build_tool_interaction_returns_completed_state_without_ternary_shortcuts() -> (
+    None
+):
     tool_call = ExecToolCall(
         kind="tool_call",
         tool_name="grep",
@@ -26,7 +28,9 @@ def test_build_tool_interaction_returns_completed_state_without_ternary_shortcut
     assert result.state == "completed"
 
 
-def test_build_tool_interaction_returns_missing_result_state_without_ternary_shortcuts() -> None:
+def test_build_tool_interaction_returns_missing_result_state_without_ternary_shortcuts() -> (
+    None
+):
     tool_call = ExecToolCall(
         kind="tool_call",
         tool_name="grep",

@@ -7,59 +7,29 @@ from pydantic import ValidationError
 from omx_remote.cli_launcher.cli_error_payload import (
     format_invalid_cli_error_payload as _format_error_payload,
 )
-from omx_remote.runtime.commands.command_catalog_resolver import (
+from omx_remote.runtime.commands.catalog.command_catalog_projection import (
+    catalog_list_result,
+)
+from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     CommandCatalogResolutionError,
     load_command_catalog,
     resolve_command_recipe,
 )
-from omx_remote.runtime.commands.command_recipe_loader import CommandRecipeLoadError
+from omx_remote.runtime.commands.catalog.command_recipe_loader import (
+    CommandRecipeLoadError,
+)
 from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandCatalog,
     CommandCatalogEntry,
     CommandCatalogListResult,
     CommandRecipe,
     CommandShowResult,
-    CommandSource,
 )
 
 commands_app = typer.Typer(
     help="Inspect project-owned command catalog and repo-defined recipes.",
     add_completion=False,
 )
-
-
-def _catalog_list_result(catalog: CommandCatalog) -> CommandCatalogListResult:
-    """Build typed command catalog list output.
-
-    Args:
-        catalog [CommandCatalog]: Command catalog to render.
-
-    Returns:
-        CommandCatalogListResult: Typed list result.
-    """
-    entries: tuple[CommandCatalogEntry, ...] = tuple(
-        CommandCatalogEntry(
-            id=recipe.id,
-            qualified_id=recipe.qualified_id,
-            source=recipe.source,
-            description=recipe.description,
-            risk=recipe.risk,
-            step_count=len(recipe.steps),
-        )
-        for recipe in catalog.commands
-    )
-    builtin_count: int = sum(
-        1 for recipe in catalog.commands if recipe.source == CommandSource.BUILTIN
-    )
-    repo_count: int = sum(
-        1 for recipe in catalog.commands if recipe.source == CommandSource.REPO
-    )
-    result = CommandCatalogListResult(
-        commands=entries,
-        builtin_count=builtin_count,
-        repo_count=repo_count,
-    )
-    return result
 
 
 def _format_catalog_human(entries: tuple[CommandCatalogEntry, ...]) -> str:
@@ -88,7 +58,7 @@ def commands_list(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -110,7 +80,7 @@ def commands_list(
     """
     try:
         catalog: CommandCatalog = load_command_catalog(cwd=cwd, config_path=config_path)
-        result: CommandCatalogListResult = _catalog_list_result(catalog)
+        result: CommandCatalogListResult = catalog_list_result(catalog)
     except (CommandRecipeLoadError, ValidationError, ValueError) as error:
         if json_output:
             typer.echo(_format_error_payload(error))
@@ -131,7 +101,7 @@ def commands_show(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -172,7 +142,7 @@ def commands_show(
         typer.echo(result.model_dump_json(indent=2))
         return
 
-    typer.echo(f"{result.recipe.qualified_id}: {result.recipe.description}")
+    typer.echo(f"{result.recipe.display_qualified_id}: {result.recipe.description}")
 
 
 @commands_app.command("validate")
@@ -180,7 +150,7 @@ def commands_validate(
     cwd: Path = typer.Option(
         Path("."),
         "--cwd",
-        help="Repository root used to resolve .agent-remote.toml.",
+        help="Repository root used to resolve .comx-agent.toml.",
     ),
     config_path: Path | None = typer.Option(
         None,
@@ -202,7 +172,7 @@ def commands_validate(
     """
     try:
         catalog: CommandCatalog = load_command_catalog(cwd=cwd, config_path=config_path)
-        result = _catalog_list_result(catalog)
+        result = catalog_list_result(catalog)
     except (CommandRecipeLoadError, ValidationError, ValueError) as error:
         if json_output:
             typer.echo(_format_error_payload(error))
@@ -216,6 +186,10 @@ def commands_validate(
             "command_count": len(result.commands),
             "builtin_count": result.builtin_count,
             "repo_count": result.repo_count,
+            "public_workflow_commands": result.public_workflow_commands,
+            "lifecycle_commands": result.lifecycle_commands,
+            "macro_commands": result.macro_commands,
+            "adapter_ops_commands": result.adapter_ops_commands,
         }
         typer.echo(orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode())
         return

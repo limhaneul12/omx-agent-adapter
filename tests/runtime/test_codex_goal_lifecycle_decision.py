@@ -1,8 +1,12 @@
 from omx_remote.runtime.goal.codex_goal_supervisor import (
     build_goal_lifecycle_decision as supervisor_build_goal_lifecycle_decision,
 )
-from omx_remote.runtime.goal.goal_lifecycle_decision import build_goal_lifecycle_decision
-from omx_remote.schemas.codex_goal.lifecycle_schemas import CodexGoalLifecycleDecisionRequest
+from omx_remote.runtime.goal.goal_lifecycle_decision import (
+    build_goal_lifecycle_decision,
+)
+from omx_remote.schemas.codex_goal.lifecycle_schemas import (
+    CodexGoalLifecycleDecisionRequest,
+)
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
 
@@ -17,7 +21,7 @@ def _mirror_state() -> CodexGoalMirrorState:
         team_worker_count=2,
         working_directory="/tmp/project",
         codex_command=["codex", "--enable", "goals"],
-        session_locator="agent-remote-goal-goal-1",
+        session_locator="comx-agent-goal-goal-1",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="ralph_started",
@@ -119,7 +123,6 @@ def test_goal_lifecycle_decision_blocks_complete_without_merge_approval() -> Non
     assert result.ready_to_close is False
     assert result.requires_human_approval is True
     assert result.review_blockers == ("merge_not_approved",)
-
 
 
 def test_codex_goal_supervisor_exports_lifecycle_decision_surface() -> None:

@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 
 from omx_remote.schemas.commands.command_recipe_schemas import CommandRisk
-from omx_remote.schemas.preflight.preflight_schemas import (
+from omx_remote.schemas.preflight_schemas import (
     PreflightCategory,
     PreflightCheckResult,
     PreflightSeverity,
@@ -48,7 +48,9 @@ def check_git_state(cwd: str | Path, risk: CommandRisk) -> PreflightCheckResult:
             category=PreflightCategory.GIT_STATE,
             severity=PreflightSeverity.WARNING,
             summary="git state could not be read",
-            detail=completed_process.stderr or completed_process.stdout or "git status failed",
+            detail=completed_process.stderr
+            or completed_process.stdout
+            or "git status failed",
             blocks_execution=False,
         )
         return warning_result

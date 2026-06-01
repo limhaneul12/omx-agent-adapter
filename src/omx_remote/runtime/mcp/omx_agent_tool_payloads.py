@@ -1,19 +1,14 @@
+import shlex
 from pathlib import Path
-from typing import cast
 
 from omx_remote.adapter_types.json_types import JsonObject
-from omx_remote.schemas.commands.command_recipe_schemas import (
-    CommandCatalog,
-    CommandCatalogEntry,
-    CommandCatalogListResult,
-    CommandExecutionPlan,
-    CommandSource,
-)
+from omx_remote.schemas.commands.command_recipe_schemas import CommandExecutionPlan
 from omx_remote.schemas.mcp.omx_agent_tool_schemas import (
     OmxAgentMcpToolResult,
     OmxAgentMcpUsage,
 )
-from omx_remote.schemas.runs.run_record_schemas import RunRecord
+from omx_remote.schemas.run_record_schemas import RunRecord
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 def usage(cwd: Path) -> OmxAgentMcpUsage:
@@ -34,46 +29,12 @@ def usage(cwd: Path) -> OmxAgentMcpUsage:
         list_tools="comx-agent mcp tools omx_agent --cwd . --execute --json",
         preview_command=(
             "comx-agent mcp call omx_agent omx_agent_preview_command "
-            '--arguments-json \'{"command_id":"builtin:verify-handoff-plus"}\' '
+            '--arguments-json \'{"command_id":"builtin:company-run"}\' '
             "--execute --json"
         ),
-        tui_preview="/run builtin:verify-handoff-plus",
+        tui_preview="/run builtin:company-run",
     )
     return tool_usage
-
-
-def catalog_list_result(catalog: CommandCatalog) -> CommandCatalogListResult:
-    """Build typed command catalog list output.
-
-    Args:
-        catalog [CommandCatalog]: Loaded command catalog.
-
-    Returns:
-        CommandCatalogListResult: List result contract.
-    """
-    entries: tuple[CommandCatalogEntry, ...] = tuple(
-        CommandCatalogEntry(
-            id=recipe.id,
-            qualified_id=recipe.qualified_id,
-            source=recipe.source,
-            description=recipe.description,
-            risk=recipe.risk,
-            step_count=len(recipe.steps),
-        )
-        for recipe in catalog.commands
-    )
-    builtin_count = sum(
-        1 for recipe in catalog.commands if recipe.source == CommandSource.BUILTIN
-    )
-    repo_count = sum(
-        1 for recipe in catalog.commands if recipe.source == CommandSource.REPO
-    )
-    result = CommandCatalogListResult(
-        commands=entries,
-        builtin_count=builtin_count,
-        repo_count=repo_count,
-    )
-    return result
 
 
 def tool_payload(result: OmxAgentMcpToolResult) -> JsonObject:
@@ -88,7 +49,7 @@ def tool_payload(result: OmxAgentMcpToolResult) -> JsonObject:
     Returns:
         JsonObject: JSON-compatible payload.
     """
-    payload = cast(JsonObject, result.model_dump(mode="json"))
+    payload = model_json_object(result)
     return payload
 
 
@@ -101,7 +62,7 @@ def manual_commands(plan: CommandExecutionPlan) -> tuple[str, ...]:
     Returns:
         tuple[str, ...]: Shell-readable command previews.
     """
-    commands = tuple(" ".join(step.native_argv) for step in plan.steps)
+    commands = tuple(shlex.join(step.native_argv) for step in plan.steps)
     return commands
 
 
@@ -119,7 +80,7 @@ def next_actions(
     """
     actions: list[str] = [
         "Review blocked_reasons before executing any native command.",
-        f"TUI preview: /run {plan.qualified_id}",
+        f"TUI preview: /run {shlex.quote(plan.qualified_id)}",
         "Execute high-risk commands only after an explicit user confirmation.",
     ]
     if run_record is not None:

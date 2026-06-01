@@ -1,12 +1,11 @@
-from pathlib import Path
 from enum import StrEnum
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from omx_remote.runtime.ralph.ralph_state import RalphStateClassifier
 from omx_remote.runtime.ultrawork.ultrawork_control import UltraworkStateClassifier
-from omx_remote.schemas.common_schemas import StrictRootSchemaModel, StrictSchemaModel
 from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalExecutionShape,
     CodexGoalHandoffState,
@@ -15,15 +14,16 @@ from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalReviewPolicy,
     CodexGoalTrackingState,
 )
-from omx_remote.schemas.multi_operator.snapshot_schemas import (
+from omx_remote.schemas.common_schemas import StrictRootSchemaModel, StrictSchemaModel
+from omx_remote.schemas.multi_operator_snapshot_schemas import (
     FlowSelector,
     ManagedFlowKind,
 )
-from omx_remote.schemas.operator.action_schemas import (
+from omx_remote.schemas.operator_action_schemas import (
     OperatorActionResult,
     OperatorLoopState,
 )
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeSnapshot,
     RuntimeModeStatus,
     RuntimeStatusAnomaly,
@@ -32,6 +32,7 @@ from omx_remote.schemas.runtime.status_schemas import (
 from omx_remote.shared.omx_enums.codex_goal_enums import CodexGoalMirrorSource
 from omx_remote.shared.omx_enums.ralph_enums import RalphStateClassification
 from omx_remote.shared.omx_enums.ultrawork_enums import UltraworkStateClassification
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 def test_schema_contracts_are_moved_without_flat_wrapper_modules() -> None:
@@ -99,7 +100,7 @@ def test_strict_schema_config_normalizes_enum_members_to_json_strings() -> None:
 
     assert request.execution_shape == "ralph_pipeline"
     assert request.model_dump()["execution_shape"] == "ralph_pipeline"
-    assert request.model_dump(mode="json")["execution_shape"] == "ralph_pipeline"
+    assert model_json_object(request)["execution_shape"] == "ralph_pipeline"
     request = CodexGoalLaunchRequest.model_validate(
         {
             "objective_text": "ship typed enum contracts",
@@ -111,7 +112,7 @@ def test_strict_schema_config_normalizes_enum_members_to_json_strings() -> None:
 
     assert request.execution_shape == CodexGoalExecutionShape.RALPH_PIPELINE.value
     assert request.review_policy == CodexGoalReviewPolicy.REVIEW_REQUIRED.value
-    assert request.model_dump(mode="json")["execution_shape"] == "ralph_pipeline"
+    assert model_json_object(request)["execution_shape"] == "ralph_pipeline"
 
 
 @pytest.mark.parametrize(
@@ -144,7 +145,7 @@ def test_codex_goal_mirror_state_accepts_enum_or_string_values(
 
     result = CodexGoalMirrorState.model_validate(payload)
 
-    assert result.model_dump(mode="json")[field_name] == str(enum_member)
+    assert model_json_object(result)[field_name] == str(enum_member)
 
 
 def test_runtime_and_operator_schemas_use_enum_backed_fields() -> None:
@@ -169,7 +170,7 @@ def test_runtime_and_operator_schemas_use_enum_backed_fields() -> None:
     assert runtime_snapshot.status == RuntimeModeStatus.ACTIVE.value
     assert anomaly.category == RuntimeStatusAnomalyCategory.UNKNOWN_MODE_STATUS.value
     assert operator_result.loop_state == OperatorLoopState.RESUMABLE_LATER.value
-    assert operator_result.model_dump(mode="json")["loop_state"] == "resumable_later"
+    assert model_json_object(operator_result)["loop_state"] == "resumable_later"
 
 
 @pytest.mark.parametrize("invalid_status", ["started", "blocked", "finished"])
@@ -199,9 +200,7 @@ def test_ralph_state_classifier_groups_phase_and_outcome_sets() -> None:
     terminal_state = RalphStateClassifier.classify_state_snapshot(
         {"active": False, "run_outcome": "done"}
     )
-    stale_state = RalphStateClassifier.classify_state_snapshot(
-        {"active": "yes"}
-    )
+    stale_state = RalphStateClassifier.classify_state_snapshot({"active": "yes"})
 
     assert resumable_state is RalphStateClassification.RESUMABLE
     assert terminal_state is RalphStateClassification.TERMINAL

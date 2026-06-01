@@ -44,12 +44,18 @@ def test_source_functions_keep_args_and_returns_docstring_sections() -> None:
         relative_path = source_path.relative_to(REPO_ROOT)
         meaningful_parameters = _meaningful_parameters(node)
         if not docstring:
-            missing_sections.append(f"{relative_path}:{node.lineno}:{node.name}: missing docstring")
+            missing_sections.append(
+                f"{relative_path}:{node.lineno}:{node.name}: missing docstring"
+            )
             continue
         if meaningful_parameters and "Args:" not in docstring:
-            missing_sections.append(f"{relative_path}:{node.lineno}:{node.name}: missing Args")
+            missing_sections.append(
+                f"{relative_path}:{node.lineno}:{node.name}: missing Args"
+            )
         if _returns_value(node) and "Returns:" not in docstring:
-            missing_sections.append(f"{relative_path}:{node.lineno}:{node.name}: missing Returns")
+            missing_sections.append(
+                f"{relative_path}:{node.lineno}:{node.name}: missing Returns"
+            )
 
     assert missing_sections == []
 

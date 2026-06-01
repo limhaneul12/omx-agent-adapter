@@ -3,7 +3,7 @@ from typer.testing import CliRunner
 
 import omx_remote.cli_launcher.probes_cli as probes_cli
 from omx_remote.cli import app
-from omx_remote.schemas.probes.upstream_probe_schemas import ProbeProcessOutput
+from omx_remote.schemas.upstream_probe_schemas import ProbeProcessOutput
 
 
 def test_probes_run_cli_uses_injected_runner(monkeypatch) -> None:

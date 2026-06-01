@@ -7,11 +7,11 @@ from omx_remote.schemas.cockpit.snapshot_schemas import (
     CockpitSnapshot,
     CockpitSnapshotRequest,
 )
-from omx_remote.schemas.next.next_action_schemas import (
+from omx_remote.schemas.next_action_schemas import (
     NextActionRequest,
     NextActionResult,
 )
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteName,
     RoutePolicyResult,
     RouteRecommendation,
@@ -71,7 +71,9 @@ def build_next_action_result(
         route_recommendations = route_policy.recommendations
 
     why: tuple[str, ...] = _collect_why(cockpit_snapshot, route_policy)
-    source_names: tuple[str, ...] = _collect_source_names(cockpit_snapshot, route_policy)
+    source_names: tuple[str, ...] = _collect_source_names(
+        cockpit_snapshot, route_policy
+    )
     blocked_actions: tuple[str, ...] = _collect_blocked_actions(
         cockpit_snapshot,
         route_policy,
@@ -264,32 +266,35 @@ def _build_recommended_commands(
         tuple[str, ...]: Command strings that do not execute native mutation.
     """
     repo_root: str = _quote_shell_token(cockpit_snapshot.repo_root)
-    commands: list[str] = [f"agent-remote cockpit snapshot --cwd {repo_root} --json"]
+    commands: list[str] = [f"comx-agent cockpit snapshot --cwd {repo_root} --json"]
     if task is not None:
         commands.append(
-            f"agent-remote route recommend --cwd {repo_root} --task {_quote_shell_token(task)} --json"
+            f"comx-agent route recommend --cwd {repo_root} --task {_quote_shell_token(task)} --json"
         )
     if route_policy is not None and route_policy.recommendations:
         top_recommendation: RouteRecommendation = route_policy.recommendations[0]
         if top_recommendation.route == RouteName.OMX_ULTRAGOAL:
             commands.extend(
                 (
-                    f"agent-remote ultragoal status --cwd {repo_root} --json",
-                    f"agent-remote preflight route omx-ultragoal --cwd {repo_root} --json",
+                    f"comx-agent ultragoal status --cwd {repo_root} --json",
+                    f"comx-agent preflight route omx-ultragoal --cwd {repo_root} --json",
                 )
             )
-        elif top_recommendation.route == RouteName.PROJECT_COMMAND and top_recommendation.command_id:
+        elif (
+            top_recommendation.route == RouteName.PROJECT_COMMAND
+            and top_recommendation.command_id
+        ):
             command_id: str = _quote_shell_token(top_recommendation.command_id)
             commands.extend(
                 (
-                    f"agent-remote preflight run {command_id} --cwd {repo_root} --json",
-                    f"agent-remote run {command_id} --cwd {repo_root} --dry-run --json",
+                    f"comx-agent preflight run {command_id} --cwd {repo_root} --json",
+                    f"comx-agent run {command_id} --cwd {repo_root} --dry-run --json",
                 )
             )
         else:
             route_id: str = top_recommendation.route.replace("_", "-")
             commands.append(
-                f"agent-remote preflight route {route_id} --cwd {repo_root} --json"
+                f"comx-agent preflight route {route_id} --cwd {repo_root} --json"
             )
 
     result: tuple[str, ...] = tuple(commands)
@@ -312,10 +317,14 @@ def _build_summary(
         str: Human-readable result summary.
     """
     if cockpit_snapshot.contradictions:
-        summary: str = "Inspect cockpit contradictions before route selection or mutation."
+        summary: str = (
+            "Inspect cockpit contradictions before route selection or mutation."
+        )
         return summary
     if not cockpit_snapshot.safe_to_mutate:
-        summary = "Cockpit evidence blocks mutation; inspect the blocking evidence first."
+        summary = (
+            "Cockpit evidence blocks mutation; inspect the blocking evidence first."
+        )
         return summary
     if route_policy is not None and route_policy.recommendations:
         top_recommendation: RouteRecommendation = route_policy.recommendations[0]

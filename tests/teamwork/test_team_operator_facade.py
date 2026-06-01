@@ -1,6 +1,6 @@
 import asyncio
 
-from omx_remote.schemas.invoke.command_schemas import OmxCommandResult
+from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 from omx_remote.schemas.teamwork.api_snapshot_schemas import TeamApiWorkerStatusSnapshot
 from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorDispatchInstructionRequest,
@@ -18,7 +18,9 @@ def test_dispatch_team_instruction_uses_direct_message_for_non_durable_worker_ta
         assert request.to_worker == "worker-1"
         return OmxCommandResult(exit_code=0, stdout="{}", stderr="")
 
-    monkeypatch.setattr(team_operator_facade, "send_team_message", fake_send_team_message)
+    monkeypatch.setattr(
+        team_operator_facade, "send_team_message", fake_send_team_message
+    )
 
     result = asyncio.run(
         team_operator_facade.dispatch_team_instruction(
@@ -36,7 +38,9 @@ def test_dispatch_team_instruction_uses_direct_message_for_non_durable_worker_ta
     assert result.needs_follow_up is False
 
 
-def test_dispatch_team_instruction_uses_worker_inbox_for_durable_target(monkeypatch) -> None:
+def test_dispatch_team_instruction_uses_worker_inbox_for_durable_target(
+    monkeypatch,
+) -> None:
     async def fake_write_team_worker_inbox(request):
         assert request.worker == "worker-1"
         return OmxCommandResult(exit_code=0, stdout="{}", stderr="")
@@ -64,7 +68,9 @@ def test_dispatch_team_instruction_uses_worker_inbox_for_durable_target(monkeypa
     assert result.needs_follow_up is True
 
 
-def test_dispatch_team_instruction_uses_broadcast_without_worker_target(monkeypatch) -> None:
+def test_dispatch_team_instruction_uses_broadcast_without_worker_target(
+    monkeypatch,
+) -> None:
     async def fake_broadcast_team_message(request):
         assert request.from_worker == "leader-fixed"
         return OmxCommandResult(exit_code=0, stdout="{}", stderr="")
@@ -89,12 +95,16 @@ def test_dispatch_team_instruction_uses_broadcast_without_worker_target(monkeypa
     assert result.outcome == "accepted"
 
 
-def test_dispatch_team_instruction_reports_failure_for_non_zero_exit(monkeypatch) -> None:
+def test_dispatch_team_instruction_reports_failure_for_non_zero_exit(
+    monkeypatch,
+) -> None:
     async def fake_send_team_message(request):
         _ = request
         return OmxCommandResult(exit_code=1, stdout="{}", stderr="team_not_found")
 
-    monkeypatch.setattr(team_operator_facade, "send_team_message", fake_send_team_message)
+    monkeypatch.setattr(
+        team_operator_facade, "send_team_message", fake_send_team_message
+    )
 
     result = asyncio.run(
         team_operator_facade.dispatch_team_instruction(
@@ -133,7 +143,9 @@ def test_dispatch_team_task_wraps_create_task_result(monkeypatch) -> None:
     assert result.needs_follow_up is True
 
 
-def test_request_task_approval_marks_success_like_result_as_unverified(monkeypatch) -> None:
+def test_request_task_approval_marks_success_like_result_as_unverified(
+    monkeypatch,
+) -> None:
     async def fake_write_team_task_approval(request):
         assert request.status == "approved"
         return OmxCommandResult(exit_code=0, stdout="{}", stderr="")
@@ -161,7 +173,9 @@ def test_request_task_approval_marks_success_like_result_as_unverified(monkeypat
     assert result.needs_follow_up is True
 
 
-def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(monkeypatch) -> None:
+def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(
+    monkeypatch,
+) -> None:
     async def fake_read_worker_status(request):
         assert request.worker == "worker-1"
         return TeamApiWorkerStatusSnapshot(
@@ -207,7 +221,9 @@ def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(monk
     assert result.dispatch_result.selected_operation == "write-worker-inbox"
 
 
-def test_request_worker_recheck_uses_direct_message_for_reporting_worker(monkeypatch) -> None:
+def test_request_worker_recheck_uses_direct_message_for_reporting_worker(
+    monkeypatch,
+) -> None:
     async def fake_read_worker_status(request):
         assert request.worker == "worker-1"
         return TeamApiWorkerStatusSnapshot(

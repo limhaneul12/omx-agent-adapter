@@ -44,12 +44,14 @@ def _read_ultrawork_state(
     if state_payload is None:
         invalid_state: tuple[UltraworkStateClassification, tuple[str, ...]] = (
             UltraworkStateClassification.INVALID,
-            (f"Ultrawork state file is present but unreadable: {ultrawork_state_path}",),
+            (
+                f"Ultrawork state file is present but unreadable: {ultrawork_state_path}",
+            ),
         )
         return invalid_state
 
-    classification: UltraworkStateClassification = UltraworkStateClassifier.classify_state_snapshot(
-        state_payload
+    classification: UltraworkStateClassification = (
+        UltraworkStateClassifier.classify_state_snapshot(state_payload)
     )
     classified_state: tuple[UltraworkStateClassification, tuple[str, ...]] = (
         classification,

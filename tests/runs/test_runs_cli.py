@@ -11,7 +11,7 @@ def _record_review_run(tmp_path: Path) -> str:
         app,
         [
             "run",
-            "builtin:review-diff",
+            "builtin:review-gate",
             "--cwd",
             str(tmp_path),
             "--dry-run",
@@ -28,7 +28,7 @@ def _record_review_run(tmp_path: Path) -> str:
 
 def test_run_record_flag_writes_run_artifacts(tmp_path: Path) -> None:
     run_id = _record_review_run(tmp_path)
-    run_dir = tmp_path / ".agent-remote" / "runs" / run_id
+    run_dir = tmp_path / ".comx-agent" / "runs" / run_id
 
     assert (run_dir / "run.json").exists()
     assert (run_dir / "plan.json").exists()
@@ -68,11 +68,13 @@ def test_runs_cli_lists_shows_handoff_and_replay_plan(tmp_path: Path) -> None:
     assert show_payload["run_id"] == run_id
     assert f"Run {run_id}" in handoff_result.stdout
     assert replay_payload["run_id"] == run_id
-    assert replay_payload["plan"]["qualified_id"] == "builtin:review-diff"
+    assert replay_payload["plan"]["qualified_id"] == "builtin:review-gate"
 
 
-def test_runs_list_json_reports_corrupted_record_without_traceback(tmp_path: Path) -> None:
-    corrupt_run_dir = tmp_path / ".agent-remote" / "runs" / "9999-corrupt"
+def test_runs_list_json_reports_corrupted_record_without_traceback(
+    tmp_path: Path,
+) -> None:
+    corrupt_run_dir = tmp_path / ".comx-agent" / "runs" / "9999-corrupt"
     corrupt_run_dir.mkdir(parents=True)
     (corrupt_run_dir / "run.json").write_text("{not-json", encoding="utf-8")
 

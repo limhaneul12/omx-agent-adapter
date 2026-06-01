@@ -1,4 +1,3 @@
-import tomllib
 from pathlib import Path
 from typing import Final
 
@@ -6,8 +5,10 @@ from omx_remote.schemas.agents.agent_config_schemas import (
     AgentConfig,
     AgentConfigSet,
 )
+from omx_remote.shared.exceptions import TomlDocumentLoadError
+from omx_remote.shared.utils.toml_document_loading import load_toml_document_object
 
-DEFAULT_AGENT_CONFIG_FILENAME: Final[str] = ".agent-remote.toml"
+DEFAULT_AGENT_CONFIG_FILENAME: Final[str] = ".comx-agent.toml"
 AGENT_CONFIG_TOP_LEVEL_SECTION: Final[str] = "agents"
 RESERVED_TOP_LEVEL_SECTIONS: Final[frozenset[str]] = frozenset(
     {AGENT_CONFIG_TOP_LEVEL_SECTION, "commands", "routes", "mcp", "mcp_servers"}
@@ -18,7 +19,9 @@ class AgentConfigLoadError(ValueError):
     """Raised when raw TOML cannot be loaded before schema validation."""
 
 
-def _resolve_config_path(cwd: str | Path | None, config_path: str | Path | None) -> Path:
+def _resolve_config_path(
+    cwd: str | Path | None, config_path: str | Path | None
+) -> Path:
     """Resolve the agent config path.
 
     Args:
@@ -43,30 +46,28 @@ def _resolve_config_path(cwd: str | Path | None, config_path: str | Path | None)
 
 
 def _load_toml_object(config_path: Path) -> dict[str, object]:
-    """Load a TOML object from disk.
+    """Load one TOML root object.
 
     Args:
-        config_path [Path]: TOML file path to parse.
+        config_path [Path]: TOML path to read.
 
     Returns:
         dict[str, object]: Parsed TOML root object.
     """
     try:
-        config_text: str = config_path.read_text()
-        parsed_toml: dict[str, object] = tomllib.loads(config_text)
-    except tomllib.TOMLDecodeError as error:
-        raise AgentConfigLoadError(
-            f"Agent config at {config_path} contains malformed TOML: {error}"
-        ) from error
-    except OSError as error:
-        raise AgentConfigLoadError(
-            f"Agent config at {config_path} could not be read: {error}"
-        ) from error
+        parsed_toml: dict[str, object] = load_toml_document_object(
+            config_path=config_path,
+            document_label="Agent config",
+        )
+    except TomlDocumentLoadError as error:
+        raise AgentConfigLoadError(str(error)) from error
 
     return parsed_toml
 
 
-def _validate_top_level_sections(parsed_toml: dict[str, object], config_path: Path) -> None:
+def _validate_top_level_sections(
+    parsed_toml: dict[str, object], config_path: Path
+) -> None:
     """Validate supported top-level TOML sections.
 
     Args:
@@ -81,7 +82,9 @@ def _validate_top_level_sections(parsed_toml: dict[str, object], config_path: Pa
         )
 
 
-def _load_agent_payloads(parsed_toml: dict[str, object], config_path: Path) -> tuple[AgentConfig, ...]:
+def _load_agent_payloads(
+    parsed_toml: dict[str, object], config_path: Path
+) -> tuple[AgentConfig, ...]:
     """Load typed agent configurations from a parsed TOML root object.
 
     Args:

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Final
 
-RUNS_ROOT: Final[str] = ".agent-remote/runs"
+RUNS_ROOT: Final[str] = ".comx-agent/runs"
 
 
 class RunArtifactPathError(ValueError):
@@ -52,7 +52,7 @@ def resolve_runs_root(cwd: str | Path) -> Path:
         cwd [str | Path]: Repository root.
 
     Returns:
-        Path: `.agent-remote/runs` path under the repository.
+        Path: `.comx-agent/runs` path under the repository.
     """
     root_path: Path = Path(cwd).resolve()
     runs_root: Path = root_path / RUNS_ROOT

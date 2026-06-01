@@ -76,7 +76,7 @@ class AgentConfigSet(StrictSchemaModel):
 
 
 class AgentListResult(StrictSchemaModel):
-    """Represents `agent-remote agents list` output."""
+    """Represents `comx-agent agents list` output."""
 
     config_path: NonEmptyString
     agents: tuple[AgentConfig, ...]
@@ -86,7 +86,7 @@ class AgentListResult(StrictSchemaModel):
 
 
 class AgentShowResult(StrictSchemaModel):
-    """Represents `agent-remote agents show` output."""
+    """Represents `comx-agent agents show` output."""
 
     config_path: NonEmptyString
     agent: AgentConfig
@@ -94,7 +94,7 @@ class AgentShowResult(StrictSchemaModel):
 
 
 class AgentValidationResult(StrictSchemaModel):
-    """Represents `agent-remote agents validate` output."""
+    """Represents `comx-agent agents validate` output."""
 
     valid: bool
     config_path: NonEmptyString

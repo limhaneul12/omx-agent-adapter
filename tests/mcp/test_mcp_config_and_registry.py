@@ -37,7 +37,7 @@ env_vars = ["OMX_TOKEN"]
 
 
 def test_repo_mcp_config_reads_codex_style_section(tmp_path: Path) -> None:
-    (tmp_path / ".agent-remote.toml").write_text(
+    (tmp_path / ".comx-agent.toml").write_text(
         """
 [mcp_servers.search]
 enabled = false
@@ -83,7 +83,9 @@ def test_codex_mcp_payload_normalizes_stdio_server() -> None:
     assert servers[0].auth_status == "unsupported"
 
 
-def test_mcp_registry_prefers_unambiguous_repo_server(monkeypatch, tmp_path: Path) -> None:
+def test_mcp_registry_prefers_unambiguous_repo_server(
+    monkeypatch, tmp_path: Path
+) -> None:
     (tmp_path / ".comx-agent.toml").write_text(
         """
 [mcp.servers.omx_state]
@@ -117,11 +119,18 @@ args = ["mcp-serve", "state"]
 
     assert registry.codex_count == 1
     assert registry.repo_count == 1
-    assert resolve_mcp_server(registry.servers, "omx_state").source == McpServerSource.REPO
-    assert resolve_mcp_server(registry.servers, "codex:codex_only").source == McpServerSource.CODEX
+    assert (
+        resolve_mcp_server(registry.servers, "omx_state").source == McpServerSource.REPO
+    )
+    assert (
+        resolve_mcp_server(registry.servers, "codex:codex_only").source
+        == McpServerSource.CODEX
+    )
 
 
-def test_mcp_registry_reports_ambiguous_short_names(monkeypatch, tmp_path: Path) -> None:
+def test_mcp_registry_reports_ambiguous_short_names(
+    monkeypatch, tmp_path: Path
+) -> None:
     (tmp_path / ".comx-agent.toml").write_text(
         """
 [mcp.servers.shared]

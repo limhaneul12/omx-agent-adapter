@@ -18,11 +18,11 @@ from omx_remote.runtime.routes.route_explanation_renderer import (
 )
 from omx_remote.runtime.routes.route_policy_engine import build_route_policy_result
 from omx_remote.runtime.status.active_runtime_modes import read_active_runtime_modes
-from omx_remote.schemas.routes.route_policy_schemas import (
+from omx_remote.schemas.route_policy_schemas import (
     RouteExplanation,
     RoutePolicyResult,
 )
-from omx_remote.schemas.runtime.status_schemas import ActiveRuntimeModes
+from omx_remote.schemas.runtime_status_schemas import ActiveRuntimeModes
 
 route_app = typer.Typer(
     help="Classify tasks and recommend Codex/OMX/project execution routes.",

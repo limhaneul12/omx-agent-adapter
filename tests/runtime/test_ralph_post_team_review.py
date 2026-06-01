@@ -1,7 +1,9 @@
 from omx_remote.runtime.ralph.ralph_post_team_review import build_ralph_post_team_review
 from omx_remote.schemas.ralph.prd_schemas import RalphPrdArtifact
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewRequest
-from omx_remote.schemas.teamwork.admin_aggregation_schemas import TeamAdminAggregationReport
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReport,
+)
 
 
 def _assignment(worker_id: str, owned_file: str) -> dict[str, object]:
@@ -107,7 +109,6 @@ def test_ralph_post_team_review_requires_follow_up_for_waiting_workers() -> None
     assert result.follow_up_workers == ("worker-2",)
 
 
-
 def test_ralph_post_team_review_surfaces_startup_issue_for_follow_up() -> None:
     result = build_ralph_post_team_review(
         RalphPostTeamReviewRequest(
@@ -128,7 +129,6 @@ def test_ralph_post_team_review_surfaces_startup_issue_for_follow_up() -> None:
     assert result.follow_up_workers == ("worker-2",)
     assert result.startup_issue_workers == ("worker-2",)
     assert result.review_blockers == ()
-
 
 
 def test_ralph_post_team_review_escalates_blocked_or_missing_workers() -> None:
@@ -153,7 +153,9 @@ def test_ralph_post_team_review_escalates_blocked_or_missing_workers() -> None:
     assert result.review_blockers == ("worker-2",)
 
 
-def test_ralph_post_team_review_rejects_report_that_conflicts_with_prd_workers() -> None:
+def test_ralph_post_team_review_rejects_report_that_conflicts_with_prd_workers() -> (
+    None
+):
     result = build_ralph_post_team_review(
         RalphPostTeamReviewRequest(
             ralph_prd_artifact=_prd_artifact(),

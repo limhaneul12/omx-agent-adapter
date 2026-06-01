@@ -1,6 +1,6 @@
 from shutil import which
 
-from omx_remote.schemas.preflight.preflight_schemas import (
+from omx_remote.schemas.preflight_schemas import (
     PreflightCategory,
     PreflightCheckResult,
     PreflightSeverity,

@@ -87,7 +87,9 @@ def load_probe_runtime_payload(
         AdapterProbeRuntimePayload: Stable target-runtime payload.
     """
     if not isinstance(raw_runtime_payload, dict):
-        raise BridgeSurfaceError(f"{source} returned a non-object targetRuntime payload")
+        raise BridgeSurfaceError(
+            f"{source} returned a non-object targetRuntime payload"
+        )
 
     runtime_payload = AdapterProbeRuntimePayload(
         state=require_string_field(raw_runtime_payload, "state", source),
@@ -163,7 +165,9 @@ def load_envelope_runtime_payload(
         AdapterEnvelopeRuntimePayload: Stable target-runtime payload.
     """
     if not isinstance(raw_runtime_payload, dict):
-        raise BridgeSurfaceError(f"{source} returned a non-object targetRuntime payload")
+        raise BridgeSurfaceError(
+            f"{source} returned a non-object targetRuntime payload"
+        )
 
     runtime_payload = AdapterEnvelopeRuntimePayload(
         state=require_string_field(raw_runtime_payload, "state", source),

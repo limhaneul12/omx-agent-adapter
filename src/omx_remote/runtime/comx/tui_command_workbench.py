@@ -26,6 +26,7 @@ def _format_command_inventory(inventory: ComxControlSurfaceInventory) -> str:
     ungrouped_lines: list[str] = []
     for command in inventory.composed_commands:
         section_label = command_section_label(command.id)
+        quoted_command_id = shlex.quote(command.qualified_id)
         if section_label is None:
             ungrouped_lines.append(
                 f"- {command.qualified_id} [{command.risk}] steps={command.step_count}: "
@@ -39,11 +40,11 @@ def _format_command_inventory(inventory: ComxControlSurfaceInventory) -> str:
             ),
             (
                 "  dry_run: comx-agent run "
-                f'{command.qualified_id} --cwd . --dry-run --task "<task>" --json'
+                f'{quoted_command_id} --cwd . --dry-run --task "<task>" --json'
             ),
             (
                 "  execute_or_handoff: comx-agent run "
-                f"{command.qualified_id} --cwd . --execute --autonomy agent "
+                f"{quoted_command_id} --cwd . --execute --autonomy agent "
                 '--task "<task>" --json'
             ),
         ]
@@ -52,7 +53,7 @@ def _format_command_inventory(inventory: ComxControlSurfaceInventory) -> str:
         grouped_commands.setdefault(section_label.group, []).extend(command_lines)
 
     lines: list[str] = ["composed commands:"]
-    for group_name in ("Collaboration", "Research", "Review", "Release"):
+    for group_name in ("Lifecycle", "Macro", "Adapter Ops"):
         group_lines: list[str] | None = grouped_commands.get(group_name)
         if group_lines is None:
             continue
@@ -81,23 +82,32 @@ def _parse_run_preview_args(args: str) -> tuple[str, str | None]:
     if not tokens:
         raise ValueError("/run requires a command recipe id.")
 
-    recipe_id: str = tokens[0]
+    command_tokens: list[str] = tokens
     task_text: str | None = None
     if "--task" in tokens:
         task_index: int = tokens.index("--task")
-        task_tokens: list[str] = tokens[task_index + 1 :]
+        command_tokens = tokens[:task_index]
+        task_tokens = tokens[task_index + 1 :]
         if task_tokens:
             task_text = " ".join(task_tokens)
     elif "::" in args:
         recipe_id, task_part = args.split("::", 1)
         recipe_id = recipe_id.strip()
         task_text = task_part.strip() or None
+        parsed_args: tuple[str, str | None] = (recipe_id, task_text)
+        return parsed_args
+
+    recipe_id = " ".join(command_tokens).strip()
+    if not recipe_id:
+        raise ValueError("/run requires a command recipe id.")
 
     parsed_args: tuple[str, str | None] = (recipe_id, task_text)
     return parsed_args
 
 
-def build_tui_commands_result(command_name: str, workspace: Path) -> ComxTuiCommandResult:
+def build_tui_commands_result(
+    command_name: str, workspace: Path
+) -> ComxTuiCommandResult:
     """Build the TUI composed-command workbench result.
 
     Args:

@@ -18,12 +18,12 @@ from omx_remote.schemas.codex_goal.runtime_schemas import (
     CodexGoalMirrorState,
     CodexGoalSpawnResult,
 )
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 
 def test_codex_goal_launch_request_rejects_blank_objective_text() -> None:
     with pytest.raises(ValidationError):
         CodexGoalLaunchRequest(objective_text="")
-
 
 
 def test_codex_goal_mirror_state_accepts_goal_only_shape() -> None:
@@ -36,7 +36,7 @@ def test_codex_goal_mirror_state_accepts_goal_only_shape() -> None:
         team_worker_count=None,
         working_directory="/tmp/project",
         codex_command=["codex", "--enable", "goals"],
-        session_locator="agent-remote-goal-goal-1",
+        session_locator="comx-agent-goal-goal-1",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="goal_only",
@@ -45,7 +45,6 @@ def test_codex_goal_mirror_state_accepts_goal_only_shape() -> None:
 
     assert result.execution_shape == "goal_only"
     assert result.handoff_state == "goal_only"
-
 
 
 def test_codex_goal_runtime_sequences_promote_to_tuple_contracts() -> None:
@@ -58,14 +57,14 @@ def test_codex_goal_runtime_sequences_promote_to_tuple_contracts() -> None:
         team_worker_count=None,
         working_directory="/tmp/project",
         codex_command=["codex", "--enable", "goals"],
-        session_locator="agent-remote-goal-goal-1",
+        session_locator="comx-agent-goal-goal-1",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="goal_only",
         tracking_state="starting",
     )
     spawn_result = CodexGoalSpawnResult(
-        session_locator="agent-remote-goal-goal-1",
+        session_locator="comx-agent-goal-goal-1",
         process_id=1234,
         spawn_status="started",
         slash_command_written=True,
@@ -79,10 +78,13 @@ def test_codex_goal_runtime_sequences_promote_to_tuple_contracts() -> None:
         warnings=["allow-non-tty is enabled"],
     )
     assert launch_result.warnings == ("allow-non-tty is enabled",)
-    json_payload = launch_result.model_dump(mode="json")
-    assert json_payload["mirror_state"]["codex_command"] == ["codex", "--enable", "goals"]
+    json_payload = model_json_object(launch_result)
+    assert json_payload["mirror_state"]["codex_command"] == [
+        "codex",
+        "--enable",
+        "goals",
+    ]
     assert json_payload["warnings"] == ["allow-non-tty is enabled"]
-
 
 
 def test_codex_goal_mirror_state_store_owns_state_path_and_persistence(
@@ -98,7 +100,7 @@ def test_codex_goal_mirror_state_store_owns_state_path_and_persistence(
         team_worker_count=None,
         working_directory=str(tmp_path),
         codex_command=["codex", "--enable", "goals"],
-        session_locator="agent-remote-goal-goal-store",
+        session_locator="comx-agent-goal-goal-store",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="goal_only",
@@ -108,7 +110,7 @@ def test_codex_goal_mirror_state_store_owns_state_path_and_persistence(
     store.write_mirror_state(mirror_state)
     result: CodexGoalMirrorState = store.read_mirror_state()
 
-    assert store.state_path == tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    assert store.state_path == tmp_path / ".comx-agent" / "state" / "codex-goal.json"
     assert result.goal_id == "goal-store"
     assert result.codex_command == ("codex", "--enable", "goals")
 
@@ -121,7 +123,7 @@ def test_start_codex_goal_builds_goal_enabled_codex_command(
     def fake_spawn_codex_goal_session(
         *,
         goal_id: str,
-        codex_command: list[str],
+        codex_command: tuple[str, ...],
         working_directory: str | None,
         slash_command_text: str,
     ) -> CodexGoalSpawnResult:
@@ -130,7 +132,7 @@ def test_start_codex_goal_builds_goal_enabled_codex_command(
         observed_payload["working_directory"] = working_directory
         observed_payload["slash_command_text"] = slash_command_text
         result = CodexGoalSpawnResult(
-            session_locator=f"agent-remote-goal-{goal_id}",
+            session_locator=f"comx-agent-goal-{goal_id}",
             process_id=4321,
             spawn_status="started",
             slash_command_written=True,
@@ -153,12 +155,14 @@ def test_start_codex_goal_builds_goal_enabled_codex_command(
 
     result = start_codex_goal(request)
 
-    assert observed_payload["codex_command"] == ["codex", "--enable", "goals"]
+    assert observed_payload["codex_command"] == ("codex", "--enable", "goals")
     assert observed_payload["working_directory"] == str(tmp_path)
-    assert observed_payload["slash_command_text"] == "/goal Ship the first native goal bridge"
+    assert (
+        observed_payload["slash_command_text"]
+        == "/goal Ship the first native goal bridge"
+    )
     assert result.mirror_state.execution_shape == "ralph_pipeline"
     assert result.mirror_state.team_worker_count == 3
-
 
 
 def test_start_codex_goal_records_adapter_owned_mirror_state(
@@ -167,7 +171,7 @@ def test_start_codex_goal_records_adapter_owned_mirror_state(
     def fake_spawn_codex_goal_session(
         *,
         goal_id: str,
-        codex_command: list[str],
+        codex_command: tuple[str, ...],
         working_directory: str | None,
         slash_command_text: str,
     ) -> CodexGoalSpawnResult:
@@ -175,7 +179,7 @@ def test_start_codex_goal_records_adapter_owned_mirror_state(
         _ = working_directory
         _ = slash_command_text
         result = CodexGoalSpawnResult(
-            session_locator=f"agent-remote-goal-{goal_id}",
+            session_locator=f"comx-agent-goal-{goal_id}",
             process_id=9876,
             spawn_status="started",
             slash_command_written=True,
@@ -196,7 +200,7 @@ def test_start_codex_goal_records_adapter_owned_mirror_state(
     )
 
     result = start_codex_goal(request)
-    state_path = tmp_path / ".agent-remote" / "state" / "codex-goal.json"
+    state_path = tmp_path / ".comx-agent" / "state" / "codex-goal.json"
 
     assert state_path.exists()
     persisted_payload = json.loads(state_path.read_text(encoding="utf-8"))
@@ -205,11 +209,10 @@ def test_start_codex_goal_records_adapter_owned_mirror_state(
     assert persisted_payload["source"] == "codex_goal"
 
 
-
 def test_read_codex_goal_status_returns_latest_mirror_state(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    state_dir = tmp_path / ".agent-remote" / "state"
+    state_dir = tmp_path / ".comx-agent" / "state"
     state_dir.mkdir(parents=True)
     state_path = state_dir / "codex-goal.json"
     state_path.write_text(
@@ -223,11 +226,11 @@ def test_read_codex_goal_status_returns_latest_mirror_state(
                 "team_worker_count": 2,
                 "working_directory": str(tmp_path),
                 "codex_command": ["codex", "--enable", "goals"],
-                "session_locator": "agent-remote-goal-goal-1",
+                "session_locator": "comx-agent-goal-goal-1",
                 "process_id": 1234,
                 "launched_at": "2026-05-05T12:00:00+00:00",
                 "handoff_state": "awaiting_ralph",
-                "tracking_state": "starting"
+                "tracking_state": "starting",
             }
         ),
         encoding="utf-8",
@@ -245,14 +248,13 @@ def test_read_codex_goal_status_returns_latest_mirror_state(
     assert result.handoff_state == "awaiting_ralph"
 
 
-
 def test_start_codex_goal_marks_slash_command_injected_when_goal_command_is_written(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     def fake_spawn_codex_goal_session(
         *,
         goal_id: str,
-        codex_command: list[str],
+        codex_command: tuple[str, ...],
         working_directory: str | None,
         slash_command_text: str,
     ) -> CodexGoalSpawnResult:
@@ -261,7 +263,7 @@ def test_start_codex_goal_marks_slash_command_injected_when_goal_command_is_writ
         _ = working_directory
         _ = slash_command_text
         result = CodexGoalSpawnResult(
-            session_locator="agent-remote-goal-goal-1",
+            session_locator="comx-agent-goal-goal-1",
             process_id=2222,
             spawn_status="started",
             slash_command_written=True,
@@ -285,11 +287,10 @@ def test_start_codex_goal_marks_slash_command_injected_when_goal_command_is_writ
     assert result.spawn_result.slash_command_written is True
 
 
-
 def test_mark_codex_goal_handoff_started_updates_persisted_mirror_state(
     tmp_path: Path,
 ) -> None:
-    state_dir = tmp_path / ".agent-remote" / "state"
+    state_dir = tmp_path / ".comx-agent" / "state"
     state_dir.mkdir(parents=True)
     state_path = state_dir / "codex-goal.json"
     state_path.write_text(
@@ -303,11 +304,11 @@ def test_mark_codex_goal_handoff_started_updates_persisted_mirror_state(
                 "team_worker_count": None,
                 "working_directory": str(tmp_path),
                 "codex_command": ["codex", "--enable", "goals"],
-                "session_locator": "agent-remote-goal-goal-1",
+                "session_locator": "comx-agent-goal-goal-1",
                 "process_id": 1234,
                 "launched_at": "2026-05-05T12:00:00+00:00",
                 "handoff_state": "awaiting_ralph",
-                "tracking_state": "active"
+                "tracking_state": "active",
             }
         ),
         encoding="utf-8",

@@ -1,5 +1,6 @@
 import orjson
 
+from omx_remote.adapter_types.runtime_state_payloads import RuntimeModePayload
 from omx_remote.adapter_types.runtime_types import (
     RuntimeModeStatusDataPayload,
     RuntimeModeStatusEntryPayload,
@@ -9,7 +10,7 @@ from omx_remote.adapter_types.runtime_types import (
 )
 from omx_remote.execution.async_boundary import run_blocking_call
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeStatusRequest,
     RuntimeModeStatusResult,
     RuntimeModeStatusSnapshot,
@@ -21,23 +22,23 @@ async def read_runtime_mode_status(
     request: RuntimeModeStatusRequest,
 ) -> RuntimeModeStatusResult:
     """Reads and normalizes one OMX runtime mode-status snapshot.
-    
+
     Args:
         request [RuntimeModeStatusRequest]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusResult: Function return value.
     """
 
     command_result = await run_blocking_call(
         run_omx_command,
-        [
+        (
             "state",
             "get-status",
             "--input",
-            orjson.dumps({"mode": request.mode}).decode(),
+            orjson.dumps(RuntimeModePayload(mode=request.mode)).decode(),
             "--json",
-        ],
+        ),
     )
     stdout: str = command_result.stdout.strip()
     result: RuntimeModeStatusResult = _normalize_runtime_mode_status(
@@ -49,10 +50,10 @@ async def read_runtime_mode_status(
 
 def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransportPayload:
     """Loads one runtime mode-status transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusTransportPayload: Function return value.
     """
@@ -85,8 +86,8 @@ def _load_runtime_mode_status_payload(stdout: str) -> RuntimeModeStatusTransport
             raise RuntimeSurfaceError(
                 "omx state get-status returned a non-string status key"
             )
-        normalized_statuses[raw_mode_name] = _normalize_runtime_mode_status_entry_payload(
-            raw_status_payload
+        normalized_statuses[raw_mode_name] = (
+            _normalize_runtime_mode_status_entry_payload(raw_status_payload)
         )
 
     result = RuntimeModeStatusTransportPayload(
@@ -99,10 +100,10 @@ def _normalize_runtime_mode_status_data_payload(
     nested_data_payload: object,
 ) -> RuntimeModeStatusDataPayload:
     """Normalize one nested runtime mode-status data payload into the stable subset.
-    
+
     Args:
         nested_data_payload [object]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusDataPayload: Function return value.
     """
@@ -128,10 +129,10 @@ def _normalize_runtime_mode_status_entry_payload(
     status_payload: object,
 ) -> RuntimeModeStatusEntryPayload:
     """Normalize one raw runtime mode-status entry transport payload.
-    
+
     Args:
         status_payload [object]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusEntryPayload: Function return value.
     """
@@ -170,8 +171,8 @@ def _normalize_runtime_mode_status_entry_payload(
     if data_value is None:
         normalized_transport_payload["data"] = None
     elif isinstance(data_value, dict):
-        normalized_transport_payload["data"] = _normalize_runtime_mode_status_data_payload(
-            data_value
+        normalized_transport_payload["data"] = (
+            _normalize_runtime_mode_status_data_payload(data_value)
         )
     else:
         raise RuntimeSurfaceError(
@@ -186,11 +187,11 @@ def _normalize_runtime_mode_status_entry(
     status_payload: RuntimeModeStatusEntryPayload,
 ) -> RuntimeModeStatusSnapshot:
     """Normalizes one requested runtime mode-status entry.
-    
+
     Args:
         mode_name [str]: Function argument.
         status_payload [RuntimeModeStatusEntryPayload]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusSnapshot: Function return value.
     """
@@ -198,7 +199,9 @@ def _normalize_runtime_mode_status_entry(
     if phase_value == "":
         phase_value = None
 
-    nested_data_payload: RuntimeModeStatusDataPayload | None = status_payload.get("data")
+    nested_data_payload: RuntimeModeStatusDataPayload | None = status_payload.get(
+        "data"
+    )
     if phase_value is None and isinstance(nested_data_payload, dict):
         phase_value = nested_data_payload.get("current_phase")
 
@@ -223,16 +226,16 @@ def _normalize_runtime_mode_status(
     requested_mode: str,
 ) -> RuntimeModeStatusResult:
     """Normalizes `omx state get-status --json` stdout into a stable contract.
-    
+
     Args:
         stdout [str]: Function argument.
         requested_mode [str]: Function argument.
-    
+
     Returns:
         RuntimeModeStatusResult: Function return value.
     """
-    parsed_payload: RuntimeModeStatusTransportPayload = _load_runtime_mode_status_payload(
-        stdout
+    parsed_payload: RuntimeModeStatusTransportPayload = (
+        _load_runtime_mode_status_payload(stdout)
     )
     raw_statuses: dict[str, RuntimeModeStatusEntryPayload] = parsed_payload["statuses"]
 
@@ -242,8 +245,8 @@ def _normalize_runtime_mode_status(
             found=False,
             mode_snapshot=None,
         )
-        missing_result: RuntimeModeStatusResult = RuntimeModeStatusResult.model_validate(
-            missing_result_payload
+        missing_result: RuntimeModeStatusResult = (
+            RuntimeModeStatusResult.model_validate(missing_result_payload)
         )
         return missing_result
 

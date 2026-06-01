@@ -16,7 +16,9 @@ from omx_remote.schemas.codex_goal.lifecycle_schemas import (
 )
 from omx_remote.schemas.codex_goal.runtime_schemas import CodexGoalMirrorState
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewResult
-from omx_remote.schemas.teamwork.admin_aggregation_schemas import TeamAdminAggregationReport
+from omx_remote.schemas.teamwork.admin_aggregation_schemas import (
+    TeamAdminAggregationReport,
+)
 
 
 def _mirror_state(goal_id: str = "goal-restore") -> CodexGoalMirrorState:
@@ -29,7 +31,7 @@ def _mirror_state(goal_id: str = "goal-restore") -> CodexGoalMirrorState:
         team_worker_count=2,
         working_directory="/tmp/project",
         codex_command=["codex", "--enable", "goals"],
-        session_locator=f"agent-remote-goal-{goal_id}",
+        session_locator=f"comx-agent-goal-{goal_id}",
         process_id=1234,
         launched_at="2026-05-05T12:00:00+00:00",
         handoff_state="ralph_started",
@@ -96,7 +98,10 @@ def test_goal_lifecycle_artifact_store_round_trips_stage_bundle(tmp_path: Path) 
     written_path = store.write_bundle(bundle)
     result = store.read_bundle("goal-restore")
 
-    assert written_path == tmp_path / ".agent-remote" / "state" / "goal-lifecycle" / "goal-restore.json"
+    assert (
+        written_path
+        == tmp_path / ".comx-agent" / "state" / "goal-lifecycle" / "goal-restore.json"
+    )
     assert result.goal_id == "goal-restore"
     assert result.aggregation_report is not None
     assert result.aggregation_report.completed_workers == ("worker-1", "worker-2")
@@ -104,15 +109,21 @@ def test_goal_lifecycle_artifact_store_round_trips_stage_bundle(tmp_path: Path) 
     assert result.lifecycle_decision.action == "close_goal"
 
 
-def test_restore_goal_lifecycle_state_resumes_at_ralph_review_after_aggregation(tmp_path: Path) -> None:
+def test_restore_goal_lifecycle_state_resumes_at_ralph_review_after_aggregation(
+    tmp_path: Path,
+) -> None:
     bundle = CodexGoalLifecycleArtifactBundle(
         goal_id="goal-restore",
         mirror_state=_mirror_state(),
         aggregation_report=_aggregation_report(),
     )
-    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(bundle)
+    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(
+        bundle
+    )
 
-    result = restore_goal_lifecycle_state("goal-restore", working_directory=str(tmp_path))
+    result = restore_goal_lifecycle_state(
+        "goal-restore", working_directory=str(tmp_path)
+    )
 
     assert result.next_resume_target == "ralph_post_team_review"
     assert result.ready_to_resume is True
@@ -120,22 +131,30 @@ def test_restore_goal_lifecycle_state_resumes_at_ralph_review_after_aggregation(
     assert result.bundle.ralph_review_result is None
 
 
-def test_restore_goal_lifecycle_state_resumes_at_goal_decision_after_ralph_review(tmp_path: Path) -> None:
+def test_restore_goal_lifecycle_state_resumes_at_goal_decision_after_ralph_review(
+    tmp_path: Path,
+) -> None:
     bundle = CodexGoalLifecycleArtifactBundle(
         goal_id="goal-restore",
         mirror_state=_mirror_state(),
         aggregation_report=_aggregation_report(),
         ralph_review_result=_ralph_review_result(),
     )
-    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(bundle)
+    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(
+        bundle
+    )
 
-    result = restore_goal_lifecycle_state("goal-restore", working_directory=str(tmp_path))
+    result = restore_goal_lifecycle_state(
+        "goal-restore", working_directory=str(tmp_path)
+    )
 
     assert result.next_resume_target == "goal_lifecycle_decision"
     assert result.ready_to_resume is True
 
 
-def test_restore_goal_lifecycle_state_uses_final_decision_target_when_present(tmp_path: Path) -> None:
+def test_restore_goal_lifecycle_state_uses_final_decision_target_when_present(
+    tmp_path: Path,
+) -> None:
     bundle = CodexGoalLifecycleArtifactBundle(
         goal_id="goal-restore",
         mirror_state=_mirror_state(),
@@ -143,37 +162,55 @@ def test_restore_goal_lifecycle_state_uses_final_decision_target_when_present(tm
         ralph_review_result=_ralph_review_result(),
         lifecycle_decision=_lifecycle_decision(),
     )
-    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(bundle)
+    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(
+        bundle
+    )
 
-    result = restore_goal_lifecycle_state("goal-restore", working_directory=str(tmp_path))
+    result = restore_goal_lifecycle_state(
+        "goal-restore", working_directory=str(tmp_path)
+    )
 
     assert result.next_resume_target == "goal_close"
     assert result.ready_to_resume is True
 
 
 def test_goal_lifecycle_artifact_bundle_rejects_mismatched_goal_id() -> None:
-    with pytest.raises(ValueError, match="mirror_state goal_id must match bundle goal_id"):
+    with pytest.raises(
+        ValueError, match="mirror_state goal_id must match bundle goal_id"
+    ):
         CodexGoalLifecycleArtifactBundle(
             goal_id="goal-restore",
             mirror_state=_mirror_state(goal_id="other-goal"),
         )
 
 
-def test_get_goal_lifecycle_artifact_path_uses_agent_remote_state_directory(tmp_path: Path) -> None:
-    result = get_goal_lifecycle_artifact_path("goal-restore", working_directory=str(tmp_path))
+def test_get_goal_lifecycle_artifact_path_uses_comx_agent_state_directory(
+    tmp_path: Path,
+) -> None:
+    result = get_goal_lifecycle_artifact_path(
+        "goal-restore", working_directory=str(tmp_path)
+    )
 
-    assert result == tmp_path / ".agent-remote" / "state" / "goal-lifecycle" / "goal-restore.json"
+    assert (
+        result
+        == tmp_path / ".comx-agent" / "state" / "goal-lifecycle" / "goal-restore.json"
+    )
 
 
-
-def test_codex_goal_supervisor_exports_lifecycle_restore_surface(tmp_path: Path) -> None:
+def test_codex_goal_supervisor_exports_lifecycle_restore_surface(
+    tmp_path: Path,
+) -> None:
     bundle = CodexGoalLifecycleArtifactBundle(
         goal_id="goal-restore",
         mirror_state=_mirror_state(),
         aggregation_report=_aggregation_report(),
     )
-    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(bundle)
+    CodexGoalLifecycleArtifactStore(working_directory=str(tmp_path)).write_bundle(
+        bundle
+    )
 
-    result = supervisor_restore_goal_lifecycle_state("goal-restore", working_directory=str(tmp_path))
+    result = supervisor_restore_goal_lifecycle_state(
+        "goal-restore", working_directory=str(tmp_path)
+    )
 
     assert result.next_resume_target == "ralph_post_team_review"

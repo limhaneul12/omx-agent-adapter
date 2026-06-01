@@ -20,3 +20,7 @@ class RuntimeSurfaceError(Exception):
 
 class TeamworkSurfaceError(Exception):
     """Raised when teamwork surface inspection fails."""
+
+
+class TomlDocumentLoadError(ValueError):
+    """Raised when a TOML document cannot be read or parsed."""

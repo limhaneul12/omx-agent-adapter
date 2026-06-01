@@ -17,7 +17,7 @@ from omx_remote.runtime.comx.tui_session_store import (
     read_tui_session,
     start_or_resume_tui_session,
 )
-from omx_remote.schemas.next.next_action_schemas import NextActionResult
+from omx_remote.schemas.next_action_schemas import NextActionResult
 
 
 def test_comx_surface_inventory_distinguishes_native_and_composed(tmp_path) -> None:
@@ -31,12 +31,18 @@ def test_comx_surface_inventory_distinguishes_native_and_composed(tmp_path) -> N
     assert "sessions" in native_names
     assert "daemon" in native_names
     assert "surface" in native_names
-    assert "builtin:review-diff" in composed_ids
-    assert "builtin:research-interview-prd" in composed_ids
-    assert "builtin:collaboration-kickoff" in composed_ids
-    assert "builtin:idea-to-prd-council" in composed_ids
-    assert "builtin:parallel-review-board" in composed_ids
-    assert "builtin:release-readiness-room" in composed_ids
+    assert {
+        "builtin:route-next",
+        "builtin:research-brief",
+        "builtin:idea-to-prd",
+        "builtin:implementation-kickoff",
+        "builtin:team-sync",
+        "builtin:integration-plan",
+        "builtin:review-gate",
+        "builtin:release-readiness",
+        "builtin:company-run",
+    }.issubset(composed_ids)
+    assert "builtin:adapter-ops mcp-audit" in composed_ids
 
 
 def test_surface_cli_outputs_json(tmp_path) -> None:
@@ -48,17 +54,16 @@ def test_surface_cli_outputs_json(tmp_path) -> None:
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
     assert payload["product_name"] == "comx-agent"
-    assert "agent-remote" in payload["compatibility_aliases"]
     assert any(command["name"] == "mcp" for command in payload["native_commands"])
     assert any(
-        command["qualified_id"] == "builtin:review-diff"
+        command["qualified_id"] == "builtin:review-gate"
         for command in payload["composed_commands"]
     )
     composed_ids = {command["qualified_id"] for command in payload["composed_commands"]}
-    assert "builtin:collaboration-kickoff" in composed_ids
-    assert "builtin:idea-to-prd-council" in composed_ids
-    assert "builtin:parallel-review-board" in composed_ids
-    assert "builtin:release-readiness-room" in composed_ids
+    assert "builtin:company-run" in composed_ids
+    assert "builtin:idea-to-prd" in composed_ids
+    assert "builtin:adapter-ops mcp-audit" in composed_ids
+    assert "builtin:idea-to-prd-council" not in composed_ids
 
 
 def test_tui_renderer_includes_screenshot_style_labels(tmp_path) -> None:
@@ -285,15 +290,13 @@ def test_tui_catalog_promotes_codex_omx_commands() -> None:
 def test_tui_run_renders_typed_command_plan(tmp_path: Path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
 
-    result = route_tui_slash_command(
-        "/run builtin:research-interview-prd", cwd=tmp_path
-    )
+    result = route_tui_slash_command("/run builtin:research-brief", cwd=tmp_path)
 
     assert result.command == "/run"
     assert result.title == "command recipe preview"
     assert "dry_run: true" in result.body
-    assert "builtin:research-interview-prd" in result.body
-    assert "codex --search exec --json --sandbox read-only" in result.body
+    assert "builtin:research-brief" in result.body
+    assert "--search" in result.body
     assert "No command recipe was executed from the TUI." in result.warnings
 
 
@@ -305,42 +308,62 @@ def test_tui_commands_lists_new_command_suite_with_grouped_labels(
     result = route_tui_slash_command("/commands", cwd=tmp_path)
 
     assert result.command == "/commands"
-    assert "[Collaboration]" in result.body
-    assert "Collaboration → Kickoff" in result.body
-    assert "builtin:collaboration-kickoff" in result.body
-    assert "[long_running]" in result.body
-    assert "Collaboration → Team Standup Sync" in result.body
-    assert "builtin:team-standup-sync" in result.body
+    assert "[Lifecycle]" in result.body
+    assert "Lifecycle → Route Next" in result.body
+    assert "builtin:route-next" in result.body
+    assert "Lifecycle → Team Sync" in result.body
+    assert "builtin:team-sync" in result.body
     assert "[read_only]" in result.body
-    assert "[Research]" in result.body
-    assert "Research → Idea to PRD Council" in result.body
-    assert "[Review]" in result.body
-    assert "Review → Parallel Review Board" in result.body
-    assert "[Release]" in result.body
-    assert "Release → Release Readiness Room" in result.body
+    assert "Lifecycle → Idea to PRD" in result.body
+    assert "Lifecycle → Review Gate" in result.body
+    assert "Lifecycle → Release Readiness" in result.body
+    assert "[Macro]" in result.body
+    assert "Macro → Company Run" in result.body
+    assert "builtin:company-run" in result.body
+    assert "[Adapter Ops]" in result.body
+    assert "Adapter Ops → MCP Audit" in result.body
     assert "--execute --autonomy agent" in result.body
 
 
-def test_tui_run_previews_idea_to_prd_council_with_task_without_execution(
+def test_tui_run_previews_company_run_with_task_without_execution(
     tmp_path: Path,
 ) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
 
     result = route_tui_slash_command(
-        '/run builtin:idea-to-prd-council --task "stock evidence radar"',
+        '/run builtin:company-run --task "stock evidence radar"',
         cwd=tmp_path,
     )
 
     assert result.command == "/run"
     assert result.title == "command recipe preview"
     assert "dry_run: true" in result.body
-    assert "builtin:idea-to-prd-council" in result.body
+    assert "builtin:company-run" in result.body
     assert "stock evidence radar" in result.body
-    assert "Alexandria intake" in result.body
+    assert "Alexandria MCP" in result.body
     assert "roles:" in result.body
-    assert "market_researcher:codex_subagent" in result.body
-    assert "approved_for_ultragoal" in result.body
-    assert "06_ultragoal/ultragoal_brief.md" in result.body
+    assert "research_council:codex_subagent" in result.body
+    assert "executive_council:validation_gate" in result.body
+    assert "team-plan.md" in result.body
+    assert "No command recipe was executed from the TUI." in result.warnings
+
+
+def test_tui_run_supports_unquoted_adapter_ops_space_form(
+    tmp_path: Path,
+) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    result = route_tui_slash_command(
+        '/run builtin:adapter-ops mcp-audit --task "audit MCP setup"',
+        cwd=tmp_path,
+    )
+
+    assert result.command == "/run"
+    assert result.title == "command recipe preview"
+    assert "dry_run: true" in result.body
+    assert "builtin:adapter-ops mcp-audit" in result.body
+    assert "audit MCP setup" in result.body
+    assert "No command named" not in result.body
     assert "No command recipe was executed from the TUI." in result.warnings
 
 

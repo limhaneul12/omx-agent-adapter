@@ -6,29 +6,53 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
+from omx_remote.runtime.commands.blueprints.adapter_ops_blueprints import (
+    ADAPTER_OPS_COMMAND_IDS,
+)
+from omx_remote.runtime.commands.blueprints.consolidated_lifecycle_blueprints import (
+    PUBLIC_WORKFLOW_COMMAND_IDS,
+)
 
-NEW_COMMAND_IDS = {
-    "collaboration-kickoff",
-    "team-standup-sync",
-    "integration-room",
-    "conflict-resolution-council",
-    "parallel-review-board",
-    "release-readiness-room",
-    "idea-to-prd-council",
+EXPECTED_PUBLIC_RISKS = {
+    "route-next": "read_only",
+    "research-brief": "external_network",
+    "idea-to-prd": "long_running",
+    "implementation-kickoff": "launches_runtime",
+    "team-sync": "read_only",
+    "integration-plan": "long_running",
+    "review-gate": "long_running",
+    "release-readiness": "writes_files",
+    "company-run": "launches_runtime",
 }
 
-EXPECTED_NEW_COMMAND_RISKS = {
-    "collaboration-kickoff": "long_running",
-    "team-standup-sync": "read_only",
-    "integration-room": "long_running",
-    "conflict-resolution-council": "long_running",
-    "parallel-review-board": "long_running",
-    "release-readiness-room": "writes_files",
-    "idea-to-prd-council": "long_running",
-}
+
+def _write_agent_config(workspace: Path) -> None:
+    agent_blocks = [
+        f"""
+[agents.{agent_id}]
+enabled = true
+provider = "codex"
+role = "{agent_id}"
+model = "gpt-5.5"
+effort = "xhigh"
+persona = "Test {agent_id} persona."
+""".strip()
+        for agent_id in (
+            "route_strategist",
+            "research_analyst",
+            "implementation_architect",
+            "integration_steward",
+            "quality_gatekeeper",
+        )
+    ]
+    (workspace / ".comx-agent.toml").write_text(
+        "\n\n".join(agent_blocks), encoding="utf-8"
+    )
 
 
-def test_commands_list_shows_builtin_commands(tmp_path: Path) -> None:
+def test_commands_list_shows_nine_public_workflows_and_adapter_ops(
+    tmp_path: Path,
+) -> None:
     result = CliRunner().invoke(
         app,
         ["commands", "list", "--cwd", str(tmp_path), "--json"],
@@ -36,35 +60,48 @@ def test_commands_list_shows_builtin_commands(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
-    qualified_ids = {command["qualified_id"] for command in payload["commands"]}
-    assert "builtin:review-diff" in qualified_ids
-    assert "builtin:research-interview-prd" in qualified_ids
-    for command_id in NEW_COMMAND_IDS:
-        assert f"builtin:{command_id}" in qualified_ids
-    assert payload["builtin_count"] >= 31
+    assert payload["builtin_count"] == 14
+    assert payload["public_workflow_commands"] == 9
+    assert payload["lifecycle_commands"] == 8
+    assert payload["macro_commands"] == 1
+    assert payload["adapter_ops_commands"] == 5
+    public_ids = {
+        command["id"]
+        for command in payload["commands"]
+        if command["namespace"] == "workflow"
+        and command["category"] in {"lifecycle", "macro"}
+    }
+    adapter_ids = {
+        command["id"]
+        for command in payload["commands"]
+        if command["namespace"] == "adapter-ops"
+    }
+    assert public_ids == set(PUBLIC_WORKFLOW_COMMAND_IDS)
+    assert adapter_ids == set(ADAPTER_OPS_COMMAND_IDS)
 
 
-def test_commands_show_outputs_recipe(tmp_path: Path) -> None:
+def test_commands_validate_outputs_grouped_counts(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
-        [
-            "commands",
-            "show",
-            "builtin:review-diff",
-            "--cwd",
-            str(tmp_path),
-            "--json",
-        ],
+        ["commands", "validate", "--cwd", str(tmp_path), "--json"],
     )
 
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
-    assert payload["recipe"]["id"] == "review-diff"
-    assert payload["recipe"]["source"] == "builtin"
+    assert payload == {
+        "valid": True,
+        "command_count": 14,
+        "builtin_count": 14,
+        "repo_count": 0,
+        "public_workflow_commands": 9,
+        "lifecycle_commands": 8,
+        "macro_commands": 1,
+        "adapter_ops_commands": 5,
+    }
 
 
-@pytest.mark.parametrize("command_id", sorted(NEW_COMMAND_IDS))
-def test_commands_show_outputs_new_builtin_recipe(
+@pytest.mark.parametrize("command_id", PUBLIC_WORKFLOW_COMMAND_IDS)
+def test_commands_show_outputs_public_workflow_recipe(
     tmp_path: Path, command_id: str
 ) -> None:
     result = CliRunner().invoke(
@@ -83,14 +120,58 @@ def test_commands_show_outputs_new_builtin_recipe(
     payload = orjson.loads(result.stdout)
     assert payload["recipe"]["id"] == command_id
     assert payload["recipe"]["source"] == "builtin"
-    assert payload["recipe"]["risk"] == EXPECTED_NEW_COMMAND_RISKS[command_id]
+    assert payload["recipe"]["namespace"] == "workflow"
+    assert payload["recipe"]["risk"] == EXPECTED_PUBLIC_RISKS[command_id]
     assert payload["recipe"]["steps"]
 
 
-@pytest.mark.parametrize("command_id", sorted(NEW_COMMAND_IDS))
-def test_run_new_builtin_command_dry_run_outputs_plan(
+def test_commands_show_outputs_adapter_ops_recipe_with_canonical_id(
+    tmp_path: Path,
+) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "commands",
+            "show",
+            "builtin:adapter-ops mcp-audit",
+            "--cwd",
+            str(tmp_path),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = orjson.loads(result.stdout)
+    assert payload["recipe"]["id"] == "mcp-audit"
+    assert payload["recipe"]["public_id"] == "adapter-ops:mcp-audit"
+    assert payload["recipe"]["display_id"] == "adapter-ops mcp-audit"
+    assert payload["recipe"]["namespace"] == "adapter-ops"
+    assert payload["recipe"]["category"] == "maintenance"
+
+
+def test_commands_show_rejects_adapter_ops_alias_spellings(tmp_path: Path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "commands",
+            "show",
+            "builtin:adapter-ops/mcp-audit",
+            "--cwd",
+            str(tmp_path),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 2
+    payload = orjson.loads(result.stdout)
+    assert "No command named" in payload["error"]
+
+
+@pytest.mark.parametrize("command_id", PUBLIC_WORKFLOW_COMMAND_IDS)
+def test_run_public_workflow_dry_run_outputs_plan(
     tmp_path: Path, command_id: str
 ) -> None:
+    _write_agent_config(tmp_path)
     result = CliRunner().invoke(
         app,
         [
@@ -109,60 +190,28 @@ def test_run_new_builtin_command_dry_run_outputs_plan(
     payload = orjson.loads(result.stdout)
     assert payload["command_id"] == command_id
     assert payload["qualified_id"] == f"builtin:{command_id}"
+    assert payload["namespace"] == "workflow"
     assert payload["dry_run"] is True
-    assert payload["risk"] == EXPECTED_NEW_COMMAND_RISKS[command_id]
+    assert payload["risk"] == EXPECTED_PUBLIC_RISKS[command_id]
     assert payload["steps"]
-    rendered_steps = orjson.dumps(payload["steps"]).decode()
-    assert "smoke task" in rendered_steps
+    assert payload["blocked_reasons"] == []
+    assert "smoke task" in orjson.dumps(payload["steps"]).decode()
 
 
-def test_run_idea_to_prd_council_dry_run_renders_artifacts_and_handoff(
+def test_run_company_run_dry_run_renders_macro_gates_without_execution(
     tmp_path: Path,
 ) -> None:
+    _write_agent_config(tmp_path)
     result = CliRunner().invoke(
         app,
         [
             "run",
-            "builtin:idea-to-prd-council",
+            "builtin:company-run",
             "--cwd",
             str(tmp_path),
             "--dry-run",
             "--task",
-            "AI memory assistant for developers",
-            "--json",
-        ],
-    )
-
-    assert result.exit_code == 0
-    payload = orjson.loads(result.stdout)
-    plan_text = orjson.dumps(payload).decode()
-    assert (
-        "workspaces/idea-to-prd-council/<product_slug>/current/00_intake/idea.md"
-        in plan_text
-    )
-    assert "workspaces/idea-to-prd-council/<product_slug>/current/04_prd/prd.md" in plan_text
-    assert (
-        "workspaces/idea-to-prd-council/<product_slug>/current/06_ultragoal/ultragoal_brief.md"
-        in plan_text
-    )
-    assert "Alexandria intake" in plan_text
-    assert "approved_for_ultragoal" in plan_text
-    assert payload["steps"][-1]["command"] == "omx_ultragoal"
-
-
-def test_run_release_readiness_room_dry_run_renders_closeout_phases(
-    tmp_path: Path,
-) -> None:
-    result = CliRunner().invoke(
-        app,
-        [
-            "run",
-            "builtin:release-readiness-room",
-            "--cwd",
-            str(tmp_path),
-            "--dry-run",
-            "--task",
-            "new command suite release",
+            "build an agent company",
             "--json",
         ],
     )
@@ -171,81 +220,75 @@ def test_run_release_readiness_room_dry_run_renders_closeout_phases(
     payload = orjson.loads(result.stdout)
     plan_text = orjson.dumps(payload).decode()
     for term in (
-        "verification_results",
-        "review_board_verdict",
-        "docs_verdict",
-        "run_ledger_evidence",
-        "Alexandria closeout",
-        "approve_block_verdict",
+        "company-run",
+        "research-vote.md",
+        "proceed-vote.md",
+        "prd-readiness.md",
+        "team-plan.md",
+        "review-loop.md",
+        "release-closeout.md",
+        "company_orchestrator",
+        "research_council",
+        "executive_council",
+        "alexandria_mcp",
+        "omx_team",
+        "Alexandria MCP tools",
     ):
         assert term in plan_text
+    assert payload["steps"][-1]["command"] == "omx_team"
+    assert payload["steps"][-1]["native_argv"] == ["omx", "team", "--help"]
 
 
-def test_run_builtin_command_dry_run_outputs_plan(tmp_path: Path) -> None:
-    result = CliRunner().invoke(
-        app,
-        ["run", "builtin:review-diff", "--cwd", str(tmp_path), "--dry-run", "--json"],
-    )
-
-    assert result.exit_code == 0
-    payload = orjson.loads(result.stdout)
-    assert payload["command_id"] == "review-diff"
-    assert payload["dry_run"] is True
-    assert payload["steps"][0]["command"] == "codex_exec"
-
-
-def test_run_builtin_research_command_renders_codex_search_plan(tmp_path: Path) -> None:
+def test_run_adapter_ops_dry_run_outputs_maintenance_plan(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
         [
             "run",
-            "builtin:codex-deep-research",
-            "--cwd",
-            str(tmp_path),
-            "--dry-run",
-            "--json",
-        ],
-    )
-
-    assert result.exit_code == 0
-    payload = orjson.loads(result.stdout)
-    assert payload["command_id"] == "codex-deep-research"
-    assert payload["risk"] == "external_network"
-    assert payload["steps"][0]["codex_search"] is True
-    assert "--search" in payload["steps"][0]["native_argv"]
-    assert "--sandbox" in payload["steps"][0]["native_argv"]
-
-
-def test_run_builtin_research_command_renders_task_placeholder(tmp_path: Path) -> None:
-    task = "verify Codex project-local agent loading"
-
-    result = CliRunner().invoke(
-        app,
-        [
-            "run",
-            "builtin:codex-deep-research",
+            "builtin:adapter-ops mcp-audit",
             "--cwd",
             str(tmp_path),
             "--dry-run",
             "--task",
-            task,
+            "audit MCP setup",
             "--json",
         ],
     )
 
     assert result.exit_code == 0
     payload = orjson.loads(result.stdout)
-    inline_prompt = payload["steps"][0]["inline_prompt"]
-    assert task in inline_prompt
-    assert "<task>" not in inline_prompt
-    assert task in payload["steps"][0]["native_argv"][-1]
+    assert payload["command_id"] == "adapter-ops mcp-audit"
+    assert payload["qualified_id"] == "builtin:adapter-ops mcp-audit"
+    assert payload["namespace"] == "adapter-ops"
+    assert payload["category"] == "maintenance"
+    assert payload["dry_run"] is True
+    assert payload["steps"][0]["prompt_exists"] is True
+
+
+def test_unknown_command_invocation_returns_missing_command_error(
+    tmp_path: Path,
+) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "builtin:not-a-command",
+            "--cwd",
+            str(tmp_path),
+            "--dry-run",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 2
+    payload = orjson.loads(result.stdout)
+    assert payload["error"] == "No command named builtin:not-a-command was found."
 
 
 def test_run_repo_command_dry_run_reads_prompt_file(tmp_path: Path) -> None:
     prompt_path = tmp_path / "prompts" / "review.md"
     prompt_path.parent.mkdir()
     prompt_path.write_text("Review the diff.")
-    (tmp_path / ".agent-remote.toml").write_text(
+    (tmp_path / ".comx-agent.toml").write_text(
         """
 [commands.codex_review]
 description = "Review current diff."
@@ -295,7 +338,7 @@ def test_run_one_off_prompt_file_dry_run(tmp_path: Path) -> None:
 def test_run_requires_dry_run_or_execute(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,
-        ["run", "builtin:review-diff", "--cwd", str(tmp_path), "--json"],
+        ["run", "builtin:review-gate", "--cwd", str(tmp_path), "--json"],
     )
 
     assert result.exit_code == 2
@@ -312,7 +355,7 @@ steps = [
   {{ command = "local", argv = ["{sys.executable}", "-c", "print('hello')"] }},
 ]
 """.strip()
-    (tmp_path / ".agent-remote.toml").write_text(command)
+    (tmp_path / ".comx-agent.toml").write_text(command)
 
     result = CliRunner().invoke(
         app,
@@ -333,7 +376,7 @@ steps = [
     assert payload["status"] == "succeeded"
     assert payload["steps"][0]["attempts"][0]["exit_code"] == 0
     assert (
-        tmp_path / ".agent-remote" / "runs" / payload["run_id"] / "run.json"
+        tmp_path / ".comx-agent" / "runs" / payload["run_id"] / "run.json"
     ).exists()
 
 
@@ -346,7 +389,7 @@ steps = [
   {{ command = "local", argv = ["{sys.executable}", "-c", "raise SystemExit(5)"] }},
 ]
 """.strip()
-    (tmp_path / ".agent-remote.toml").write_text(command)
+    (tmp_path / ".comx-agent.toml").write_text(command)
 
     result = CliRunner().invoke(
         app,
@@ -378,7 +421,7 @@ steps = [
   { command = "prompt_only", inline_prompt = "Wait for agent action.", expected_artifacts = ["notes/handoff.md"] },
 ]
 """.strip()
-    (tmp_path / ".agent-remote.toml").write_text(command)
+    (tmp_path / ".comx-agent.toml").write_text(command)
 
     result = CliRunner().invoke(
         app,
@@ -405,10 +448,10 @@ def test_run_execute_requires_explicit_autonomy(tmp_path: Path) -> None:
 description = "Run local echo."
 risk = "read_only"
 steps = [
-  {{ command = "local", argv = ["{sys.executable}", "-c", "print(\'hello\')"] }},
+  {{ command = "local", argv = ["{sys.executable}", "-c", "print('hello')"] }},
 ]
 """.strip()
-    (tmp_path / ".agent-remote.toml").write_text(command)
+    (tmp_path / ".comx-agent.toml").write_text(command)
 
     result = CliRunner().invoke(
         app,

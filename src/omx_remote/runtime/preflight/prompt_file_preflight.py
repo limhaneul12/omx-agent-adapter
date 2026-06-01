@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from omx_remote.schemas.preflight.preflight_schemas import (
+from omx_remote.schemas.preflight_schemas import (
     PreflightCategory,
     PreflightCheckResult,
     PreflightSeverity,

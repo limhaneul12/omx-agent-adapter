@@ -16,7 +16,7 @@ def summarize_cockpit_agent_config(cwd: str | Path) -> CockpitAgentConfigSummary
     """Summarize repo-local TOML agent config for cockpit snapshots.
 
     Args:
-        cwd [str | Path]: Repository root used to resolve `.agent-remote.toml`.
+        cwd [str | Path]: Repository root used to resolve `.comx-agent.toml`.
 
     Returns:
         CockpitAgentConfigSummary: Agent config counts and warnings.
@@ -24,7 +24,7 @@ def summarize_cockpit_agent_config(cwd: str | Path) -> CockpitAgentConfigSummary
     try:
         config: AgentConfigSet = load_agent_config(cwd=cwd)
     except (AgentConfigLoadError, ValidationError) as error:
-        config_path: str = str(Path(cwd) / ".agent-remote.toml")
+        config_path: str = str(Path(cwd) / ".comx-agent.toml")
         summary = CockpitAgentConfigSummary(
             config_path=config_path,
             total_count=0,
@@ -35,7 +35,9 @@ def summarize_cockpit_agent_config(cwd: str | Path) -> CockpitAgentConfigSummary
         )
         return summary
 
-    enabled_agent_ids: tuple[str, ...] = tuple(agent.id for agent in config.enabled_agents)
+    enabled_agent_ids: tuple[str, ...] = tuple(
+        agent.id for agent in config.enabled_agents
+    )
     total_count: int = len(config.agents)
     enabled_count: int = len(config.enabled_agents)
     summary = CockpitAgentConfigSummary(

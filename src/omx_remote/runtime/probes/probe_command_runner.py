@@ -1,7 +1,7 @@
 import subprocess
 from collections.abc import Callable
 
-from omx_remote.schemas.probes.upstream_probe_schemas import ProbeProcessOutput
+from omx_remote.schemas.upstream_probe_schemas import ProbeProcessOutput
 
 type ProbeRunner = Callable[[tuple[str, ...]], ProbeProcessOutput]
 

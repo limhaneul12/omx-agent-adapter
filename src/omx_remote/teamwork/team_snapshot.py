@@ -24,17 +24,17 @@ from omx_remote.shared.exceptions import TeamworkSurfaceError
 
 async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
     """Reads team status through the typed teamwork surface.
-    
+
     Args:
         request [TeamStatusRequest]: Function argument.
-    
+
     Returns:
         TeamStatusSnapshot: Function return value.
     """
 
     command_result = await run_blocking_call(
         run_omx_command,
-        ["team", "status", request.team_name, "--json"],
+        ("team", "status", request.team_name, "--json"),
     )
     stdout: str = command_result.stdout.strip()
     result: TeamStatusSnapshot = _normalize_team_status(stdout)
@@ -43,10 +43,10 @@ async def read_team_status(request: TeamStatusRequest) -> TeamStatusSnapshot:
 
 def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPayload:
     """Loads one team-status transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         TeamStatusTransportPayload: Function return value.
     """
@@ -65,9 +65,7 @@ def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPaylo
         ) from error
 
     if not isinstance(decoded_payload, dict):
-        raise TeamworkSurfaceError(
-            "omx team status returned a non-object JSON payload"
-        )
+        raise TeamworkSurfaceError("omx team status returned a non-object JSON payload")
     if not isinstance(parsed_payload.team_name, str):
         raise TeamworkSurfaceError("omx team status returned a non-string team_name")
     if not isinstance(parsed_payload.status, str):
@@ -88,12 +86,13 @@ def _load_team_status_transport_payload(stdout: str) -> TeamStatusTransportPaylo
 
     return result
 
+
 def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
     """Normalizes `omx team status ... --json` stdout into a stable contract.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         TeamStatusSnapshot: Function return value.
     """
@@ -128,32 +127,30 @@ def _normalize_team_status(stdout: str) -> TeamStatusSnapshot:
         dead_workers=normalized_dead_workers,
         non_reporting_workers=normalized_non_reporting_workers,
     )
-    result: TeamStatusSnapshot = TeamStatusSnapshot.model_validate(
-        normalized_payload
-    )
+    result: TeamStatusSnapshot = TeamStatusSnapshot.model_validate(normalized_payload)
     return result
 
 
 async def await_team_status(request: TeamAwaitRequest) -> TeamAwaitSnapshot:
     """Awaits team status through the typed teamwork surface.
-    
+
     Args:
         request [TeamAwaitRequest]: Function argument.
-    
+
     Returns:
         TeamAwaitSnapshot: Function return value.
     """
 
     command_result = await run_blocking_call(
         run_omx_command,
-        [
+        (
             "team",
             "await",
             request.team_name,
             "--timeout-ms",
             "1000",
             "--json",
-        ],
+        ),
     )
     stdout: str = command_result.stdout.strip()
     result: TeamAwaitSnapshot = _normalize_team_await(stdout)
@@ -162,10 +159,10 @@ async def await_team_status(request: TeamAwaitRequest) -> TeamAwaitSnapshot:
 
 def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload:
     """Loads one team-await transport payload from raw stdout.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         TeamAwaitTransportPayload: Function return value.
     """
@@ -184,9 +181,7 @@ def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload
         ) from error
 
     if not isinstance(decoded_payload, dict):
-        raise TeamworkSurfaceError(
-            "omx team await returned a non-object JSON payload"
-        )
+        raise TeamworkSurfaceError("omx team await returned a non-object JSON payload")
     if not isinstance(parsed_payload.team_name, str):
         raise TeamworkSurfaceError("omx team await returned a non-string team_name")
     if not isinstance(parsed_payload.status, str):
@@ -215,12 +210,13 @@ def _load_team_await_transport_payload(stdout: str) -> TeamAwaitTransportPayload
 
     return result
 
+
 def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
     """Normalizes `omx team await ... --json` stdout into a stable contract.
-    
+
     Args:
         stdout [str]: Function argument.
-    
+
     Returns:
         TeamAwaitSnapshot: Function return value.
     """
@@ -250,7 +246,5 @@ def _normalize_team_await(stdout: str) -> TeamAwaitSnapshot:
         event_worker=event_worker,
         event_task_id=event_task_id,
     )
-    result: TeamAwaitSnapshot = TeamAwaitSnapshot.model_validate(
-        normalized_payload
-    )
+    result: TeamAwaitSnapshot = TeamAwaitSnapshot.model_validate(normalized_payload)
     return result

@@ -1,10 +1,12 @@
 import asyncio
+from collections.abc import Sequence
 from pathlib import Path
 
 import orjson
 import typer
 from pydantic import ValidationError
 
+from omx_remote.cli_launcher import cli_facade_dependencies
 from omx_remote.runtime.ralph.ralph_control import (
     build_ralph_launch_plan,
     build_ralph_resume_plan,
@@ -21,36 +23,41 @@ from omx_remote.runtime.ralph.ralph_review_artifacts import (
 from omx_remote.runtime.ralph.ralph_state import cleanup_ralph_state
 from omx_remote.runtime.status.runtime_snapshot import read_runtime_status
 from omx_remote.schemas.ralph.review_schemas import RalphPostTeamReviewRequest
-from omx_remote.schemas.runtime.status_schemas import (
+from omx_remote.schemas.runtime_status_schemas import (
     RuntimeModeStateRequest,
     RuntimeModeStatusRequest,
     RuntimeStatusRequest,
 )
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
-ralph_app = typer.Typer(help="Read Ralph-related OMX runtime state.", add_completion=False)
+ralph_app = typer.Typer(
+    help="Read Ralph-related OMX runtime state.", add_completion=False
+)
 
 
-def _run_omx_command(command: list[str]):
+def _run_omx_command(command: Sequence[str]):
     """Run one OMX command through the public CLI facade dependency.
 
     Args:
-        command [list[str]]: Function argument.
-    """
-    from omx_remote import cli as cli_facade
+        command [Sequence[str]]: Function argument.
 
-    command_result = cli_facade.run_omx_command(command)
+    Returns:
+        object: CLI facade command result.
+    """
+    command_result = cli_facade_dependencies.run_omx_command(command)
     return command_result
 
 
-def _run_omx_command_inherited_stdio(command: list[str]):
+def _run_omx_command_inherited_stdio(command: Sequence[str]):
     """Run one OMX command while inheriting terminal stdio.
 
     Args:
-        command [list[str]]: OMX command arguments without executable name.
-    """
-    from omx_remote import cli as cli_facade
+        command [Sequence[str]]: OMX command arguments without executable name.
 
-    command_result = cli_facade.run_omx_command_inherited_stdio(command)
+    Returns:
+        object: CLI facade command result.
+    """
+    command_result = cli_facade_dependencies.run_omx_command_inherited_stdio(command)
     return command_result
 
 
@@ -59,10 +66,11 @@ def _read_runtime_mode_state(request: RuntimeModeStateRequest):
 
     Args:
         request [RuntimeModeStateRequest]: Function argument.
-    """
-    from omx_remote import cli as cli_facade
 
-    return cli_facade.read_runtime_mode_state(request)
+    Returns:
+        object: Runtime mode state result.
+    """
+    return cli_facade_dependencies.read_runtime_mode_state(request)
 
 
 def _read_runtime_mode_status(request: RuntimeModeStatusRequest):
@@ -70,10 +78,11 @@ def _read_runtime_mode_status(request: RuntimeModeStatusRequest):
 
     Args:
         request [RuntimeModeStatusRequest]: Function argument.
-    """
-    from omx_remote import cli as cli_facade
 
-    return cli_facade.read_runtime_mode_status(request)
+    Returns:
+        object: Runtime mode status result.
+    """
+    return cli_facade_dependencies.read_runtime_mode_status(request)
 
 
 @ralph_app.command("snapshot")
@@ -86,11 +95,15 @@ def ralph_snapshot() -> None:
 @ralph_app.command("startability")
 def ralph_startability() -> None:
     """Read Ralph mode state and mode status to assess whether Ralph can be inspected or resumed safely."""
-    mode_state = asyncio.run(_read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph")))
-    mode_status = asyncio.run(_read_runtime_mode_status(RuntimeModeStatusRequest(mode="ralph")))
+    mode_state = asyncio.run(
+        _read_runtime_mode_state(RuntimeModeStateRequest(mode="ralph"))
+    )
+    mode_status = asyncio.run(
+        _read_runtime_mode_status(RuntimeModeStatusRequest(mode="ralph"))
+    )
     output_payload = {
-        "mode_state": mode_state.model_dump(mode="json"),
-        "mode_status": mode_status.model_dump(mode="json"),
+        "mode_state": model_json_object(mode_state),
+        "mode_status": model_json_object(mode_status),
     }
     typer.echo(orjson.dumps(output_payload, option=orjson.OPT_INDENT_2).decode())
 
@@ -139,7 +152,9 @@ def ralph_review_team(
 
 @ralph_app.command("launch")
 def ralph_launch(
-    task: str = typer.Option(..., "--task", help="Task text to pass to omx ralph --prd."),
+    task: str = typer.Option(
+        ..., "--task", help="Task text to pass to omx ralph --prd."
+    ),
     force_cleanup: bool = typer.Option(
         False,
         "--force-cleanup",
@@ -157,7 +172,7 @@ def ralph_launch(
     ),
 ) -> None:
     """Launch Ralph through the OMX CLI PRD-gated startup path.
-    
+
     Args:
         task [str]: Function argument.
         force_cleanup [bool]: Function argument.

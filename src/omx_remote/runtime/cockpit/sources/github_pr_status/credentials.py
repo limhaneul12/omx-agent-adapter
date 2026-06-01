@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 
 from omx_remote.runtime.cockpit.sources.github_pr_status.git_repo import (
     _parse_github_owner_repo,
     _run_git_command,
 )
+from omx_remote.runtime.cockpit.sources.github_pr_status.github_credential_settings import (
+    GitHubCredentialSettings,
+)
+from omx_remote.shared.process_environment_settings import ProcessEnvironmentSettings
 
 GITHUB_CREDENTIAL_TIMEOUT_SECONDS = 5
 
@@ -19,7 +22,8 @@ def _build_noninteractive_git_env() -> dict[str, str]:
     Returns:
         dict[str, str]: Environment variables for non-interactive git commands.
     """
-    git_env: dict[str, str] = os.environ.copy()
+    environment_settings = ProcessEnvironmentSettings()
+    git_env: dict[str, str] = dict(environment_settings.environment_values)
     git_env["GIT_TERMINAL_PROMPT"] = "0"
     git_env["GCM_INTERACTIVE"] = "never"
     return git_env
@@ -98,14 +102,10 @@ def _read_github_token(repo_root: str) -> str | None:
     Returns:
         str | None: Token when available, otherwise None.
     """
-    env_token: str | None = os.environ.get("GITHUB_TOKEN")
-    if env_token is not None and env_token.strip() != "":
-        token: str | None = env_token.strip()
-        return token
-
-    gh_token: str | None = os.environ.get("GH_TOKEN")
-    if gh_token is not None and gh_token.strip() != "":
-        token = gh_token.strip()
+    credential_settings = GitHubCredentialSettings()
+    env_token = credential_settings.normalized_token()
+    if env_token is not None:
+        token = env_token
         return token
 
     credential_token: str | None = _read_git_credential_token(repo_root)

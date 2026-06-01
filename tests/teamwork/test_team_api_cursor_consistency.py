@@ -28,7 +28,9 @@ def test_read_team_api_list_tasks_rejects_count_mismatch(
         TeamworkSurfaceError,
         match=r"omx team api list-tasks returned count that does not match tasks length",
     ):
-        asyncio.run(read_team_api_list_tasks(TeamApiListTasksRequest(team_name="alpha")))
+        asyncio.run(
+            read_team_api_list_tasks(TeamApiListTasksRequest(team_name="alpha"))
+        )
 
 
 @patch("omx_remote.teamwork.team_api_snapshot.run_omx_command")

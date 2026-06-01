@@ -7,7 +7,7 @@ from omx_remote.schemas.cockpit.capability_snapshot_schemas import (
     CockpitCapabilityCommand,
     CockpitRuntimeCapability,
 )
-from omx_remote.schemas.probes.upstream_probe_schemas import (
+from omx_remote.schemas.upstream_probe_schemas import (
     ProbeSupportStatus,
     UpstreamProbeSuiteResult,
 )
@@ -98,7 +98,9 @@ def _read_version(executable: str) -> str | None:
     return version
 
 
-def _probe_command(executable: str, name: str, args: tuple[str, ...]) -> CockpitCapabilityCommand:
+def _probe_command(
+    executable: str, name: str, args: tuple[str, ...]
+) -> CockpitCapabilityCommand:
     """Probe one executable subcommand.
 
     Args:
@@ -150,8 +152,7 @@ def _runtime_capability(
         return capability
 
     commands: tuple[CockpitCapabilityCommand, ...] = tuple(
-        _probe_command(name, command_name, args)
-        for command_name, args in command_specs
+        _probe_command(name, command_name, args) for command_name, args in command_specs
     )
     capability = CockpitRuntimeCapability(
         name=name,

@@ -33,7 +33,7 @@ def allocator_hint_file_paths(assignment: TeamWorkerAssignment) -> list[str]:
 
     Ralph-owned internal report artifacts are deliverables, not product-code or
     repo-scope ownership hints. Passing them to OMX's DAG allocator makes every
-    evidence lane look like the same `.omx`/`.agent-remote` domain and can group
+    evidence lane look like the same `.omx`/`.comx-agent` domain and can group
     independent worker assignments onto worker-1.
 
     Args:
@@ -45,7 +45,7 @@ def allocator_hint_file_paths(assignment: TeamWorkerAssignment) -> list[str]:
     return [
         path
         for path in assignment.owned_files
-        if not path.startswith(".omx/") and not path.startswith(".agent-remote/")
+        if not path.startswith(".omx/") and not path.startswith(".comx-agent/")
     ]
 
 
@@ -166,14 +166,16 @@ def build_worker_authorization_payload(
     Returns:
         RalphWorkerAuthorizationPayload: Stable authorization payload embedded in the Team DAG.
     """
-    authorization_payload: RalphWorkerAuthorizationPayload = RalphWorkerAuthorizationPayload(
-        policy=assignment.authorization_policy,
-        allowed_commands=list(assignment.authorization_scope.allowed_commands),
-        forbidden_commands=list(assignment.authorization_scope.forbidden_commands),
-        requires_human_for=list(assignment.authorization_scope.requires_human_for),
-        requires_llm_review_for=list(
-            assignment.authorization_scope.requires_llm_review_for
-        ),
+    authorization_payload: RalphWorkerAuthorizationPayload = (
+        RalphWorkerAuthorizationPayload(
+            policy=assignment.authorization_policy,
+            allowed_commands=list(assignment.authorization_scope.allowed_commands),
+            forbidden_commands=list(assignment.authorization_scope.forbidden_commands),
+            requires_human_for=list(assignment.authorization_scope.requires_human_for),
+            requires_llm_review_for=list(
+                assignment.authorization_scope.requires_llm_review_for
+            ),
+        )
     )
     return authorization_payload
 
@@ -198,17 +200,18 @@ def build_team_admin_policy_payload(
             "The typed Ralph PRD artifact requires Team fanout but does not declare a Team Admin contract."
         )
 
-    admin_policy_payload: RalphTeamDagAdminPolicyPayload = RalphTeamDagAdminPolicyPayload(
-        admin_id=team_admin.admin_id,
-        aggregation_policy=team_admin.aggregation_policy,
-        merge_policy=team_admin.merge_policy,
-        completion_policy=team_admin.completion_policy,
-        requires_human_for=list(team_admin.requires_human_for),
-        requires_llm_review_for=list(team_admin.requires_llm_review_for),
-        final_report_required=team_admin.final_report_required,
+    admin_policy_payload: RalphTeamDagAdminPolicyPayload = (
+        RalphTeamDagAdminPolicyPayload(
+            admin_id=team_admin.admin_id,
+            aggregation_policy=team_admin.aggregation_policy,
+            merge_policy=team_admin.merge_policy,
+            completion_policy=team_admin.completion_policy,
+            requires_human_for=list(team_admin.requires_human_for),
+            requires_llm_review_for=list(team_admin.requires_llm_review_for),
+            final_report_required=team_admin.final_report_required,
+        )
     )
     return admin_policy_payload
-
 
 
 def planning_artifact_slug() -> str:
@@ -254,7 +257,9 @@ def write_ralph_team_dag_handoff_artifacts(
     prd_name: str = f"prd-{artifact_slug}.md"
     test_spec_name: str = f"test-spec-{artifact_slug}.md"
     dag_name: str = f"team-dag-{artifact_slug}.json"
-    launch_hint: str = f"omx team {team_worker_count} {quote_omx_task(canonical_launch_task)}"
+    launch_hint: str = (
+        f"omx team {team_worker_count} {quote_omx_task(canonical_launch_task)}"
+    )
 
     prd_lines: list[str] = [
         "# Ralph Team PRD Handoff",
@@ -286,10 +291,12 @@ def write_ralph_team_dag_handoff_artifacts(
         "## Team DAG Handoff",
         "```json",
     ]
-    worker_policy_payload: RalphTeamDagWorkerPolicyPayload = RalphTeamDagWorkerPolicyPayload(
-        requested_count=team_worker_count,
-        count_source="plan-suggested",
-        strict_max_count=True,
+    worker_policy_payload: RalphTeamDagWorkerPolicyPayload = (
+        RalphTeamDagWorkerPolicyPayload(
+            requested_count=team_worker_count,
+            count_source="plan-suggested",
+            strict_max_count=True,
+        )
     )
     node_payloads: list[RalphTeamDagNodePayload] = [
         RalphTeamDagNodePayload(

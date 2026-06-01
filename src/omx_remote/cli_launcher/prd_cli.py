@@ -6,7 +6,9 @@ from pydantic import ValidationError
 
 from omx_remote.runtime.prd.prd_capture import validate_and_capture_prd_artifact
 
-PRD_HELP_TEXT = """Validate and capture Goal-scoped PRD artifacts before Ralph consumes them."""
+PRD_HELP_TEXT = (
+    """Validate and capture Goal-scoped PRD artifacts before Ralph consumes them."""
+)
 
 prd_app = typer.Typer(help=PRD_HELP_TEXT, add_completion=False)
 

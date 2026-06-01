@@ -1,5 +1,5 @@
 from omx_remote.runtime.routes.task_signal_classifier import classify_task_signals
-from omx_remote.schemas.routes.route_policy_schemas import RouteTaskSize, RouteTaskType
+from omx_remote.schemas.route_policy_schemas import RouteTaskSize, RouteTaskType
 
 
 def test_classifier_detects_review_current_diff_as_small_review() -> None:

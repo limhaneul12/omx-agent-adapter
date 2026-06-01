@@ -13,9 +13,13 @@ from omx_remote.schemas.teamwork.api_snapshot_schemas import (
     TeamApiWorkerStatusSnapshot,
 )
 from omx_remote.shared.exceptions import TeamworkSurfaceError
+from omx_remote.shared.json_transport import json_object_or_none
+from omx_remote.shared.utils.json_model_dump import json_value_from_object
 
 
-def normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTaskPayload:
+def normalize_team_api_task_payload(
+    task_payload: object,
+) -> TeamApiTransportTaskPayload:
     """Normalizes one raw team-api task item into the typed subset.
 
     Args:
@@ -31,7 +35,9 @@ def normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTas
 
     normalized_payload = TeamApiTransportTaskPayload()
     id_value: object | None = task_payload.get("id")
-    subject_value: object | None = task_payload.get("subject", task_payload.get("title"))
+    subject_value: object | None = task_payload.get(
+        "subject", task_payload.get("title")
+    )
     status_value: object | None = task_payload.get("status")
     owner_value: object | None = task_payload.get("owner", task_payload.get("assignee"))
 
@@ -47,7 +53,9 @@ def normalize_team_api_task_payload(task_payload: object) -> TeamApiTransportTas
     return normalized_payload
 
 
-def normalize_team_api_event_payload(event_payload: object) -> TeamApiTransportEventPayload:
+def normalize_team_api_event_payload(
+    event_payload: object,
+) -> TeamApiTransportEventPayload:
     """Normalizes one raw team-api event item into the typed subset.
 
     Args:
@@ -140,12 +148,22 @@ def normalize_team_api_worker_status_payload(
     if isinstance(updated_at_value, str):
         normalized_status_payload["updated_at"] = updated_at_value
 
-    result: TeamApiWorkerStatusSnapshot = TeamApiWorkerStatusSnapshot.model_validate(
-        {
-            "worker": worker_name,
-            "state": normalized_status_payload.get("state"),
-            "updated_at": normalized_status_payload.get("updated_at"),
-        }
+    normalized_worker = _required_string_value(
+        value=worker_name,
+        context="omx team api read-worker-status worker",
+    )
+    normalized_state = _required_string_value(
+        value=normalized_status_payload.get("state"),
+        context="omx team api read-worker-status state",
+    )
+    normalized_updated_at = _required_string_value(
+        value=normalized_status_payload.get("updated_at"),
+        context="omx team api read-worker-status updated_at",
+    )
+    result = TeamApiWorkerStatusSnapshot(
+        worker=normalized_worker,
+        state=normalized_state,
+        updated_at=normalized_updated_at,
     )
     return result
 
@@ -161,9 +179,16 @@ def normalize_team_api_monitor_snapshot_result(
     Returns:
         TeamApiReadMonitorSnapshot: Typed monitor snapshot result.
     """
-    result: TeamApiReadMonitorSnapshot = TeamApiReadMonitorSnapshot.model_validate(
-        {"snapshot": data_payload.get("snapshot")}
+    snapshot_value: object = data_payload.get("snapshot")
+    snapshot_json = (
+        None
+        if snapshot_value is None
+        else json_value_from_object(
+            snapshot_value,
+            context="omx team api read-monitor-snapshot snapshot",
+        )
     )
+    result = TeamApiReadMonitorSnapshot(snapshot=snapshot_json)
     return result
 
 
@@ -179,10 +204,22 @@ def normalize_team_api_config_snapshot_result(
         TeamApiReadConfigSnapshot: Typed config snapshot result.
     """
     raw_config_payload: object = data_payload.get("config")
-    if not isinstance(raw_config_payload, dict):
-        raw_config_payload = None
+    config_payload = json_object_or_none(raw_config_payload)
 
-    result: TeamApiReadConfigSnapshot = TeamApiReadConfigSnapshot.model_validate(
-        {"config": raw_config_payload}
-    )
+    result = TeamApiReadConfigSnapshot(config=config_payload)
     return result
+
+
+def _required_string_value(value: object, context: str) -> str:
+    """Return a required string value or raise a Teamwork boundary error.
+
+    Args:
+        value [object]: Candidate value from a Team API payload.
+        context [str]: Human-readable field context.
+
+    Returns:
+        str: Validated string value.
+    """
+    if not isinstance(value, str):
+        raise TeamworkSurfaceError(f"{context} must be a string")
+    return value
