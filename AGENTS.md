@@ -196,3 +196,5 @@ When in doubt:
 3. keep filenames purposeful,
 4. keep shared definitions grouped by kind and split by concept,
 5. keep the adapter easier for agents to use than the raw OMX surface.
+
+@RTK.md
