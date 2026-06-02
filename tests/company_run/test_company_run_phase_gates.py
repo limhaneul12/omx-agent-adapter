@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from omx_remote.runtime.company_run.company_run_result_persistence import (
@@ -7,6 +8,7 @@ from omx_remote.runtime.company_run.company_run_result_persistence import (
 )
 from omx_remote.runtime.company_run.company_run_team_phase import (
     run_team_gate_for_company_run,
+    write_post_team_gates_for_company_run,
 )
 from omx_remote.runtime.company_run.phase_gates import (
     validate_phase_gate_order,
@@ -24,6 +26,7 @@ from omx_remote.schemas.company_run_schemas import (
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunPhase,
     CompanyRunPhaseStatus,
+    CompanyRunTeamLaunchStatus,
     CompanyRunVoteChoice,
 )
 
@@ -187,6 +190,81 @@ def test_team_bootstrap_phase_requires_action_when_live_launch_is_handoff(
     assert phase_records[-1].phase == CompanyRunPhase.TEAM_BOOTSTRAP
     assert phase_records[-1].status == CompanyRunPhaseStatus.REQUIRES_AGENT_ACTION
     assert phase_records[-1].blocked_reasons == (record.note,)
+
+
+def test_post_team_gates_keep_review_release_evidence_explicit(
+    tmp_path: Path,
+) -> None:
+    company_root = tmp_path / ".comx-agent" / "runs" / "post-team" / "company-run"
+    phase_records: list[CompanyRunPhaseRecord] = []
+
+    write_post_team_gates_for_company_run(
+        company_root=company_root,
+        phase_records=phase_records,
+        team_status=CompanyRunTeamLaunchStatus.COMPLETED,
+    )
+
+    review_payload = json.loads(
+        (company_root / "review" / "review-gate.json").read_text(encoding="utf-8")
+    )
+    release_payload = json.loads(
+        (company_root / "release" / "release-readiness.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert review_payload["verdict"] == "approve"
+    assert release_payload["verdict"] == "ready"
+    assert {check["check_id"] for check in review_payload["required_checks"]} == {
+        "code_review",
+        "security_review",
+        "architecture_review",
+        "qa_verdict",
+    }
+    assert {check["check_id"] for check in release_payload["required_checks"]} == {
+        "integration_plan",
+        "review_gate",
+        "release_summary",
+        "memory_closeout",
+    }
+    assert all(
+        Path(path).is_file()
+        for path in (
+            *review_payload["evidence_paths"],
+            *release_payload["evidence_paths"],
+        )
+    )
+
+
+def test_post_team_gates_report_blockers_instead_of_release_ready(
+    tmp_path: Path,
+) -> None:
+    company_root = (
+        tmp_path / ".comx-agent" / "runs" / "blocked-post-team" / "company-run"
+    )
+    phase_records: list[CompanyRunPhaseRecord] = []
+
+    write_post_team_gates_for_company_run(
+        company_root=company_root,
+        phase_records=phase_records,
+        team_status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
+    )
+
+    release_payload = json.loads(
+        (company_root / "release" / "release-readiness.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    release_summary = (company_root / "release" / "release-summary.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert release_payload["verdict"] == "not_ready_team_follow_up_required"
+    assert release_payload["blocked_reasons"] == [
+        "OMX Team follow-up is required before release can be claimed."
+    ]
+    assert release_payload["note"].startswith("Release readiness: BLOCKED - ")
+    assert "Release readiness: BLOCKED" in release_summary
 
 
 def _ready_bootstrap_artifacts() -> CompanyRunTeamBootstrapArtifacts:

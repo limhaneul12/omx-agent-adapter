@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from omx_remote.runtime.company_run.artifact_index import (
     REQUIRED_COMPANY_RUN_ARTIFACTS,
     build_company_run_artifact_index,
+)
+from omx_remote.runtime.company_run.company_run_worker_dispatch import (
+    WORKER_BOUNDARY_SUBAGENT_RULE,
+    build_worker_dispatch_payload,
 )
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunArtifactIndex,
@@ -114,3 +120,45 @@ def test_vote_artifacts_are_json_contracts_with_gate_outcomes() -> None:
 
     assert research_vote.outcome == "research-complete"
     assert proceed_vote.outcome == "proceed-to-prd"
+
+
+def test_worker_dispatches_use_separate_ownership_lanes() -> None:
+    dispatch_payload = build_worker_dispatch_payload(
+        objective="ship scoped company-run work",
+        worker_count=8,
+        allowed_subagents=("executor", "test-engineer"),
+        subagent_rule=WORKER_BOUNDARY_SUBAGENT_RULE,
+    )
+
+    boundaries = tuple(worker.ownership_boundary for worker in dispatch_payload.workers)
+    assert len(boundaries) == 8
+    assert len(set(boundaries)) == len(boundaries)
+    assert boundaries[0] != boundaries[1]
+    assert boundaries[-1].startswith("extension slice 2")
+
+
+def test_worker_dispatches_scope_codex_subagents_to_worker_boundary() -> None:
+    dispatch_payload = build_worker_dispatch_payload(
+        objective="ship scoped company-run work",
+        worker_count=3,
+        allowed_subagents=("executor", "test-engineer", "code-reviewer"),
+        subagent_rule=WORKER_BOUNDARY_SUBAGENT_RULE,
+    )
+
+    for worker in dispatch_payload.workers:
+        assert worker.subagent_rule == WORKER_BOUNDARY_SUBAGENT_RULE
+        assert worker.allowed_subagents == (
+            "executor",
+            "test-engineer",
+            "code-reviewer",
+        )
+
+
+def test_worker_dispatches_reject_unscoped_subagent_rule() -> None:
+    with pytest.raises(ValueError, match="scoped Codex subagent boundary rule"):
+        build_worker_dispatch_payload(
+            objective="ship scoped company-run work",
+            worker_count=2,
+            allowed_subagents=("executor",),
+            subagent_rule="subagents may inspect any lane",
+        )

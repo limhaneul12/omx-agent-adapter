@@ -28,6 +28,7 @@ from omx_remote.runtime.company_run.company_run_team_preflight import (
     team_split_worktree_preflight,
 )
 from omx_remote.runtime.company_run.company_run_worker_dispatch import (
+    WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
 )
 from omx_remote.runtime.prompt_assets import render_prompt_model_asset
@@ -149,10 +150,7 @@ def write_worker_dispatches(
             "security-review",
             "code-reviewer",
         ),
-        subagent_rule=(
-            "Use scoped subagents only inside this worker ownership boundary; "
-            "report conflicts to the CEO/integration steward."
-        ),
+        subagent_rule=WORKER_BOUNDARY_SUBAGENT_RULE,
     )
     write_company_json(dispatch_path, dispatch_payload)
     return dispatch_path

@@ -95,6 +95,13 @@ class CompanyRunTeamLaunchStatus(StrEnum):
     FAILED = "failed"
 
 
+class CompanyRunEvidenceCheckStatus(StrEnum):
+    """Status values for explicit company-run review/release evidence checks."""
+
+    PASS = "pass"
+    BLOCKED = "blocked"
+
+
 class CompanyRunTeamLaunchBlockerSignal(StrEnum):
     """Known native OMX Team launch outputs that require agent follow-up."""
 

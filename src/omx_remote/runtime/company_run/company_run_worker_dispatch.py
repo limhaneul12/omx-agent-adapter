@@ -14,6 +14,13 @@ _BASE_WORKER_OWNERSHIP_BOUNDARIES: tuple[str, ...] = (
     "security-hardening slice",
 )
 
+WORKER_BOUNDARY_SUBAGENT_RULE = (
+    "Use scoped Codex subagents only for files, artifacts, and verification inside "
+    "this worker ownership boundary; do not assign subagents to inspect, edit, or "
+    "verify peer worker lanes unless the CEO/integration steward explicitly "
+    "reassigns that boundary."
+)
+
 
 def worker_ownership_boundary(worker_index: int) -> str:
     """Return one stable ownership boundary for a company-run Team worker.
@@ -57,6 +64,10 @@ def build_worker_dispatch_payload(
     """
     if worker_count < 1:
         raise ValueError("company-run worker dispatch requires at least one worker")
+    if subagent_rule != WORKER_BOUNDARY_SUBAGENT_RULE:
+        raise ValueError(
+            "company-run worker dispatch requires the scoped Codex subagent boundary rule"
+        )
     worker_packets = tuple(
         CompanyRunWorkerDispatchRecord(
             worker=f"worker-{worker_index}",
@@ -67,6 +78,11 @@ def build_worker_dispatch_payload(
         )
         for worker_index in range(1, worker_count + 1)
     )
+    boundaries = tuple(packet.ownership_boundary for packet in worker_packets)
+    if len(set(boundaries)) != len(boundaries):
+        raise ValueError(
+            "company-run worker dispatch requires separate ownership lanes"
+        )
     dispatch_payload = CompanyRunWorkerDispatchPayload(
         workers=worker_packets,
         blocked_reasons=(),

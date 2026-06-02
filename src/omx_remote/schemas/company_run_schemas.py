@@ -3,11 +3,16 @@ from pydantic import Field, model_validator
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
     CommandRuntimeOptions,
 )
-from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
+from omx_remote.schemas.common_schemas import (
+    NonEmptyString,
+    NonEmptyStrings,
+    StrictSchemaModel,
+)
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunArtifactKind,
     CompanyRunBootstrapVoteId,
     CompanyRunCouncilMode,
+    CompanyRunEvidenceCheckStatus,
     CompanyRunFinalStatus,
     CompanyRunPhase,
     CompanyRunPhaseStatus,
@@ -107,10 +112,23 @@ class CompanyRunRouteNextArtifactPayload(StrictSchemaModel):
     objective: NonEmptyString
 
 
+class CompanyRunEvidenceCheck(StrictSchemaModel):
+    """One explicit evidence check feeding a company-run readiness verdict."""
+
+    check_id: NonEmptyString
+    status: CompanyRunEvidenceCheckStatus
+    evidence_path: NonEmptyString
+    summary: NonEmptyString
+
+
 class CompanyRunReadinessVerdictPayload(StrictSchemaModel):
-    """Typed payload for planning/executive review verdict artifacts."""
+    """Typed payload for planning, review, and release readiness verdicts."""
 
     verdict: NonEmptyString
+    required_checks: tuple[CompanyRunEvidenceCheck, ...] = ()
+    evidence_paths: NonEmptyStrings = ()
+    blocked_reasons: NonEmptyStrings = ()
+    note: NonEmptyString | None = None
 
 
 class CompanyRunTeamPlanPayload(StrictSchemaModel):
@@ -249,6 +267,35 @@ class CompanyRunTeamLaunchRecord(StrictSchemaModel):
     exit_code: int | None = None
     await_exit_code: int | None = None
     note: NonEmptyString
+
+
+class CompanyRunNativeTeamTaskCounts(StrictSchemaModel):
+    """Task counters returned by `omx team status --json`."""
+
+    total: int = Field(ge=0)
+    pending: int = Field(ge=0)
+    blocked: int = Field(ge=0)
+    in_progress: int = Field(ge=0)
+    completed: int = Field(ge=0)
+    failed: int = Field(ge=0)
+
+
+class CompanyRunNativeTeamWorkerCounts(StrictSchemaModel):
+    """Worker counters returned by `omx team status --json`."""
+
+    total: int = Field(ge=0)
+    dead: int = Field(ge=0)
+    non_reporting: int = Field(ge=0)
+
+
+class CompanyRunNativeTeamStatusSnapshot(StrictSchemaModel):
+    """Typed subset of `omx team status --json` used for completion evidence."""
+
+    team_name: NonEmptyString
+    status: NonEmptyString
+    phase: NonEmptyString | None = None
+    tasks: CompanyRunNativeTeamTaskCounts | None = None
+    workers: CompanyRunNativeTeamWorkerCounts | None = None
 
 
 class CompanyRunState(StrictSchemaModel):

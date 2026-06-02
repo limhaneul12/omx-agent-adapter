@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from omx_remote.adapter_types.json_types import JsonObject
+from omx_remote.execution.invoke import run_omx_command
+from omx_remote.schemas.company_run_schemas import CompanyRunNativeTeamStatusSnapshot
 from omx_remote.shared.omx_enums.teamwork_enums import (
     BLOCKED_TASK_STATE_VALUES,
     BLOCKED_WORKER_STATE_VALUES,
@@ -31,6 +33,7 @@ class TeamStateCompletionEvidence:
     incomplete_count: int
     blocked_worker_count: int
     detail: str
+    terminal: bool = False
 
 
 def team_name_from_output(output: str) -> str | None:
@@ -141,7 +144,14 @@ def team_state_completion_evidence(
             incomplete_count=0,
             blocked_worker_count=0,
             detail="no Team name was available for completion evidence",
+            terminal=True,
         )
+    command_evidence = _team_status_command_completion_evidence(
+        cwd=cwd,
+        team_name=team_name,
+    )
+    if command_evidence is not None:
+        return command_evidence
     team_state_dir = cwd / ".omx" / "state" / "team" / team_name
     task_paths = tuple(sorted((team_state_dir / "tasks").glob("task-*.json")))
     if not task_paths:
@@ -221,10 +231,92 @@ def wait_for_team_completion_evidence(
     deadline = time.monotonic() + timeout_seconds
     poll_interval_seconds = min(1.0, max(0.05, timeout_seconds / 20.0))
     evidence = team_state_completion_evidence(cwd=cwd, team_name=team_name)
-    while not evidence.complete and time.monotonic() < deadline:
+    while not evidence.complete and not evidence.terminal and time.monotonic() < deadline:
         time.sleep(poll_interval_seconds)
         try:
             evidence = team_state_completion_evidence(cwd=cwd, team_name=team_name)
         except ValueError:
             continue
     return evidence
+
+
+def _team_status_command_completion_evidence(
+    cwd: Path,
+    team_name: str,
+) -> TeamStateCompletionEvidence | None:
+    """Read completion evidence from `omx team status --json`.
+
+    Args:
+        cwd [Path]: Repository root where the Team command should run.
+        team_name [str]: Native OMX Team name.
+
+    Returns:
+        TeamStateCompletionEvidence | None: Completion evidence when the status
+        command returned a typed payload; otherwise None so callers may fall back
+        to legacy file inspection.
+    """
+    command_result = run_omx_command(
+        arguments=("team", "status", team_name, "--json"),
+        cwd=str(cwd),
+    )
+    stdout = command_result.stdout.strip()
+    if command_result.exit_code != 0 or not stdout:
+        missing_evidence: None = None
+        return missing_evidence
+    try:
+        status_snapshot = CompanyRunNativeTeamStatusSnapshot.model_validate_json(
+            stdout
+        )
+    except ValueError:
+        missing_evidence = None
+        return missing_evidence
+    if status_snapshot.status == "missing":
+        return TeamStateCompletionEvidence(
+            complete=False,
+            task_count=0,
+            completed_count=0,
+            blocked_count=0,
+            incomplete_count=0,
+            blocked_worker_count=0,
+            detail=f"omx team status reports Team {team_name} is missing.",
+            terminal=True,
+        )
+    if status_snapshot.tasks is None:
+        missing_evidence = None
+        return missing_evidence
+    task_counts = status_snapshot.tasks
+    worker_counts = status_snapshot.workers
+    blocked_count = task_counts.blocked + task_counts.failed
+    incomplete_count = max(
+        0,
+        task_counts.total - task_counts.completed - blocked_count,
+    )
+    blocked_worker_count = (
+        0
+        if worker_counts is None
+        else worker_counts.dead + worker_counts.non_reporting
+    )
+    complete = (
+        task_counts.total > 0
+        and task_counts.completed == task_counts.total
+        and blocked_count == 0
+        and incomplete_count == 0
+        and blocked_worker_count == 0
+    )
+    detail = (
+        "Team status command evidence: "
+        f"phase={status_snapshot.phase}, status={status_snapshot.status}, "
+        f"{task_counts.completed}/{task_counts.total} completed, "
+        f"{task_counts.blocked} blocked, {task_counts.failed} failed, "
+        f"{task_counts.pending} pending, {task_counts.in_progress} in progress, "
+        f"{blocked_worker_count} blocked/non-reporting workers."
+    )
+    return TeamStateCompletionEvidence(
+        complete=complete,
+        task_count=task_counts.total,
+        completed_count=task_counts.completed,
+        blocked_count=blocked_count,
+        incomplete_count=incomplete_count,
+        blocked_worker_count=blocked_worker_count,
+        detail=detail,
+    )
