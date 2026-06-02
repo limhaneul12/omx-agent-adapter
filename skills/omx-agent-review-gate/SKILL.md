@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:review-gate --cwd . --execute --autonomy agent --task "<change set or artifact root>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:review-gate --task "<change set or artifact root>"
+comx-agent run builtin:review-gate --task "<change set or artifact root>" --cwd . --dry-run
 ```
 
 ## Expected behavior

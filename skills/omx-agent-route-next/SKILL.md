@@ -33,10 +33,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:route-next --cwd . --execute --autonomy agent --task "<task>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:route-next --task "<task>"
+comx-agent run builtin:route-next --task "<task>" --cwd . --dry-run
 ```
 
 ## Expected behavior

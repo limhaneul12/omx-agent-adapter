@@ -11,11 +11,11 @@ from omx_remote.runtime.commands.artifacts.redacted_command_artifact_writer impo
     write_redacted_json_artifact,
 )
 from omx_remote.runtime.commands.rendering.command_output_redaction import redact_text
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_core_schemas import (
     CompanyRunArtifactIndex,
     CompanyRunArtifactRecord,
-    CompanyRunState,
 )
+from omx_remote.schemas.company_run.company_run_runtime_schemas import CompanyRunState
 from omx_remote.shared.omx_enums.company_run_enums import CompanyRunArtifactKind
 from omx_remote.shared.utils.json_model_dump import model_json_value
 

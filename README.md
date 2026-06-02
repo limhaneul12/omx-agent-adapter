@@ -117,12 +117,6 @@ Runtime options can be set per invocation instead of through environment variabl
 - `--xhigh` is a shorthand for `--reasoning-effort xhigh`.
 - `--madmax` is dangerous: it implies xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. Use it only when that risk is intended.
 
-The same preview syntax is available from the TUI:
-
-```text
-/run builtin:company-run --task "build an agent company" --model gpt-5.5 --xhigh
-```
-
 For live `company-run` Team fanout, these options are also recorded in company-run artifacts and forwarded to OMX Team workers through a transient adapter-owned subprocess environment override; users do not need to set `OMX_TEAM_WORKER_LAUNCH_ARGS` manually.
 
 Useful adjacent surfaces:
@@ -132,27 +126,15 @@ comx-agent probes run omx-basic --cwd . --json
 comx-agent agents plan-apply-codex --cwd . --json
 comx-agent agents codex-status --cwd . --json
 comx-agent ultragoal status --cwd . --json
-comx-agent tui --cwd . --once
-comx-agent tui --cwd . --session-id daily
-comx-agent daemon start --cwd . --session-id daily
-comx-agent daemon status --cwd . --session-id daily
-comx-agent daemon attach --session-id daily
-comx-agent daemon stop --cwd . --session-id daily
-comx-agent sessions list --cwd .
-comx-agent sessions show daily --cwd . --json
 comx-agent surface --cwd . --json
 comx-agent mcp servers --cwd . --json
 comx-agent mcp tools <server-name> --cwd . --json
 comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --json
 ```
 
-## comx-agent TUI and MCP client
+## MCP client and command surfaces
 
-`comx-agent tui` renders a Codex-like terminal cockpit for the adapter. It supports `/` slash-command completions, persistent input history, normal free-text prompt capture, and typed read-only panels for `/status`, `/surface`, `/commands`, `/mcp`, `/mcp tools <server>`, `/team`, `/ultragoal`, `/goal`, `/next`, and `/research <objective>`. The opening frame now includes a compact command palette and operator hints so a human or agent can see core status, dry-run recipe preview, route, MCP, Team, Goal, and research entry points without memorizing the catalog. `/commands` groups the consolidated command surface under Lifecycle, Macro, and Adapter Ops labels so humans do not need to memorize every id.
-
-The TUI keeps mutating actions guarded: `/mcp call <server> <tool>` is a dry-run preview, `/run <recipe>` renders the typed dry-run command plan, `/run <recipe> --task "..."` passes a task prompt into preview rendering, and `/research <objective>` creates a staged local research-plan artifact without running external research tools. CLI execution is explicit through `comx-agent run <recipe> --execute --autonomy agent`, which records the plan, autonomy decision, step attempts, stdout/stderr, artifact checks, and recovery evidence. Actual execution returns shell status `0` only for `succeeded`; `failed`, `blocked`, and `requires_agent_action` stop shell pipelines with non-zero exit codes after still printing the typed result.
-
-Adapter-owned workflow recipes now expose exactly ten public workflow commands plus a separate maintenance namespace:
+The adapter-owned workflow recipes now expose exactly ten public workflow commands plus a separate maintenance namespace:
 
 | Group | Command id | Risk |
 | --- | --- | --- |
@@ -174,22 +156,9 @@ Adapter-owned workflow recipes now expose exactly ten public workflow commands p
 
 These are not raw aliases: they preview staged Codex/OMX/local/MCP steps, risk level, expected artifacts, typed role lanes, Codex native-agent bindings, root `prompt/` Markdown assets, and handoff points before any runtime launch. `discovery-gate` is an adapter-owned pre-planning gate that can hand off to OMX `deep-interview` without exposing a duplicate adapter command. `company-run` is a build-oriented macro orchestration mode: it records Gate -1 memory/context recovery, Gate 0 discovery/ROI/no-build, internal research/proceed decision records, PRD readiness, implementation-kickoff as the development-start gate, Team plus subagents, review/release loops, user-facing decision reports, and Alexandria MCP tool points for memory recall, librarian queries, artifact curation, context recovery, and closeout.
 
-TUI sessions are durable by default. `--session-id <name>` stores the current prompt, render count, slash-command history, and lifecycle events under `.comx-agent/sessions/<name>.json`; reopening the same session id resumes the last prompt when `--prompt` is omitted. Use `comx-agent sessions list` and `comx-agent sessions show <name>` to inspect saved sessions after leaving the TUI.
-
-For the OMX-like background UX, use the tmux-backed daemon surface after installing the package once:
-
-```bash
-comx-agent daemon start --cwd . --session-id daily
-comx-agent daemon status --cwd . --session-id daily
-comx-agent daemon attach --session-id daily
-comx-agent daemon stop --cwd . --session-id daily
-```
-
-`daemon start` launches `comx-agent tui` in a detached tmux session named from the durable TUI session id. The TUI state still persists under `.comx-agent/sessions/`, so stopping or detaching does not lose the session record.
-
 `comx-agent surface` separates direct **native commands** from **composed commands** loaded from the built-in/repo recipe catalog.
 
-MCP support is client/consumer-only: `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml`, list server tools, and execute a tool only when `--execute` is passed. The adapter does not expose its own MCP server; use `comx-agent commands show`, `comx-agent run --dry-run`, and TUI `/run` for adapter recipe previews.
+MCP support is client/consumer-only: `comx-agent mcp` can read Codex's MCP registry via `codex mcp list --json`, read repo-local MCP config from `.comx-agent.toml`, list server tools, and execute a tool only when `--execute` is passed. The adapter does not expose its own MCP server; use `comx-agent commands show` and `comx-agent run --dry-run` as the primary preview surfaces.
 
 Register an external MCP server repo-locally:
 
@@ -235,9 +204,6 @@ comx-agent agents --help
 comx-agent commands --help
 comx-agent preflight --help
 comx-agent surface --help
-comx-agent tui --help
-comx-agent sessions --help
-comx-agent daemon --help
 comx-agent mcp --help
 comx-agent probes --help
 comx-agent route --help

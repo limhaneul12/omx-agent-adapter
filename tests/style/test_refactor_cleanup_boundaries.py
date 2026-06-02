@@ -50,7 +50,7 @@ def test_cockpit_snapshot_surface_is_grouped_by_concept_packages() -> None:
         cockpit_root / "snapshot" / "builder.py",
         cockpit_root / "snapshot" / "lanes.py",
         cockpit_root / "snapshot" / "decisions.py",
-        cockpit_root / "sources" / "status.py",
+        cockpit_root / "sources" / "status_source.py",
         cockpit_root / "sources" / "goal_mirror.py",
         cockpit_root / "sources" / "ultrawork.py",
         cockpit_root / "sources" / "github_pr_status" / "api_client.py",

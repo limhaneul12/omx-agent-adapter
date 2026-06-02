@@ -202,9 +202,6 @@ def test_package_entrypoint_runs_help() -> None:
     assert "preflight" in completed_process.stdout
     assert "next" in completed_process.stdout
     assert "surface" in completed_process.stdout
-    assert "tui" in completed_process.stdout
-    assert "sessions" in completed_process.stdout
-    assert "daemon" in completed_process.stdout
     assert "mcp" in completed_process.stdout
     assert "goal" in completed_process.stdout
     assert "prd" in completed_process.stdout
@@ -268,31 +265,42 @@ def test_package_entrypoint_runs_surface_help() -> None:
     assert "--json" in completed_process.stdout
 
 
-def test_package_entrypoint_runs_tui_help() -> None:
-    completed_process = _run_comx_agent_command(["tui", "--help"])
+def test_package_entrypoint_surface_json_excludes_removed_tui_commands() -> None:
+    completed_process = _run_comx_agent_command(["surface", "--json"])
 
     assert completed_process.returncode == 0
-    assert "--once" in completed_process.stdout
-    assert "--prompt" in completed_process.stdout
-    assert "--session-id" in completed_process.stdout
+    payload = orjson.loads(completed_process.stdout)
+    native_command_names = {
+        command["name"] for command in payload["native_commands"]
+    }
+    assert "surface" in native_command_names
+    assert "commands" in native_command_names
+    assert "run" in native_command_names
+    assert "mcp" in native_command_names
+    assert "tui" not in native_command_names
+    assert "sessions" not in native_command_names
+    assert "daemon" not in native_command_names
 
 
-def test_package_entrypoint_runs_sessions_help() -> None:
-    completed_process = _run_comx_agent_command(["sessions", "--help"])
+def test_package_entrypoint_surface_human_lists_retained_commands() -> None:
+    completed_process = _run_comx_agent_command(["surface"])
 
     assert completed_process.returncode == 0
-    assert "list" in completed_process.stdout
-    assert "show" in completed_process.stdout
+    assert "product: comx-agent" in completed_process.stdout
+    assert "- surface:" in completed_process.stdout
+    assert "- commands:" in completed_process.stdout
+    assert "- run:" in completed_process.stdout
+    assert "- tui:" not in completed_process.stdout
+    assert "- sessions:" not in completed_process.stdout
+    assert "- daemon:" not in completed_process.stdout
 
 
-def test_package_entrypoint_runs_daemon_help() -> None:
-    completed_process = _run_comx_agent_command(["daemon", "--help"])
+def test_package_entrypoint_removed_tui_commands_are_unregistered() -> None:
+    for removed_command in ("tui", "sessions", "daemon"):
+        completed_process = _run_comx_agent_command([removed_command, "--help"])
 
-    assert completed_process.returncode == 0
-    assert "start" in completed_process.stdout
-    assert "status" in completed_process.stdout
-    assert "attach" in completed_process.stdout
-    assert "stop" in completed_process.stdout
+        assert completed_process.returncode != 0
+        assert "No such command" in completed_process.stderr
 
 
 def test_cockpit_snapshot_outputs_repo_scoped_json(monkeypatch, tmp_path: Path) -> None:

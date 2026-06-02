@@ -6,8 +6,8 @@ from omx_remote.runtime.company_run.governance.roster_policy import (
     validate_company_run_roster,
     validate_vote_authorship,
 )
-from omx_remote.schemas.company_run_schemas import (
-    CompanyRunRoster,
+from omx_remote.schemas.company_run.company_run_core_schemas import CompanyRunRoster
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunVoteBallot,
     CompanyRunVoteRecord,
 )

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-import orjson
 from pathlib import Path
 
-from omx_remote.runtime.company_run.team import team_evidence as company_run_team_evidence
+import orjson
+
+from omx_remote.runtime.company_run.team import (
+    team_evidence as company_run_team_evidence,
+    team_state_identity,
+)
 from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 
@@ -245,7 +249,7 @@ def test_team_completion_evidence_treats_missing_team_as_terminal(monkeypatch) -
 def test_team_name_from_launch_evidence_ignores_missing_team_without_real_state(
     tmp_path: Path,
 ) -> None:
-    team_name = company_run_team_evidence.team_name_from_launch_evidence(
+    team_name = team_state_identity.team_name_from_launch_evidence(
         cwd=tmp_path,
         output="team name: missing-team",
     )
@@ -257,6 +261,6 @@ def test_latest_team_state_name_ignores_missing_team_directory(tmp_path: Path) -
     missing_team_dir = tmp_path / ".omx" / "state" / "team" / "missing-team"
     missing_team_dir.mkdir(parents=True)
 
-    team_name = company_run_team_evidence.latest_team_state_name(cwd=tmp_path)
+    team_name = team_state_identity.latest_team_state_name(cwd=tmp_path)
 
     assert team_name is None

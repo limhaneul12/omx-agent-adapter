@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:discovery-gate --cwd . --execute --autonomy agent --task "<idea or goal>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:discovery-gate --task "<idea or goal>"
+comx-agent run builtin:discovery-gate --task "<idea or goal>" --cwd . --dry-run
 ```
 
 ## Expected artifacts

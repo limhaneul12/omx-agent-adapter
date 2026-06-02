@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:idea-to-prd --cwd . --execute --autonomy agent --task "<accepted idea plus evidence>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:idea-to-prd --task "<accepted idea plus evidence>"
+comx-agent run builtin:idea-to-prd --task "<accepted idea plus evidence>" --cwd . --dry-run
 ```
 
 ## Expected artifacts

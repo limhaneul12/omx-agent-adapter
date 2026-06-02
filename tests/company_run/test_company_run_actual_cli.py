@@ -52,7 +52,7 @@ def test_cli_execute_company_run_passes_explicit_company_options(
     tmp_path: Path,
 ) -> None:
     engine_module = import_module("omx_remote.runtime.company_run.engine")
-    result_schema = _attr("omx_remote.schemas.company_run_schemas", "CompanyRunResult")
+    result_schema = _attr("omx_remote.schemas.company_run.company_run_runtime_schemas", "CompanyRunResult")
     calls: list[dict[str, object]] = []
 
     def fake_execute_company_run(request):
@@ -147,7 +147,7 @@ def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_te
 ) -> None:
     engine_module = import_module("omx_remote.runtime.company_run.engine")
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -199,7 +199,7 @@ def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_te
 
 def test_company_run_request_defaults_to_no_runtime_options(tmp_path: Path) -> None:
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
 
@@ -224,7 +224,7 @@ def test_company_run_preserves_runtime_options_in_result_and_team_records(
     tmp_path: Path,
 ) -> None:
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -269,13 +269,13 @@ def test_company_run_team_task_prioritizes_objective_implementation(
     tmp_path: Path,
 ) -> None:
     build_team_task = _attr(
-        "omx_remote.runtime.company_run.team.team_runtime",
+        "omx_remote.runtime.company_run.team.team_task_prompt",
         "build_team_task",
     )
     company_root = tmp_path / ".comx-agent" / "runs" / "team-task" / "company-run"
 
     task_text = build_team_task(  # type: ignore[operator]
-        objective="improve the TUI command cockpit",
+        objective="improve the command cockpit",
         company_root=company_root,
         worker_count=4,
     )
@@ -310,7 +310,7 @@ def test_company_run_default_codex_council_blocks_when_subagents_fail(
         "SubprocessAttemptOutcome",
     )
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -355,7 +355,7 @@ def test_company_run_artifact_council_mode_does_not_invoke_codex_subprocess(
         "omx_remote.runtime.company_run.governance.council_runtime"
     )
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -1169,7 +1169,7 @@ def test_company_run_vote_ballot_evidence_paths_exist(
     monkeypatch, tmp_path: Path
 ) -> None:
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -1212,7 +1212,7 @@ def test_company_run_planned_dispatch_matches_requested_worker_count(
     tmp_path: Path,
 ) -> None:
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")
@@ -1244,7 +1244,7 @@ def test_company_run_injected_launcher_sees_worker_dispatches_before_launch(
     tmp_path: Path,
 ) -> None:
     request_schema = _attr(
-        "omx_remote.schemas.company_run_schemas",
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
         "CompanyRunExecutionRequest",
     )
     engine_class = _attr("omx_remote.runtime.company_run.engine", "CompanyRunEngine")

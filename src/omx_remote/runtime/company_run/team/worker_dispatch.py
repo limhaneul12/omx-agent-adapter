@@ -1,6 +1,6 @@
 """Build complete company-run Team worker dispatch packets."""
 
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunWorkerDispatchPayload,
     CompanyRunWorkerDispatchRecord,
 )

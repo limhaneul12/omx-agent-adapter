@@ -1,5 +1,5 @@
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunBootstrapVoteOutcomes,
     CompanyRunTeamBootstrapArtifacts,
 )

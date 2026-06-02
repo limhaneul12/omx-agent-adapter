@@ -61,7 +61,6 @@ _RUNTIME_HANDOFF_COMMANDS: frozenset[CommandStepCommand] = frozenset(
 )
 _MIN_CODEX_EXEC_TIMEOUT_SECONDS = 300.0
 
-
 def _write_step_json(paths: ActualRunPaths, step: CommandPlanStep) -> None:
     """Persist a planned step next to actual step attempts.
 
@@ -72,7 +71,6 @@ def _write_step_json(paths: ActualRunPaths, step: CommandPlanStep) -> None:
     step_dir = paths.run_dir / "steps" / f"{step.index:03d}"
     step_dir.mkdir(parents=True, exist_ok=True)
     write_redacted_json_artifact(step_dir / "step.json", step)
-
 
 def _step_should_handoff(step: CommandPlanStep) -> bool:
     """Return whether a runtime step needs a handoff instead of blind launch.
@@ -85,7 +83,6 @@ def _step_should_handoff(step: CommandPlanStep) -> bool:
     """
     should_handoff: bool = step.command in _RUNTIME_HANDOFF_COMMANDS
     return should_handoff
-
 
 def _missing_artifact_classification(
     checks: tuple[CommandArtifactCheck, ...],
@@ -111,7 +108,6 @@ def _missing_artifact_classification(
     )
     return classification
 
-
 def _validated_expected_artifact_paths(
     step: CommandPlanStep,
     state: ExecutionPlaceholderState,
@@ -136,7 +132,6 @@ def _validated_expected_artifact_paths(
     )
     return artifact_paths
 
-
 def _prepare_subprocess_artifact_directories(
     step: CommandPlanStep,
     state: ExecutionPlaceholderState,
@@ -153,7 +148,6 @@ def _prepare_subprocess_artifact_directories(
     for artifact_path in artifact_paths:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
 
-
 def _artifact_policy_failure(error: ValueError) -> CommandFailureClassification:
     """Build a non-retryable failure for unsafe artifact paths.
 
@@ -169,7 +163,6 @@ def _artifact_policy_failure(error: ValueError) -> CommandFailureClassification:
         retryable=False,
     )
     return classification
-
 
 def _subprocess_timeout_seconds(
     step: CommandPlanStep,
@@ -191,7 +184,6 @@ def _subprocess_timeout_seconds(
         )
         return timeout_seconds
     return default_timeout_seconds
-
 
 def _failed_step_result(
     step: CommandPlanStep,
@@ -222,7 +214,6 @@ def _failed_step_result(
         retry_decisions=tuple(retry_decisions),
     )
     return result
-
 
 class CommandStepExecutor:
     """Execute individual command plan steps."""

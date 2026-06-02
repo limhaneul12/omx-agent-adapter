@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:integration-plan --cwd . --execute --autonomy agent --task "<worker outputs and integration objective>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:integration-plan --task "<worker outputs and integration objective>"
+comx-agent run builtin:integration-plan --task "<worker outputs and integration objective>" --cwd . --dry-run
 ```
 
 ## Expected artifacts

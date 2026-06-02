@@ -38,7 +38,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
     CommandRuntimeOptions,
 )
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
     COMPANY_RUN_DEFAULT_TIMEOUT_SECONDS,
     CompanyRunExecutionRequest,
     CompanyRunResult,

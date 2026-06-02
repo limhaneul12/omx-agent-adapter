@@ -41,10 +41,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:company-run --cwd . --execute --autonomy agent --task "<idea or build goal>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:company-run --task "<idea or build goal>"
+comx-agent run builtin:company-run --task "<idea or build goal>" --cwd . --dry-run
 ```
 
 ## Required lifecycle

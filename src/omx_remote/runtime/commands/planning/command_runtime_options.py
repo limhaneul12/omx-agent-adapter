@@ -39,7 +39,7 @@ def build_command_runtime_options(
     xhigh: bool,
     madmax: bool,
 ) -> CommandRuntimeOptions | None:
-    """Build typed runtime options from CLI/TUI inputs.
+    """Build typed runtime options from CLI inputs.
 
     Args:
         model [str | None]: Explicit Codex model.

@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:team-sync --cwd . --execute --autonomy agent --task "<team name or sync objective>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:team-sync --task "<team name or sync objective>"
+comx-agent run builtin:team-sync --task "<team name or sync objective>" --cwd . --dry-run
 ```
 
 ## Expected behavior

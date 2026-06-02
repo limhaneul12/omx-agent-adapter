@@ -1,7 +1,7 @@
 from omx_remote.runtime.commands.blueprints.adapter_ops_blueprints import (
     build_adapter_ops_blueprints,
 )
-from omx_remote.runtime.commands.blueprints.consolidated_lifecycle_blueprints import (
+from omx_remote.runtime.commands.blueprints.public_workflow_catalog import (
     build_public_workflow_blueprints,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import CommandRecipe

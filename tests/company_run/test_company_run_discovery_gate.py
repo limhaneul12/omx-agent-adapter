@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from omx_remote.runtime.company_run.engine import CompanyRunEngine
-from omx_remote.schemas.company_run_schemas import CompanyRunExecutionRequest
+from omx_remote.schemas.company_run.company_run_runtime_schemas import CompanyRunExecutionRequest
 from omx_remote.shared.omx_enums.company_run_enums import CompanyRunCouncilMode
 
 

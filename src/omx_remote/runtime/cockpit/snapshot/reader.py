@@ -18,7 +18,7 @@ from omx_remote.runtime.cockpit.sources.github_pr_status.reader import (
 from omx_remote.runtime.cockpit.sources.goal_mirror import (
     _read_optional_goal_mirror_state,
 )
-from omx_remote.runtime.cockpit.sources.status import (
+from omx_remote.runtime.cockpit.sources.status_source import (
     _build_status_sources,
     _build_top_level_warnings,
 )

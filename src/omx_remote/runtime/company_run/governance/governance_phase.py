@@ -19,14 +19,18 @@ from omx_remote.runtime.company_run.phases.phase_texts import (
     risks_markdown,
     test_spec_markdown,
 )
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_core_schemas import (
     CompanyRunArtifactRecord,
-    CompanyRunExecutionRequest,
+    CompanyRunRoster,
+)
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunPhaseRecord,
     CompanyRunReadinessVerdictPayload,
-    CompanyRunRoster,
     CompanyRunTeamPlanPayload,
     CompanyRunVoteRecord,
+)
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
+    CompanyRunExecutionRequest,
 )
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunArtifactKind,

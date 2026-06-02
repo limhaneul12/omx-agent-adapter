@@ -29,19 +29,23 @@ from omx_remote.runtime.company_run.governance.governance_phase import (
 from omx_remote.runtime.company_run.phases.phase_texts import (
     memory_recall_markdown,
 )
-from omx_remote.runtime.company_run.team.team_phase import (
-    run_team_gate_for_company_run,
+from omx_remote.runtime.company_run.team.post_team_gates import (
     write_post_team_gates_for_company_run,
 )
-from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
-from omx_remote.schemas.company_run_schemas import (
-    CompanyRunExecutionRequest,
+from omx_remote.runtime.company_run.team.team_phase import (
+    run_team_gate_for_company_run,
+)
+from omx_remote.schemas.company_run.company_run_core_schemas import CompanyRunRoster
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunPhaseRecord,
-    CompanyRunRoster,
     CompanyRunRouteNextArtifactPayload,
-    CompanyRunTeamLaunchRecord,
     CompanyRunVoteRecord,
 )
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
+    CompanyRunExecutionRequest,
+    CompanyRunTeamLaunchRecord,
+)
+from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunArtifactKind,
     CompanyRunPhase,

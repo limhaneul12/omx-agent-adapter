@@ -7,7 +7,7 @@ from omx_remote.runtime.commands.catalog.command_catalog_resolver import (
     load_command_catalog,
 )
 from omx_remote.schemas.commands.command_recipe_schemas import CommandCatalog
-from omx_remote.schemas.comx.control_surface_schemas import (
+from omx_remote.schemas.control_surface_schemas import (
     ComxControlSurfaceInventory,
     ComxNativeCommand,
 )
@@ -20,24 +20,6 @@ def build_native_command_inventory() -> tuple[ComxNativeCommand, ...]:
         tuple[ComxNativeCommand, ...]: Native command surfaces.
     """
     commands: tuple[ComxNativeCommand, ...] = (
-        ComxNativeCommand(
-            name="tui",
-            description="Open the Codex-like terminal console with slash completions.",
-            read_only_default=True,
-            mutates_runtime=False,
-        ),
-        ComxNativeCommand(
-            name="sessions",
-            description="Inspect durable comx-agent TUI session records.",
-            read_only_default=True,
-            mutates_runtime=False,
-        ),
-        ComxNativeCommand(
-            name="daemon",
-            description="Start, attach, inspect, and stop tmux-backed TUI background sessions.",
-            read_only_default=False,
-            mutates_runtime=True,
-        ),
         ComxNativeCommand(
             name="surface",
             description="Explain native command support versus composed recipes.",

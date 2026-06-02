@@ -5,10 +5,12 @@ from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     write_company_json,
     write_company_markdown,
 )
-from omx_remote.runtime.company_run.discovery.discovery_payloads import (
+from omx_remote.runtime.company_run.discovery.discovery_payload_builders import (
     build_decision_report_payload,
     build_discovery_result,
     build_roi_payload,
+)
+from omx_remote.runtime.company_run.discovery.discovery_payload_verdict import (
     company_run_discovery_should_continue,
     recommended_next_command_for_verdict,
     stop_reason_from_discovery_verdict,
@@ -18,8 +20,10 @@ from omx_remote.runtime.company_run.phases.phase_texts import (
     discovery_summary_markdown,
     user_facing_decision_report_markdown,
 )
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
+    CompanyRunExecutionRequest,
+)
 from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
-from omx_remote.schemas.company_run_schemas import CompanyRunExecutionRequest
 from omx_remote.shared.omx_enums.company_run_discovery_enums import (
     COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
     COMPANY_RUN_DEEP_INTERVIEW_MARKERS,

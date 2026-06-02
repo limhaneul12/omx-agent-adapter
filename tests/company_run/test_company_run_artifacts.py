@@ -12,10 +12,8 @@ from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
 )
-from omx_remote.schemas.company_run_schemas import (
-    CompanyRunArtifactIndex,
-    CompanyRunVote,
-)
+from omx_remote.schemas.company_run.company_run_core_schemas import CompanyRunArtifactIndex
+from omx_remote.schemas.company_run.company_run_governance_schemas import CompanyRunVote
 from omx_remote.shared.utils.json_model_dump import model_json_object
 
 REQUIRED_ARTIFACTS = {

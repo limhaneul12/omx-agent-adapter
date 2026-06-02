@@ -25,7 +25,9 @@ from omx_remote.schemas.commands.command_execution_schemas import (
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
     CommandRuntimeOptions,
 )
-from omx_remote.schemas.company_run_schemas import CompanyRunCouncilPromptContext
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
+    CompanyRunCouncilPromptContext,
+)
 from omx_remote.shared.omx_enums.command_enums import CommandFailureKind
 
 

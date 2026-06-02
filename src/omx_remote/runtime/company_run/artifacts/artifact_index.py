@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from omx_remote.schemas.company_run_schemas import CompanyRunArtifactIndex
+from omx_remote.schemas.company_run.company_run_core_schemas import (
+    CompanyRunArtifactIndex,
+)
 
 REQUIRED_COMPANY_RUN_ARTIFACTS: tuple[str, ...] = (
     "state.json",

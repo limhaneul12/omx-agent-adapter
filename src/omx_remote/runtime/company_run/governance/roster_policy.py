@@ -1,8 +1,10 @@
 from collections.abc import Mapping
 
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_core_schemas import (
     CompanyRunRoster,
     CompanyRunRosterSeat,
+)
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunVoteRecord,
 )
 from omx_remote.shared.omx_enums.company_run_enums import CompanyRunRoleGroup

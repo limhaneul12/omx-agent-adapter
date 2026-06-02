@@ -6,22 +6,26 @@ from pathlib import Path
 from omx_remote.runtime.company_run.artifacts.result_persistence import (
     actual_company_run_paths,
 )
-from omx_remote.runtime.company_run.team.team_phase import (
-    run_team_gate_for_company_run,
-    write_post_team_gates_for_company_run,
-)
 from omx_remote.runtime.company_run.governance.phase_gates import (
     validate_phase_gate_order,
     validate_team_bootstrap_readiness,
 )
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.runtime.company_run.team.post_team_gates import (
+    write_post_team_gates_for_company_run,
+)
+from omx_remote.runtime.company_run.team.team_phase import (
+    run_team_gate_for_company_run,
+)
+from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunBootstrapVoteOutcomes,
-    CompanyRunExecutionRequest,
     CompanyRunPhaseRecord,
     CompanyRunTeamBootstrapArtifacts,
-    CompanyRunTeamRequest,
     CompanyRunVoteBallot,
     CompanyRunVoteRecord,
+)
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
+    CompanyRunExecutionRequest,
+    CompanyRunTeamRequest,
 )
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunPhase,

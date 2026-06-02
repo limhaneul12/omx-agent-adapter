@@ -40,7 +40,6 @@ def normalize_state_token(state_text: str) -> str:
     normalized_state: str = state_text.strip().lower().replace("-", "_")
     return normalized_state
 
-
 def assigned_worker_ids(ralph_prd_artifact: RalphPrdArtifact) -> tuple[str, ...]:
     """Returns the worker IDs assigned by a Ralph PRD artifact.
 
@@ -63,7 +62,6 @@ def assigned_worker_ids(ralph_prd_artifact: RalphPrdArtifact) -> tuple[str, ...]
         assignment.worker_id for assignment in assignments
     )
     return worker_ids
-
 
 def read_local_omx_team_startup_issue_workers(
     team_name: str,
@@ -118,7 +116,6 @@ def read_local_omx_team_startup_issue_workers(
     result: tuple[str, ...] = tuple(startup_issue_workers)
     return result
 
-
 def worker_has_completed_task(
     worker_id: str,
     task_snapshot: TeamApiListTasksSnapshot,
@@ -140,7 +137,6 @@ def worker_has_completed_task(
             return True
 
     return False
-
 
 def worker_has_blocker(
     worker_id: str,
@@ -173,7 +169,6 @@ def worker_has_blocker(
 
     return False
 
-
 def worker_has_startup_issue(
     worker_id: str,
     event_snapshot: TeamApiReadEventsSnapshot,
@@ -205,12 +200,10 @@ def worker_has_startup_issue(
 
     return False
 
-
 def worker_has_task(worker_id: str, task_snapshot: TeamApiListTasksSnapshot) -> bool:
     """Checks for owned Team API tasks. Args: worker_id, task_snapshot. Returns: bool."""
     has_task: bool = any(task.owner == worker_id for task in task_snapshot.tasks)
     return has_task
-
 
 def build_team_admin_summary(
     completed_count: int,
@@ -255,7 +248,6 @@ def build_team_admin_summary(
         f"Team Admin collected {completed_count}/{total_count} completed worker results; "
         "waiting for remaining workers."
     )
-
 
 def build_team_admin_aggregation_report(
     ralph_prd_artifact: RalphPrdArtifact,
@@ -363,7 +355,6 @@ def build_team_admin_aggregation_report(
     )
     return report
 
-
 async def read_team_admin_aggregation_report(
     request: TeamAdminAggregationReportRequest,
 ) -> TeamAdminAggregationReport:
@@ -409,7 +400,6 @@ async def read_team_admin_aggregation_report(
         local_startup_issue_workers,
     )
     return report
-
 
 def write_team_admin_aggregation_report_artifact(
     report: TeamAdminAggregationReport,

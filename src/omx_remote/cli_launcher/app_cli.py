@@ -4,12 +4,6 @@ from omx_remote.cli_launcher.adapt_cli import adapt_app
 from omx_remote.cli_launcher.agents_cli import agents_app
 from omx_remote.cli_launcher.cockpit_cli import cockpit_app
 from omx_remote.cli_launcher.commands_cli import commands_app
-from omx_remote.cli_launcher.comx_cli import (
-    sessions_app,
-    surface_command,
-    tui_command,
-)
-from omx_remote.cli_launcher.comx_daemon_cli import daemon_app
 from omx_remote.cli_launcher.goal_cli import goal_app
 from omx_remote.cli_launcher.history_cli import history_app
 from omx_remote.cli_launcher.mcp.mcp_cli import mcp_app
@@ -22,6 +16,7 @@ from omx_remote.cli_launcher.route_cli import route_app
 from omx_remote.cli_launcher.run_cli import run_command
 from omx_remote.cli_launcher.runs_cli import runs_app
 from omx_remote.cli_launcher.runtime_cli import runtime_app
+from omx_remote.cli_launcher.surface_cli import surface_command
 from omx_remote.cli_launcher.team_cli import team_app
 from omx_remote.cli_launcher.ultragoal_cli import ultragoal_app
 from omx_remote.cli_launcher.ultrawork_cli import ultrawork_app
@@ -44,9 +39,6 @@ app.add_typer(commands_app, name="commands")
 app.add_typer(preflight_app, name="preflight")
 app.command("next")(next_command)
 app.command("surface")(surface_command)
-app.command("tui")(tui_command)
-app.add_typer(sessions_app, name="sessions")
-app.add_typer(daemon_app, name="daemon")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(probes_app, name="probes")
 app.add_typer(route_app, name="route")

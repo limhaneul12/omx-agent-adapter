@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from omx_remote.runtime.commands.blueprints.adapter_ops_blueprints import (
     ADAPTER_OPS_COMMAND_IDS,
 )
-from omx_remote.runtime.commands.blueprints.consolidated_lifecycle_blueprints import (
+from omx_remote.runtime.commands.blueprints.public_workflow_catalog import (
     PUBLIC_WORKFLOW_COMMAND_IDS,
 )
 from omx_remote.runtime.commands.catalog.command_catalog_resolver import (

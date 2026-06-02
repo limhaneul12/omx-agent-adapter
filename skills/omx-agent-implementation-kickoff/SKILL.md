@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:implementation-kickoff --cwd . --execute --autonomy agent --task "<accepted PRD or implementation objective>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:implementation-kickoff --task "<accepted PRD or implementation objective>"
+comx-agent run builtin:implementation-kickoff --task "<accepted PRD or implementation objective>" --cwd . --dry-run
 ```
 
 ## Expected behavior

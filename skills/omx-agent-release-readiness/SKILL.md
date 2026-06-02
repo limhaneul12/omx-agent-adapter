@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:release-readiness --cwd . --execute --autonomy agent --task "<release candidate or artifact root>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:release-readiness --task "<release candidate or artifact root>"
+comx-agent run builtin:release-readiness --task "<release candidate or artifact root>" --cwd . --dry-run
 ```
 
 ## Expected behavior

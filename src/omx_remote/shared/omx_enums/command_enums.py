@@ -17,7 +17,7 @@ class CommandNamespace(StrEnum):
 
 
 class CommandRecipeCategory(StrEnum):
-    """Catalog grouping used by CLI, MCP, and TUI surfaces."""
+    """Catalog grouping used by CLI and MCP surfaces."""
 
     LIFECYCLE = "lifecycle"
     MACRO = "macro"

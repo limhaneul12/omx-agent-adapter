@@ -34,18 +34,11 @@ comx-agent run builtin:company-run --cwd . --execute --autonomy agent --task "bu
 comx-agent run 'builtin:adapter-ops mcp-audit' --cwd . --dry-run --task "audit MCP setup" --json
 ```
 
-Runtime model controls are explicit CLI/TUI request options, not hidden project defaults:
+Runtime model controls are explicit CLI request options, not hidden project defaults:
 
 ```bash
 comx-agent run builtin:research-brief --cwd . --dry-run --task "compare evidence" --model gpt-5.5 --reasoning-effort high --json
 comx-agent run builtin:company-run --cwd . --execute --autonomy agent --task "ship the plan" --model gpt-5.5 --xhigh --json
-```
-
-TUI `/run` preview supports the same option surface:
-
-```text
-/run builtin:research-brief --model gpt-5.5 --xhigh
-/run builtin:company-run --task "ship the plan" --model gpt-5.5 --xhigh
 ```
 
 `--madmax` is intentionally explicit and dangerous. It requests xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. For `company-run`, the adapter also records the runtime option contract and forwards worker launch args to native OMX Team workers through a transient subprocess environment override.
@@ -60,7 +53,7 @@ comx-agent mcp call local_docs search \
   --execute --json
 ```
 
-The adapter does not expose its own MCP server. Use `comx-agent commands show`, `comx-agent run --dry-run`, and TUI `/run` for adapter workflow previews; use `comx-agent mcp` only to consume external MCP servers such as Alexandria, Codex-registered servers, or repo-local tools.
+The adapter does not expose its own MCP server. Use `comx-agent commands show` and `comx-agent run --dry-run` for adapter workflow previews; use `comx-agent mcp` only to consume external MCP servers such as Alexandria, Codex-registered servers, or repo-local tools.
 
 
 Agent JSON contract example from `comx-agent commands list --cwd . --json`:

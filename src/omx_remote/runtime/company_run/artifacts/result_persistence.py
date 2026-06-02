@@ -10,9 +10,11 @@ from omx_remote.runtime.company_run.artifacts.artifact_index import (
     build_company_run_artifact_index,
 )
 from omx_remote.runtime.company_run.artifacts.artifact_writers import artifact_record
-from omx_remote.schemas.company_run_schemas import (
+from omx_remote.schemas.company_run.company_run_core_schemas import (
     CompanyRunArtifactRecord,
     CompanyRunArtifactSummaryPayload,
+)
+from omx_remote.schemas.company_run.company_run_runtime_schemas import (
     CompanyRunExecutionRequest,
     CompanyRunRecordPayload,
     CompanyRunResult,

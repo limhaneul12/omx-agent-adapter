@@ -34,10 +34,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:research-brief --cwd . --execute --autonomy agent --task "<research objective>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:research-brief --task "<research objective>"
+comx-agent run builtin:research-brief --task "<research objective>" --cwd . --dry-run
 ```
 
 ## Expected behavior

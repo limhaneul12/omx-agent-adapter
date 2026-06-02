@@ -43,10 +43,10 @@ Development fallback:
 PYTHONPATH=src:src/omx_remote uv run python omx_agent_adapter_cli.py run builtin:adapter-ops:run-ledger --cwd . --execute --autonomy agent --task "<closeout objective>" --json
 ```
 
-TUI preview:
+CLI preview:
 
 ```text
-/run builtin:adapter-ops:run-ledger --task "<closeout objective>"
+comx-agent run builtin:adapter-ops:run-ledger --task "<closeout objective>" --cwd . --dry-run
 ```
 
 ## Output interpretation

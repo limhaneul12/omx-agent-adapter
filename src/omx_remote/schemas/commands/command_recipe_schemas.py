@@ -65,7 +65,7 @@ class CommandRecipe(StrictSchemaModel):
     @computed_field
     @property
     def display_id(self) -> str:
-        """Return the user-facing command id shown in CLI, TUI, and docs.
+        """Return the user-facing command id shown in CLI and docs.
 
         Returns:
             str: Display id, using space-form adapter-ops namespace routing.
