@@ -223,10 +223,25 @@ def test_post_team_gates_keep_review_release_evidence_explicit(
     }
     assert {check["check_id"] for check in release_payload["required_checks"]} == {
         "integration_plan",
+        "code_review",
+        "security_review",
+        "architecture_review",
+        "qa_verdict",
         "review_gate",
         "release_summary",
         "memory_closeout",
     }
+    release_evidence_by_id = {
+        check["check_id"]: check["evidence_path"]
+        for check in release_payload["required_checks"]
+    }
+    assert release_evidence_by_id["security_review"].endswith(
+        "review/security-review.md"
+    )
+    assert release_evidence_by_id["architecture_review"].endswith(
+        "review/architecture-review.md"
+    )
+    assert release_evidence_by_id["qa_verdict"].endswith("review/qa-verdict.md")
     assert all(
         Path(path).is_file()
         for path in (
@@ -250,6 +265,9 @@ def test_post_team_gates_report_blockers_instead_of_release_ready(
         team_status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
     )
 
+    review_payload = json.loads(
+        (company_root / "review" / "review-gate.json").read_text(encoding="utf-8")
+    )
     release_payload = json.loads(
         (company_root / "release" / "release-readiness.json").read_text(
             encoding="utf-8"
@@ -259,12 +277,46 @@ def test_post_team_gates_report_blockers_instead_of_release_ready(
         encoding="utf-8"
     )
 
+    assert review_payload["verdict"] == "requires_agent_action"
+    assert review_payload["blocked_reasons"] == [
+        "OMX Team follow-up is required before release can be claimed."
+    ]
     assert release_payload["verdict"] == "not_ready_team_follow_up_required"
     assert release_payload["blocked_reasons"] == [
         "OMX Team follow-up is required before release can be claimed."
     ]
+    explicit_release_check_ids = {
+        "integration_plan",
+        "code_review",
+        "security_review",
+        "architecture_review",
+        "qa_verdict",
+        "review_gate",
+        "release_summary",
+        "memory_closeout",
+    }
+    release_checks_by_id = {
+        check["check_id"]: check for check in release_payload["required_checks"]
+    }
+    assert set(release_checks_by_id) == explicit_release_check_ids
+    assert all(
+        check["status"] == "blocked" for check in release_checks_by_id.values()
+    )
     assert release_payload["note"].startswith("Release readiness: BLOCKED - ")
     assert "Release readiness: BLOCKED" in release_summary
+    phase_records_by_phase = {record.phase: record for record in phase_records}
+    for phase in (
+        CompanyRunPhase.INTEGRATION_PLAN_LOOP,
+        CompanyRunPhase.REVIEW_GATE_LOOP,
+        CompanyRunPhase.RELEASE_READINESS,
+        CompanyRunPhase.MEMORY_CLOSEOUT,
+    ):
+        assert phase_records_by_phase[phase].status == (
+            CompanyRunPhaseStatus.REQUIRES_AGENT_ACTION
+        )
+        assert phase_records_by_phase[phase].blocked_reasons == (
+            "OMX Team follow-up is required before release can be claimed.",
+        )
 
 
 def _ready_bootstrap_artifacts() -> CompanyRunTeamBootstrapArtifacts:

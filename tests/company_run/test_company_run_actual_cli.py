@@ -257,6 +257,33 @@ def test_company_run_preserves_runtime_options_in_result_and_team_records(
     ]
 
 
+def test_company_run_team_task_prioritizes_objective_implementation(
+    tmp_path: Path,
+) -> None:
+    build_team_task = _attr(
+        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "build_team_task",
+    )
+    company_root = tmp_path / ".comx-agent" / "runs" / "team-task" / "company-run"
+
+    task_text = build_team_task(  # type: ignore[operator]
+        objective="improve the TUI command cockpit",
+        company_root=company_root,
+    )
+
+    backlog_index = task_text.index("## Team execution backlog")
+    guardrail_index = task_text.index("## Guardrails, not standalone tasks")
+    artifacts_index = task_text.index("## Artifacts to read before editing")
+    assert backlog_index < guardrail_index < artifacts_index
+    assert "Treat this section as the task backlog" in task_text
+    assert "Do not create standalone Team tasks from" in task_text
+    assert "Worker 1 owns the user-facing implementation slice" in task_text
+    assert "objective names a UI, TUI, CLI, command cockpit" in task_text
+    assert "These paths are reference inputs and readiness gates, not task IDs" in (
+        task_text
+    )
+
+
 def test_company_run_default_codex_council_blocks_when_subagents_fail(
     monkeypatch,
     tmp_path: Path,

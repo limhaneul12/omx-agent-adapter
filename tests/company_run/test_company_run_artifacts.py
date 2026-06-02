@@ -134,7 +134,9 @@ def test_worker_dispatches_use_separate_ownership_lanes() -> None:
     assert len(boundaries) == 8
     assert len(set(boundaries)) == len(boundaries)
     assert boundaries[0] != boundaries[1]
-    assert boundaries[-1].startswith("extension slice 2")
+    assert boundaries[0].startswith("worker-1 ownership lane:")
+    assert boundaries[1].startswith("worker-2 ownership lane:")
+    assert "extension slice 2" in boundaries[-1]
 
 
 def test_worker_dispatches_scope_codex_subagents_to_worker_boundary() -> None:
@@ -161,4 +163,14 @@ def test_worker_dispatches_reject_unscoped_subagent_rule() -> None:
             worker_count=2,
             allowed_subagents=("executor",),
             subagent_rule="subagents may inspect any lane",
+        )
+
+
+def test_worker_dispatches_reject_missing_scoped_subagents() -> None:
+    with pytest.raises(ValueError, match="at least one scoped Codex subagent"):
+        build_worker_dispatch_payload(
+            objective="ship scoped company-run work",
+            worker_count=2,
+            allowed_subagents=(),
+            subagent_rule=WORKER_BOUNDARY_SUBAGENT_RULE,
         )

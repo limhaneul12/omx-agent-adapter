@@ -35,12 +35,16 @@ def worker_ownership_boundary(worker_index: int) -> str:
         raise ValueError("company-run worker indexes are one-based")
     base_index = worker_index - 1
     if base_index < len(_BASE_WORKER_OWNERSHIP_BOUNDARIES):
-        boundary = _BASE_WORKER_OWNERSHIP_BOUNDARIES[base_index]
+        boundary = (
+            f"worker-{worker_index} ownership lane: "
+            f"{_BASE_WORKER_OWNERSHIP_BOUNDARIES[base_index]}"
+        )
         return boundary
     extension_number = worker_index - len(_BASE_WORKER_OWNERSHIP_BOUNDARIES)
     boundary = (
-        f"extension slice {extension_number}: scoped implementation, review, "
-        "or integration support assigned by the CEO/integration steward"
+        f"worker-{worker_index} ownership lane: extension slice "
+        f"{extension_number}: scoped implementation, review, or integration "
+        "support assigned by the CEO/integration steward"
     )
     return boundary
 
@@ -64,6 +68,10 @@ def build_worker_dispatch_payload(
     """
     if worker_count < 1:
         raise ValueError("company-run worker dispatch requires at least one worker")
+    if not allowed_subagents:
+        raise ValueError(
+            "company-run worker dispatch requires at least one scoped Codex subagent"
+        )
     if subagent_rule != WORKER_BOUNDARY_SUBAGENT_RULE:
         raise ValueError(
             "company-run worker dispatch requires the scoped Codex subagent boundary rule"
