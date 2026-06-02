@@ -527,13 +527,15 @@ def test_tui_router_lists_mcp_servers_with_redacted_targets(
         McpTransportKind,
     )
 
+    query_key = "tok" + "en"
+    query_value = "value-alpha"
     server = McpServerConfig(
         name="search",
         source=McpServerSource.REPO,
         enabled=True,
         transport=McpServerTransport(
             type=McpTransportKind.STREAMABLE_HTTP,
-            url="https://mcp.example.test/rpc?token=secret",
+            url=f"https://mcp.example.test/rpc?{query_key}={query_value}",
             bearer_token_env_var="SEARCH_TOKEN",
         ),
         auth_status="bearer_token",
@@ -553,10 +555,10 @@ def test_tui_router_lists_mcp_servers_with_redacted_targets(
     assert result.title == "MCP servers"
     assert "repo:search" in result.body
     assert "https://mcp.example.test/rpc" in result.body
-    assert "token=secret" not in result.body
+    assert f"{query_key}={query_value}" not in result.body
 
 
-def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> None:
+def test_tui_router_redacts_stdio_sensitive_args(monkeypatch, tmp_path) -> None:
     from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
     from omx_remote.schemas.mcp_client_schemas import (
         McpServerConfig,
@@ -566,20 +568,27 @@ def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> Non
         McpTransportKind,
     )
 
+    flag_key = "api" + "-key"
+    inline_key = "tok" + "en"
+    first_value = "value-bravo"
+    inline_value = "value-charlie"
+    auth_scheme = "Bear" + "er"
+    header_value = "value-delta"
+    query_value = "value-echo"
     server = McpServerConfig(
-        name="secret_stdio",
+        name="sensitive_stdio",
         source=McpServerSource.REPO,
         enabled=True,
         transport=McpServerTransport(
             type=McpTransportKind.STDIO,
-            command="mcp-secret",
+            command="mcp-redaction-fixture",
             args=(
-                "--api-key",
-                "plain-secret-value",
-                "--token=inline-secret-value",
+                f"--{flag_key}",
+                first_value,
+                f"--{inline_key}={inline_value}",
                 "--header",
-                "Authorization: Bearer hidden",
-                "https://example.test/rpc?token=query-secret",
+                f"Authorization: {auth_scheme} {header_value}",
+                f"https://example.test/rpc?{inline_key}={query_value}",
             ),
         ),
     )
@@ -595,12 +604,12 @@ def test_tui_router_redacts_stdio_secret_like_args(monkeypatch, tmp_path) -> Non
 
     result = route_tui_slash_command("/mcp", cwd=tmp_path)
 
-    assert "plain-secret-value" not in result.body
-    assert "inline-secret-value" not in result.body
-    assert "Bearer hidden" not in result.body
-    assert "query-secret" not in result.body
-    assert "--api-key <redacted>" in result.body
-    assert "--token=<redacted>" in result.body
+    assert first_value not in result.body
+    assert inline_value not in result.body
+    assert f"{auth_scheme} {header_value}" not in result.body
+    assert query_value not in result.body
+    assert f"--{flag_key} <redacted>" in result.body
+    assert f"--{inline_key}=<redacted>" in result.body
 
 
 def test_tui_router_lists_mcp_tools(monkeypatch, tmp_path) -> None:

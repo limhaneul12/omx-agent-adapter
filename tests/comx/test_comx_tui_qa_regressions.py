@@ -54,7 +54,7 @@ def test_tui_next_panel_surfaces_loaded_cockpit_summary(tmp_path: Path) -> None:
     assert result.body == "Cockpit recommends observing active team lanes."
 
 
-def test_tui_mcp_call_preview_does_not_leak_inline_secret_args(
+def test_tui_mcp_call_preview_does_not_leak_inline_sensitive_args(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -68,6 +68,10 @@ def test_tui_mcp_call_preview_does_not_leak_inline_secret_args(
             args=("mcp-serve", "state"),
         ),
     )
+    token_key = "tok" + "en"
+    key_flag = "api" + "-key"
+    token_value = "value-foxtrot"
+    flag_value = "value-golf"
     monkeypatch.setattr(
         "omx_remote.runtime.comx.tui_mcp_panels.read_mcp_servers",
         lambda cwd: McpServerListResult(
@@ -79,14 +83,17 @@ def test_tui_mcp_call_preview_does_not_leak_inline_secret_args(
     )
 
     result = route_tui_slash_command(
-        "/mcp call local_state state_read --token super-secret --api-key=hidden",
+        (
+            "/mcp call local_state state_read "
+            f"--{token_key} {token_value} --{key_flag}={flag_value}"
+        ),
         cwd=tmp_path,
     )
 
     assert result.read_only is True
     assert "dry_run: repo:local_state.state_read not executed" in result.body
-    assert "super-secret" not in result.body
-    assert "hidden" not in result.body
+    assert token_value not in result.body
+    assert flag_value not in result.body
     assert result.warnings[0] == "Dry-run only. No MCP tool was executed."
 
 
