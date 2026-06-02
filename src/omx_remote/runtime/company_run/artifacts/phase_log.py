@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from omx_remote.runtime.company_run.company_run_artifacts import append_phase_log
+from omx_remote.runtime.company_run.artifacts.artifact_writers import append_phase_log
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunPhaseRecord,
     CompanyRunVoteRecord,

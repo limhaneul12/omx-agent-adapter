@@ -1,4 +1,4 @@
-"""Ralph Team owner-preflight settings."""
+"""OMX Team owner-preflight settings."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class RalphOwnerPreflightSettings(BaseSettings):
+class OmxTeamOwnerPreflightSettings(BaseSettings):
     """Environment-backed fallback for locating the installed OMX dist root."""
 
     model_config = SettingsConfigDict(

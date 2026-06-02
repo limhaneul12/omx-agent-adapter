@@ -1,10 +1,11 @@
+from enum import StrEnum
 from pathlib import Path
 
-from omx_remote.runtime.company_run.company_run_artifacts import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     write_company_json,
     write_company_markdown,
 )
-from omx_remote.runtime.company_run.company_run_discovery_payloads import (
+from omx_remote.runtime.company_run.discovery.discovery_payloads import (
     build_decision_report_payload,
     build_discovery_result,
     build_roi_payload,
@@ -12,73 +13,23 @@ from omx_remote.runtime.company_run.company_run_discovery_payloads import (
     recommended_next_command_for_verdict,
     stop_reason_from_discovery_verdict,
 )
-from omx_remote.runtime.company_run.company_run_phase_texts import (
+from omx_remote.runtime.company_run.phases.phase_texts import (
     deep_interview_handoff_markdown,
     discovery_summary_markdown,
     user_facing_decision_report_markdown,
 )
 from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
 from omx_remote.schemas.company_run_schemas import CompanyRunExecutionRequest
+from omx_remote.shared.omx_enums.company_run_discovery_enums import (
+    COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
+    COMPANY_RUN_DEEP_INTERVIEW_MARKERS,
+    COMPANY_RUN_NO_BUILD_MARKERS,
+    COMPANY_RUN_NON_GOAL_MARKERS,
+    COMPANY_RUN_OUTCOME_MARKERS,
+    COMPANY_RUN_RESEARCH_FIRST_MARKERS,
+    COMPANY_RUN_SMALL_TASK_MARKERS,
+)
 from omx_remote.shared.omx_enums.discovery_gate_enums import DiscoveryGateVerdict
-
-_SMALL_TASK_MARKERS: tuple[str, ...] = (
-    "status only",
-    "just status",
-    "just lint",
-    "just format",
-    "tiny task",
-    "small deterministic",
-    "fix a typo",
-    "typo only",
-)
-_DEEP_INTERVIEW_MARKERS: tuple[str, ...] = (
-    "vague",
-    "unclear",
-    "ambiguous",
-    "don't assume",
-    "dont assume",
-    "모호",
-    "애매",
-)
-_NO_BUILD_MARKERS: tuple[str, ...] = (
-    "no-build",
-    "no build",
-    "do not build",
-    "don't build",
-    "dont build",
-)
-_RESEARCH_FIRST_MARKERS: tuple[str, ...] = (
-    "research first",
-    "investigate whether",
-    "evaluate whether",
-    "compare options",
-    "feasibility",
-)
-_NON_GOAL_MARKERS: tuple[str, ...] = (
-    "non-goal",
-    "non goal",
-    "do not",
-    "don't",
-    "dont",
-    "without",
-)
-_DECISION_BOUNDARY_MARKERS: tuple[str, ...] = (
-    "boundary",
-    "boundaries",
-    "within",
-    "preserve",
-    "autonomy",
-)
-_OUTCOME_MARKERS: tuple[str, ...] = (
-    "prd",
-    "test",
-    "implementation",
-    "team",
-    "review",
-    "release",
-    "artifact",
-    "evidence",
-)
 
 
 def write_company_run_discovery_artifacts(
@@ -180,16 +131,16 @@ def _verdict_for_request(request: CompanyRunExecutionRequest) -> DiscoveryGateVe
         DiscoveryGateVerdict: Gate 0 verdict.
     """
     objective = request.objective.casefold()
-    if _contains_marker(text=objective, markers=_NO_BUILD_MARKERS):
+    if _contains_marker(text=objective, markers=COMPANY_RUN_NO_BUILD_MARKERS):
         verdict = DiscoveryGateVerdict.NO_BUILD
         return verdict
-    if _contains_marker(text=objective, markers=_SMALL_TASK_MARKERS):
+    if _contains_marker(text=objective, markers=COMPANY_RUN_SMALL_TASK_MARKERS):
         verdict = DiscoveryGateVerdict.REROUTE_SMALL_TASK
         return verdict
-    if _contains_marker(text=objective, markers=_DEEP_INTERVIEW_MARKERS):
+    if _contains_marker(text=objective, markers=COMPANY_RUN_DEEP_INTERVIEW_MARKERS):
         verdict = DiscoveryGateVerdict.RUN_DEEP_INTERVIEW
         return verdict
-    if _contains_marker(text=objective, markers=_RESEARCH_FIRST_MARKERS):
+    if _contains_marker(text=objective, markers=COMPANY_RUN_RESEARCH_FIRST_MARKERS):
         verdict = DiscoveryGateVerdict.RESEARCH_FIRST
         return verdict
     if not _has_company_run_readiness_signals(objective=objective):
@@ -199,17 +150,20 @@ def _verdict_for_request(request: CompanyRunExecutionRequest) -> DiscoveryGateVe
     return verdict
 
 
-def _contains_marker(text: str, markers: tuple[str, ...]) -> bool:
+def _contains_marker(
+    text: str,
+    markers: tuple[StrEnum, ...],
+) -> bool:
     """Return whether one marker appears in text.
 
     Args:
         text [str]: Lower-cased text to inspect.
-        markers [tuple[str, ...]]: Marker phrases.
+        markers [tuple[StrEnum, ...]]: Marker phrases.
 
     Returns:
         bool: Whether a marker matched.
     """
-    matched = any(marker in text for marker in markers)
+    matched = any(marker.value in text for marker in markers)
     return matched
 
 
@@ -222,12 +176,18 @@ def _has_company_run_readiness_signals(objective: str) -> bool:
     Returns:
         bool: Whether company-run may proceed without deep-interview.
     """
-    has_non_goal = _contains_marker(text=objective, markers=_NON_GOAL_MARKERS)
+    has_non_goal = _contains_marker(
+        text=objective,
+        markers=COMPANY_RUN_NON_GOAL_MARKERS,
+    )
     has_boundary = _contains_marker(
         text=objective,
-        markers=_DECISION_BOUNDARY_MARKERS,
+        markers=COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
     )
-    has_outcome = _contains_marker(text=objective, markers=_OUTCOME_MARKERS)
+    has_outcome = _contains_marker(
+        text=objective,
+        markers=COMPANY_RUN_OUTCOME_MARKERS,
+    )
     is_ready = has_non_goal and has_boundary and has_outcome
     return is_ready
 

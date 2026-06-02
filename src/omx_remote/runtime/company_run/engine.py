@@ -4,16 +4,13 @@ from pathlib import Path
 from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
     ActualRunPaths,
 )
-from omx_remote.runtime.company_run.company_run_artifacts import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     ensure_company_run_tree,
     write_artifact_index,
     write_company_json,
     write_company_state,
 )
-from omx_remote.runtime.company_run.company_run_phase_sequence import (
-    CompanyRunPhaseSequence,
-)
-from omx_remote.runtime.company_run.company_run_result_persistence import (
+from omx_remote.runtime.company_run.artifacts.result_persistence import (
     actual_company_run_paths,
     alexandria_tool_points,
     blocked_reasons_from_team,
@@ -22,12 +19,15 @@ from omx_remote.runtime.company_run.company_run_result_persistence import (
     write_final_company_run_files,
     write_initial_company_run_files,
 )
-from omx_remote.runtime.company_run.company_run_roster_policy import (
+from omx_remote.runtime.company_run.governance.roster_policy import (
     default_company_run_roster,
     validate_company_run_roster,
     validate_vote_authorship,
 )
-from omx_remote.runtime.company_run.company_run_team_runtime import build_team_task
+from omx_remote.runtime.company_run.phases.phase_sequence import (
+    CompanyRunPhaseSequence,
+)
+from omx_remote.runtime.company_run.team.team_runtime import build_team_task
 from omx_remote.runtime.runs.run_artifact_store import allocate_unique_run_dir
 from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtifacts
 from omx_remote.schemas.company_run_schemas import (

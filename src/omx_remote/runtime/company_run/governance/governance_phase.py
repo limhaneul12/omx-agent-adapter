@@ -1,24 +1,24 @@
 from pathlib import Path
 
-from omx_remote.runtime.company_run.company_run_artifacts import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     artifact_record,
     write_company_json,
     write_company_markdown,
 )
-from omx_remote.runtime.company_run.company_run_phase_log import (
+from omx_remote.runtime.company_run.artifacts.phase_log import (
     append_company_run_phase,
 )
-from omx_remote.runtime.company_run.company_run_phase_texts import (
+from omx_remote.runtime.company_run.artifacts.result_persistence import (
+    artifact_kind_for_planning_file,
+)
+from omx_remote.runtime.company_run.governance.vote_engine import unanimous_vote_record
+from omx_remote.runtime.company_run.phases.phase_texts import (
     execution_brief_markdown,
     kickoff_markdown,
     prd_markdown,
     risks_markdown,
     test_spec_markdown,
 )
-from omx_remote.runtime.company_run.company_run_result_persistence import (
-    artifact_kind_for_planning_file,
-)
-from omx_remote.runtime.company_run.company_run_vote_engine import unanimous_vote_record
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunArtifactRecord,
     CompanyRunExecutionRequest,

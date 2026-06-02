@@ -1,6 +1,6 @@
 import orjson
 
-from omx_remote.runtime.company_run.company_run_council_runtime import (
+from omx_remote.runtime.company_run.governance.council_runtime import (
     final_agent_message_from_codex_stdout,
     recover_output_last_message_from_stdout,
 )

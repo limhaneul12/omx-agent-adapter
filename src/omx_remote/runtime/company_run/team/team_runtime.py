@@ -12,24 +12,26 @@ from omx_remote.runtime.commands.planning.command_runtime_options import (
     team_worker_launch_args,
     team_worker_launch_environment_name,
 )
-from omx_remote.runtime.company_run.company_run_artifacts import write_company_json
-from omx_remote.runtime.company_run.company_run_team_evidence import (
-    latest_team_state_name,
-    team_name_from_output,
-    team_state_evidence_text,
-    wait_for_team_completion_evidence,
-)
-from omx_remote.runtime.company_run.company_run_team_handoff_detection import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import write_company_json
+from omx_remote.runtime.company_run.team.handoff_detection import (
     team_launch_needs_startup_handoff,
     team_launch_needs_workflow_handoff,
     team_launch_needs_workspace_handoff,
 )
-from omx_remote.runtime.company_run.company_run_team_preflight import (
+from omx_remote.runtime.company_run.team.team_evidence import (
+    team_name_from_launch_evidence,
+    team_state_evidence_text,
+    wait_for_team_completion_evidence,
+)
+from omx_remote.runtime.company_run.team.team_preflight import (
     team_split_worktree_preflight,
 )
-from omx_remote.runtime.company_run.company_run_worker_dispatch import (
+from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
+)
+from omx_remote.runtime.omx_team_owner_preflight import (
+    require_omx_team_live_launch_owner_support,
 )
 from omx_remote.runtime.prompt_assets import render_prompt_model_asset
 from omx_remote.schemas.commands.command_execution_schemas import (
@@ -309,6 +311,23 @@ def launch_company_run_team(
             ),
         )
         return record, ()
+    try:
+        require_omx_team_live_launch_owner_support(
+            launch_context="company-run live OMX Team launch",
+        )
+    except ValueError as error:
+        record = CompanyRunTeamLaunchRecord(
+            status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
+            command=command_arguments,
+            runtime_options=runtime_options,
+            worker_launch_args=worker_launch_args,
+            worker_count=worker_count,
+            dispatch_path=str(dispatch_path),
+            launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),
+            launch_stderr_path=str(company_root / "team" / "team-launch.stderr.txt"),
+            note=str(error),
+        )
+        return record, ()
 
     environment_overrides = _team_worker_environment_overrides(
         runtime_options=runtime_options,
@@ -339,9 +358,7 @@ def launch_company_run_team(
         classification=launch_failure,
     )
     combined_output = f"{launch_outcome.stdout}\n{launch_outcome.stderr}"
-    team_name = team_name_from_output(combined_output)
-    if team_name is None:
-        team_name = latest_team_state_name(cwd=cwd)
+    team_name = team_name_from_launch_evidence(cwd=cwd, output=combined_output)
     team_state_evidence = team_state_evidence_text(cwd=cwd, team_name=team_name)
     combined_evidence = f"{combined_output}\n{team_state_evidence}"
     status = CompanyRunTeamLaunchStatus.LAUNCHED
@@ -427,10 +444,18 @@ def launch_company_run_team(
                 )
             else:
                 status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
-                note = (
-                    "OMX Team await returned cleanly, but Team state does not show "
-                    f"completed worker output. {completion_evidence.detail}"
-                )
+                if completion_evidence.terminal:
+                    note = (
+                        "OMX Team await returned cleanly, but Team status is now "
+                        "missing; treat this as cleanup/stale notification evidence "
+                        "rather than actionable worker work. "
+                        f"{completion_evidence.detail}"
+                    )
+                else:
+                    note = (
+                        "OMX Team await returned cleanly, but Team state does not show "
+                        f"completed worker output. {completion_evidence.detail}"
+                    )
         else:
             status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
             note = "OMX Team launch succeeded, but await needs follow-up; see await artifacts."

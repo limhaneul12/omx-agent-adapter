@@ -39,6 +39,14 @@ def _init_clean_git_repo(path: Path) -> None:
     )
 
 
+def _allow_company_run_owner_preflight(monkeypatch, team_module) -> None:
+    monkeypatch.setattr(
+        team_module,
+        "require_omx_team_live_launch_owner_support",
+        lambda *, launch_context: None,
+    )
+
+
 def test_cli_execute_company_run_passes_explicit_company_options(
     monkeypatch,
     tmp_path: Path,
@@ -261,7 +269,7 @@ def test_company_run_team_task_prioritizes_objective_implementation(
     tmp_path: Path,
 ) -> None:
     build_team_task = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "build_team_task",
     )
     company_root = tmp_path / ".comx-agent" / "runs" / "team-task" / "company-run"
@@ -295,7 +303,7 @@ def test_company_run_default_codex_council_blocks_when_subagents_fail(
     tmp_path: Path,
 ) -> None:
     council_module = import_module(
-        "omx_remote.runtime.company_run.company_run_council_runtime"
+        "omx_remote.runtime.company_run.governance.council_runtime"
     )
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
@@ -344,7 +352,7 @@ def test_company_run_artifact_council_mode_does_not_invoke_codex_subprocess(
     tmp_path: Path,
 ) -> None:
     council_module = import_module(
-        "omx_remote.runtime.company_run.company_run_council_runtime"
+        "omx_remote.runtime.company_run.governance.council_runtime"
     )
     request_schema = _attr(
         "omx_remote.schemas.company_run_schemas",
@@ -380,18 +388,19 @@ def test_company_run_live_team_dirty_worktree_requires_agent_action(
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "dirty-team"
@@ -439,14 +448,15 @@ def test_company_run_blocks_live_team_before_split_when_worktree_is_dirty(
     _init_clean_git_repo(tmp_path)
     (tmp_path / "tracked.txt").write_text("dirty\n", encoding="utf-8")
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "dirty-preflight-team"
@@ -480,24 +490,83 @@ def test_company_run_blocks_live_team_before_split_when_worktree_is_dirty(
     assert "tracked.txt" in record.note
 
 
+def test_company_run_blocks_live_team_when_owner_preservation_is_unsupported(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "owner-preflight-team"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("owner-preflight-team", run_dir)  # type: ignore[operator]
+    for path in (
+        paths.stdout_log_path,
+        paths.stderr_log_path,
+    ):
+        path.write_text("", encoding="utf-8")
+
+    def unsupported_owner_preservation(*, launch_context):
+        assert launch_context == "company-run live OMX Team launch"
+        raise ValueError(
+            "company-run live OMX Team launch is blocked: installed OMX does not "
+            "support preserving Team DAG node.owner assignments"
+        )
+
+    def forbidden_team_run(*args, **kwargs):
+        raise AssertionError("owner preflight must block before omx team")
+
+    monkeypatch.setattr(
+        team_module,
+        "require_omx_team_live_launch_owner_support",
+        unsupported_owner_preservation,
+    )
+    monkeypatch.setattr(team_module, "run_subprocess", forbidden_team_run)
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove owner preservation preflight blocks unsafe Team launch",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=30.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert attempts == ()
+    assert record.status == "requires_agent_action"
+    assert "does not support preserving Team DAG node.owner" in record.note
+
+
 def test_company_run_live_team_startup_timeout_requires_agent_action(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "startup-timeout-team"
@@ -544,18 +613,19 @@ def test_company_run_live_team_reads_state_when_launch_output_lacks_team_name(
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "state-backed-team"
@@ -612,24 +682,106 @@ def test_company_run_live_team_reads_state_when_launch_output_lacks_team_name(
     assert "did not become ready" in record.note
 
 
+def test_company_run_live_team_prefers_actual_state_team_name_over_missing_team_output(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "actual-team-name"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("actual-team-name", run_dir)  # type: ignore[operator]
+    for path in (
+        paths.stdout_log_path,
+        paths.stderr_log_path,
+    ):
+        path.write_text("", encoding="utf-8")
+    calls: list[tuple[str, ...]] = []
+
+    def launch_with_missing_team_stdout(argv, cwd, timeout_seconds):
+        calls.append(tuple(argv))
+        team_state = (
+            Path(cwd) / ".omx" / "state" / "team" / "company-run-implement-actual"
+        )
+        tasks = team_state / "tasks"
+        tasks.mkdir(parents=True, exist_ok=True)
+        (tasks / "task-1.json").write_text(
+            '{"id":"1","status":"completed","owner":"worker-1"}',
+            encoding="utf-8",
+        )
+        (tasks / "task-2.json").write_text(
+            '{"id":"2","status":"completed","owner":"worker-2"}',
+            encoding="utf-8",
+        )
+        stdout = (
+            "team name: missing-team"
+            if len(calls) == 1
+            else '{"status":"complete"}'
+        )
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=0,
+            stdout=stdout,
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(team_module, "run_subprocess", launch_with_missing_team_stdout)
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove launch records the concrete Team state name",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=1.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert len(attempts) == 2
+    assert calls[1][3] == "company-run-implement-actual"
+    assert record.team_name == "company-run-implement-actual"
+    assert record.team_name != "missing-team"
+
+
 def test_company_run_live_team_await_success_requires_completed_team_tasks(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "await-pending-team"
@@ -686,24 +838,194 @@ def test_company_run_live_team_await_success_requires_completed_team_tasks(
     assert "1/2 completed" in record.note
 
 
-def test_company_run_live_team_completed_requires_all_tasks_complete(
+def test_company_run_live_team_rejects_completed_tasks_collapsed_to_worker_one(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "owner-collapse-team"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("owner-collapse-team", run_dir)  # type: ignore[operator]
+    for path in (
+        paths.stdout_log_path,
+        paths.stderr_log_path,
+    ):
+        path.write_text("", encoding="utf-8")
+
+    def await_success_with_worker_one_owner_collapse(argv, cwd, timeout_seconds):
+        team_state = (
+            Path(cwd)
+            / ".omx"
+            / "state"
+            / "team"
+            / "company-run-implement-owner-collapse"
+        )
+        tasks = team_state / "tasks"
+        tasks.mkdir(parents=True, exist_ok=True)
+        for task_id in range(1, 5):
+            (tasks / f"task-{task_id}.json").write_text(
+                f'{{"id":"{task_id}","status":"completed","owner":"worker-1"}}',
+                encoding="utf-8",
+            )
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=0,
+            stdout="team name: company-run-implement-owner-collapse",
+            stderr="",
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(
+        team_module,
+        "run_subprocess",
+        await_success_with_worker_one_owner_collapse,
+    )
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove owner collapse cannot satisfy company-run Team completion",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=1.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert len(attempts) == 2
+    assert record.status == "requires_agent_action"
+    assert record.team_name == "company-run-implement-owner-collapse"
+    assert "1 distinct owners" in record.note
+    assert "Owner distribution is invalid" in record.note
+
+
+def test_company_run_live_team_missing_status_is_cleanup_warning_not_worker_followup(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    evidence_schema = _attr(
+        "omx_remote.runtime.company_run.team.team_evidence",
+        "TeamStateCompletionEvidence",
     )
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "stale-status-team"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("stale-status-team", run_dir)  # type: ignore[operator]
+    for path in (
+        paths.stdout_log_path,
+        paths.stderr_log_path,
+    ):
+        path.write_text("", encoding="utf-8")
+
+    def await_success_with_stale_status(argv, cwd, timeout_seconds):
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=0,
+            stdout="team name: company-run-implement-stale-status",
+            stderr="",
+            timed_out=False,
+        )
+
+    def stale_status_evidence(*, cwd, team_name, timeout_seconds):
+        assert team_name == "company-run-implement-stale-status"
+        return evidence_schema(  # type: ignore[operator]
+            complete=False,
+            task_count=0,
+            completed_count=0,
+            blocked_count=0,
+            incomplete_count=0,
+            blocked_worker_count=0,
+            detail=(
+                "omx team status reports Team "
+                "company-run-implement-stale-status is missing."
+            ),
+            terminal=True,
+        )
+
+    monkeypatch.setattr(team_module, "run_subprocess", await_success_with_stale_status)
+    monkeypatch.setattr(
+        team_module,
+        "wait_for_team_completion_evidence",
+        stale_status_evidence,
+    )
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove missing Team status is a cleanup warning",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=1.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert len(attempts) == 2
+    assert record.status == "requires_agent_action"
+    assert record.team_name == "company-run-implement-stale-status"
+    assert "cleanup" in record.note.lower()
+    assert "notification" in record.note.lower()
+    assert "worker output" not in record.note
+    assert "worker follow-up" not in record.note
+
+
+def test_company_run_live_team_completed_requires_all_tasks_complete(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "await-completed-team"
@@ -767,18 +1089,19 @@ def test_company_run_live_team_workflow_overlap_requires_agent_action(
 ) -> None:
     _init_clean_git_repo(tmp_path)
     team_module = import_module(
-        "omx_remote.runtime.company_run.company_run_team_runtime"
+        "omx_remote.runtime.company_run.team.team_runtime"
     )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
     outcome_schema = _attr(
         "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
         "SubprocessAttemptOutcome",
     )
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "workflow-overlap-team"
@@ -964,11 +1287,11 @@ def test_company_run_live_dispatch_matches_requested_worker_count(
     tmp_path: Path,
 ) -> None:
     actual_paths = _attr(
-        "omx_remote.runtime.company_run.company_run_result_persistence",
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
         "actual_company_run_paths",
     )
     launch_team = _attr(
-        "omx_remote.runtime.company_run.company_run_team_runtime",
+        "omx_remote.runtime.company_run.team.team_runtime",
         "launch_company_run_team",
     )
     run_dir = tmp_path / ".comx-agent" / "runs" / "live-dispatch-count"

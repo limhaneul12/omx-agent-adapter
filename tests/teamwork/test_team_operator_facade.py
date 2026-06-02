@@ -8,6 +8,7 @@ from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorTaskApprovalRequest,
     TeamOperatorWorkerRecheckRequest,
 )
+from omx_remote.schemas.teamwork.status_schemas import TeamStatusSnapshot
 from omx_remote.teamwork import team_operator_facade
 
 
@@ -176,6 +177,10 @@ def test_request_task_approval_marks_success_like_result_as_unverified(
 def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(
     monkeypatch,
 ) -> None:
+    async def fake_read_team_status(request):
+        assert request.team_name == "alpha"
+        return TeamStatusSnapshot(team_name="alpha", status="ok")
+
     async def fake_read_worker_status(request):
         assert request.worker == "worker-1"
         return TeamApiWorkerStatusSnapshot(
@@ -194,6 +199,7 @@ def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(
             command_result=OmxCommandResult(exit_code=0, stdout="{}", stderr=""),
         )
 
+    monkeypatch.setattr(team_operator_facade, "read_team_status", fake_read_team_status)
     monkeypatch.setattr(
         team_operator_facade,
         "read_team_api_read_worker_status",
@@ -224,6 +230,10 @@ def test_request_worker_recheck_uses_durable_inbox_for_unknown_worker_state(
 def test_request_worker_recheck_uses_direct_message_for_reporting_worker(
     monkeypatch,
 ) -> None:
+    async def fake_read_team_status(request):
+        assert request.team_name == "alpha"
+        return TeamStatusSnapshot(team_name="alpha", status="ok")
+
     async def fake_read_worker_status(request):
         assert request.worker == "worker-1"
         return TeamApiWorkerStatusSnapshot(
@@ -242,6 +252,7 @@ def test_request_worker_recheck_uses_direct_message_for_reporting_worker(
             command_result=OmxCommandResult(exit_code=0, stdout="{}", stderr=""),
         )
 
+    monkeypatch.setattr(team_operator_facade, "read_team_status", fake_read_team_status)
     monkeypatch.setattr(
         team_operator_facade,
         "read_team_api_read_worker_status",
@@ -267,3 +278,46 @@ def test_request_worker_recheck_uses_direct_message_for_reporting_worker(
     assert result.worker_state == "idle"
     assert result.selected_delivery_mode == "direct_message"
     assert result.dispatch_result.selected_operation == "send-message"
+
+
+def test_request_worker_recheck_ignores_stale_idle_worker_when_team_is_missing(
+    monkeypatch,
+) -> None:
+    async def fake_read_team_status(request):
+        assert request.team_name == "alpha"
+        return TeamStatusSnapshot(team_name="alpha", status="missing")
+
+    async def forbidden_read_worker_status(request):
+        raise AssertionError(f"missing Team must not inspect worker state: {request}")
+
+    async def forbidden_dispatch_team_instruction(request):
+        raise AssertionError(f"missing Team must not dispatch follow-up: {request}")
+
+    monkeypatch.setattr(team_operator_facade, "read_team_status", fake_read_team_status)
+    monkeypatch.setattr(
+        team_operator_facade,
+        "read_team_api_read_worker_status",
+        forbidden_read_worker_status,
+    )
+    monkeypatch.setattr(
+        team_operator_facade,
+        "dispatch_team_instruction",
+        forbidden_dispatch_team_instruction,
+    )
+
+    result = asyncio.run(
+        team_operator_facade.request_worker_recheck(
+            TeamOperatorWorkerRecheckRequest(
+                team_name="alpha",
+                from_worker="leader-fixed",
+                worker="worker-1",
+                body="Please re-run checks.",
+            )
+        )
+    )
+
+    assert result.worker_state == "team_missing"
+    assert result.selected_delivery_mode == "cleanup_stale"
+    assert result.dispatch_result.selected_operation == "no-op"
+    assert result.dispatch_result.needs_follow_up is False
+    assert "cleanup/stale notification" in result.dispatch_result.reason

@@ -3,33 +3,33 @@ from pathlib import Path
 from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
     ActualRunPaths,
 )
-from omx_remote.runtime.company_run.company_run_artifacts import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     artifact_record,
     write_company_json,
     write_company_markdown,
 )
-from omx_remote.runtime.company_run.company_run_council_runtime import (
+from omx_remote.runtime.company_run.artifacts.phase_log import (
+    append_company_run_phase,
+)
+from omx_remote.runtime.company_run.discovery.discovery_phase import (
+    write_company_run_discovery_artifacts,
+)
+from omx_remote.runtime.company_run.governance.council_runtime import (
     CouncilLaneRequest,
     CouncilRunResult,
     run_council_subagents,
 )
-from omx_remote.runtime.company_run.company_run_discovery_phase import (
-    write_company_run_discovery_artifacts,
-)
-from omx_remote.runtime.company_run.company_run_governance_phase import (
+from omx_remote.runtime.company_run.governance.governance_phase import (
     write_company_run_executive_gate,
     write_company_run_implementation_kickoff,
     write_company_run_planning_artifacts,
     write_company_run_proceed_vote,
     write_company_run_research_vote,
 )
-from omx_remote.runtime.company_run.company_run_phase_log import (
-    append_company_run_phase,
-)
-from omx_remote.runtime.company_run.company_run_phase_texts import (
+from omx_remote.runtime.company_run.phases.phase_texts import (
     memory_recall_markdown,
 )
-from omx_remote.runtime.company_run.company_run_team_phase import (
+from omx_remote.runtime.company_run.team.team_phase import (
     run_team_gate_for_company_run,
     write_post_team_gates_for_company_run,
 )

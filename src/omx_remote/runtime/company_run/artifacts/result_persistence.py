@@ -6,10 +6,10 @@ from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
 from omx_remote.runtime.commands.artifacts.redacted_command_artifact_writer import (
     write_redacted_json_artifact,
 )
-from omx_remote.runtime.company_run.artifact_index import (
+from omx_remote.runtime.company_run.artifacts.artifact_index import (
     build_company_run_artifact_index,
 )
-from omx_remote.runtime.company_run.company_run_artifacts import artifact_record
+from omx_remote.runtime.company_run.artifacts.artifact_writers import artifact_record
 from omx_remote.schemas.company_run_schemas import (
     CompanyRunArtifactRecord,
     CompanyRunArtifactSummaryPayload,

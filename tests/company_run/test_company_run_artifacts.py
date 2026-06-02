@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from omx_remote.runtime.company_run.artifact_index import (
+from omx_remote.runtime.company_run.artifacts.artifact_index import (
     REQUIRED_COMPANY_RUN_ARTIFACTS,
     build_company_run_artifact_index,
 )
-from omx_remote.runtime.company_run.company_run_worker_dispatch import (
+from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
 )

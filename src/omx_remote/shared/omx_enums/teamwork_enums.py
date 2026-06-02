@@ -88,6 +88,7 @@ STARTUP_ISSUE_EVENT_TYPE_VALUES: frozenset[str] = frozenset(
 class TeamOperatorDispatchOperation(StrEnum):
     """Low-level Team operation selected by the operator facade."""
 
+    NOOP = "no-op"
     SEND_MESSAGE = "send-message"
     WRITE_WORKER_INBOX = "write-worker-inbox"
     BROADCAST = "broadcast"
@@ -106,5 +107,6 @@ class TeamOperatorDispatchOutcomeState(StrEnum):
 class TeamOperatorDeliveryMode(StrEnum):
     """Worker follow-up delivery modes selected by the Team operator facade."""
 
+    CLEANUP_STALE = "cleanup_stale"
     DIRECT_MESSAGE = "direct_message"
     DURABLE_INBOX = "durable_inbox"

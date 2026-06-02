@@ -9,25 +9,25 @@ from omx_remote.runtime.commands.artifacts.actual_run_record_writer import (
 from omx_remote.runtime.commands.planning.command_runtime_options import (
     team_worker_launch_args,
 )
-from omx_remote.runtime.company_run.company_run_artifacts import (
+from omx_remote.runtime.company_run.artifacts.artifact_writers import (
     artifact_record,
     write_company_json,
     write_company_markdown,
 )
-from omx_remote.runtime.company_run.company_run_phase_log import (
+from omx_remote.runtime.company_run.artifacts.phase_log import (
     append_company_run_phase,
 )
-from omx_remote.runtime.company_run.company_run_team_runtime import (
+from omx_remote.runtime.company_run.governance.phase_gates import (
+    validate_phase_gate_order,
+    validate_team_bootstrap_readiness,
+)
+from omx_remote.runtime.company_run.team.team_runtime import (
     build_team_task,
     launch_company_run_team,
 )
-from omx_remote.runtime.company_run.company_run_worker_dispatch import (
+from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
-)
-from omx_remote.runtime.company_run.phase_gates import (
-    validate_phase_gate_order,
-    validate_team_bootstrap_readiness,
 )
 from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.schemas.company_run_schemas import (

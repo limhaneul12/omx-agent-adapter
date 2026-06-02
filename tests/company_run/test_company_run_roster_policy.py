@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from omx_remote.runtime.company_run.company_run_roster_policy import (
+from omx_remote.runtime.company_run.governance.roster_policy import (
     validate_company_run_roster,
     validate_vote_authorship,
 )

@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from omx_remote.runtime.company_run.company_run_result_persistence import (
+from omx_remote.runtime.company_run.artifacts.result_persistence import (
     actual_company_run_paths,
 )
-from omx_remote.runtime.company_run.company_run_team_phase import (
+from omx_remote.runtime.company_run.team.team_phase import (
     run_team_gate_for_company_run,
     write_post_team_gates_for_company_run,
 )
-from omx_remote.runtime.company_run.phase_gates import (
+from omx_remote.runtime.company_run.governance.phase_gates import (
     validate_phase_gate_order,
     validate_team_bootstrap_readiness,
 )

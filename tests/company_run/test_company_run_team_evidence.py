@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import orjson
+from pathlib import Path
 
-from omx_remote.runtime.company_run import company_run_team_evidence
+from omx_remote.runtime.company_run.team import team_evidence as company_run_team_evidence
 from omx_remote.schemas.invoke_command_schemas import OmxCommandResult
 
 
@@ -143,6 +144,72 @@ def test_team_completion_evidence_rejects_single_worker_owner_distribution(
     assert "Owner distribution is invalid" in evidence.detail
 
 
+def test_team_completion_evidence_requires_expected_worker_owner_coverage(
+    monkeypatch,
+) -> None:
+    status_payload = {
+        "team_name": "company-run-test",
+        "status": "ok",
+        "phase": "complete",
+        "tasks": {
+            "total": 4,
+            "pending": 0,
+            "blocked": 0,
+            "in_progress": 0,
+            "completed": 4,
+            "failed": 0,
+        },
+        "workers": {
+            "total": 4,
+            "dead": 0,
+            "non_reporting": 0,
+        },
+    }
+    task_list_payload = {
+        "ok": True,
+        "data": {
+            "count": 4,
+            "tasks": (
+                {"id": "1", "status": "completed", "owner": "worker-1"},
+                {"id": "2", "status": "completed", "owner": "worker-1"},
+                {"id": "3", "status": "completed", "owner": "worker-2"},
+                {"id": "4", "status": "completed", "owner": "worker-2"},
+            ),
+        },
+    }
+
+    def fake_run_omx_command(*, arguments, cwd):
+        assert cwd
+        if arguments == ("team", "status", "company-run-test", "--json"):
+            payload = status_payload
+        else:
+            assert arguments[:4] == ("team", "api", "list-tasks", "--input")
+            assert arguments[5:] == ("--json",)
+            assert orjson.loads(arguments[4]) == {"team_name": "company-run-test"}
+            payload = task_list_payload
+        return OmxCommandResult(
+            exit_code=0,
+            stdout=orjson.dumps(payload).decode(),
+            stderr="",
+        )
+
+    monkeypatch.setattr(
+        company_run_team_evidence,
+        "run_omx_command",
+        fake_run_omx_command,
+    )
+
+    evidence = company_run_team_evidence.team_state_completion_evidence(
+        cwd=company_run_team_evidence.Path.cwd(),
+        team_name="company-run-test",
+    )
+
+    assert evidence.complete is False
+    assert "2 distinct owners" in evidence.detail
+    assert "4 required distinct owners" in evidence.detail
+    assert "Owner distribution is invalid" in evidence.detail
+
+
 def test_team_completion_evidence_treats_missing_team_as_terminal(monkeypatch) -> None:
     payload = {
         "team_name": "company-run-test",
@@ -173,3 +240,23 @@ def test_team_completion_evidence_treats_missing_team_as_terminal(monkeypatch) -
     assert evidence.complete is False
     assert evidence.terminal is True
     assert "missing" in evidence.detail
+
+
+def test_team_name_from_launch_evidence_ignores_missing_team_without_real_state(
+    tmp_path: Path,
+) -> None:
+    team_name = company_run_team_evidence.team_name_from_launch_evidence(
+        cwd=tmp_path,
+        output="team name: missing-team",
+    )
+
+    assert team_name is None
+
+
+def test_latest_team_state_name_ignores_missing_team_directory(tmp_path: Path) -> None:
+    missing_team_dir = tmp_path / ".omx" / "state" / "team" / "missing-team"
+    missing_team_dir.mkdir(parents=True)
+
+    team_name = company_run_team_evidence.latest_team_state_name(cwd=tmp_path)
+
+    assert team_name is None

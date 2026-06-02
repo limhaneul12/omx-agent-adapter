@@ -19,12 +19,18 @@ from omx_remote.shared.utils.json_file_store import read_required_json_object
 from omx_remote.shared.utils.json_model_dump import model_json_object
 
 _TEAM_NAME_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"active team exists\s*\(\s*([A-Za-z0-9_.-]+)\s*\)",
+        re.IGNORECASE,
+    ),
+    re.compile(r'"team_name"\s*:\s*"([A-Za-z0-9_.-]+)"', re.IGNORECASE),
     re.compile(r"team(?: name)?[:=]\s*([A-Za-z0-9_.-]+)", re.IGNORECASE),
     re.compile(r"omx team status\s+([A-Za-z0-9_.-]+)", re.IGNORECASE),
     re.compile(
         r"team\s+([A-Za-z0-9_.-]+)\s+(?:created|started|launched)", re.IGNORECASE
     ),
 )
+_MISSING_TEAM_NAME_SENTINELS: frozenset[str] = frozenset({"missing-team"})
 
 
 @dataclass(frozen=True)
@@ -49,6 +55,7 @@ class TeamTaskOwnerDistributionEvidence:
     task_count: int
     owner_count: int
     distinct_owner_count: int
+    required_distinct_owner_count: int
     missing_owner_count: int
     detail: str
 
@@ -71,6 +78,28 @@ def team_name_from_output(output: str) -> str | None:
     return missing_name
 
 
+def team_name_from_launch_evidence(cwd: Path, output: str) -> str | None:
+    """Resolve the actionable Team name from launch output plus local state.
+
+    Args:
+        cwd [Path]: Repository root that native OMX Team operated on.
+        output [str]: Combined launch stdout/stderr evidence.
+
+    Returns:
+        str | None: Concrete Team name when available.
+    """
+    output_team_name = team_name_from_output(output)
+    state_team_name = latest_team_state_name(cwd=cwd)
+    if _usable_team_name(output_team_name):
+        resolved_name = output_team_name
+        return resolved_name
+    if state_team_name is not None:
+        resolved_name = state_team_name
+        return resolved_name
+    missing_name: None = None
+    return missing_name
+
+
 def latest_team_state_name(cwd: Path) -> str | None:
     """Return the newest native OMX Team state directory name.
 
@@ -84,13 +113,30 @@ def latest_team_state_name(cwd: Path) -> str | None:
     if not team_state_root.is_dir():
         missing_name: None = None
         return missing_name
-    team_dirs = tuple(path for path in team_state_root.iterdir() if path.is_dir())
+    team_dirs = tuple(
+        path
+        for path in team_state_root.iterdir()
+        if path.is_dir() and _usable_team_name(path.name)
+    )
     if not team_dirs:
         missing_name = None
         return missing_name
     latest_team_dir = max(team_dirs, key=lambda path: path.stat().st_mtime)
     team_name = latest_team_dir.name
     return team_name
+
+
+def _usable_team_name(team_name: str | None) -> bool:
+    """Return whether a candidate Team name is an actionable native Team id.
+
+    Args:
+        team_name [str | None]: Candidate Team name.
+
+    Returns:
+        bool: True for concrete names, false for known missing placeholders.
+    """
+    usable = team_name is not None and team_name not in _MISSING_TEAM_NAME_SENTINELS
+    return usable
 
 
 def team_state_evidence_text(cwd: Path, team_name: str | None) -> str:
@@ -215,6 +261,7 @@ def team_state_completion_evidence(
     )
     owner_distribution = _task_payload_owner_distribution_evidence(
         task_payloads=task_payloads,
+        expected_worker_count=len(worker_state_paths) or None,
     )
     if owner_distribution is not None and not owner_distribution.valid:
         complete = False
@@ -316,6 +363,7 @@ def _team_status_command_completion_evidence(
     owner_distribution = _team_api_task_owner_distribution_evidence(
         cwd=cwd,
         team_name=team_name,
+        expected_worker_count=None if worker_counts is None else worker_counts.total,
     )
     blocked_count = task_counts.blocked + task_counts.failed
     incomplete_count = max(
@@ -360,12 +408,14 @@ def _team_status_command_completion_evidence(
 def _team_api_task_owner_distribution_evidence(
     cwd: Path,
     team_name: str,
+    expected_worker_count: int | None,
 ) -> TeamTaskOwnerDistributionEvidence | None:
     """Read task-owner distribution through `omx team api list-tasks`.
 
     Args:
         cwd [Path]: Repository root where the Team command should run.
         team_name [str]: Native OMX Team name.
+        expected_worker_count [int | None]: Expected native worker count.
 
     Returns:
         TeamTaskOwnerDistributionEvidence | None: Owner distribution proof when
@@ -398,17 +448,20 @@ def _team_api_task_owner_distribution_evidence(
     task_payloads = tuple(model_json_object(task) for task in response.data.tasks)
     evidence = _task_payload_owner_distribution_evidence(
         task_payloads=task_payloads,
+        expected_worker_count=expected_worker_count,
     )
     return evidence
 
 
 def _task_payload_owner_distribution_evidence(
     task_payloads: tuple[JsonObject, ...],
+    expected_worker_count: int | None,
 ) -> TeamTaskOwnerDistributionEvidence | None:
     """Build task-owner distribution proof from native task payloads.
 
     Args:
         task_payloads [tuple[JsonObject, ...]]: Native Team task payloads.
+        expected_worker_count [int | None]: Expected native worker count.
 
     Returns:
         TeamTaskOwnerDistributionEvidence | None: Owner distribution proof when
@@ -426,7 +479,10 @@ def _task_payload_owner_distribution_evidence(
     )
     missing_owner_count = len(task_payloads) - len(owners)
     distinct_owner_count = len(frozenset(owners))
-    required_distinct_owners = min(2, len(task_payloads))
+    required_distinct_owners = _required_distinct_owner_count(
+        task_count=len(task_payloads),
+        expected_worker_count=expected_worker_count,
+    )
     valid = (
         missing_owner_count == 0
         and distinct_owner_count >= required_distinct_owners
@@ -435,6 +491,7 @@ def _task_payload_owner_distribution_evidence(
         "Team owner distribution evidence: "
         f"{len(owners)}/{len(task_payloads)} tasks have owners, "
         f"{distinct_owner_count} distinct owners, "
+        f"{required_distinct_owners} required distinct owners, "
         f"{missing_owner_count} missing owners."
     )
     if not valid:
@@ -444,7 +501,30 @@ def _task_payload_owner_distribution_evidence(
         task_count=len(task_payloads),
         owner_count=len(owners),
         distinct_owner_count=distinct_owner_count,
+        required_distinct_owner_count=required_distinct_owners,
         missing_owner_count=missing_owner_count,
         detail=detail,
     )
     return evidence
+
+
+def _required_distinct_owner_count(
+    task_count: int,
+    expected_worker_count: int | None,
+) -> int:
+    """Return required owner diversity for company-run Team completion.
+
+    Args:
+        task_count [int]: Native task count.
+        expected_worker_count [int | None]: Expected native worker count.
+
+    Returns:
+        int: Minimum distinct owners required.
+    """
+    if task_count <= 1:
+        return task_count
+    if expected_worker_count is None or expected_worker_count <= 0:
+        required_count = min(2, task_count)
+        return required_count
+    required_count = min(expected_worker_count, task_count)
+    return required_count

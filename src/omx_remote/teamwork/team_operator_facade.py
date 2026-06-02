@@ -15,6 +15,7 @@ from omx_remote.schemas.teamwork.operator_schemas import (
     TeamOperatorWorkerFollowUpOutcome,
     TeamOperatorWorkerRecheckRequest,
 )
+from omx_remote.schemas.teamwork.status_schemas import TeamStatusRequest
 from omx_remote.shared.omx_enums.teamwork_enums import (
     TeamOperatorDeliveryMode,
     TeamOperatorDispatchOperation,
@@ -28,6 +29,7 @@ from omx_remote.teamwork.team_api_control import (
     write_team_worker_inbox,
 )
 from omx_remote.teamwork.team_api_snapshot import read_team_api_read_worker_status
+from omx_remote.teamwork.team_snapshot import read_team_status
 
 
 def _build_dispatch_outcome(
@@ -221,6 +223,30 @@ async def request_worker_recheck(
     Returns:
         TeamOperatorWorkerFollowUpOutcome: Facade outcome that exposes worker state, selected delivery mode, and nested dispatch result.
     """
+    team_status = await read_team_status(
+        TeamStatusRequest(team_name=request.team_name),
+    )
+    if team_status.status == "missing":
+        result = TeamOperatorWorkerFollowUpOutcome(
+            worker_state="team_missing",
+            selected_delivery_mode=TeamOperatorDeliveryMode.CLEANUP_STALE,
+            dispatch_result=TeamOperatorDispatchOutcome(
+                selected_operation=TeamOperatorDispatchOperation.NOOP,
+                outcome=TeamOperatorDispatchOutcomeState.ACCEPTED,
+                needs_follow_up=False,
+                reason=(
+                    "Team status is missing, so this is treated as cleanup/stale "
+                    "notification evidence instead of actionable worker follow-up."
+                ),
+                command_result=OmxCommandResult(
+                    exit_code=0,
+                    stdout=team_status.model_dump_json(),
+                    stderr="",
+                ),
+            ),
+        )
+        return result
+
     worker_status = await read_team_api_read_worker_status(
         TeamApiReadWorkerStatusRequest(
             team_name=request.team_name,
