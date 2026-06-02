@@ -12,6 +12,45 @@ from omx_remote.schemas.mcp_client_schemas import McpServerListResult
 from omx_remote.schemas.next_action_schemas import NextActionResult
 
 
+def _command_palette_preview() -> tuple[str, ...]:
+    """Return the compact slash-command palette shown in the cockpit frame.
+
+    Returns:
+        tuple[str, ...]: Human-facing command groups for the frame.
+    """
+    palette: tuple[str, ...] = (
+        "Core: /status /next /surface /commands",
+        "Run: /run builtin:<recipe> --task \"<task>\" /route <task>",
+        "Ops: /mcp /team /ultragoal /goal /research <objective>",
+    )
+    return palette
+
+
+def _operation_hints(next_action: NextActionResult | None) -> tuple[str, ...]:
+    """Return Codex/Claude-style operating hints for the current frame.
+
+    Args:
+        next_action [NextActionResult | None]: Optional next-action evidence.
+
+    Returns:
+        tuple[str, ...]: Short action hints.
+    """
+    review_hint = "review gate: clear"
+    if next_action is not None and next_action.requires_review:
+        review_hint = "review gate: required"
+
+    mutation_hint = "mutations: dry-run first"
+    if next_action is not None and not next_action.safe_to_mutate:
+        mutation_hint = "mutations: blocked by cockpit evidence"
+
+    hints: tuple[str, ...] = (
+        "free text is captured as the working prompt",
+        mutation_hint,
+        review_hint,
+    )
+    return hints
+
+
 def _permission_label() -> str:
     """Infer a concise permission label from environment hints.
 
@@ -93,6 +132,8 @@ def build_tui_snapshot(
             "Use /mcp to inspect MCP servers and /mcp tools <server> for tools.",
             "Use /research <objective> to create a staged evidence plan.",
         ),
+        command_palette=_command_palette_preview(),
+        operation_hints=_operation_hints(next_action),
         warnings=warnings,
         slash_command_count=len(list_tui_slash_commands()),
         mcp_server_count=mcp_server_count,
@@ -131,6 +172,12 @@ def render_tui_frame(snapshot: ComxTuiSnapshot) -> str:
         "▣ Experimental runtime enabled: MCP client · UltraGoal orchestration · mixed Codex/OMX execution surfaces",
         "",
         f"> {snapshot.prompt}",
+        "",
+        "Command palette:",
+        *(f"  {item}" for item in snapshot.command_palette),
+        "",
+        "Operator hints:",
+        *(f"  · {item}" for item in snapshot.operation_hints),
         "",
         (
             f"{snapshot.status_line.model_label} · "

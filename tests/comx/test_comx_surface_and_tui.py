@@ -74,6 +74,10 @@ def test_tui_renderer_includes_screenshot_style_labels(tmp_path) -> None:
     assert "COMX Agent" in frame
     assert "workspace:" in frame
     assert "> Run /review" in frame
+    assert "Command palette:" in frame
+    assert "/run builtin:<recipe> --task" in frame
+    assert "Operator hints:" in frame
+    assert "free text is captured as the working prompt" in frame
     assert "MCP client" in frame
 
 
@@ -465,8 +469,50 @@ def test_tui_snapshot_includes_command_and_mcp_counts(monkeypatch, tmp_path) -> 
     assert snapshot.slash_command_count >= 10
     assert snapshot.mcp_server_count == 0
     assert snapshot.composed_command_count >= 1
+    assert snapshot.command_palette
+    assert snapshot.operation_hints
     assert "commands" in frame
     assert "/status" in snapshot.tips[0]
+
+
+def test_tui_snapshot_surfaces_blocked_review_required_operator_hints(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    from omx_remote.schemas.mcp_client_schemas import McpServerListResult
+
+    monkeypatch.setattr(
+        "omx_remote.runtime.comx.tui_renderer.read_mcp_servers",
+        lambda cwd: McpServerListResult(
+            servers=(),
+            codex_count=0,
+            repo_count=0,
+            enabled_count=0,
+        ),
+    )
+    next_action = NextActionResult(
+        recommended_action="hold",
+        safe_to_mutate=False,
+        requires_review=True,
+        summary="Team evidence is incomplete.",
+        why=("release evidence missing",),
+        source_names=("team",),
+        blocked_actions=("release",),
+    )
+
+    snapshot = build_tui_snapshot(
+        cwd=tmp_path,
+        next_action=next_action,
+        prompt="Ship it?",
+    )
+    frame = render_tui_frame(snapshot)
+
+    assert snapshot.status_line.runtime_label == "hold"
+    assert snapshot.status_line.goal_label == "blocked"
+    assert "mutations: blocked by cockpit evidence" in snapshot.operation_hints
+    assert "review gate: required" in snapshot.operation_hints
+    assert "warning: release" in frame
+    assert "hold · blocked" in frame
 
 
 def test_tui_router_lists_mcp_servers_with_redacted_targets(
@@ -745,3 +791,59 @@ def test_research_command_does_not_overwrite_same_objective(tmp_path) -> None:
     assert first.artifact_path != second.artifact_path
     assert Path(first.artifact_path).exists()
     assert Path(second.artifact_path).exists()
+
+
+def test_tui_status_surfaces_runtime_artifact_team_memory_evidence(
+    tmp_path: Path,
+) -> None:
+    from omx_remote.runtime.comx.tui_command_router import route_tui_slash_command
+
+    run_root = tmp_path / ".comx-agent" / "runs" / "20260602T051054Z-company-run"
+    company_run = run_root / "company-run"
+    (company_run / "planning").mkdir(parents=True)
+    (company_run / "team").mkdir(parents=True)
+    (company_run / "planning" / "prd.md").write_text("# PRD\n", encoding="utf-8")
+    (company_run / "planning" / "test-spec.md").write_text(
+        "# Test spec\n", encoding="utf-8"
+    )
+    (company_run / "planning" / "execution-brief.md").write_text(
+        "# Execution brief\n", encoding="utf-8"
+    )
+    (company_run / "memory-recall.md").write_text(
+        "memory available\n", encoding="utf-8"
+    )
+    (company_run / "team" / "worker-dispatches.json").write_text(
+        orjson.dumps(
+            {
+                "workers": [
+                    {
+                        "worker": f"worker-{index}",
+                        "objective": "Improve TUI UX.",
+                        "ownership_boundary": f"worker-{index} lane",
+                        "allowed_subagents": ["executor"],
+                        "subagent_rule": "Stay inside assigned boundary.",
+                    }
+                    for index in range(1, 5)
+                ],
+                "blocked_reasons": [],
+            }
+        ).decode(),
+        encoding="utf-8",
+    )
+
+    result = route_tui_slash_command("/status", cwd=tmp_path)
+
+    assert result.command == "/status"
+    assert "runtime_evidence:" in result.body
+    assert "latest_run: 20260602T051054Z-company-run" in result.body
+    assert (
+        "memory_recall: .comx-agent/runs/20260602T051054Z-company-run/company-run/memory-recall.md"
+        in result.body
+    )
+    assert (
+        "team_dispatch: .comx-agent/runs/20260602T051054Z-company-run/company-run/team/worker-dispatches.json"
+        in result.body
+    )
+    assert "team_workers: 4" in result.body
+    assert "command_recipes:" in result.body
+    assert "artifact_refs:" in result.body

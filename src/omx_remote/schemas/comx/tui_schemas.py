@@ -24,10 +24,25 @@ class ComxTuiSnapshot(StrictSchemaModel):
     status_line: ComxTuiStatusLine
     prompt: NonEmptyString
     tips: tuple[NonEmptyString, ...]
+    command_palette: tuple[NonEmptyString, ...]
+    operation_hints: tuple[NonEmptyString, ...]
     warnings: tuple[NonEmptyString, ...] = ()
     slash_command_count: int = 0
     mcp_server_count: int = 0
     composed_command_count: int = 0
+
+
+class ComxTuiRuntimeEvidenceSummary(StrictSchemaModel):
+    """Represents runtime evidence surfaced by TUI status panels."""
+
+    latest_run_id: NonEmptyString | None
+    artifact_count: int
+    artifact_references: tuple[NonEmptyString, ...]
+    memory_recall_path: NonEmptyString | None
+    team_dispatch_path: NonEmptyString | None
+    team_worker_count: int
+    command_recipe_count: int
+    warnings: tuple[NonEmptyString, ...]
 
 
 class ComxTuiSlashCommand(StrictSchemaModel):

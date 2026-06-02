@@ -14,6 +14,10 @@ from omx_remote.runtime.comx.tui_command_workbench import (
     build_tui_recipe_preview_result,
 )
 from omx_remote.runtime.comx.tui_mcp_panels import build_tui_mcp_result
+from omx_remote.runtime.comx.tui_runtime_evidence import (
+    build_tui_runtime_evidence_summary,
+    format_tui_runtime_evidence_summary,
+)
 from omx_remote.runtime.mcp.mcp_registry_reader import read_mcp_servers
 from omx_remote.schemas.comx.control_surface_schemas import ComxControlSurfaceInventory
 from omx_remote.schemas.comx.research_workflow_schemas import ComxResearchWorkflowPlan
@@ -46,16 +50,20 @@ def _status_result(
     if next_action is not None:
         next_summary = next_action.summary
 
-    body: str = "\n".join(
-        (
-            f"workspace: {cwd.resolve()}",
-            f"native_commands: {inventory.native_count}",
-            f"composed_commands: {inventory.composed_count}",
-            f"mcp_servers: {len(registry.servers)} enabled={registry.enabled_count}",
-            f"next_action: {next_summary}",
-            "safe defaults: read-only panels and dry-run command previews",
-        )
+    runtime_evidence = build_tui_runtime_evidence_summary(
+        cwd=cwd,
+        command_recipe_count=inventory.composed_count,
     )
+    body_lines: tuple[str, ...] = (
+        f"workspace: {cwd.resolve()}",
+        f"native_commands: {inventory.native_count}",
+        f"composed_commands: {inventory.composed_count}",
+        f"mcp_servers: {len(registry.servers)} enabled={registry.enabled_count}",
+        f"next_action: {next_summary}",
+        "safe defaults: read-only panels and dry-run command previews",
+        *format_tui_runtime_evidence_summary(runtime_evidence),
+    )
+    body: str = "\n".join(body_lines)
     result = ComxTuiCommandResult(
         command="/status",
         title="comx-agent status",
