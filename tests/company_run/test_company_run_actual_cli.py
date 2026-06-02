@@ -269,16 +269,22 @@ def test_company_run_team_task_prioritizes_objective_implementation(
     task_text = build_team_task(  # type: ignore[operator]
         objective="improve the TUI command cockpit",
         company_root=company_root,
+        worker_count=4,
     )
 
     backlog_index = task_text.index("## Team execution backlog")
     guardrail_index = task_text.index("## Guardrails, not standalone tasks")
     artifacts_index = task_text.index("## Artifacts to read before editing")
     assert backlog_index < guardrail_index < artifacts_index
-    assert "Treat this section as the task backlog" in task_text
-    assert "Do not create standalone Team tasks from" in task_text
-    assert "Worker 1 owns the user-facing implementation slice" in task_text
-    assert "objective names a UI, TUI, CLI, command cockpit" in task_text
+    assert "Treat only the bullet lines in this section" in task_text
+    assert "Requested native Team worker count: 4" in task_text
+    assert "Do not create standalone Team tasks from" not in task_text
+    assert "\n1. Worker 1 owns" not in task_text
+    assert "- [worker-1] alpha-surface-ui:" in task_text
+    assert "- [worker-2] beta-runtime-data:" in task_text
+    assert "- [worker-3] gamma-qa-security:" in task_text
+    assert "- [worker-4] delta-integration-release:" in task_text
+    assert "Preserve one task per owner" in task_text
     assert "These paths are reference inputs and readiness gates, not task IDs" in (
         task_text
     )

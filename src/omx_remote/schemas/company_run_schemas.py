@@ -1,4 +1,4 @@
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
     CommandRuntimeOptions,
@@ -291,11 +291,67 @@ class CompanyRunNativeTeamWorkerCounts(StrictSchemaModel):
 class CompanyRunNativeTeamStatusSnapshot(StrictSchemaModel):
     """Typed subset of `omx team status --json` used for completion evidence."""
 
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        use_enum_values=True,
+        validate_default=True,
+    )
+
     team_name: NonEmptyString
     status: NonEmptyString
     phase: NonEmptyString | None = None
     tasks: CompanyRunNativeTeamTaskCounts | None = None
     workers: CompanyRunNativeTeamWorkerCounts | None = None
+
+
+class CompanyRunNativeTeamListTasksRequest(StrictSchemaModel):
+    """Input payload for `omx team api list-tasks` owner-distribution evidence."""
+
+    team_name: NonEmptyString
+
+
+class CompanyRunNativeTeamTaskState(StrictSchemaModel):
+    """Typed subset of one native OMX Team task record."""
+
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        use_enum_values=True,
+        validate_default=True,
+    )
+
+    id: NonEmptyString
+    status: NonEmptyString
+    owner: NonEmptyString | None = None
+
+
+class CompanyRunNativeTeamTaskListData(StrictSchemaModel):
+    """Typed subset of `omx team api list-tasks` data."""
+
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        use_enum_values=True,
+        validate_default=True,
+    )
+
+    count: int = Field(ge=0)
+    tasks: tuple[CompanyRunNativeTeamTaskState, ...]
+
+
+class CompanyRunNativeTeamTaskListResponse(StrictSchemaModel):
+    """Typed subset of `omx team api list-tasks --json` response."""
+
+    model_config = ConfigDict(
+        extra="ignore",
+        frozen=True,
+        use_enum_values=True,
+        validate_default=True,
+    )
+
+    ok: bool
+    data: CompanyRunNativeTeamTaskListData
 
 
 class CompanyRunState(StrictSchemaModel):
@@ -373,6 +429,8 @@ class CompanyRunTeamPromptContext(StrictSchemaModel):
     """Template context for the company-run Team task prompt asset."""
 
     objective: NonEmptyString
+    worker_count: NonEmptyString
+    owner_matrix: NonEmptyString
     company_root: NonEmptyString
     prd_path: NonEmptyString
     test_spec_path: NonEmptyString

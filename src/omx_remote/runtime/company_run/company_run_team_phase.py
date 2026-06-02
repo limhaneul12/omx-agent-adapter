@@ -105,6 +105,7 @@ def run_team_gate_for_company_run(
     team_task = build_team_task(
         objective=request.objective,
         company_root=company_root,
+        worker_count=request.worker_count,
         runtime_options=request.runtime_options,
     )
     team_request = CompanyRunTeamRequest(

@@ -8,22 +8,13 @@ Runtime options requested by the CEO/orchestrator: {{runtime_options}}
 
 ## Team execution backlog
 
-Treat this section as the task backlog. Do not create standalone Team tasks from
-the guardrails or artifact paths below.
+Requested native Team worker count: {{worker_count}}
 
-1. Worker 1 owns the user-facing implementation slice for the objective. If the
-   objective names a UI, TUI, CLI, command cockpit, documentation surface, or
-   other user-visible target, inspect the relevant source, implement the smallest
-   high-impact improvement, and add focused tests.
-2. Worker 2 owns the runtime/data slice for the objective. Wire typed status,
-   artifact, Team, memory, or command evidence needed by the user-facing slice.
-   If no runtime change is needed, produce concrete evidence and help Worker 1.
-3. Worker 3 owns QA/security/architecture review for the implemented objective.
-   Add or update tests and block release honestly when implementation evidence is
-   missing.
-4. Worker 4 owns integration and conflict resolution. Merge worker outputs,
-   rerun validation, write integration/release evidence, and keep release blocked
-   unless the objective was actually implemented and verified.
+Treat only the bullet lines in this section as native OMX Team task records.
+Each bullet starts with the requested owner marker. Preserve one task per owner;
+do not collapse these bullets into a single worker lane.
+
+{{owner_matrix}}
 
 ## Guardrails, not standalone tasks
 

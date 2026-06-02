@@ -5,13 +5,18 @@ from pathlib import Path
 
 from omx_remote.adapter_types.json_types import JsonObject
 from omx_remote.execution.invoke import run_omx_command
-from omx_remote.schemas.company_run_schemas import CompanyRunNativeTeamStatusSnapshot
+from omx_remote.schemas.company_run_schemas import (
+    CompanyRunNativeTeamListTasksRequest,
+    CompanyRunNativeTeamStatusSnapshot,
+    CompanyRunNativeTeamTaskListResponse,
+)
 from omx_remote.shared.omx_enums.teamwork_enums import (
     BLOCKED_TASK_STATE_VALUES,
     BLOCKED_WORKER_STATE_VALUES,
     COMPLETED_TASK_STATE_VALUES,
 )
 from omx_remote.shared.utils.json_file_store import read_required_json_object
+from omx_remote.shared.utils.json_model_dump import model_json_object
 
 _TEAM_NAME_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"team(?: name)?[:=]\s*([A-Za-z0-9_.-]+)", re.IGNORECASE),
@@ -34,6 +39,18 @@ class TeamStateCompletionEvidence:
     blocked_worker_count: int
     detail: str
     terminal: bool = False
+
+
+@dataclass(frozen=True)
+class TeamTaskOwnerDistributionEvidence:
+    """Task-owner distribution proof from native OMX Team task records."""
+
+    valid: bool
+    task_count: int
+    owner_count: int
+    distinct_owner_count: int
+    missing_owner_count: int
+    detail: str
 
 
 def team_name_from_output(output: str) -> str | None:
@@ -165,11 +182,10 @@ def team_state_completion_evidence(
             detail="Team state has no task records",
         )
 
+    task_payloads = tuple(read_required_json_object(task_path) for task_path in task_paths)
     task_states = tuple(
-        (_string_value(read_required_json_object(task_path), "status") or "unknown")
-        .strip()
-        .lower()
-        for task_path in task_paths
+        (_string_value(task_payload, "status") or "unknown").strip().lower()
+        for task_payload in task_payloads
     )
     completed_count = sum(
         1 for task_state in task_states if task_state in COMPLETED_TASK_STATE_VALUES
@@ -197,11 +213,18 @@ def team_state_completion_evidence(
         and blocked_count == 0
         and blocked_worker_count == 0
     )
+    owner_distribution = _task_payload_owner_distribution_evidence(
+        task_payloads=task_payloads,
+    )
+    if owner_distribution is not None and not owner_distribution.valid:
+        complete = False
     detail = (
         f"Team task completion evidence: {completed_count}/{len(task_states)} "
         f"completed, {blocked_count} blocked, {incomplete_count} incomplete, "
         f"{blocked_worker_count} blocked workers."
     )
+    if owner_distribution is not None:
+        detail = f"{detail} {owner_distribution.detail}"
     return TeamStateCompletionEvidence(
         complete=complete,
         task_count=len(task_states),
@@ -271,6 +294,10 @@ def _team_status_command_completion_evidence(
         missing_evidence = None
         return missing_evidence
     if status_snapshot.status == "missing":
+        team_state_dir = cwd / ".omx" / "state" / "team" / team_name
+        if team_state_dir.is_dir():
+            missing_evidence: None = None
+            return missing_evidence
         return TeamStateCompletionEvidence(
             complete=False,
             task_count=0,
@@ -286,6 +313,10 @@ def _team_status_command_completion_evidence(
         return missing_evidence
     task_counts = status_snapshot.tasks
     worker_counts = status_snapshot.workers
+    owner_distribution = _team_api_task_owner_distribution_evidence(
+        cwd=cwd,
+        team_name=team_name,
+    )
     blocked_count = task_counts.blocked + task_counts.failed
     incomplete_count = max(
         0,
@@ -303,6 +334,8 @@ def _team_status_command_completion_evidence(
         and incomplete_count == 0
         and blocked_worker_count == 0
     )
+    if owner_distribution is not None and not owner_distribution.valid:
+        complete = False
     detail = (
         "Team status command evidence: "
         f"phase={status_snapshot.phase}, status={status_snapshot.status}, "
@@ -311,6 +344,8 @@ def _team_status_command_completion_evidence(
         f"{task_counts.pending} pending, {task_counts.in_progress} in progress, "
         f"{blocked_worker_count} blocked/non-reporting workers."
     )
+    if owner_distribution is not None:
+        detail = f"{detail} {owner_distribution.detail}"
     return TeamStateCompletionEvidence(
         complete=complete,
         task_count=task_counts.total,
@@ -320,3 +355,96 @@ def _team_status_command_completion_evidence(
         blocked_worker_count=blocked_worker_count,
         detail=detail,
     )
+
+
+def _team_api_task_owner_distribution_evidence(
+    cwd: Path,
+    team_name: str,
+) -> TeamTaskOwnerDistributionEvidence | None:
+    """Read task-owner distribution through `omx team api list-tasks`.
+
+    Args:
+        cwd [Path]: Repository root where the Team command should run.
+        team_name [str]: Native OMX Team name.
+
+    Returns:
+        TeamTaskOwnerDistributionEvidence | None: Owner distribution proof when
+        the native API response is available and parseable.
+    """
+    request = CompanyRunNativeTeamListTasksRequest(team_name=team_name)
+    command_result = run_omx_command(
+        arguments=(
+            "team",
+            "api",
+            "list-tasks",
+            "--input",
+            request.model_dump_json(),
+            "--json",
+        ),
+        cwd=str(cwd),
+    )
+    stdout = command_result.stdout.strip()
+    if command_result.exit_code != 0 or not stdout:
+        missing_evidence: None = None
+        return missing_evidence
+    try:
+        response = CompanyRunNativeTeamTaskListResponse.model_validate_json(stdout)
+    except ValueError:
+        missing_evidence = None
+        return missing_evidence
+    if not response.ok:
+        missing_evidence = None
+        return missing_evidence
+    task_payloads = tuple(model_json_object(task) for task in response.data.tasks)
+    evidence = _task_payload_owner_distribution_evidence(
+        task_payloads=task_payloads,
+    )
+    return evidence
+
+
+def _task_payload_owner_distribution_evidence(
+    task_payloads: tuple[JsonObject, ...],
+) -> TeamTaskOwnerDistributionEvidence | None:
+    """Build task-owner distribution proof from native task payloads.
+
+    Args:
+        task_payloads [tuple[JsonObject, ...]]: Native Team task payloads.
+
+    Returns:
+        TeamTaskOwnerDistributionEvidence | None: Owner distribution proof when
+        task payloads are present.
+    """
+    if not task_payloads:
+        missing_evidence: None = None
+        return missing_evidence
+    owners = tuple(
+        owner
+        for owner in (
+            _string_value(task_payload, "owner") for task_payload in task_payloads
+        )
+        if owner is not None
+    )
+    missing_owner_count = len(task_payloads) - len(owners)
+    distinct_owner_count = len(frozenset(owners))
+    required_distinct_owners = min(2, len(task_payloads))
+    valid = (
+        missing_owner_count == 0
+        and distinct_owner_count >= required_distinct_owners
+    )
+    detail = (
+        "Team owner distribution evidence: "
+        f"{len(owners)}/{len(task_payloads)} tasks have owners, "
+        f"{distinct_owner_count} distinct owners, "
+        f"{missing_owner_count} missing owners."
+    )
+    if not valid:
+        detail = f"{detail} Owner distribution is invalid for company-run Team work."
+    evidence = TeamTaskOwnerDistributionEvidence(
+        valid=valid,
+        task_count=len(task_payloads),
+        owner_count=len(owners),
+        distinct_owner_count=distinct_owner_count,
+        missing_owner_count=missing_owner_count,
+        detail=detail,
+    )
+    return evidence
