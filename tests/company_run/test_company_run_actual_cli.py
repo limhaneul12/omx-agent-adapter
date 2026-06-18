@@ -141,6 +141,150 @@ def test_cli_execute_company_run_passes_explicit_company_options(
     assert '"dry_run": false' in result.output
 
 
+def test_cli_execute_company_run_launch_mode_allows_live_team_without_extra_flag(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    engine_module = import_module("omx_remote.runtime.company_run.engine")
+    result_schema = _attr(
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
+        "CompanyRunResult",
+    )
+    calls: list[dict[str, object]] = []
+
+    def fake_execute_company_run(request):
+        request_payload = model_json_object(request)
+        calls.append(request_payload)
+        run_dir = tmp_path / ".comx-agent" / "runs" / "fake-company-run-live"
+        company_root = run_dir / "company-run"
+        company_root.mkdir(parents=True)
+        result_path = run_dir / "result.json"
+        payload = {
+            "run_id": "fake-company-run-live",
+            "command_id": "company-run",
+            "qualified_id": "builtin:company-run",
+            "cwd": str(tmp_path.resolve()),
+            "dry_run": False,
+            "status": "succeeded",
+            "run_dir": str(run_dir),
+            "result_path": str(result_path),
+            "company_run_root": str(company_root),
+            "blocked_reasons": [],
+            "team_launch_attempted": True,
+            "team_task": None,
+            "artifacts": [str(company_root / "state.json")],
+            "runtime_options": request_payload["runtime_options"],
+            "metadata": {
+                "state_path": str(company_root / "state.json"),
+                "artifact_index_path": str(company_root / "artifact-index.json"),
+            },
+        }
+        result = result_schema.model_validate(payload)  # type: ignore[attr-defined]
+        result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(engine_module, "execute_company_run", fake_execute_company_run)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "builtin:company-run",
+            "--cwd",
+            str(tmp_path),
+            "--execute",
+            "--autonomy",
+            "agent",
+            "--task",
+            "ship the company-run engine",
+            "--council-mode",
+            "artifact",
+            "--team-launch",
+            "launch",
+            "--worker-count",
+            "4",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls[0]["team_launch_mode"] == "launch"
+    assert calls[0]["live_team_allowed"] is True
+
+
+def test_cli_execute_company_run_handoff_mode_keeps_live_team_blocked(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    engine_module = import_module("omx_remote.runtime.company_run.engine")
+    result_schema = _attr(
+        "omx_remote.schemas.company_run.company_run_runtime_schemas",
+        "CompanyRunResult",
+    )
+    calls: list[dict[str, object]] = []
+
+    def fake_execute_company_run(request):
+        request_payload = model_json_object(request)
+        calls.append(request_payload)
+        run_dir = tmp_path / ".comx-agent" / "runs" / "fake-company-run-handoff"
+        company_root = run_dir / "company-run"
+        company_root.mkdir(parents=True)
+        result_path = run_dir / "result.json"
+        payload = {
+            "run_id": "fake-company-run-handoff",
+            "command_id": "company-run",
+            "qualified_id": "builtin:company-run",
+            "cwd": str(tmp_path.resolve()),
+            "dry_run": False,
+            "status": "succeeded",
+            "run_dir": str(run_dir),
+            "result_path": str(result_path),
+            "company_run_root": str(company_root),
+            "blocked_reasons": [],
+            "team_launch_attempted": False,
+            "team_task": None,
+            "artifacts": [str(company_root / "state.json")],
+            "runtime_options": request_payload["runtime_options"],
+            "metadata": {
+                "state_path": str(company_root / "state.json"),
+                "artifact_index_path": str(company_root / "artifact-index.json"),
+            },
+        }
+        result = result_schema.model_validate(payload)  # type: ignore[attr-defined]
+        result_path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(engine_module, "execute_company_run", fake_execute_company_run)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "builtin:company-run",
+            "--cwd",
+            str(tmp_path),
+            "--execute",
+            "--autonomy",
+            "agent",
+            "--task",
+            "ship the company-run engine",
+            "--council-mode",
+            "artifact",
+            "--team-launch",
+            "handoff",
+            "--worker-count",
+            "4",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert calls[0]["team_launch_mode"] == "handoff"
+    assert calls[0]["live_team_allowed"] is False
+
+
 def test_company_run_engine_uses_injected_team_launcher_and_never_shells_real_team(
     monkeypatch,
     tmp_path: Path,
@@ -530,6 +674,11 @@ def test_company_run_blocks_live_team_when_owner_preservation_is_unsupported(
         "require_omx_team_live_launch_owner_support",
         unsupported_owner_preservation,
     )
+    monkeypatch.setattr(
+        team_module,
+        "omx_dist_supports_owner_aware_team_api",
+        lambda: False,
+    )
     monkeypatch.setattr(team_module, "run_subprocess", forbidden_team_run)
 
     record, attempts = launch_team(  # type: ignore[operator]
@@ -546,6 +695,277 @@ def test_company_run_blocks_live_team_when_owner_preservation_is_unsupported(
     assert attempts == ()
     assert record.status == "requires_agent_action"
     assert "does not support preserving Team DAG node.owner" in record.note
+
+
+def test_company_run_live_team_injects_owner_tasks_when_dag_owner_is_unsupported(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    injection_module = import_module(
+        "omx_remote.runtime.company_run.team.team_owner_task_injection"
+    )
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    evidence_schema = _attr(
+        "omx_remote.runtime.company_run.team.team_evidence",
+        "TeamStateCompletionEvidence",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "owner-api-team"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("owner-api-team", run_dir)  # type: ignore[operator]
+    for path in (paths.stdout_log_path, paths.stderr_log_path):
+        path.write_text("", encoding="utf-8")
+    observed_payloads: list[dict[str, object]] = []
+
+    def unsupported_owner_preservation(*, launch_context):
+        assert launch_context == "company-run live OMX Team launch"
+        raise ValueError("DAG owner preservation unsupported")
+
+    def owner_api_supported():
+        return True
+
+    def owner_api_team_run(argv, cwd, timeout_seconds):
+        if argv[:2] == ("omx", "team") and argv[2] == "4:executor":
+            assert "owner-preserving bootstrap" in argv[3]
+            return outcome_schema(  # type: ignore[operator]
+                argv=argv,
+                started_at="2026-06-01T00:00:00Z",
+                finished_at="2026-06-01T00:00:01Z",
+                duration_seconds=1.0,
+                exit_code=0,
+                stdout="team name: company-run-owner-api",
+                stderr="",
+                timed_out=False,
+            )
+        if argv[:3] == ("omx", "team", "await"):
+            return outcome_schema(  # type: ignore[operator]
+                argv=argv,
+                started_at="2026-06-01T00:00:03Z",
+                finished_at="2026-06-01T00:00:04Z",
+                duration_seconds=1.0,
+                exit_code=0,
+                stdout='{"status":"await-complete"}',
+                stderr="",
+                timed_out=False,
+            )
+        payload = json.loads(argv[5])
+        observed_payloads.append(payload)
+        if argv[3] == "create-task":
+            owner = payload["owner"]
+            return outcome_schema(  # type: ignore[operator]
+                argv=argv,
+                started_at="2026-06-01T00:00:01Z",
+                finished_at="2026-06-01T00:00:02Z",
+                duration_seconds=1.0,
+                exit_code=0,
+                stdout=json.dumps(
+                    {
+                        "ok": True,
+                        "data": {
+                            "task": {
+                                "id": f"task-{owner}",
+                                "owner": owner,
+                            }
+                        },
+                    }
+                ),
+                stderr="",
+                timed_out=False,
+            )
+        if argv[3] == "list-tasks":
+            tasks = [
+                {
+                    "id": f"task-worker-{index}",
+                    "status": "pending",
+                    "owner": f"worker-{index}",
+                }
+                for index in range(1, 5)
+            ]
+            return outcome_schema(  # type: ignore[operator]
+                argv=argv,
+                started_at="2026-06-01T00:00:02Z",
+                finished_at="2026-06-01T00:00:03Z",
+                duration_seconds=1.0,
+                exit_code=0,
+                stdout=json.dumps(
+                    {"ok": True, "data": {"count": len(tasks), "tasks": tasks}}
+                ),
+                stderr="",
+                timed_out=False,
+            )
+        raise AssertionError(f"unexpected command: {argv}")
+
+    def pending_completion_evidence(*, cwd, team_name, timeout_seconds):
+        assert team_name == "company-run-owner-api"
+        return evidence_schema(  # type: ignore[operator]
+            complete=False,
+            task_count=4,
+            completed_count=0,
+            blocked_count=0,
+            incomplete_count=4,
+            blocked_worker_count=0,
+            detail="0/4 completed; owner-aware tasks are live.",
+            terminal=False,
+        )
+
+    monkeypatch.setattr(
+        team_module,
+        "require_omx_team_live_launch_owner_support",
+        unsupported_owner_preservation,
+    )
+    monkeypatch.setattr(
+        team_module,
+        "omx_dist_supports_owner_aware_team_api",
+        owner_api_supported,
+    )
+    monkeypatch.setattr(team_module, "run_subprocess", owner_api_team_run)
+    monkeypatch.setattr(injection_module, "run_subprocess", owner_api_team_run)
+    monkeypatch.setattr(
+        team_module,
+        "wait_for_team_completion_evidence",
+        pending_completion_evidence,
+    )
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove owner-aware API injection keeps company-run worker lanes",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=1.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    create_payloads = [
+        payload for payload in observed_payloads if "owner" in payload
+    ]
+    assert len(attempts) == 7
+    assert record.team_name == "company-run-owner-api"
+    assert record.owner_task_injection_verified is True
+    assert record.owner_task_injection_path is not None
+    assert Path(record.owner_task_injection_path).is_file()
+    assert [payload["owner"] for payload in create_payloads] == [
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "worker-4",
+    ]
+    assert "Recommended reasoning effort: medium" in create_payloads[0]["description"]
+    assert "Recommended reasoning effort: xhigh" in create_payloads[2]["description"]
+    assert record.status == "requires_agent_action"
+    assert "owner-aware tasks are live" in record.note
+
+
+def test_owner_task_injection_verification_rejects_collapsed_owner_state() -> None:
+    dispatch_schema = _attr(
+        "omx_remote.schemas.company_run.company_run_governance_schemas",
+        "CompanyRunWorkerDispatchPayload",
+    )
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    injected_task_schema = _attr(
+        "omx_remote.runtime.company_run.team.team_owner_task_injection",
+        "CompanyRunInjectedOwnerTask",
+    )
+    verify_owner_distribution = _attr(
+        "omx_remote.runtime.company_run.team.team_owner_task_injection",
+        "_verify_owner_distribution",
+    )
+    dispatch_payload = dispatch_schema.model_validate(  # type: ignore[attr-defined]
+        {
+            "workers": [
+                {
+                    "worker": "worker-1",
+                    "objective": "surface lane",
+                    "ownership_boundary": "frontend",
+                    "reasoning_effort": "medium",
+                    "reasoning_rationale": "surface edits",
+                    "allowed_subagents": ["designer"],
+                    "subagent_rule": "stay in lane",
+                },
+                {
+                    "worker": "worker-2",
+                    "objective": "runtime lane",
+                    "ownership_boundary": "backend",
+                    "reasoning_effort": "high",
+                    "reasoning_rationale": "runtime contract",
+                    "allowed_subagents": ["test-engineer"],
+                    "subagent_rule": "stay in lane",
+                },
+            ],
+            "blocked_reasons": [],
+        }
+    )
+    injected_tasks = (
+        injected_task_schema(  # type: ignore[operator]
+            worker="worker-1",
+            task_id="task-worker-1",
+            owner="worker-1",
+            subject="company-run worker-1",
+        ),
+        injected_task_schema(  # type: ignore[operator]
+            worker="worker-2",
+            task_id="task-worker-2",
+            owner="worker-1",
+            subject="company-run worker-2",
+        ),
+    )
+    list_outcome = outcome_schema(  # type: ignore[operator]
+        argv=("omx", "team", "api", "list-tasks"),
+        started_at="2026-06-01T00:00:02Z",
+        finished_at="2026-06-01T00:00:03Z",
+        duration_seconds=1.0,
+        exit_code=0,
+        stdout=json.dumps(
+            {
+                "ok": True,
+                "data": {
+                    "count": 2,
+                    "tasks": [
+                        {
+                            "id": "task-worker-1",
+                            "status": "pending",
+                            "owner": "worker-1",
+                        },
+                        {
+                            "id": "task-worker-2",
+                            "status": "pending",
+                            "owner": "worker-1",
+                        },
+                    ],
+                },
+            }
+        ),
+        stderr="",
+        timed_out=False,
+    )
+
+    verified, detail = verify_owner_distribution(  # type: ignore[operator]
+        dispatch_payload=dispatch_payload,
+        injected_tasks=injected_tasks,
+        list_outcome=list_outcome,
+    )
+
+    assert verified is False
+    assert "create-task returned unexpected owners" in detail
+    assert "worker-2:task-worker-2->worker-1" in detail
 
 
 def test_company_run_live_team_startup_timeout_requires_agent_action(
@@ -1083,6 +1503,93 @@ def test_company_run_live_team_completed_requires_all_tasks_complete(
     assert "all tasks completed" in record.note
 
 
+def test_company_run_live_team_await_failure_reconciles_completed_team_state(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    evidence_schema = _attr(
+        "omx_remote.runtime.company_run.team.team_evidence",
+        "TeamStateCompletionEvidence",
+    )
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "await-failed-complete-team"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("await-failed-complete-team", run_dir)  # type: ignore[operator]
+    for path in (paths.stdout_log_path, paths.stderr_log_path):
+        path.write_text("", encoding="utf-8")
+
+    def await_failure_after_completed_team(argv, cwd, timeout_seconds):
+        exit_code = 1 if argv[:3] == ("omx", "team", "await") else 0
+        stderr = "await timed out after workers had already completed" if exit_code else ""
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=exit_code,
+            stdout="team name: company-run-implement-await-failed-complete",
+            stderr=stderr,
+            timed_out=False,
+        )
+
+    def completed_status_evidence(*, cwd, team_name, timeout_seconds):
+        assert team_name == "company-run-implement-await-failed-complete"
+        return evidence_schema(  # type: ignore[operator]
+            complete=True,
+            task_count=4,
+            completed_count=4,
+            blocked_count=0,
+            incomplete_count=0,
+            blocked_worker_count=0,
+            detail=(
+                "Team status command evidence: phase=complete, status=ok, "
+                "4/4 completed, 0 blocked, 0 failed, 0 pending, 0 in progress, "
+                "0 blocked/non-reporting workers."
+            ),
+        )
+
+    monkeypatch.setattr(team_module, "run_subprocess", await_failure_after_completed_team)
+    monkeypatch.setattr(
+        team_module,
+        "wait_for_team_completion_evidence",
+        completed_status_evidence,
+    )
+
+    record, attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove completed Team state reconciles a noisy await failure",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=1.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert len(attempts) == 2
+    assert record.status == "completed"
+    assert record.team_name == "company-run-implement-await-failed-complete"
+    assert record.await_exit_code == 1
+    assert "await did not exit cleanly" in record.note
+    assert "Team state shows all tasks completed" in record.note
+
+
 def test_company_run_live_team_workflow_overlap_requires_agent_action(
     monkeypatch,
     tmp_path: Path,
@@ -1139,6 +1646,145 @@ def test_company_run_live_team_workflow_overlap_requires_agent_action(
     )
 
     assert record.status == "requires_agent_action"
+    assert "active OMX workflow state" in record.note
+
+
+def test_company_run_live_team_archives_completed_ultragoal_before_launch(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    completed_ultragoal = tmp_path / ".omx" / "ultragoal"
+    completed_ultragoal.mkdir(parents=True)
+    (completed_ultragoal / "goals.json").write_text(
+        json.dumps({"goals": [{"id": "G001", "status": "complete"}]}),
+        encoding="utf-8",
+    )
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "archive-completed-ultragoal"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("archive-completed-ultragoal", run_dir)  # type: ignore[operator]
+    for path in (paths.stdout_log_path, paths.stderr_log_path):
+        path.write_text("", encoding="utf-8")
+
+    def launch_after_isolation(argv, cwd, timeout_seconds):
+        assert not completed_ultragoal.exists()
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=1,
+            stdout="[omx:team] worker startup resolution: model=gpt-5.5",
+            stderr=(
+                "Cannot start team: ultragoal is already active. "
+                "Unsupported workflow overlap: ultragoal + team."
+            ),
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(team_module, "run_subprocess", launch_after_isolation)
+
+    record, _attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove completed ultragoal state is isolated before Team launch",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=30.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert record.workflow_state_isolation_path is not None
+    assert Path(record.workflow_state_isolation_path).is_file()
+    assert record.workflow_state_isolation_detail is not None
+    assert "Archived completed .omx/ultragoal" in record.workflow_state_isolation_detail
+    assert not completed_ultragoal.exists()
+    assert tuple((tmp_path / ".omx" / "ultragoal-archive").iterdir())
+
+
+def test_company_run_live_team_keeps_incomplete_ultragoal_blocker_unmodified(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _init_clean_git_repo(tmp_path)
+    incomplete_ultragoal = tmp_path / ".omx" / "ultragoal"
+    incomplete_ultragoal.mkdir(parents=True)
+    (incomplete_ultragoal / "goals.json").write_text(
+        json.dumps({"goals": [{"id": "G001", "status": "in_progress"}]}),
+        encoding="utf-8",
+    )
+    team_module = import_module(
+        "omx_remote.runtime.company_run.team.team_runtime"
+    )
+    _allow_company_run_owner_preflight(monkeypatch, team_module)
+    outcome_schema = _attr(
+        "omx_remote.runtime.commands.execution.subprocess_attempt_runner",
+        "SubprocessAttemptOutcome",
+    )
+    actual_paths = _attr(
+        "omx_remote.runtime.company_run.artifacts.result_persistence",
+        "actual_company_run_paths",
+    )
+    launch_team = _attr(
+        "omx_remote.runtime.company_run.team.team_runtime",
+        "launch_company_run_team",
+    )
+    run_dir = tmp_path / ".comx-agent" / "runs" / "active-ultragoal"
+    run_dir.mkdir(parents=True)
+    paths = actual_paths("active-ultragoal", run_dir)  # type: ignore[operator]
+    for path in (paths.stdout_log_path, paths.stderr_log_path):
+        path.write_text("", encoding="utf-8")
+
+    def launch_with_active_workflow(argv, cwd, timeout_seconds):
+        assert incomplete_ultragoal.exists()
+        return outcome_schema(  # type: ignore[operator]
+            argv=argv,
+            started_at="2026-06-01T00:00:00Z",
+            finished_at="2026-06-01T00:00:01Z",
+            duration_seconds=1.0,
+            exit_code=1,
+            stdout="[omx:team] worker startup resolution: model=gpt-5.5",
+            stderr=(
+                "Cannot start team: ultragoal is already active. "
+                "Unsupported workflow overlap: ultragoal + team."
+            ),
+            timed_out=False,
+        )
+
+    monkeypatch.setattr(team_module, "run_subprocess", launch_with_active_workflow)
+
+    record, _attempts = launch_team(  # type: ignore[operator]
+        paths=paths,
+        cwd=tmp_path,
+        objective="prove active ultragoal state is not moved",
+        company_root=run_dir / "company-run",
+        worker_count=4,
+        timeout_seconds=30.0,
+        step_index=2,
+        launch_mode=CompanyRunTeamLaunchMode.LAUNCH,
+    )
+
+    assert incomplete_ultragoal.exists()
+    assert record.workflow_state_isolation_path is None
+    assert record.workflow_state_isolation_detail is not None
+    assert "not fully complete" in record.workflow_state_isolation_detail
     assert "active OMX workflow state" in record.note
 
 
@@ -1237,6 +1883,12 @@ def test_company_run_planned_dispatch_matches_requested_worker_count(
     assert len(workers) == 8
     assert workers[-1]["worker"] == "worker-8"
     assert "extension slice 2" in workers[-1]["ownership_boundary"]
+    assert [worker["reasoning_effort"] for worker in workers[:4]] == [
+        "medium",
+        "high",
+        "xhigh",
+        "xhigh",
+    ]
 
 
 def test_company_run_injected_launcher_sees_worker_dispatches_before_launch(
@@ -1262,6 +1914,8 @@ def test_company_run_injected_launcher_sees_worker_dispatches_before_launch(
         dispatch_counts_at_launch.append(len(workers))
         assert workers[-1]["worker"] == "worker-8"
         assert "extension slice 2" in workers[-1]["ownership_boundary"]
+        assert workers[0]["reasoning_effort"] == "medium"
+        assert workers[2]["reasoning_effort"] == "xhigh"
 
     request = request_schema.model_validate(  # type: ignore[attr-defined]
         {

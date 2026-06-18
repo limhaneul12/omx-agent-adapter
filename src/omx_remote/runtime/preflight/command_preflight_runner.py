@@ -15,6 +15,7 @@ from omx_remote.schemas.commands.command_recipe_schemas import (
     CommandPlanStep,
     CommandRecipe,
     CommandRisk,
+    CommandSource,
 )
 from omx_remote.schemas.preflight_schemas import (
     PreflightCategory,
@@ -135,19 +136,27 @@ def _tool_checks(
 
 
 def _prompt_checks(
-    plan_steps: tuple[CommandPlanStep, ...], cwd: str | Path
+    plan_steps: tuple[CommandPlanStep, ...],
+    cwd: str | Path,
+    allow_outside_cwd: bool = False,
 ) -> tuple[PreflightCheckResult, ...]:
     """Build prompt-file checks from planned steps.
 
     Args:
         plan_steps [tuple[CommandPlanStep, ...]]: Plan steps to inspect.
         cwd [str | Path]: Working directory.
+        allow_outside_cwd [bool]: Whether adapter-owned builtin prompt files may
+            live outside the target working directory.
 
     Returns:
         tuple[PreflightCheckResult, ...]: Prompt-file checks.
     """
     checks: list[PreflightCheckResult] = [
-        check_prompt_file(cwd, step.prompt_file)
+        check_prompt_file(
+            cwd,
+            step.prompt_file,
+            allow_outside_cwd=allow_outside_cwd,
+        )
         for step in plan_steps
         if step.prompt_file is not None
     ]
@@ -173,12 +182,19 @@ def run_command_preflight(
     catalog = load_command_catalog(cwd=cwd, config_path=config_path)
     recipe: CommandRecipe = resolve_command_recipe(catalog, command_id)
     plan: CommandExecutionPlan = build_command_execution_plan(
-        recipe, cwd=cwd, dry_run=True
+        recipe,
+        cwd=cwd,
+        config_path=config_path,
+        dry_run=True,
     )
     checks: tuple[PreflightCheckResult, ...] = (
         check_git_state(cwd, recipe.risk),
         *_tool_checks(plan.steps),
-        *_prompt_checks(plan.steps, cwd),
+        *_prompt_checks(
+            plan.steps,
+            cwd,
+            allow_outside_cwd=recipe.source == CommandSource.BUILTIN,
+        ),
         *_plan_blocker_checks(plan),
     )
     report: PreflightReport = _build_report(

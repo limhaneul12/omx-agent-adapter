@@ -1,7 +1,13 @@
 """Request-derived discovery-payload fields."""
 
+from enum import StrEnum
+
 from omx_remote.schemas.company_run.company_run_runtime_schemas import (
     CompanyRunExecutionRequest,
+)
+from omx_remote.shared.omx_enums.company_run_discovery_enums import (
+    COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
+    COMPANY_RUN_NON_GOAL_MARKERS,
 )
 from omx_remote.shared.omx_enums.discovery_gate_enums import (
     DiscoveryGateDelegationLevel,
@@ -46,8 +52,10 @@ def _non_goals_for_request(
     Returns:
         tuple[str, ...]: Non-goals captured for decision context.
     """
-    objective = request.objective.casefold()
-    if "do not" in objective or "without" in objective or "non-goal" in objective:
+    if _contains_marker_value(
+        text=request.objective.casefold(),
+        markers=COMPANY_RUN_NON_GOAL_MARKERS,
+    ):
         non_goals = (f"Preserve stated non-goals from objective: {request.objective}",)
         return non_goals
     if verdict in {
@@ -74,8 +82,10 @@ def _decision_boundaries_for_request(
     Returns:
         tuple[str, ...]: Boundary statements for the discovery packet.
     """
-    objective = request.objective.casefold()
-    if any(marker in objective for marker in ("boundary", "boundaries", "within", "preserve")):
+    if _contains_marker_value(
+        text=request.objective.casefold(),
+        markers=COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
+    ):
         boundaries = (
             f"Preserve explicit decision boundaries from objective: {request.objective}",
         )
@@ -130,3 +140,17 @@ def _delegation_level_for_request(
         return level
     level = DiscoveryGateDelegationLevel.UNSPECIFIED
     return level
+
+
+def _contains_marker_value(text: str, markers: tuple[StrEnum, ...]) -> bool:
+    """Return whether one enum-like marker value appears in text.
+
+    Args:
+        text [str]: Case-folded objective text.
+        markers [tuple[StrEnum, ...]]: Marker enum values with string values.
+
+    Returns:
+        bool: Whether any marker value matched.
+    """
+    matched = any(marker.value in text for marker in markers)
+    return matched

@@ -112,6 +112,8 @@ class CompanyRunTeamLaunchBlockerSignal(StrEnum):
     STARTUP_PROMPT_TIMEOUT = "startup_prompt_timeout"
     WORKER_STARTUP_TIMEOUT = "worker_startup_timeout"
     STARTUP_TIMEOUT = "startup_timeout"
+    LEADER_SESSION_CONFLICT = "leader_session_conflict"
+    ACTIVE_TEAM_EXISTS = "active team exists"
     CANNOT_START_TEAM = "cannot start team"
     WORKFLOW_OVERLAP = "unsupported workflow overlap"
 

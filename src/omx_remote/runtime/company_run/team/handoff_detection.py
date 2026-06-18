@@ -59,6 +59,8 @@ def team_launch_needs_workflow_handoff(output: str) -> bool:
     requires_handoff = any(
         signal.value in normalized_output
         for signal in (
+            CompanyRunTeamLaunchBlockerSignal.LEADER_SESSION_CONFLICT,
+            CompanyRunTeamLaunchBlockerSignal.ACTIVE_TEAM_EXISTS,
             CompanyRunTeamLaunchBlockerSignal.CANNOT_START_TEAM,
             CompanyRunTeamLaunchBlockerSignal.WORKFLOW_OVERLAP,
         )

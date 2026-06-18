@@ -8,6 +8,7 @@ from omx_remote.runtime.company_run.artifacts.artifact_index import (
     REQUIRED_COMPANY_RUN_ARTIFACTS,
     build_company_run_artifact_index,
 )
+from omx_remote.runtime.company_run.team.team_task_prompt import build_team_task
 from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
@@ -135,6 +136,47 @@ def test_worker_dispatches_use_separate_ownership_lanes() -> None:
     assert boundaries[0].startswith("worker-1 ownership lane:")
     assert boundaries[1].startswith("worker-2 ownership lane:")
     assert "extension slice 2" in boundaries[-1]
+
+
+def test_worker_dispatches_assign_reasoning_effort_by_lane() -> None:
+    dispatch_payload = build_worker_dispatch_payload(
+        objective="ship scoped company-run work",
+        worker_count=8,
+        allowed_subagents=("executor", "test-engineer"),
+        subagent_rule=WORKER_BOUNDARY_SUBAGENT_RULE,
+    )
+
+    efforts = tuple(worker.reasoning_effort for worker in dispatch_payload.workers)
+    assert efforts == (
+        "medium",
+        "high",
+        "xhigh",
+        "xhigh",
+        "high",
+        "xhigh",
+        "high",
+        "high",
+    )
+    assert "user-facing" in dispatch_payload.workers[0].ownership_boundary
+    assert "bounded user-facing" in dispatch_payload.workers[0].reasoning_rationale
+    assert "release-readiness" in dispatch_payload.workers[3].reasoning_rationale
+    assert "extension lanes" in dispatch_payload.workers[-1].reasoning_rationale
+
+
+def test_team_task_owner_matrix_includes_reasoning_effort(tmp_path: Path) -> None:
+    company_root = tmp_path / "company-run"
+
+    task = build_team_task(
+        objective="ship scoped company-run work",
+        company_root=company_root,
+        worker_count=4,
+    )
+
+    assert "[worker-1] alpha-surface-ui" in task
+    assert "Recommended reasoning effort: medium" in task
+    assert "[worker-3] gamma-qa-security" in task
+    assert "Recommended reasoning effort: xhigh" in task
+    assert "Read `" in task
 
 
 def test_worker_dispatches_scope_codex_subagents_to_worker_boundary() -> None:

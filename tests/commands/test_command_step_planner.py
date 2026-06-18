@@ -282,6 +282,29 @@ def test_company_run_phase_order_and_macro_terms_are_visible(tmp_path: Path) -> 
     assert plan.steps[-1].native_argv == ("omx", "team", "--help")
 
 
+def test_builtin_company_run_uses_adapter_agents_when_target_has_no_config(
+    tmp_path: Path,
+) -> None:
+    catalog = load_command_catalog(cwd=tmp_path)
+    recipe = catalog.find("builtin:company-run")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe,
+        cwd=tmp_path,
+        dry_run=True,
+        task_text="fresh target repo",
+    )
+
+    assert plan.blocked_reasons == ()
+    assert plan.steps[0].agent == "route_strategist"
+    assert plan.steps[0].native_argv[:3] == (
+        "codex",
+        "-c",
+        'agent_type="route_strategist"',
+    )
+
+
 def test_adapter_ops_memory_capture_uses_alexandria_mcp_tool_handoff(
     tmp_path: Path,
 ) -> None:
@@ -395,6 +418,41 @@ inline_prompt = "Review."
     plan = build_command_execution_plan(recipe, cwd=tmp_path, dry_run=True)
 
     assert "No agent named reviewer" in plan.steps[0].blocked_reasons[0]
+
+
+def test_explicit_config_path_resolves_agents_for_different_cwd(
+    tmp_path: Path,
+) -> None:
+    target_workspace = tmp_path / "target"
+    config_workspace = tmp_path / "config"
+    target_workspace.mkdir()
+    config_workspace.mkdir()
+    (config_workspace / ".comx-agent.toml").write_text(
+        """
+[agents.route_strategist]
+enabled = true
+provider = "codex"
+role = "route"
+model = "gpt-5.5"
+effort = "xhigh"
+persona = "Route."
+""".strip(),
+        encoding="utf-8",
+    )
+    catalog = load_command_catalog(cwd=target_workspace)
+    recipe = catalog.find("builtin:route-next")
+    assert recipe is not None
+
+    plan = build_command_execution_plan(
+        recipe,
+        cwd=target_workspace,
+        config_path=config_workspace / ".comx-agent.toml",
+        dry_run=True,
+        task_text="choose safe path",
+    )
+
+    assert plan.blocked_reasons == ()
+    assert any(step.agent == "route_strategist" for step in plan.steps)
 
 
 def test_configured_agent_reference_adds_codex_agent_type_override(

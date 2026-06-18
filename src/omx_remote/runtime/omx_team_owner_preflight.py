@@ -193,6 +193,32 @@ def _omx_dist_supports_team_dag_owner_preservation(
     return owner_preservation_supported, missing_markers
 
 
+
+
+def omx_dist_supports_owner_aware_team_api(
+    omx_dist_root: Path | None = None,
+) -> bool:
+    """Return whether installed OMX supports owner-aware Team task API creation.
+
+    Args:
+        omx_dist_root [Path | None]: Optional installed OMX distribution root override.
+
+    Returns:
+        bool: Whether `omx team api create-task` can persist an owner field.
+    """
+    resolved_omx_dist_root, _resolution_notes = _resolve_omx_dist_root(omx_dist_root)
+    if resolved_omx_dist_root is None:
+        unsupported = False
+        return unsupported
+    api_interop = resolved_omx_dist_root / "team" / "api-interop.js"
+    cli_team = resolved_omx_dist_root / "cli" / "team.js"
+    api_reads_owner = _file_contains(api_interop, "const owner = opArgs.owner")
+    api_persists_owner = _file_contains(api_interop, "owner: owner || undefined")
+    cli_advertises_owner = _file_contains(cli_team, "'create-task': ['owner'")
+    supports_owner_api = api_reads_owner and api_persists_owner and cli_advertises_owner
+    return supports_owner_api
+
+
 def _build_omx_team_owner_preflight_error(
     launch_context: str,
     dist_root: Path | None,

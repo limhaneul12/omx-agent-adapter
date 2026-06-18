@@ -16,8 +16,16 @@ from omx_remote.runtime.company_run.team.handoff_detection import (
     team_launch_needs_workflow_handoff,
     team_launch_needs_workspace_handoff,
 )
+from omx_remote.runtime.company_run.team.team_completion_reconciliation import (
+    reconcile_team_completion_evidence,
+)
 from omx_remote.runtime.company_run.team.team_evidence import (
     wait_for_team_completion_evidence,
+)
+from omx_remote.runtime.company_run.team.team_owner_task_injection import (
+    build_owner_injection_bootstrap_task,
+    inject_owner_tasks_for_company_run_team,
+    write_owner_task_injection_evidence,
 )
 from omx_remote.runtime.company_run.team.team_preflight import (
     team_split_worktree_preflight,
@@ -30,7 +38,11 @@ from omx_remote.runtime.company_run.team.team_task_prompt import (
     build_team_task,
     write_worker_dispatches,
 )
+from omx_remote.runtime.company_run.team.workflow_state_isolation import (
+    isolate_completed_ultragoal_before_team,
+)
 from omx_remote.runtime.omx_team_owner_preflight import (
+    omx_dist_supports_owner_aware_team_api,
     require_omx_team_live_launch_owner_support,
 )
 from omx_remote.schemas.commands.command_execution_schemas import (
@@ -133,16 +145,28 @@ def launch_company_run_team(
         runtime_options=runtime_options,
     )
     worker_launch_args = team_worker_launch_args(runtime_options=runtime_options)
-    command_arguments: tuple[str, ...] = (
+    native_command_arguments: tuple[str, ...] = (
         "omx",
         "team",
         f"{worker_count}:executor",
         team_task,
     )
+    bootstrap_task = build_owner_injection_bootstrap_task(
+        objective=objective,
+        company_root=company_root,
+        worker_count=worker_count,
+    )
+    bootstrap_command_arguments: tuple[str, ...] = (
+        "omx",
+        "team",
+        f"{worker_count}:executor",
+        bootstrap_task,
+    )
+    command_arguments = native_command_arguments
     if launch_mode == "handoff":
         record = CompanyRunTeamLaunchRecord(
             status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
-            command=command_arguments,
+            command=native_command_arguments,
             runtime_options=runtime_options,
             worker_launch_args=worker_launch_args,
             worker_count=worker_count,
@@ -170,23 +194,42 @@ def launch_company_run_team(
             ),
         )
         return record, ()
+    workflow_isolation = isolate_completed_ultragoal_before_team(
+        cwd=cwd,
+        company_root=company_root,
+    )
     try:
         require_omx_team_live_launch_owner_support(
             launch_context="company-run live OMX Team launch",
         )
+        owner_task_injection_required = False
     except ValueError as error:
-        record = CompanyRunTeamLaunchRecord(
-            status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
-            command=command_arguments,
-            runtime_options=runtime_options,
-            worker_launch_args=worker_launch_args,
-            worker_count=worker_count,
-            dispatch_path=str(dispatch_path),
-            launch_stdout_path=str(company_root / "team" / "team-launch.stdout.txt"),
-            launch_stderr_path=str(company_root / "team" / "team-launch.stderr.txt"),
-            note=str(error),
-        )
-        return record, ()
+        if omx_dist_supports_owner_aware_team_api():
+            owner_task_injection_required = True
+            command_arguments = bootstrap_command_arguments
+        else:
+            record = CompanyRunTeamLaunchRecord(
+                status=CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION,
+                command=native_command_arguments,
+                runtime_options=runtime_options,
+                worker_launch_args=worker_launch_args,
+                worker_count=worker_count,
+                dispatch_path=str(dispatch_path),
+                launch_stdout_path=str(
+                    company_root / "team" / "team-launch.stdout.txt"
+                ),
+                launch_stderr_path=str(
+                    company_root / "team" / "team-launch.stderr.txt"
+                ),
+                workflow_state_isolation_path=(
+                    str(workflow_isolation.evidence_path)
+                    if workflow_isolation.evidence_path is not None
+                    else None
+                ),
+                workflow_state_isolation_detail=workflow_isolation.detail,
+                note=str(error),
+            )
+            return record, ()
 
     environment_overrides = _team_worker_environment_overrides(
         runtime_options=runtime_options,
@@ -226,6 +269,17 @@ def launch_company_run_team(
     await_exit_code = None
     await_stdout_path = None
     await_stderr_path = None
+    owner_task_injection_path = None
+    owner_task_injection_verified = None
+    owner_task_injection_detail = None
+    workflow_state_isolation_path = (
+        str(workflow_isolation.evidence_path)
+        if workflow_isolation.evidence_path is not None
+        else None
+    )
+    workflow_state_isolation_detail = workflow_isolation.detail
+    attempt_records = [launch_attempt]
+    next_attempt_number = 2
 
     if launch_failure is not None:
         if team_launch_needs_workspace_handoff(combined_evidence):
@@ -259,69 +313,93 @@ def launch_company_run_team(
         status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
         note = "OMX Team launched or returned successfully, but no team name was detected for await/status follow-up."
     else:
-        await_ms = str(max(1000, int(timeout_seconds * 1000)))
-        await_arguments: tuple[str, ...] = (
-            "omx",
-            "team",
-            "await",
-            team_name,
-            "--timeout-ms",
-            await_ms,
-            "--json",
-        )
-        await_outcome = run_subprocess(
-            argv=await_arguments,
-            cwd=cwd,
-            timeout_seconds=timeout_seconds,
-        )
-        await_failure = None
-        if await_outcome.exit_code != 0 or await_outcome.timed_out:
-            await_failure = _failure(
-                "company-run OMX Team await did not reach a clean terminal event"
+        if owner_task_injection_required:
+            injection_result = inject_owner_tasks_for_company_run_team(
+                cwd=cwd,
+                team_name=team_name,
+                dispatch_path=dispatch_path,
+                company_root=company_root,
+                timeout_seconds=timeout_seconds,
             )
-        await_attempt = write_attempt(
-            paths=paths,
-            step_index=step_index,
-            attempt=2,
-            outcome=await_outcome,
-            classification=await_failure,
-        )
-        await_exit_code = await_outcome.exit_code
-        await_stdout_path = await_attempt.stdout_path
-        await_stderr_path = await_attempt.stderr_path
-        if await_failure is None:
+            for injection_outcome in injection_result.outcomes:
+                injection_failure = None
+                if injection_outcome.exit_code != 0 or injection_outcome.timed_out:
+                    injection_failure = _failure(
+                        "company-run owner-aware Team task injection failed"
+                    )
+                injection_attempt = write_attempt(
+                    paths=paths,
+                    step_index=step_index,
+                    attempt=next_attempt_number,
+                    outcome=injection_outcome,
+                    classification=injection_failure,
+                )
+                attempt_records.append(injection_attempt)
+                next_attempt_number += 1
+            injection_evidence_path = write_owner_task_injection_evidence(
+                company_root=company_root,
+                team_name=team_name,
+                dispatch_path=dispatch_path,
+                injection_result=injection_result,
+            )
+            owner_task_injection_path = str(injection_evidence_path)
+            owner_task_injection_verified = injection_result.verified
+            owner_task_injection_detail = injection_result.detail
+            if not injection_result.verified:
+                status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
+                note = injection_result.detail
+        if status == CompanyRunTeamLaunchStatus.LAUNCHED:
+            note = (
+                "OMX Team launch command exited successfully; owner-aware Team API "
+                "task injection verified."
+                if owner_task_injection_required
+                else note
+            )
+        if status == CompanyRunTeamLaunchStatus.LAUNCHED:
+            await_ms = str(max(1000, int(timeout_seconds * 1000)))
+            await_arguments: tuple[str, ...] = (
+                "omx",
+                "team",
+                "await",
+                team_name,
+                "--timeout-ms",
+                await_ms,
+                "--json",
+            )
+            await_outcome = run_subprocess(
+                argv=await_arguments,
+                cwd=cwd,
+                timeout_seconds=timeout_seconds,
+            )
+            await_failure = None
+            if await_outcome.exit_code != 0 or await_outcome.timed_out:
+                await_failure = _failure(
+                    "company-run OMX Team await did not reach a clean terminal event"
+                )
+            await_attempt = write_attempt(
+                paths=paths,
+                step_index=step_index,
+                attempt=next_attempt_number,
+                outcome=await_outcome,
+                classification=await_failure,
+            )
+            attempt_records.append(await_attempt)
+            await_exit_code = await_outcome.exit_code
+            await_stdout_path = await_attempt.stdout_path
+            await_stderr_path = await_attempt.stderr_path
             completion_evidence = wait_for_team_completion_evidence(
                 cwd=cwd,
                 team_name=team_name,
                 timeout_seconds=timeout_seconds,
             )
-            if completion_evidence.complete:
-                status = CompanyRunTeamLaunchStatus.COMPLETED
-                note = (
-                    "OMX Team launched, await returned cleanly, and Team state "
-                    f"shows all tasks completed. {completion_evidence.detail}"
-                )
-            else:
-                status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
-                if completion_evidence.terminal:
-                    note = (
-                        "OMX Team await returned cleanly, but Team status is now "
-                        "missing; treat this as cleanup/stale notification evidence "
-                        "rather than actionable worker work. "
-                        f"{completion_evidence.detail}"
-                    )
-                else:
-                    note = (
-                        "OMX Team await returned cleanly, but Team state does not show "
-                        f"completed worker output. {completion_evidence.detail}"
-                    )
-        else:
-            status = CompanyRunTeamLaunchStatus.REQUIRES_AGENT_ACTION
-            note = "OMX Team launch succeeded, but await needs follow-up; see await artifacts."
+            completion_decision = reconcile_team_completion_evidence(
+                await_clean=await_failure is None,
+                completion_evidence=completion_evidence,
+            )
+            status = completion_decision.status
+            note = completion_decision.note
 
-    attempts = (
-        (launch_attempt,) if await_attempt is None else (launch_attempt, await_attempt)
-    )
+    attempts = tuple(attempt_records)
     record = CompanyRunTeamLaunchRecord(
         status=status,
         command=command_arguments,
@@ -336,6 +414,11 @@ def launch_company_run_team(
         await_stderr_path=await_stderr_path,
         exit_code=launch_outcome.exit_code,
         await_exit_code=await_exit_code,
+        owner_task_injection_path=owner_task_injection_path,
+        owner_task_injection_verified=owner_task_injection_verified,
+        owner_task_injection_detail=owner_task_injection_detail,
+        workflow_state_isolation_path=workflow_state_isolation_path,
+        workflow_state_isolation_detail=workflow_state_isolation_detail,
         note=note,
     )
     return record, attempts

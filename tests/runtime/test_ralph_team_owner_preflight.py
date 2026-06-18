@@ -8,6 +8,9 @@ import pytest
 from typer.testing import CliRunner
 
 from omx_remote.cli import app
+from omx_remote.runtime.omx_team_owner_preflight import (
+    omx_dist_supports_owner_aware_team_api,
+)
 from omx_remote.runtime.ralph.ralph_control import build_ralph_team_launch_plan
 from omx_remote.runtime.ralph.ralph_team_owner_preflight import (
     require_ralph_team_live_launch_owner_support,
@@ -117,6 +120,36 @@ def _write_unsupported_omx_dist(root: Path) -> None:
     )
 
 
+def _write_owner_aware_team_api_dist(root: Path) -> None:
+    team_dir = root / "team"
+    cli_dir = root / "cli"
+    team_dir.mkdir(parents=True)
+    cli_dir.mkdir(parents=True)
+    (team_dir / "api-interop.js").write_text(
+        "const owner = opArgs.owner;\nconst task = { owner: owner || undefined };",
+        encoding="utf-8",
+    )
+    (cli_dir / "team.js").write_text(
+        "const fields = { 'create-task': ['owner', 'subject'] };",
+        encoding="utf-8",
+    )
+
+
+def _write_owner_unaware_team_api_dist(root: Path) -> None:
+    team_dir = root / "team"
+    cli_dir = root / "cli"
+    team_dir.mkdir(parents=True)
+    cli_dir.mkdir(parents=True)
+    (team_dir / "api-interop.js").write_text(
+        "const subject = opArgs.subject;",
+        encoding="utf-8",
+    )
+    (cli_dir / "team.js").write_text(
+        "const fields = { 'create-task': ['subject'] };",
+        encoding="utf-8",
+    )
+
+
 def test_ralph_team_live_launch_owner_preflight_accepts_supported_omx_dist(
     tmp_path: Path,
 ) -> None:
@@ -137,6 +170,28 @@ def test_ralph_team_live_launch_owner_preflight_rejects_unsupported_omx_dist(
         match=r"does not support preserving Team DAG node\.owner.*Unsupported markers:.*dag-schema.d.ts",
     ):
         require_ralph_team_live_launch_owner_support(omx_dist_root=omx_dist_root)
+
+
+def test_omx_team_owner_preflight_detects_owner_aware_task_api(
+    tmp_path: Path,
+) -> None:
+    omx_dist_root = tmp_path / "omx-api-dist"
+    _write_owner_aware_team_api_dist(omx_dist_root)
+
+    supported = omx_dist_supports_owner_aware_team_api(omx_dist_root=omx_dist_root)
+
+    assert supported is True
+
+
+def test_omx_team_owner_preflight_rejects_owner_unaware_task_api(
+    tmp_path: Path,
+) -> None:
+    omx_dist_root = tmp_path / "omx-api-dist"
+    _write_owner_unaware_team_api_dist(omx_dist_root)
+
+    supported = omx_dist_supports_owner_aware_team_api(omx_dist_root=omx_dist_root)
+
+    assert supported is False
 
 
 def test_ralph_team_live_launch_owner_preflight_reports_missing_explicit_root(

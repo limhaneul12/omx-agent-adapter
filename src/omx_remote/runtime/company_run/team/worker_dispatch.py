@@ -4,6 +4,7 @@ from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunWorkerDispatchPayload,
     CompanyRunWorkerDispatchRecord,
 )
+from omx_remote.shared.omx_enums.agent_enums import AgentEffort
 
 _BASE_WORKER_OWNERSHIP_BOUNDARIES: tuple[str, ...] = (
     "surface-or-user-facing slice",
@@ -14,12 +15,88 @@ _BASE_WORKER_OWNERSHIP_BOUNDARIES: tuple[str, ...] = (
     "security-hardening slice",
 )
 
+_BASE_WORKER_REASONING_POLICIES: tuple[tuple[AgentEffort, str], ...] = (
+    (
+        AgentEffort.MEDIUM,
+        "Medium reasoning is enough for bounded user-facing and documentation work.",
+    ),
+    (
+        AgentEffort.HIGH,
+        "High reasoning is required for runtime/core contracts and data plumbing.",
+    ),
+    (
+        AgentEffort.XHIGH,
+        "Xhigh reasoning is required for QA, security, architecture, and blocker analysis.",
+    ),
+    (
+        AgentEffort.XHIGH,
+        "Xhigh reasoning is required for integration conflicts and release-readiness gates.",
+    ),
+    (
+        AgentEffort.HIGH,
+        "High reasoning is required for release evidence that must not overclaim readiness.",
+    ),
+    (
+        AgentEffort.XHIGH,
+        "Xhigh reasoning is required for security-hardening and high-stakes risk review.",
+    ),
+)
+
+_EXTENSION_WORKER_REASONING_POLICY: tuple[AgentEffort, str] = (
+    AgentEffort.HIGH,
+    "High reasoning is the default for extension lanes until the CEO assigns a narrower scope.",
+)
+
 WORKER_BOUNDARY_SUBAGENT_RULE = (
     "Use scoped Codex subagents only for files, artifacts, and verification inside "
     "this worker ownership boundary; do not assign subagents to inspect, edit, or "
     "verify peer worker lanes unless the CEO/integration steward explicitly "
     "reassigns that boundary."
 )
+
+
+def worker_reasoning_effort(worker_index: int) -> AgentEffort:
+    """Return the recommended reasoning effort for one worker lane.
+
+    Args:
+        worker_index [int]: One-based Team worker index.
+
+    Returns:
+        AgentEffort: Recommended Codex reasoning effort.
+    """
+    effort, _rationale = _worker_reasoning_policy(worker_index=worker_index)
+    return effort
+
+
+def worker_reasoning_rationale(worker_index: int) -> str:
+    """Return the reasoning-effort rationale for one worker lane.
+
+    Args:
+        worker_index [int]: One-based Team worker index.
+
+    Returns:
+        str: Human-readable assignment rationale.
+    """
+    _effort, rationale = _worker_reasoning_policy(worker_index=worker_index)
+    return rationale
+
+
+def _worker_reasoning_policy(worker_index: int) -> tuple[AgentEffort, str]:
+    """Return reasoning policy for one company-run Team worker.
+
+    Args:
+        worker_index [int]: One-based Team worker index.
+
+    Returns:
+        tuple[AgentEffort, str]: Effort and rationale.
+    """
+    if worker_index < 1:
+        raise ValueError("company-run worker indexes are one-based")
+    policy_index = worker_index - 1
+    if policy_index < len(_BASE_WORKER_REASONING_POLICIES):
+        policy = _BASE_WORKER_REASONING_POLICIES[policy_index]
+        return policy
+    return _EXTENSION_WORKER_REASONING_POLICY
 
 
 def worker_ownership_boundary(worker_index: int) -> str:
@@ -81,6 +158,8 @@ def build_worker_dispatch_payload(
             worker=f"worker-{worker_index}",
             objective=objective,
             ownership_boundary=worker_ownership_boundary(worker_index=worker_index),
+            reasoning_effort=worker_reasoning_effort(worker_index=worker_index),
+            reasoning_rationale=worker_reasoning_rationale(worker_index=worker_index),
             allowed_subagents=allowed_subagents,
             subagent_rule=subagent_rule,
         )

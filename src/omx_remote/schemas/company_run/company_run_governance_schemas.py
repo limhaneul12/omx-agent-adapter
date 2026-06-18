@@ -4,6 +4,7 @@ from omx_remote.schemas.common_schemas import NonEmptyString, StrictSchemaModel
 from omx_remote.schemas.company_run.company_run_core_schemas import (
     CompanyRunArtifactRecord,
 )
+from omx_remote.shared.omx_enums.agent_enums import AgentEffort
 from omx_remote.shared.omx_enums.company_run_enums import (
     CompanyRunBootstrapVoteId,
     CompanyRunEvidenceCheckStatus,
@@ -92,6 +93,8 @@ class CompanyRunWorkerDispatchRecord(StrictSchemaModel):
     worker: NonEmptyString
     objective: NonEmptyString
     ownership_boundary: NonEmptyString
+    reasoning_effort: AgentEffort
+    reasoning_rationale: NonEmptyString
     allowed_subagents: tuple[NonEmptyString, ...]
     subagent_rule: NonEmptyString
 

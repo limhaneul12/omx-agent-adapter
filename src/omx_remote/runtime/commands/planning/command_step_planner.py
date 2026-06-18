@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from omx_remote.runtime.agents.agent_config_loader import load_agent_config
+from omx_remote.runtime.agents.builtin_agent_config import build_builtin_agent_config
 from omx_remote.runtime.commands.rendering.command_step_rendering import (
     apply_task_placeholder,
     effective_codex_sandbox,
@@ -172,6 +173,7 @@ def _build_plan_step(
 def build_command_execution_plan(
     recipe: CommandRecipe,
     cwd: str | Path | None = None,
+    config_path: str | Path | None = None,
     dry_run: bool = True,
     task_text: str | None = None,
     runtime_options: CommandRuntimeOptions | None = None,
@@ -181,6 +183,7 @@ def build_command_execution_plan(
     Args:
         recipe [CommandRecipe]: Command recipe to plan.
         cwd [str | Path | None]: Base working directory for relative paths.
+        config_path [str | Path | None]: Optional agent config override.
         dry_run [bool]: Whether the plan is dry-run only.
         task_text [str | None]: Optional caller-supplied task text.
         runtime_options [CommandRuntimeOptions | None]: Optional Codex runtime controls.
@@ -188,7 +191,18 @@ def build_command_execution_plan(
     Returns:
         CommandExecutionPlan: Typed dry-run execution plan.
     """
-    agent_config: AgentConfigSet = load_agent_config(cwd=cwd)
+    agent_config: AgentConfigSet = load_agent_config(
+        cwd=cwd,
+        config_path=config_path,
+    )
+    if (
+        recipe.source == CommandSource.BUILTIN
+        and config_path is None
+        and not agent_config.agents
+    ):
+        agent_config = build_builtin_agent_config(
+            config_path="adapter-owned builtin agent defaults"
+        )
     steps: tuple[CommandPlanStep, ...] = tuple(
         _build_plan_step(
             index,

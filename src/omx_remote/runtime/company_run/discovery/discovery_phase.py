@@ -27,7 +27,6 @@ from omx_remote.schemas.company_run_gate_schemas import CompanyRunDiscoveryArtif
 from omx_remote.shared.omx_enums.company_run_discovery_enums import (
     COMPANY_RUN_DECISION_BOUNDARY_MARKERS,
     COMPANY_RUN_DEEP_INTERVIEW_MARKERS,
-    COMPANY_RUN_NO_BUILD_MARKERS,
     COMPANY_RUN_NON_GOAL_MARKERS,
     COMPANY_RUN_OUTCOME_MARKERS,
     COMPANY_RUN_RESEARCH_FIRST_MARKERS,
@@ -135,7 +134,7 @@ def _verdict_for_request(request: CompanyRunExecutionRequest) -> DiscoveryGateVe
         DiscoveryGateVerdict: Gate 0 verdict.
     """
     objective = request.objective.casefold()
-    if _contains_marker(text=objective, markers=COMPANY_RUN_NO_BUILD_MARKERS):
+    if _contains_no_build_intent(objective=objective):
         verdict = DiscoveryGateVerdict.NO_BUILD
         return verdict
     if _contains_marker(text=objective, markers=COMPANY_RUN_SMALL_TASK_MARKERS):
@@ -152,6 +151,41 @@ def _verdict_for_request(request: CompanyRunExecutionRequest) -> DiscoveryGateVe
         return verdict
     verdict = DiscoveryGateVerdict.READY_FOR_COMPANY_RUN
     return verdict
+
+
+def _contains_no_build_intent(objective: str) -> bool:
+    """Return whether objective asks to stop as no-build.
+
+    Args:
+        objective [str]: Lower-cased objective text.
+
+    Returns:
+        bool: Whether the no-build marker is an instruction rather than a gate
+        or risk topic being discussed.
+    """
+    stripped_objective = objective.strip()
+    no_build_prefix_phrases = ("no-build", "no build")
+    explicit_instruction_phrases = (
+        "do not build",
+        "don't build",
+        "dont build",
+        "stop as no-build",
+        "stop as no build",
+    )
+    if stripped_objective in (*no_build_prefix_phrases, *explicit_instruction_phrases):
+        return True
+    if stripped_objective.startswith(
+        tuple(f"{phrase} " for phrase in no_build_prefix_phrases)
+    ):
+        return True
+    if stripped_objective.startswith(
+        tuple(f"{phrase} " for phrase in explicit_instruction_phrases)
+    ):
+        return True
+    return any(
+        f" {phrase}" in stripped_objective
+        for phrase in explicit_instruction_phrases
+    )
 
 
 def _contains_marker(

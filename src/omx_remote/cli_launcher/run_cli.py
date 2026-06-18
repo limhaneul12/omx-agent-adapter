@@ -326,6 +326,7 @@ def run_command(
         plan: CommandExecutionPlan = build_command_execution_plan(
             recipe,
             cwd=cwd,
+            config_path=config_path,
             dry_run=dry_run,
             task_text=task,
             runtime_options=runtime_options,
@@ -342,12 +343,16 @@ def run_command(
                 )
                 parsed_council_mode = CompanyRunCouncilMode(company_council_mode)
                 parsed_team_launch = CompanyRunTeamLaunchMode(company_team_launch)
+                effective_live_team_allowed = (
+                    company_live_team
+                    or parsed_team_launch == CompanyRunTeamLaunchMode.LAUNCH
+                )
                 company_request = CompanyRunExecutionRequest(
                     objective=task or recipe.description,
                     cwd=str(Path(cwd).resolve()),
                     autonomy=autonomy_mode.value,
                     council_mode=parsed_council_mode,
-                    live_team_allowed=company_live_team,
+                    live_team_allowed=effective_live_team_allowed,
                     team_launch_mode=parsed_team_launch,
                     worker_count=company_worker_count,
                     timeout_seconds=company_timeout_seconds,

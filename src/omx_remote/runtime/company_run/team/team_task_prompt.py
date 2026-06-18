@@ -7,6 +7,8 @@ from omx_remote.runtime.company_run.artifacts.artifact_writers import write_comp
 from omx_remote.runtime.company_run.team.worker_dispatch import (
     WORKER_BOUNDARY_SUBAGENT_RULE,
     build_worker_dispatch_payload,
+    worker_reasoning_effort,
+    worker_reasoning_rationale,
 )
 from omx_remote.runtime.prompt_assets import render_prompt_model_asset
 from omx_remote.schemas.commands.command_runtime_option_schemas import (
@@ -79,8 +81,11 @@ def _team_owner_matrix_line(worker_index: int, dispatch_path: Path) -> str:
             "scoped extension implementation, review, or integration support "
             "assigned by the CEO/orchestrator without taking over another worker lane."
         )
+    effort = worker_reasoning_effort(worker_index=worker_index)
+    rationale = worker_reasoning_rationale(worker_index=worker_index)
     line = (
         f"- [worker-{worker_index}] {lane_label}: {lane_detail} "
+        f"Recommended reasoning effort: {effort}. Rationale: {rationale} "
         f"Read `{dispatch_path}` for full lane boundaries."
     )
     return line

@@ -40,7 +40,32 @@ class CompanyRunTeamLaunchRecord(StrictSchemaModel):
     await_stderr_path: NonEmptyString | None = None
     exit_code: int | None = None
     await_exit_code: int | None = None
+    owner_task_injection_path: NonEmptyString | None = None
+    owner_task_injection_verified: bool | None = None
+    owner_task_injection_detail: NonEmptyString | None = None
+    workflow_state_isolation_path: NonEmptyString | None = None
+    workflow_state_isolation_detail: NonEmptyString | None = None
     note: NonEmptyString
+
+
+class CompanyRunOwnerTaskInjectionTaskRecord(StrictSchemaModel):
+    """One owner-aware task created through the Team API injection path."""
+
+    worker: NonEmptyString
+    task_id: NonEmptyString
+    owner: NonEmptyString
+    subject: NonEmptyString
+
+
+class CompanyRunOwnerTaskInjectionEvidence(StrictSchemaModel):
+    """Evidence for adapter-owned owner-aware Team API task injection."""
+
+    team_name: NonEmptyString
+    dispatch_path: NonEmptyString
+    verified: bool
+    detail: NonEmptyString
+    tasks: tuple[CompanyRunOwnerTaskInjectionTaskRecord, ...]
+    attempt_count: int = Field(ge=1)
 
 
 class CompanyRunNativeTeamTaskCounts(StrictSchemaModel):

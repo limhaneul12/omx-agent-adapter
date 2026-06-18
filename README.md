@@ -117,7 +117,7 @@ Runtime options can be set per invocation instead of through environment variabl
 - `--xhigh` is a shorthand for `--reasoning-effort xhigh`.
 - `--madmax` is dangerous: it implies xhigh reasoning and passes Codex approval/sandbox bypass to Codex-backed steps. Use it only when that risk is intended.
 
-For live `company-run` Team fanout, these options are also recorded in company-run artifacts and forwarded to OMX Team workers through a transient adapter-owned subprocess environment override; users do not need to set `OMX_TEAM_WORKER_LAUNCH_ARGS` manually.
+For live `company-run` Team fanout, these options are also recorded in company-run artifacts and forwarded to OMX Team workers through a transient adapter-owned subprocess environment override; users do not need to set `OMX_TEAM_WORKER_LAUNCH_ARGS` manually. The company-run worker dispatch artifact also recommends per-worker reasoning effort (`medium`, `high`, or `xhigh`) from each lane's expected ambiguity and risk so Team handoffs do not default every worker to the same thinking depth.
 
 Useful adjacent surfaces:
 
@@ -154,7 +154,7 @@ The adapter-owned workflow recipes now expose exactly ten public workflow comman
 | Adapter Ops | `adapter-ops run-ledger` | `read_only` |
 | Adapter Ops | `adapter-ops memory-capture` | `writes_files` |
 
-These are not raw aliases: they preview staged Codex/OMX/local/MCP steps, risk level, expected artifacts, typed role lanes, Codex native-agent bindings, root `prompt/` Markdown assets, and handoff points before any runtime launch. `discovery-gate` is an adapter-owned pre-planning gate that can hand off to OMX `deep-interview` without exposing a duplicate adapter command. `company-run` is a build-oriented macro orchestration mode: it records Gate -1 memory/context recovery, Gate 0 discovery/ROI/no-build, internal research/proceed decision records, PRD readiness, implementation-kickoff as the development-start gate, Team plus subagents, review/release loops, user-facing decision reports, and Alexandria MCP tool points for memory recall, librarian queries, artifact curation, context recovery, and closeout.
+These are not raw aliases: they preview staged Codex/OMX/local/MCP steps, risk level, expected artifacts, typed role lanes, Codex native-agent bindings, root `prompt/` Markdown assets, and handoff points before any runtime launch. `discovery-gate` is an adapter-owned pre-planning gate that can hand off to OMX `deep-interview` without exposing a duplicate adapter command. `company-run` is a build-oriented macro orchestration mode: it records Gate -1 memory/context recovery, Gate 0 discovery/ROI/no-build, internal research/proceed decision records, PRD readiness, implementation-kickoff as the development-start gate, Team plus subagents, review/release loops, user-facing decision reports, and Alexandria MCP tool points for memory recall, librarian queries, artifact curation, context recovery, and closeout. Completed Team execution is treated as worker-output evidence, not automatic release readiness; leader-owned integration/review synthesis remains required.
 
 `comx-agent surface` separates direct **native commands** from **composed commands** loaded from the built-in/repo recipe catalog.
 
@@ -284,3 +284,4 @@ uv run pytest
 uv run ruff check .
 uv run pyrefly check src
 ```
+ㅁㄴㅇㅁㄴㅇㅁㄴdasdasㅇㅁㄴㅇ

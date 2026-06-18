@@ -71,6 +71,16 @@ def test_preflight_run_cli_outputs_json(tmp_path: Path) -> None:
     assert "checks" in payload
 
 
+def test_preflight_builtin_company_run_allows_adapter_prompt_without_target_config(
+    tmp_path: Path,
+) -> None:
+    report = run_command_preflight("builtin:company-run", cwd=tmp_path)
+
+    assert report.command_id == "company-run"
+    assert report.status != PreflightReportStatus.BLOCKED
+    assert not report.blockers
+
+
 def test_preflight_route_omx_team_returns_report(tmp_path: Path) -> None:
     result = CliRunner().invoke(
         app,

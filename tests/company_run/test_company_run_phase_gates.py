@@ -217,8 +217,14 @@ def test_post_team_gates_keep_review_release_evidence_explicit(
         )
     )
 
-    assert review_payload["verdict"] == "approve"
-    assert release_payload["verdict"] == "ready"
+    assert review_payload["verdict"] == "requires_leader_review"
+    assert review_payload["blocked_reasons"] == [
+        "Team execution completed; leader integration/review evidence is required before release readiness."
+    ]
+    assert release_payload["verdict"] == "not_ready_review_required"
+    assert release_payload["blocked_reasons"] == [
+        "Team execution completed; leader integration/review evidence is required before release readiness."
+    ]
     assert {check["check_id"] for check in review_payload["required_checks"]} == {
         "code_review",
         "security_review",
@@ -253,6 +259,11 @@ def test_post_team_gates_keep_review_release_evidence_explicit(
             *release_payload["evidence_paths"],
         )
     )
+    release_summary = (company_root / "release" / "release-summary.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Team execution: COMPLETE" in release_summary
+    assert "Release readiness: BLOCKED" in release_summary
 
 
 def test_post_team_gates_report_blockers_instead_of_release_ready(
@@ -278,6 +289,12 @@ def test_post_team_gates_report_blockers_instead_of_release_ready(
         )
     )
     release_summary = (company_root / "release" / "release-summary.md").read_text(
+        encoding="utf-8"
+    )
+    code_review_text = (company_root / "review" / "code-review.md").read_text(
+        encoding="utf-8"
+    )
+    qa_verdict_text = (company_root / "review" / "qa-verdict.md").read_text(
         encoding="utf-8"
     )
 
@@ -308,6 +325,10 @@ def test_post_team_gates_report_blockers_instead_of_release_ready(
     )
     assert release_payload["note"].startswith("Release readiness: BLOCKED - ")
     assert "Release readiness: BLOCKED" in release_summary
+    assert "requires explicit leader synthesis" in code_review_text
+    assert "from concrete Team completion evidence" not in code_review_text
+    assert "requires explicit leader synthesis" in qa_verdict_text
+    assert "from verification evidence" not in qa_verdict_text
     phase_records_by_phase = {record.phase: record for record in phase_records}
     for phase in (
         CompanyRunPhase.INTEGRATION_PLAN_LOOP,

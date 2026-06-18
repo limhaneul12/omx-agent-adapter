@@ -8,6 +8,9 @@ from omx_remote.runtime.company_run.artifacts.artifact_writers import (
 from omx_remote.runtime.company_run.artifacts.phase_log import (
     append_company_run_phase,
 )
+from omx_remote.runtime.company_run.team.post_team_gate_text import (
+    post_team_markdown_files,
+)
 from omx_remote.schemas.company_run.company_run_governance_schemas import (
     CompanyRunEvidenceCheck,
     CompanyRunPhaseRecord,
@@ -35,7 +38,10 @@ def write_post_team_gates_for_company_run(
         team_status [CompanyRunTeamLaunchStatus]: Team launch outcome.
     """
     blockers = _post_team_blockers(team_status=team_status)
-    for relative_path, body in _post_team_files(blockers=blockers).items():
+    for relative_path, body in post_team_markdown_files(
+        team_status=team_status,
+        blockers=blockers,
+    ).items():
         write_company_markdown(
             path=company_root / relative_path,
             text=f"# {relative_path}\n\n{body}\n",
@@ -51,19 +57,25 @@ def write_post_team_gates_for_company_run(
         team_status=team_status,
     )
     review_ready = _checks_passed(checks=review_checks) and not blockers
-    release_status = (
-        "ready"
-        if review_ready and _checks_passed(checks=release_checks)
-        else "not_ready_team_follow_up_required"
+    release_status = _release_verdict(
+        team_status=team_status,
+        review_ready=review_ready,
+        release_checks_passed=_checks_passed(checks=release_checks),
     )
     review_payload = CompanyRunReadinessVerdictPayload(
-        verdict="approve" if review_ready else "requires_agent_action",
+        verdict=_review_verdict(
+            team_status=team_status,
+            review_ready=review_ready,
+        ),
         required_checks=review_checks,
         evidence_paths=tuple(check.evidence_path for check in review_checks),
         blocked_reasons=blockers,
         note=_post_team_verdict_note(
             gate="Review gate",
-            verdict="approve" if review_ready else "requires_agent_action",
+            verdict=_review_verdict(
+                team_status=team_status,
+                review_ready=review_ready,
+            ),
             blockers=blockers,
         ),
     )
@@ -93,7 +105,7 @@ def write_post_team_gates_for_company_run(
     )
     phase_status = (
         CompanyRunPhaseStatus.COMPLETE
-        if team_status == CompanyRunTeamLaunchStatus.COMPLETED
+        if team_status == CompanyRunTeamLaunchStatus.COMPLETED and not blockers
         else CompanyRunPhaseStatus.REQUIRES_AGENT_ACTION
     )
     append_company_run_phase(
@@ -142,52 +154,6 @@ def write_post_team_gates_for_company_run(
         status=phase_status,
         blocked_reasons=blockers,
     )
-
-def _post_team_files(blockers: tuple[str, ...]) -> dict[str, str]:
-    """Return post-Team markdown artifact templates.
-
-    Args:
-        blockers [tuple[str, ...]]: Current Team-derived blockers.
-
-    Returns:
-        dict[str, str]: Company-run-relative artifact path to markdown body.
-    """
-    blocker_text = _blocker_text(blockers=blockers)
-    files = {
-        "team/team-sync.md": (
-            "Team status captured. Follow-up is required if live Team did not "
-            f"finish.\n\n{blocker_text}"
-        ),
-        "team/integration-plan.md": (
-            "Integration plan preserves worker ownership, handoff boundaries, "
-            f"and verification order.\n\n{blocker_text}"
-        ),
-        "review/code-review.md": (
-            "Code review gate recorded from concrete Team completion evidence.\n\n"
-            f"{blocker_text}"
-        ),
-        "review/security-review.md": (
-            "Security review gate recorded; release remains blocked when Team "
-            f"evidence is incomplete.\n\n{blocker_text}"
-        ),
-        "review/architecture-review.md": (
-            "Architecture review gate recorded; release remains blocked when "
-            f"integration evidence is incomplete.\n\n{blocker_text}"
-        ),
-        "review/qa-verdict.md": (
-            f"QA verdict gate recorded from verification evidence.\n\n{blocker_text}"
-        ),
-        "release/release-summary.md": (
-            "Release summary recorded from company-run evidence; do not claim "
-            f"release readiness while blockers remain.\n\n{blocker_text}"
-        ),
-        "memory-closeout.md": (
-            "Alexandria MCP closeout point recorded for curated memory save "
-            f"after verified release evidence.\n\n{blocker_text}"
-        ),
-    }
-    return files
-
 
 def _review_evidence_checks(
     company_root: Path,
@@ -352,7 +318,7 @@ def _evidence_check_status(
         otherwise blocked.
     """
     if team_status == CompanyRunTeamLaunchStatus.COMPLETED:
-        return CompanyRunEvidenceCheckStatus.PASS
+        return CompanyRunEvidenceCheckStatus.BLOCKED
     return CompanyRunEvidenceCheckStatus.BLOCKED
 
 
@@ -380,8 +346,59 @@ def _post_team_blockers(
         tuple[str, ...]: Empty only when Team completed.
     """
     if team_status == CompanyRunTeamLaunchStatus.COMPLETED:
-        return ()
+        return (
+            "Team execution completed; leader integration/review evidence is "
+            "required before release readiness.",
+        )
     return ("OMX Team follow-up is required before release can be claimed.",)
+
+
+def _review_verdict(
+    team_status: CompanyRunTeamLaunchStatus,
+    review_ready: bool,
+) -> str:
+    """Return the post-Team review gate verdict.
+
+    Args:
+        team_status [CompanyRunTeamLaunchStatus]: Team launch outcome.
+        review_ready [bool]: Whether all review checks passed and no blockers remain.
+
+    Returns:
+        str: Review gate verdict.
+    """
+    if review_ready:
+        verdict = "approve"
+        return verdict
+    if team_status == CompanyRunTeamLaunchStatus.COMPLETED:
+        verdict = "requires_leader_review"
+        return verdict
+    verdict = "requires_agent_action"
+    return verdict
+
+
+def _release_verdict(
+    team_status: CompanyRunTeamLaunchStatus,
+    review_ready: bool,
+    release_checks_passed: bool,
+) -> str:
+    """Return the release readiness verdict.
+
+    Args:
+        team_status [CompanyRunTeamLaunchStatus]: Team launch outcome.
+        review_ready [bool]: Whether review is approved.
+        release_checks_passed [bool]: Whether release checks passed.
+
+    Returns:
+        str: Release readiness verdict.
+    """
+    if review_ready and release_checks_passed:
+        verdict = "ready"
+        return verdict
+    if team_status == CompanyRunTeamLaunchStatus.COMPLETED:
+        verdict = "not_ready_review_required"
+        return verdict
+    verdict = "not_ready_team_follow_up_required"
+    return verdict
 
 
 def _post_team_verdict_note(
@@ -402,18 +419,3 @@ def _post_team_verdict_note(
     if blockers:
         return f"{gate}: BLOCKED - {'; '.join(blockers)}"
     return f"{gate}: {verdict}"
-
-
-def _blocker_text(blockers: tuple[str, ...]) -> str:
-    """Render blockers for markdown evidence artifacts.
-
-    Args:
-        blockers [tuple[str, ...]]: Current blockers.
-
-    Returns:
-        str: Markdown-ready blocker text.
-    """
-    if not blockers:
-        return "Blockers: none recorded."
-    blocker_items = "\n".join(f"- {blocker}" for blocker in blockers)
-    return f"Release readiness: BLOCKED\n\nBlockers:\n{blocker_items}"
