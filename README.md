@@ -49,8 +49,6 @@ For another local agent or machine that has repository access:
 ```bash
 uv tool install git+https://github.com/limhaneul12/omx-agent-adapter.git
 comx-agent --help
-comx-agent --help
-comx-agent version
 comx-agent version
 ```
 
@@ -132,6 +130,18 @@ comx-agent mcp tools <server-name> --cwd . --json
 comx-agent mcp call <server-name> <tool-name> --arguments-json '{}' --execute --json
 ```
 
+## Skill and subagent surface
+
+The repo-local Codex skill surface is intentionally one small pointer:
+`skills/omx-agent/SKILL.md`. Do not add one skill per command; the typed command
+catalog and `prompt/` assets already own command behavior.
+
+Keep the five configured subagents only when their isolation is useful:
+routing, source-backed research, implementation planning, integration, and
+quality/release review. Prefer the main agent for small tasks, and use
+subagents only for independent context, parallel work, or genuinely distinct
+review lanes.
+
 ## MCP client and command surfaces
 
 The adapter-owned workflow recipes now expose exactly ten public workflow commands plus a separate maintenance namespace:
@@ -192,8 +202,6 @@ For installed users and other agents:
 
 ```bash
 comx-agent --help
-comx-agent --help
-comx-agent version
 comx-agent version
 comx-agent runtime --help
 comx-agent cockpit --help
@@ -284,4 +292,3 @@ uv run pytest
 uv run ruff check .
 uv run pyrefly check src
 ```
-ㅁㄴㅇㅁㄴㅇㅁㄴdasdasㅇㅁㄴㅇ
