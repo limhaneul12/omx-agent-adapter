@@ -198,3 +198,34 @@ def test_real_detached_worker_survives_launcher_scope_and_finishes(
     assert Path(current.result_path).is_file()
     result = orjson.loads(Path(current.result_path).read_bytes())
     assert result["status"] == "succeeded"
+
+
+def test_detached_operation_records_are_listed_newest_first(tmp_path: Path) -> None:
+    service = DetachedOperationService(
+        tmp_path / "ade-state",
+        launcher=lambda *args, **kwargs: _FakeProcess(),
+    )
+    first = service.start_run(
+        ExecutionRequest(
+            provider=ProviderId.CODEX,
+            objective="First operation",
+            workspace=str(tmp_path),
+        )
+    )
+    second = service.start_run(
+        ExecutionRequest(
+            provider=ProviderId.CODEX,
+            objective="Second operation",
+            workspace=str(tmp_path),
+        )
+    )
+
+    records = service.list_records()
+
+    assert {record.operation_id for record in records} == {
+        first.operation_id,
+        second.operation_id,
+    }
+    assert records == tuple(
+        sorted(records, key=lambda record: record.created_at, reverse=True)
+    )

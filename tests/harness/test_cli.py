@@ -24,6 +24,7 @@ def test_help_exposes_only_the_goal_surface() -> None:
         "resume",
         "artifacts",
         "ade",
+        "agent",
     ):
         assert command in result.stdout
     for legacy_command in (

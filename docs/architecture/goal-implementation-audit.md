@@ -128,6 +128,29 @@ The inspection boundary provides:
 Direct noninteractive `codex exec` and `omx exec` Runs expose stdout/stderr
 Artifacts. The ADE does not fabricate an interactive terminal identity.
 
+## Agent Operability Audit
+
+Verdict: **Qualified PASS for local trusted agents**.
+
+The original GUI had application services that were not available to agents. That gap is now closed through the same typed owners used by the desktop ADE:
+
+| Agent requirement | Current implementation | Status |
+| --- | --- | --- |
+| discover platform context | `AdeAgentTools.context` and `comx-agent agent context` return catalog, capabilities, Recipes, live Workspace status, recent Runs, detached operations, and Attention | PASS |
+| register Project | shared `WorkspaceService` through typed Python and JSON CLI | PASS |
+| adopt/discover/create Worktree | shared Workspace service with canonical identity and no commit/push grant | PASS |
+| launch without blocking caller | `AdeAgentOperations` and `agent start-operation` reuse the desktop detached worker | PASS |
+| recover operation state | operation records persist under the ADE state root and appear in `agent operations` and `agent context` | PASS |
+| operate Run lifecycle | the exact-nine `HarnessTools` and JSON lifecycle CLI remain authoritative | PASS |
+| discover safe usage procedure | repository Skill plus repeatable install/verify targets | PASS |
+| use native OMX Team evidence | structured OMX Team projection and explicit tmux identity | PASS |
+| use Codex nested topology | unavailable when Codex emits no equivalent structured evidence | PARTIAL |
+| remote Hermes transport | no MCP server or remote protocol is shipped; current surfaces are Python and local JSON CLI | NOT IMPLEMENTED |
+
+The local Agent surface is intentionally not a second lifecycle. One detached worker calls one existing `HarnessTools` operation, and each Workspace-local `.comx-agent/v2` store remains authoritative.
+
+Remote Hermes exposure requires a separate transport decision. It must wrap `AdeAgentTools`, `AdeAgentOperations`, and `HarnessTools` rather than inventing new domain behavior. An MCP server must not be added merely because MCP exists elsewhere in the system.
+
 ## MVP Acceptance Map
 
 | # | Requirement | Current authoritative evidence |
@@ -183,8 +206,8 @@ make native-test
 The deterministic suite covers the nine-operation core, fake-provider
 end-to-end behavior, idempotency, cancellation races, restart-safe detached
 execution, Project/Workspace persistence, real temporary Git Worktrees, diff
-inspection, external target resolution, Artifact content, and rendering-
-independent ADE views.
+inspection, external target resolution, Artifact content, rendering-independent
+ADE views, agent Project/Worktree operations, and detached agent start/poll/recovery.
 
 Headless success does not prove product usability. Phase 5 additionally
 requires:

@@ -88,6 +88,9 @@ def test_installed_native_cli_accepts_run_and_resume_contract(
                 "CODEX_THREAD_ID",
             }:
                 monkeypatch.delenv(name, raising=False)
+        isolated_state_root = tmp_path / "omx-state"
+        isolated_state_root.mkdir()
+        monkeypatch.setenv("OMX_STATE_ROOT", str(isolated_state_root))
     adapter = ProviderRegistry().get(provider)
     if shutil.which(adapter.binary_name) is None:
         pytest.skip(f"{adapter.binary_name} is not installed")

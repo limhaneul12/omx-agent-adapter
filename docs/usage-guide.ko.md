@@ -52,16 +52,14 @@ skills/omx-agent/
 └── agents/openai.yaml
 ```
 
-개발 중인 저장소 내용을 바로 반영하려면 symlink 설치가 편리하다.
+저장소 Skill과 실제 Codex가 읽는 Skill을 다음 명령으로 동기화한다.
 
 ```bash
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -s "$(pwd)/skills/omx-agent" \
-  "${CODEX_HOME:-$HOME/.codex}/skills/omx-agent"
+make install-agent-skill
+make verify-agent-skill
 ```
 
-대상 경로에 이전 스킬이 이미 있다면 내용을 확인한 뒤 명시적으로
-교체해야 한다. 설치 후 새 Codex 세션에서 다음처럼 호출한다.
+이 명령은 `${CODEX_HOME:-$HOME/.codex}/skills/omx-agent/SKILL.md`만 갱신한다. `verify-agent-skill`은 저장소와 설치본의 drift를 검사한다. 설치 후 새 Codex 세션에서 다음처럼 호출한다.
 
 ```text
 $omx-agent 현재 provider capability를 확인하고 ADE 사용 순서를 안내해줘
@@ -179,7 +177,77 @@ Mutation Recipe를 선택했다는 사실만으로 무제한 변경이 허용되
 아니다. Objective에 변경 범위와 검증 조건을 명시하고 Plan의 sandbox와
 Artifact 계약을 반드시 확인한다.
 
-## 6. CLI 사용법
+## 6. Agent application surface
+
+Agent는 GUI widget을 클릭하거나 화면 상태를 추측할 필요가 없다. 먼저 다음 명령으로 플랫폼 전체 context를 JSON으로 읽는다.
+
+```bash
+uv run comx-agent agent context
+```
+
+응답에는 다음이 포함된다.
+
+- 등록된 Project와 Workspace catalog
+- 현재 GUI 선택 상태(비권위적 참고값)
+- 실제 Codex/OMX capability
+- 사용 가능한 Recipe
+- 각 Workspace의 branch, dirty, missing 상태
+- 최근 Run과 evidence 기반 Attention
+
+Project와 Worktree도 GUI와 동일한 service로 조작한다.
+
+```bash
+uv run comx-agent agent register-project /absolute/project/path
+uv run comx-agent agent discover-worktrees PROJECT_ID
+uv run comx-agent agent create-worktree PROJECT_ID agent/safe-change
+uv run comx-agent agent adopt-workspace PROJECT_ID /related/worktree/path
+uv run comx-agent agent inspect-workspace WORKSPACE_ID
+```
+
+`--state-root`를 사용하면 테스트나 격리된 controller가 별도 ADE catalog를 사용할 수 있다. 기본값은 GUI와 동일한 `COMX_AGENT_ADE_STATE_DIR` 또는 `~/.comx-agent/ade`다.
+
+Agent의 권장 순서는 다음과 같다.
+
+```text
+agent context
+-> Project/Workspace 준비
+-> canonical Workspace path 확인
+-> capabilities
+-> plan
+-> run
+-> status/events/artifacts 및 Attention 재확인
+```
+
+Worktree 생성은 격리 공간만 만든다. mutation, commit, push 권한을 자동으로 부여하지 않는다.
+
+### Agent 비동기 실행
+
+Agent가 여러 Workspace를 운영하거나 호출 프로세스가 끝난 뒤에도 Run을 계속해야 한다면 GUI와 동일한 detached worker를 사용한다. 먼저 strict request JSON을 만든다.
+
+```json
+{
+  "operation": "run",
+  "request": {
+    "controller_id": "trusted-agent",
+    "provider": "codex",
+    "objective": "선택한 Workspace를 수정하지 말고 검토해줘.",
+    "workspace": "/absolute/workspace/path",
+    "idempotency_key": "agent-review-01"
+  }
+}
+```
+
+```bash
+uv run comx-agent agent start-operation operation.json
+uv run comx-agent agent operation OPERATION_ID
+uv run comx-agent agent operations
+```
+
+`agent context`에도 detached operation 목록이 포함되므로 다른 Agent 프로세스가 같은 ADE state를 다시 읽고 관찰을 이어갈 수 있다. operation ID는 worker 추적 ID이고 Run ID와 다르다. operation 완료 후 result에 기록된 Run ID로 `status`, `events`, `artifacts`를 조회한다.
+
+이 worker는 한 번에 하나의 기존 `HarnessTools` operation만 호출한다. 자체 스케줄러나 별도 lifecycle이 아니다.
+
+## 7. Run lifecycle CLI 사용법
 
 ### 권장 순서
 
@@ -284,10 +352,20 @@ Handoff는 source Run ID, provider, Artifact SHA-256과 검증된 본문을 targ
 provider에 전달한다. 같은 provider로의 handoff는 native composition을
 사용해야 하므로 거절된다.
 
-## 7. Python API
+## 8. Python API
 
 ```python
-from comx_harness import ExecutionRequest, HarnessTools, RunReference
+from comx_harness import (
+    AdeAgentTools,
+    AgentContextRequest,
+    ExecutionRequest,
+    HarnessTools,
+    RunReference,
+)
+
+platform = AdeAgentTools()
+context = platform.context(AgentContextRequest())
+workspace = context.catalog.workspaces[0].root_path
 
 tools = HarnessTools()
 record = tools.run(
@@ -295,20 +373,20 @@ record = tools.run(
         controller_id="trusted-controller",
         provider="codex",
         objective="Read-only verification of the current implementation.",
-        workspace=".",
+        workspace=workspace,
         idempotency_key="trusted-review-01",
     )
 )
 state = tools.status(
-    RunReference(workspace=".", run_id=record.run_id)
+    RunReference(workspace=workspace, run_id=record.run_id)
 )
 ```
 
-`HarnessTools`는 얇은 controller-neutral facade다. lifecycle logic은
+`AdeAgentTools`는 Project/Workspace/Worktree/Attention application facade이고, `HarnessTools`는 얇은 Run lifecycle facade다. lifecycle logic은
 `HarnessService`가 소유하며 CLI, ADE, Hermes가 별도 Run truth를 만들면
 안 된다.
 
-## 8. 저장 위치
+## 9. 저장 위치
 
 Workspace별 실행 기록:
 
@@ -338,7 +416,7 @@ ADE state는 Project/Workspace/선택 tab 같은 화면 상태와 detached opera
 metadata만 가진다. authoritative Run record는 항상 Workspace의
 `.comx-agent/v2`에 있다.
 
-## 9. 문제 해결
+## 10. 문제 해결
 
 ### ADE가 Tcl/Tk 오류로 열리지 않음
 
@@ -386,7 +464,7 @@ uv run comx-agent artifacts RUN_ID --cwd .
 contract를 지원하지 않는 경우다. 새 Run이 필요한지는 controller가
 결정해야 하며 harness가 가짜 resume을 만들지 않는다.
 
-## 10. 개발자 검증
+## 11. 개발자 검증
 
 ```bash
 make ruff

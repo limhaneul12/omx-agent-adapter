@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import NoReturn
 
 import typer
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
+from comx_harness.ade.agent_cli import agent_app
 from comx_harness.ade.desktop_launcher import launch_desktop_ade
+from comx_harness.cli_output import emit_model, fail_operation
 from comx_harness.controller_surface import HarnessTools
-from comx_harness.schemas.error_schemas import ErrorPayload
 from comx_harness.schemas.execution_schemas import (
     ExecutionRequest,
     ResumeRequest,
@@ -33,30 +33,11 @@ app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
 )
+app.add_typer(agent_app, name="agent")
 
 
 def _tools() -> HarnessTools:
     return HarnessTools()
-
-
-def _emit(model: BaseModel) -> None:
-    typer.echo(model.model_dump_json(indent=2))
-
-
-def _fail(error: Exception) -> NoReturn:
-    if isinstance(error, HarnessError):
-        code = error.code
-    elif isinstance(error, ProviderUnavailableError):
-        code = "provider_unavailable"
-    elif isinstance(error, ValidationError):
-        code = "validation_error"
-    elif isinstance(error, FileNotFoundError):
-        code = "not_found"
-    else:
-        code = "operation_failed"
-    payload = ErrorPayload(code=code, message=str(error) or error.__class__.__name__)
-    typer.echo(payload.model_dump_json(indent=2), err=True)
-    raise typer.Exit(code=2) from error
 
 
 def _run_options(
@@ -131,9 +112,9 @@ def ade_command(
 def capabilities_command() -> None:
     """Discover installed providers and their supported harness operations."""
     try:
-        _emit(_tools().capabilities())
+        emit_model(_tools().capabilities())
     except (HarnessError, ProviderUnavailableError, ValidationError, OSError) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("plan")
@@ -171,7 +152,7 @@ def plan_command(
             search=search,
             ephemeral=ephemeral,
         )
-        _emit(_tools().plan(request))
+        emit_model(_tools().plan(request))
     except (
         HarnessError,
         ProviderUnavailableError,
@@ -179,7 +160,7 @@ def plan_command(
         ValueError,
         OSError,
     ) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("run")
@@ -217,7 +198,7 @@ def run_command(
             search=search,
             ephemeral=ephemeral,
         )
-        _emit(_tools().run(request))
+        emit_model(_tools().run(request))
     except (
         HarnessError,
         ProviderUnavailableError,
@@ -225,7 +206,7 @@ def run_command(
         ValueError,
         OSError,
     ) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("handoff")
@@ -267,7 +248,7 @@ def handoff_command(
                 ephemeral=ephemeral,
             ),
         )
-        _emit(_tools().handoff(request))
+        emit_model(_tools().handoff(request))
     except (
         HarnessError,
         ProviderUnavailableError,
@@ -275,7 +256,7 @@ def handoff_command(
         ValueError,
         OSError,
     ) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("status")
@@ -285,9 +266,9 @@ def status_command(
 ) -> None:
     """Read normalized semantic state and process liveness."""
     try:
-        _emit(_tools().status(RunReference(workspace=str(cwd), run_id=run_id)))
+        emit_model(_tools().status(RunReference(workspace=str(cwd), run_id=run_id)))
     except (HarnessError, ValidationError, OSError) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("events")
@@ -297,9 +278,9 @@ def events_command(
 ) -> None:
     """Read normalized lifecycle and native provider events."""
     try:
-        _emit(_tools().events(RunReference(workspace=str(cwd), run_id=run_id)))
+        emit_model(_tools().events(RunReference(workspace=str(cwd), run_id=run_id)))
     except (HarnessError, ValidationError, OSError) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("cancel")
@@ -309,9 +290,9 @@ def cancel_command(
 ) -> None:
     """Request bounded cancellation of a recorded native process."""
     try:
-        _emit(_tools().cancel(RunReference(workspace=str(cwd), run_id=run_id)))
+        emit_model(_tools().cancel(RunReference(workspace=str(cwd), run_id=run_id)))
     except (HarnessError, ValidationError, OSError) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("resume")
@@ -323,7 +304,7 @@ def resume_command(
 ) -> None:
     """Resume a run only when a native provider session id is available."""
     try:
-        _emit(
+        emit_model(
             _tools().resume(
                 ResumeRequest(
                     workspace=str(cwd),
@@ -339,7 +320,7 @@ def resume_command(
         ValidationError,
         OSError,
     ) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 @app.command("artifacts")
@@ -349,9 +330,9 @@ def artifacts_command(
 ) -> None:
     """Read verified result, log, event, plan, and declared artifacts."""
     try:
-        _emit(_tools().artifacts(RunReference(workspace=str(cwd), run_id=run_id)))
+        emit_model(_tools().artifacts(RunReference(workspace=str(cwd), run_id=run_id)))
     except (HarnessError, ValidationError, OSError) as error:
-        _fail(error)
+        fail_operation(error)
 
 
 if __name__ == "__main__":

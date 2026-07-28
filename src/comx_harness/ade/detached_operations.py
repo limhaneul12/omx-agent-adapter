@@ -55,6 +55,21 @@ class DetachedOperationService:
         payload = read_json(record_path)
         return DetachedOperationRecord.model_validate(payload)
 
+    def list_records(self) -> tuple[DetachedOperationRecord, ...]:
+        operations_root = self._state_root / "operations"
+        if not operations_root.is_dir():
+            return ()
+        records = tuple(
+            DetachedOperationRecord.model_validate(
+                read_json(operation_dir / "operation.json")
+            )
+            for operation_dir in operations_root.iterdir()
+            if operation_dir.is_dir() and (operation_dir / "operation.json").is_file()
+        )
+        return tuple(
+            sorted(records, key=lambda record: record.created_at, reverse=True)
+        )
+
     def _start(
         self,
         request: DetachedOperationRequest,

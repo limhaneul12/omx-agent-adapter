@@ -48,7 +48,7 @@
 ## Personas and jobs
 
 - Primary personas: the local repository owner operating repeated Codex and OMX
-  work.
+  work, plus trusted local agents using the same Project and Run truth.
 - User jobs:
   - see what is running, waiting, failed, or ready for review;
   - start one safe Run from an exact Plan;
@@ -161,9 +161,9 @@
   `tk_theme.py`; individual views may only use semantic tokens.
 - Performance constraints: no filesystem, provider, or subprocess work on the
   Tk event-loop thread.
-- Compatibility constraints: preserve the shared `HarnessTools` execution core,
-  exact-nine lifecycle surface, detached Run behavior, and replaceable UI
-  boundary.
+- Compatibility constraints: preserve shared Project/Workspace services, the
+  `AdeAgentTools` and `AdeAgentOperations` parity surfaces, the exact-nine
+  `HarnessTools` Run lifecycle, detached behavior, and replaceable UI boundary.
 - Test/screenshot expectations: run ADE tests, Ruff, Pyrefly, full CI, native
   tests, and capture a real macOS screenshot for visual review.
 

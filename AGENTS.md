@@ -2,40 +2,42 @@
 
 ## Source of Truth
 
-Read these documents before non-trivial work:
+Read before non-trivial work:
 
-1. `GOAL.md` — why the product exists, its boundaries, and its success criteria.
+1. `GOAL.md` — product purpose, boundaries, success criteria, and development order.
 2. `AGENTS.md` — high-signal repository working rules.
-3. The relevant documents under `docs/rules/` — detailed implementation policy.
+3. Relevant documents under `docs/rules/` — detailed implementation policy.
 
-Existing code never overrides `GOAL.md`. When implementation and goal conflict, change the implementation or explicitly revise the goal with a recorded decision.
+Existing code never overrides `GOAL.md`. When code and goal conflict, change the code or explicitly revise the goal with a recorded decision.
 
 ## Product Positioning
 
-This repository builds the thinnest useful controller-neutral execution harness for Codex and OMX.
+This repository builds an Orca-benchmarked, local, single-user Agent Development Environment specialized for Codex and OMX.
 
-It is:
+The ADE is supported by a thin controller-neutral execution core. It provides:
 
-- a typed contract for direct Codex and OMX execution,
-- a normalized run lifecycle and evidence boundary,
-- a verified cross-runtime handoff mechanism,
-- and one shared application core for a human CLI, Hermes, or another trusted controller.
+- Project, Workspace, and Git Worktree operation,
+- human desktop navigation and Attention handling,
+- a typed non-GUI ADE application surface for agents,
+- direct Codex and OMX execution,
+- normalized Run lifecycle and evidence,
+- bounded control and verified cross-provider handoff.
 
 It is not:
 
-- a new agent framework,
-- a second reasoning engine,
-- a fixed workflow catalog,
-- a company or council simulator,
+- a new reasoning engine or provider runtime,
+- an adapter-owned multi-agent scheduler,
 - a replacement for native Codex or OMX features,
-- a memory system,
-- an MCP marketplace,
-- a distributed scheduler,
+- a workflow catalog or visual workflow builder,
+- a memory system or MCP marketplace,
+- a distributed or multi-user platform,
 - or a GUI-owned lifecycle that bypasses the shared execution core.
 
-## Public Surface
+## Two Public Boundaries
 
-The core public operations are intentionally limited to:
+### Run lifecycle core
+
+The provider lifecycle remains exactly:
 
 1. `capabilities`
 2. `plan`
@@ -47,61 +49,74 @@ The core public operations are intentionally limited to:
 8. `resume`
 9. `artifacts`
 
-A new public operation requires evidence that it owns a lifecycle, interoperability, evidence, or controller-contract problem that native Codex or OMX does not already solve.
+A new lifecycle operation requires evidence that native Codex or OMX and the existing nine operations cannot solve the lifecycle, interoperability, evidence, or controller-contract problem.
+
+### ADE application surface
+
+Project, Workspace, Worktree, catalog, and cross-workspace Attention are application services around the Run core. They may be exposed through the desktop ADE, `AdeAgentTools`, and `comx-agent agent ...` without becoming new Run lifecycle operations.
+
+Human capabilities with clear agent value must have a typed non-GUI path unless they are explicitly documented as human-only. Agents must not automate GUI widgets to reach an application service that already has a typed domain boundary.
 
 ## Native-First Rule
 
 Codex owns Codex reasoning and native Codex workflows.
 
-OMX owns Team, Ralph, UltraGoal, missions, capability locks, and other OMX-native orchestration.
+OMX owns Team, Ralph, UltraGoal, missions, capability locks, worker allocation, and other OMX-native orchestration.
 
-The harness may discover and invoke native capabilities. It must not rebuild them as Python workflows. Same-provider composition should use the provider's native behavior by default. Harness composition is reserved for cross-runtime handoff or measurable isolation/evidence value.
+The platform may discover, launch, observe, attach to, and safely control native capabilities. It must not rebuild them as Python workflows. Same-provider composition uses native behavior by default. Cross-provider continuation uses verified handoff.
 
 ## Architecture
 
 The shipped package is `src/comx_harness/`.
 
 - `schemas/` owns strict public Pydantic contracts.
-- `native_provider/` owns native Codex and OMX invocation adapters.
-- `storage/` owns the local single-user filesystem store.
-- `event_normalization.py` owns JSONL/stdout/stderr normalization.
-- `run_evidence.py` owns artifact verification.
-- `native_execution.py` owns subprocess execution and process liveness.
+- `native_provider/` owns native Codex and OMX adapters.
+- `storage/` owns authoritative local Run storage.
 - `application/harness_service.py` owns controller-neutral Run orchestration.
 - `controller_surface.py` owns the exact-nine `HarnessTools` facade.
-- `ade/` owns Project, Workspace, presentation, and detached-launch services.
-- `cli.py` is a thin adapter over `HarnessTools`.
+- `ade/` owns Project, Workspace, Worktree, Attention, presentation, and detached-launch services.
+- `ade/agent_platform.py` owns the typed non-GUI ADE facade.
+- `ade/agent_cli.py` owns JSON commands for trusted agents.
+- `cli.py` is the thin top-level CLI composition root.
 
-CLI, Hermes integration, MCP exposure, and future operator interfaces must call the same application service. No interface may own separate run truth.
+Desktop ADE, agent CLI, Python APIs, Hermes, and future MCP exposure must reuse these services. No interface may create separate Project, Workspace, or Run truth.
 
 ## Boundary Ownership
 
-Controllers own:
+Operators and controllers own:
 
 - objective interpretation,
-- runtime selection,
-- constraints,
-- and whether another run is needed.
+- provider and Workspace selection,
+- constraints and approvals,
+- and whether another Run is needed.
 
 Native providers own:
 
 - reasoning,
-- tool selection,
-- provider-specific workflows,
-- and native session behavior.
+- tools,
+- native subagents and task allocation,
+- provider workflows,
+- and native session semantics.
 
-The harness owns:
+The Run core owns:
 
 - validated invocation,
-- run identity,
-- state and liveness,
+- Run identity, state, and liveness,
 - event normalization,
 - cancellation and supported resume,
 - artifact provenance and verification,
 - idempotency,
-- and cross-runtime handoff.
+- and cross-provider handoff.
 
-Alexandria owns durable memory. MCP is an attachment mechanism. Neither belongs inside the harness lifecycle core.
+The ADE application layer owns:
+
+- Project registration,
+- Workspace and Worktree discovery or creation,
+- non-authoritative view state,
+- cross-workspace observation and Attention projection,
+- and human or agent navigation over existing truth.
+
+Alexandria owns durable memory. MCP attaches tools and resources. Neither belongs inside Run lifecycle truth.
 
 ## Type and Schema Rules
 
@@ -110,43 +125,48 @@ Detailed policy remains under `docs/rules/`.
 High-signal rules:
 
 - Public contracts use strict, immutable Pydantic models.
-- Raw native JSONL remains localized to the event-normalization boundary.
-- Do not spread `Any`, loose dictionaries, or transport payloads through core services.
+- Internal DTOs use typed dataclasses where boundary validation is unnecessary.
+- Raw native JSON remains localized to normalization boundaries.
+- Do not spread `Any`, loose dictionaries, or transport payloads through services.
 - Required key presence and nullable values are distinct concerns.
 - Production functions and public methods require explicit types.
-- Use named, purpose-driven modules and identifiers.
-- Keep provider-specific differences visible instead of creating false abstractions.
+- Use named, concept-owned modules and identifiers.
+- Keep provider differences and unknown evidence visible.
 
 ## Module Cohesion
 
 - A production module approaching 430 lines is a refactor trigger.
-- A class should own one cohesive behavior and normally expose no more than six public methods; application facades may expose the fixed nine-operation product surface when delegation remains thin.
-- Split execution, evidence, event normalization, storage, and orchestration rather than creating a runtime manager omnibus.
+- A class normally exposes no more than six public methods.
+- `HarnessTools` and `HarnessService` may expose the fixed nine-operation lifecycle facade when delegation remains thin.
+- Split execution, evidence, storage, application services, and presentation instead of creating manager omnibuses.
 - Do not add compatibility facades for unused historical code.
 
 ## Safety and Truthfulness
 
 - Read-only execution is the default.
 - Mutation requires explicit controller intent and a non-read-only sandbox.
-- A process exit code of zero is not semantic success.
+- Worktree creation does not authorize commit or push.
+- A zero process exit code is not semantic success.
 - Required evidence must exist and be non-empty before success is reported.
-- Unsupported cancel or resume behavior must fail explicitly rather than be simulated.
+- Unsupported cancel, resume, topology, or provider state must be explicit.
 - Same idempotency keys must not create uncontrolled duplicate mutation.
+- Do not infer agent activity or private reasoning from model prose.
 - Do not expose dangerous bypass shortcuts as product presets.
 
 ## Development Order
 
-Follow the order in `GOAL.md`:
+Follow `GOAL.md`:
 
-1. reduce duplicated and speculative surfaces,
-2. stabilize direct Codex and OMX providers,
-3. prove cross-runtime handoff,
-4. connect Hermes through the shared core,
-5. dogfood the ADE and expand operator interfaces only from demonstrated need.
+1. preserve and isolate the typed execution core,
+2. maintain one shared Project, Workspace, and Worktree service,
+3. keep human and agent application surfaces in parity,
+4. improve Codex/OMX native observation and operation without duplicating them,
+5. verify real human and agent workflows,
+6. dogfood and expand only from repeated evidence.
 
 ## Verification
 
-Use `uv` and run all gates before declaring completion:
+Before completion run:
 
 ```bash
 make ruff
@@ -157,10 +177,13 @@ make ci
 
 Also verify:
 
-- `comx-agent --help` exposes only the intended public surface,
-- capability discovery reflects the actual installed binaries,
-- planning performs no workspace mutation,
+- `comx-agent --help` exposes only intended surfaces,
+- `comx-agent agent context` returns structured platform state,
+- Project registration and Worktree creation use the same services as the GUI,
+- planning performs no Workspace mutation,
+- capability discovery reflects installed binaries,
 - the wheel contains `comx_harness` and not removed legacy packages,
-- direct execution and cross-runtime handoff are covered by local fake-provider end-to-end tests.
+- direct execution, handoff, and agent application commands have tests,
+- major GUI flows receive interactive E2E review when presentation changes.
 
 Do not commit or push unless the user explicitly asks.

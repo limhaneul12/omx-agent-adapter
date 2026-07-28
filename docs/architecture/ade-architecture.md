@@ -24,17 +24,18 @@ runtime exists.
 ## Boundary Diagram
 
 ```text
-Tk application shell
-├── Project / Workspace catalog and view context
-├── Recipe, Run, Attention, Team, Diff, and Artifact projections
-├── external Finder / editor / Terminal targets
-└── detached operation launcher
-             |
-       HarnessTools
-             |
-      HarnessService
-             |
-       Codex / OMX
+Human Tk application       Trusted agent application
+├── Project / Workspace     ├── AdeAgentTools
+├── Attention / projections ├── AdeAgentOperations
+├── Terminal / Diff         └── JSON agent CLI
+└── detached launcher                  |
+             └──────── shared application services ────────┘
+                                      |
+                                HarnessTools
+                                      |
+                               HarnessService
+                                      |
+                                Codex / OMX
 ```
 
 ### Execution truth
@@ -47,6 +48,10 @@ sessions, Artifacts, handoffs, and idempotency.
 The global ADE store owns only registered Projects and Workspaces plus
 non-authoritative view context. It is atomic JSON rather than a database because
 the product is local and single-user and the state set is bounded.
+
+### Agent application parity
+
+`AdeAgentTools` and `comx-agent agent ...` expose Project, Workspace, Worktree, capability, Recipe, Run projection, and Attention context without automating Tk widgets. `AdeAgentOperations` exposes the same detached worker used by the GUI. These surfaces share the global ADE store and Workspace-local Run stores; they do not create agent-only truth.
 
 ### Provider truth
 

@@ -20,7 +20,7 @@ resume         Resume when a native provider session id exists.
 artifacts      Read result, logs, events, plan, and declared evidence.
 ```
 
-The CLI and Python API use the same nine-operation `HarnessTools` surface, which delegates all lifecycle work to `HarnessService`.
+The nine operations are the Run lifecycle core. The desktop ADE and the typed `AdeAgentTools` / `comx-agent agent ...` surface add Project, Workspace, Worktree, and cross-workspace Attention services without creating a second Run lifecycle.
 
 ## Installation
 
@@ -38,16 +38,14 @@ execution core:
 skills/omx-agent/SKILL.md
 ```
 
-Install it into the local Codex skill directory with a symlink:
+Install or update it through the repository-owned target:
 
 ```bash
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -s "$(pwd)/skills/omx-agent" \
-  "${CODEX_HOME:-$HOME/.codex}/skills/omx-agent"
+make install-agent-skill
+make verify-agent-skill
 ```
 
-If that destination already exists, update or remove the old copy deliberately
-before creating the link. Invoke the installed skill with:
+The installer updates only `${CODEX_HOME:-$HOME/.codex}/skills/omx-agent/SKILL.md`. Invoke the installed skill with:
 
 ```text
 $omx-agent
@@ -67,6 +65,48 @@ selects and applies the existing ADE, CLI, or typed Python surface.
 For the complete Korean operator guide, including Recipes, Attention, Run
 Detail tabs, CLI examples, storage, safety, and troubleshooting, see
 [`docs/usage-guide.ko.md`](docs/usage-guide.ko.md).
+
+## Agent application surface
+
+Agents do not need to automate the desktop GUI. Start with one machine-readable platform snapshot:
+
+```bash
+uv run comx-agent agent context
+```
+
+The returned strict JSON includes registered Projects and Workspaces, live Git state, provider capabilities, Recipes, recent Runs, and evidence-based Attention. Application actions use the same services as the GUI:
+
+```bash
+uv run comx-agent agent register-project /absolute/project/path
+uv run comx-agent agent discover-worktrees PROJECT_ID
+uv run comx-agent agent create-worktree PROJECT_ID agent/isolated-change
+uv run comx-agent agent inspect-workspace WORKSPACE_ID
+```
+
+The Python equivalent is `AdeAgentTools`. Use it for Project/Workspace/Worktree context, then use `HarnessTools` for the exact-nine Run lifecycle. Worktree creation never implies commit or push permission.
+
+For Orca-like non-blocking operation, serialize one strict detached request and start it through the same worker used by the desktop ADE:
+
+```json
+{
+  "operation": "run",
+  "request": {
+    "controller_id": "trusted-agent",
+    "provider": "codex",
+    "objective": "Inspect the selected Workspace without modifying files.",
+    "workspace": "/absolute/workspace/path",
+    "idempotency_key": "agent-review-01"
+  }
+}
+```
+
+```bash
+uv run comx-agent agent start-operation operation.json
+uv run comx-agent agent operation OPERATION_ID
+uv run comx-agent agent operations
+```
+
+`agent context` also includes detached operation records, so another agent process can reopen the same ADE state and continue observation. The worker still calls exactly one existing `HarnessTools` operation; it is not a scheduler or a second runtime.
 
 ## Human ADE
 

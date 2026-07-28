@@ -105,6 +105,30 @@ the installed OMX parser and real direct execution are compatible. The ADE now
 labels provider execution readiness as `ready`, `observe-only`, or `missing`
 instead of treating any readable provider capability as launch readiness.
 
+## Trusted Agent Application Pass
+
+A final pass used the globally installed `comx-agent agent` surface rather than the desktop GUI or direct lifecycle CLI. The Agent path:
+
+1. started one real read-only Codex Run through `agent start-operation`,
+2. returned control immediately with a detached operation ID,
+3. was polled through `agent operation`,
+4. recovered the authoritative Run ID from the operation result,
+5. and verified the Run through `status`, `events`, and `artifacts`.
+
+Observed evidence:
+
+- detached operation reached `succeeded`,
+- Run semantic status reached `succeeded`,
+- process liveness reached `finished`,
+- 61 normalized events were readable,
+- five existing verified Artifacts were reported,
+- the result Artifact was 1,641 bytes,
+- and the requested five evidence-backed audit bullets were present.
+
+This proves that a trusted local Agent can operate the ADE without automating Tk widgets and without creating a second Run lifecycle.
+
+The independent audit also found an unrelated untracked local file, `tests/test_alexandria_api_probe_temp.py`, outside the configured `tests/harness` collection root. It performs a localhost Alexandria probe and ends with unconditional `assert False`. The file is not part of the product implementation or passing CI suite. Its removal requires a separately approved destructive workspace action, so this report records it as a local workspace hygiene blocker rather than silently deleting it or treating it as product evidence.
+
 ## Remaining Limits
 
 - Terminal integration intentionally opens the native macOS Terminal or an

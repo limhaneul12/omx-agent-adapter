@@ -25,6 +25,10 @@ def test_wheel_contains_the_ade_and_excludes_removed_runtime_surfaces(
 
     assert "comx_harness/ade/tk_app.py" in members
     assert "comx_harness/ade/worker.py" in members
+    assert "comx_harness/ade/agent_platform.py" in members
+    assert "comx_harness/ade/agent_operations.py" in members
+    assert "comx_harness/ade/agent_cli.py" in members
+    assert "comx_harness/schemas/ade_agent_schemas.py" in members
     assert "comx_harness/application/harness_service.py" in members
     assert not any(member.startswith("comx_harness/tui/") for member in members)
     assert not any(member.startswith("omx_remote/") for member in members)
