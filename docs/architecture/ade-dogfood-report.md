@@ -18,15 +18,33 @@ were not present in its virtual environment. The repaired launcher now:
 
 The repaired application launched as a native macOS window. Mouse/menu
 navigation opened New Run, and keyboard input preserved a two-line objective.
-Visual review then exposed a narrow Attention pane with clipped state text. The
-layout was changed to give Project and Attention panes more width, split
-Attention into State, Workspace, and Why columns, and render human-readable
-state labels.
+Visual review then exposed a narrow Attention pane with clipped state text and
+an undifferentiated default-Tk hierarchy. The application now uses an
+Orca-inspired dark three-pane operating surface with a Workspace rail, central
+Run workspace, persistent Attention rail, state metrics, and explicit provider
+readiness. Attention remains split into State, Workspace, and Why columns, with
+typed state labels instead of inferred activity.
+
+The original synchronous refresh read blocked the Tk event loop long enough to
+make buttons appear inert. Workspace projection and Run inspection now execute
+outside the Tk thread while results are applied only from scheduled Tk
+callbacks. A real macOS interaction smoke measured:
+
+- application construction: `0.4056s`;
+- New Run view switch: `0.0002s`;
+- Inspect selected call return: `0.0007s`;
+- complete Run inspection rendered: `0.4200s`.
+
+The same pass found and repaired multiline objective overlap in the Run table,
+runtime enum-value promotion at the Attention presentation boundary, and the
+native white `tk.Scrollbar` island. The final text surfaces use an explicit
+`tk.Text` plus themed `ttk.Scrollbar` composition.
 
 Reviewed screenshots:
 
 - [multiline New Run](evidence/ade-new-run-multiline.png)
 - [real Runs and Attention after the layout repair](evidence/ade-real-runs-attention.png)
+- [Run Detail with normalized and native evidence tabs](evidence/ade-run-detail.png)
 
 ## Real Provider Evidence
 
@@ -93,8 +111,10 @@ instead of treating any readable provider capability as launch readiness.
   explicitly observed tmux target; the ADE does not embed a PTY.
 - Codex Agent/Task topology remains unknown because the native output did not
   expose equivalent structured evidence.
-- The fixed Tk presentation is functional but visually utilitarian. Replacement
-  requires repeated dogfood evidence and explicit dependency approval.
+- Tk still cannot reproduce Orca's embedded terminal, animation, or browser
+  rendering model. The current theme deliberately targets hierarchy, density,
+  state semantics, and responsiveness without copying Orca assets or adding a
+  new GUI dependency.
 - Finder/editor behavior depends on the local macOS applications configured for
   those targets.
 

@@ -3,21 +3,25 @@ from __future__ import annotations
 import tkinter as tk
 from tkinter import ttk
 
+from comx_harness.ade.tk_theme import PALETTE, theme_text_widget
+
 
 class MultilineInputDialog:
     """Modal multiline input for continuation and handoff objectives."""
 
-    def __init__(self, parent: tk.Misc, *, title: str, prompt: str) -> None:
+    def __init__(self, parent: tk.Misc, title: str, prompt: str) -> None:
         self._value: str | None = None
         self._window = tk.Toplevel(parent)
         self._window.title(title)
         self._window.transient(parent.winfo_toplevel())
         self._window.grab_set()
         self._window.geometry("620x320")
+        self._window.configure(background=PALETTE.canvas)
         frame = ttk.Frame(self._window, padding=16)
         frame.pack(fill="both", expand=True)
         ttk.Label(frame, text=prompt, wraplength=560).pack(anchor="w")
         self._text = tk.Text(frame, wrap="word", undo=True)
+        theme_text_widget(self._text)
         self._text.pack(fill="both", expand=True, pady=10)
         actions = ttk.Frame(frame)
         actions.pack(fill="x")

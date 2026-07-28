@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable
-from tkinter import scrolledtext, ttk
+from tkinter import ttk
 
+from comx_harness.ade.tk_theme import create_scrolled_text_area, theme_listbox
 from comx_harness.schemas.ade_operator_schemas import Recipe
 from comx_harness.schemas.execution_schemas import ExecutionPlan
 from comx_harness.shared.harness_enums.operator_enums import RecipeId
@@ -15,7 +16,6 @@ class NewRunView(ttk.Frame):
     def __init__(
         self,
         master: tk.Misc,
-        *,
         recipes: tuple[Recipe, ...],
         plan_action: Callable[[], None],
         start_action: Callable[[], None],
@@ -55,15 +55,30 @@ class NewRunView(ttk.Frame):
 
     def _build(self) -> None:
         self.columnconfigure(1, weight=1)
-        self.rowconfigure(4, weight=1)
-        ttk.Label(self, text="New Run", style="Title.TLabel").grid(
+        self.rowconfigure(5, weight=1)
+        self.rowconfigure(7, weight=1)
+        ttk.Label(self, text="Start a new Run", style="Title.TLabel").grid(
             row=0,
             column=0,
             columnspan=2,
             sticky="w",
-            pady=(0, 12),
         )
-        ttk.Label(self, text="Recipe").grid(row=1, column=0, sticky="nw")
+        ttk.Label(
+            self,
+            text="Choose a safe execution recipe, review the exact plan, then launch.",
+            style="Muted.TLabel",
+        ).grid(
+            row=1,
+            column=0,
+            columnspan=2,
+            sticky="w",
+            pady=(3, 18),
+        )
+        ttk.Label(self, text="RECIPE", style="Section.TLabel").grid(
+            row=2,
+            column=0,
+            sticky="nw",
+        )
         self.recipe_list = tk.Listbox(
             self,
             height=max(4, len(self._recipes)),
@@ -72,34 +87,45 @@ class NewRunView(ttk.Frame):
         )
         for recipe in self._recipes:
             self.recipe_list.insert("end", recipe.title)
-        self.recipe_list.grid(row=1, column=1, sticky="ew", padx=(12, 0))
+        theme_listbox(self.recipe_list)
+        self.recipe_list.grid(row=2, column=1, sticky="ew", padx=(16, 0))
         self.recipe_list.bind("<<ListboxSelect>>", self._recipe_changed)
         ttk.Label(self, textvariable=self._description, wraplength=720).grid(
-            row=2,
-            column=1,
-            sticky="w",
-            padx=(12, 0),
-            pady=(6, 0),
-        )
-        ttk.Label(self, textvariable=self._safety, style="Safety.TLabel").grid(
             row=3,
             column=1,
             sticky="w",
-            padx=(12, 0),
-            pady=(3, 10),
+            padx=(16, 0),
+            pady=(6, 0),
         )
-        ttk.Label(self, text="Objective").grid(row=4, column=0, sticky="nw")
-        self.objective = scrolledtext.ScrolledText(
+        ttk.Label(self, textvariable=self._safety, style="Safety.TLabel").grid(
+            row=4,
+            column=1,
+            sticky="w",
+            padx=(16, 0),
+            pady=(3, 14),
+        )
+        ttk.Label(self, text="OBJECTIVE", style="Section.TLabel").grid(
+            row=5,
+            column=0,
+            sticky="nw",
+        )
+        objective_area = create_scrolled_text_area(
             self,
             height=9,
             wrap="word",
             undo=True,
         )
-        self.objective.grid(row=4, column=1, sticky="nsew", padx=(12, 0))
+        self.objective = objective_area.text
+        objective_area.container.grid(
+            row=5,
+            column=1,
+            sticky="nsew",
+            padx=(16, 0),
+        )
         self.objective.bind("<<Modified>>", self._objective_changed)
         actions = ttk.Frame(self)
-        actions.grid(row=5, column=1, sticky="ew", padx=(12, 0), pady=10)
-        ttk.Button(actions, text="Review Plan", command=self._plan_action).pack(
+        actions.grid(row=6, column=1, sticky="ew", padx=(16, 0), pady=12)
+        ttk.Button(actions, text="Review exact plan", command=self._plan_action).pack(
             side="left"
         )
         self.start_button = ttk.Button(
@@ -110,18 +136,25 @@ class NewRunView(ttk.Frame):
         )
         self.start_button.pack(side="left", padx=8)
         self.start_button.state(["disabled"])
-        ttk.Label(self, text="Exact provider and safety plan").grid(
-            row=6,
+        ttk.Label(self, text="EXACT PLAN", style="Section.TLabel").grid(
+            row=7,
             column=0,
             sticky="nw",
         )
-        self.plan_text = scrolledtext.ScrolledText(
+        plan_area = create_scrolled_text_area(
             self,
             height=12,
             wrap="none",
             state="disabled",
+            monospace=True,
         )
-        self.plan_text.grid(row=6, column=1, sticky="nsew", padx=(12, 0))
+        self.plan_text = plan_area.text
+        plan_area.container.grid(
+            row=7,
+            column=1,
+            sticky="nsew",
+            padx=(16, 0),
+        )
         self._replace_plan("Review a plan before starting this Run.")
 
     def _recipe_changed(self, event: tk.Event[tk.Misc]) -> None:

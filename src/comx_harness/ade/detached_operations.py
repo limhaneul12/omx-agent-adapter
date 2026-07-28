@@ -134,12 +134,9 @@ class DetachedOperationService:
         return path
 
 
-def serialize_operation_result(result: object) -> bytes:
-    model_dump = getattr(result, "model_dump", None)
-    if not callable(model_dump):
-        raise TypeError("HarnessTools operation returned a non-model result")
+def serialize_operation_result(result: BaseModel) -> bytes:
     return orjson.dumps(
-        model_dump(mode="json"),
+        result.model_dump(mode="json"),
         option=orjson.OPT_INDENT_2 | orjson.OPT_SORT_KEYS,
     )
 

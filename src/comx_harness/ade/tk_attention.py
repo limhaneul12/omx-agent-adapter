@@ -1,21 +1,14 @@
 from __future__ import annotations
 
 import tkinter as tk
-from collections.abc import Callable, Collection
-from dataclasses import dataclass
+from collections.abc import Callable
 from tkinter import ttk
 
-from comx_harness.ade.controller import AdeController
-from comx_harness.ade.state_store import AdeStateStore
-from comx_harness.schemas.ade_operator_schemas import AttentionTarget
-from comx_harness.schemas.ade_schemas import WorkspaceRecord
-
-
-@dataclass(frozen=True, slots=True)
-class AttentionSelection:
-    workspace: WorkspaceRecord
-    run_id: str
-    target: AttentionTarget
+from comx_harness.ade.tk_refresh import (
+    AttentionRefreshEntry,
+    AttentionSelection,
+)
+from comx_harness.shared.harness_enums.operator_enums import AttentionKind
 
 
 class AttentionPane:
@@ -24,45 +17,30 @@ class AttentionPane:
     def __init__(
         self,
         tree: ttk.Treeview,
-        store: AdeStateStore,
         open_selection: Callable[[AttentionSelection], None],
     ) -> None:
         self._tree = tree
-        self._store = store
         self._open_selection = open_selection
-        self._targets: dict[str, tuple[str, str, AttentionTarget]] = {}
+        self._targets: dict[str, AttentionSelection] = {}
 
-    def refresh(self, reviewed_run_ids: Collection[str]) -> None:
+    def show(self, entries: tuple[AttentionRefreshEntry, ...]) -> None:
+        """Render an already collected Attention projection on the Tk thread."""
         self._tree.delete(*self._tree.get_children())
         self._targets.clear()
-        reviewed = set(reviewed_run_ids)
-        sequence = 0
-        for workspace in self._store.load_catalog().workspaces:
-            controller = AdeController(
-                workspace.root_path,
-                self._store.state_root,
+        for sequence, entry in enumerate(entries):
+            iid = f"attention:{sequence}"
+            self._targets[iid] = entry.selection
+            self._tree.insert(
+                "",
+                "end",
+                iid=iid,
+                values=(
+                    _attention_label(entry.kind),
+                    entry.workspace_name,
+                    entry.message,
+                ),
+                tags=(_attention_tag(entry.kind),),
             )
-            for run in controller.observe.projection().runs:
-                for item in run.attention:
-                    if run.run_id in reviewed and item.kind == "ready_for_review":
-                        continue
-                    iid = f"attention:{sequence}"
-                    sequence += 1
-                    self._targets[iid] = (
-                        workspace.workspace_id,
-                        run.run_id,
-                        item.target,
-                    )
-                    self._tree.insert(
-                        "",
-                        "end",
-                        iid=iid,
-                        values=(
-                            item.kind.replace("_", " ").title(),
-                            workspace.name,
-                            item.message,
-                        ),
-                    )
 
     def open_selected(self, event: tk.Event[tk.Misc]) -> None:
         del event
@@ -74,22 +52,22 @@ class AttentionPane:
         selection = self._tree.selection()
         if not selection:
             return None
-        target = self._targets.get(selection[0])
-        if target is None:
-            return None
-        workspace_id, run_id, attention_target = target
-        workspace = next(
-            (
-                item
-                for item in self._store.load_catalog().workspaces
-                if item.workspace_id == workspace_id
-            ),
-            None,
-        )
-        if workspace is None:
-            return None
-        return AttentionSelection(
-            workspace=workspace,
-            run_id=run_id,
-            target=attention_target,
-        )
+        selected = self._targets.get(selection[0])
+        return selected
+
+
+def _attention_label(kind: AttentionKind) -> str:
+    label = kind.value.replace("_", " ").title()
+    return label
+
+
+def _attention_tag(kind: AttentionKind) -> str:
+    if kind in {
+        AttentionKind.BLOCKED,
+        AttentionKind.FAILED,
+        AttentionKind.STALE,
+    }:
+        return "failure"
+    if kind == AttentionKind.READY_FOR_REVIEW:
+        return "success"
+    return "attention"

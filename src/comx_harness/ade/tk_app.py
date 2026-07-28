@@ -6,20 +6,30 @@ from pathlib import Path
 from tkinter import messagebox
 
 from comx_harness.ade.artifact_content import ArtifactContentService
+from comx_harness.ade.background_refresh import BackgroundRefreshCoordinator
 from comx_harness.ade.controller import AdeController
 from comx_harness.ade.diff_service import GitDiffService
 from comx_harness.ade.recipe_catalog import builtin_recipes
 from comx_harness.ade.state_store import AdeStateStore
-from comx_harness.ade.tk_attention import AttentionPane, AttentionSelection
-from comx_harness.ade.tk_command_palette import open_command_palette
+from comx_harness.ade.tk_attention import AttentionPane
+from comx_harness.ade.tk_command_palette import open_ade_command_palette
 from comx_harness.ade.tk_dialogs import MultilineInputDialog
 from comx_harness.ade.tk_project_application import TkProjectApplication
+from comx_harness.ade.tk_refresh import (
+    AdeRefreshReader,
+    AdeRefreshRenderer,
+    AdeRefreshSnapshot,
+    AttentionSelection,
+)
+from comx_harness.ade.tk_run_inspection import (
+    RunInspectionReader,
+    RunInspectionSnapshot,
+)
 from comx_harness.ade.tk_runtime_helpers import (
     launch_observed_tmux as _launch_observed_tmux,
-    provider_readiness_label as _provider_readiness_label,
 )
 from comx_harness.ade.tk_shell import AdeTkShell, TkActionSet
-from comx_harness.schemas.ade_operator_schemas import RunInspection
+from comx_harness.schemas.ade_operator_schemas import AttentionTarget, RunInspection
 
 
 class AdeTkApplication(TkProjectApplication):
@@ -32,11 +42,13 @@ class AdeTkApplication(TkProjectApplication):
         state_store: AdeStateStore | None = None,
     ) -> None:
         super().__init__(initial_workspace, state_store=state_store)
-        self._diff = GitDiffService()
         self._artifact_content = ArtifactContentService()
+        self._inspection_reader = RunInspectionReader(GitDiffService())
         self._selected_run_id = self._context.selected_run_id
         self._inspection: RunInspection | None = None
+        self._pending_attention_target: AttentionTarget | None = None
         self._observed_tmux_session: str | None = None
+        self._initial_view_pending = self._context.active_view == "run-detail"
         self.root.title("comx-agent · Codex & OMX ADE")
         self.root.minsize(980, 640)
         self.root.geometry(self._context.window_geometry or "1440x900")
@@ -47,8 +59,17 @@ class AdeTkApplication(TkProjectApplication):
         )
         self._attention = AttentionPane(
             self.ui.attention,
-            self._store,
             self._open_attention_selection,
+        )
+        self._refresh_reader = AdeRefreshReader(self._store)
+        self._refresh_renderer = AdeRefreshRenderer(self.ui)
+        self._background_refresh = BackgroundRefreshCoordinator[AdeRefreshSnapshot](
+            schedule=self.root.after,
+        )
+        self._background_inspection = BackgroundRefreshCoordinator[
+            RunInspectionSnapshot
+        ](
+            schedule=self.root.after,
         )
         self.ui.sidebar.bind("<<TreeviewSelect>>", self._sidebar_selected)
         self.ui.runs.bind("<Double-1>", self._run_opened)
@@ -90,59 +111,48 @@ class AdeTkApplication(TkProjectApplication):
         )
 
     def _refresh_all(self) -> None:
-        self._refresh_sidebar()
-        self._refresh_workspace()
-        self._attention.refresh(self._context.reviewed_run_ids)
-        self._refresh_capabilities()
+        workspace_id = (
+            self._active_workspace.workspace_id
+            if self._active_workspace is not None
+            else None
+        )
+        reviewed_run_ids = self._context.reviewed_run_ids
+        self._background_refresh.request(
+            load=lambda: self._refresh_reader.read(
+                active_workspace_id=workspace_id,
+                reviewed_run_ids=reviewed_run_ids,
+            ),
+            on_result=self._apply_refresh,
+            on_error=self._refresh_failed,
+        )
 
     def _workspace_changed(self) -> None:
         self._selected_run_id = None
         self._inspection = None
+        self._pending_attention_target = None
         self._observed_tmux_session = None
         self._refresh_all()
 
-    def _refresh_workspace(self) -> None:
-        controller = self._controller
+    def _apply_refresh(self, snapshot: AdeRefreshSnapshot) -> None:
         workspace = self._active_workspace
-        if controller is None or workspace is None:
+        if workspace is None or snapshot.active_workspace_id != workspace.workspace_id:
             return
-        status = self._workspaces.inspect_workspace(workspace.workspace_id)
-        cleanliness = (
-            "dirty"
-            if status.dirty
-            else "clean"
-            if status.dirty is not None
-            else "unknown"
+        self._refresh_renderer.apply(
+            snapshot,
+            active_workspace=workspace,
+            selected_run_id=self._selected_run_id,
         )
-        self.ui.workspace_summary.set(
-            f"{status.branch or 'not a Git repository'} · {cleanliness}"
-        )
-        projection = controller.observe.projection()
-        self.ui.runs.delete(*self.ui.runs.get_children())
-        for run in projection.runs:
-            self.ui.runs.insert(
-                "",
-                "end",
-                iid=run.run_id,
-                values=(run.provider, run.status, run.liveness, run.objective),
-            )
-        if self._selected_run_id and self.ui.runs.exists(self._selected_run_id):
-            self.ui.runs.selection_set(self._selected_run_id)
+        self._attention.show(snapshot.attention)
+        if self._initial_view_pending:
+            self._initial_view_pending = False
+            self._restore_main_view()
 
-    def _refresh_capabilities(self) -> None:
-        controller = self._controller
-        if controller is None:
-            return
-        try:
-            report = controller.observe.capabilities()
-        except (OSError, ValueError) as error:
-            self.ui.capability_label.configure(text=f"Providers: unavailable ({error})")
-            return
-        self.ui.capability_label.configure(
-            text=f"Providers: {_provider_readiness_label(report)}"
-        )
+    def _refresh_failed(self, error: Exception) -> None:
+        self._initial_view_pending = False
+        self.ui.status.set(f"Refresh failed: {str(error) or type(error).__name__}")
 
     def _show_new_run(self) -> None:
+        self._initial_view_pending = False
         self.ui.main_tabs.select(self.ui.new_run)
         self.ui.new_run.focus_objective()
 
@@ -160,6 +170,9 @@ class AdeTkApplication(TkProjectApplication):
             self.ui.main_tabs.select(self.ui.detail)
             self.ui.detail.select_tab(self._context.active_detail_tab)
             return
+        if self._context.active_view == "run-detail" and self._initial_view_pending:
+            self.ui.main_tabs.select(0)
+            return
         if self._context.active_view == "run-detail":
             # Stale presentation state must not invent a Run that no longer exists.
             self._selected_run_id = None
@@ -167,6 +180,10 @@ class AdeTkApplication(TkProjectApplication):
 
     def _main_view_changed(self, event: tk.Event[tk.Misc]) -> None:
         del event
+        if self._initial_view_pending:
+            if self.ui.main_tabs.select() == self.ui.main_tabs.tabs()[0]:
+                return
+            self._initial_view_pending = False
         selected = self.ui.main_tabs.select()
         active_view = (
             "new-run"
@@ -218,40 +235,56 @@ class AdeTkApplication(TkProjectApplication):
         selection = self.ui.runs.selection()
         if selection:
             self._selected_run_id = selection[0]
-        if self._selected_run_id is None:
+        run_id = self._selected_run_id
+        if run_id is None:
             messagebox.showinfo("Select a Run", "Select a Run to inspect.")
             return
         controller = self._require_controller()
-        try:
-            inspection = controller.observe.inspect(self._selected_run_id)
-            diff = self._diff.inspect(controller.workspace)
-            team = (
-                controller.observe.team(inspection.discovered_omx_teams[0])
-                if inspection.discovered_omx_teams
-                else None
-            )
-        except Exception as error:
-            self._show_error("Inspection failed", error)
+        self.ui.status.set(f"Inspecting {run_id}…")
+        self._background_inspection.request(
+            load=lambda: self._inspection_reader.read(controller, run_id),
+            on_result=self._apply_inspection,
+            on_error=self._inspection_failed,
+        )
+
+    def _apply_inspection(self, snapshot: RunInspectionSnapshot) -> None:
+        controller = self._controller
+        if (
+            controller is None
+            or controller.workspace != snapshot.workspace
+            or self._selected_run_id != snapshot.run_id
+        ):
             return
+        inspection = snapshot.inspection
+        team = snapshot.team
         self._inspection = inspection
         self._observed_tmux_session = (
             team.tmux_session
             if team is not None and team.available and team.tmux_session is not None
             else None
         )
-        self.ui.detail.show_inspection(inspection, diff, team)
+        self.ui.detail.show_inspection(inspection, snapshot.diff, team)
         reviewed = tuple(
-            dict.fromkeys((*self._context.reviewed_run_ids, self._selected_run_id))
+            dict.fromkeys((*self._context.reviewed_run_ids, snapshot.run_id))
         )
         self._context = self._context.model_copy(
             update={
-                "selected_run_id": self._selected_run_id,
+                "selected_run_id": snapshot.run_id,
                 "reviewed_run_ids": reviewed,
             }
         )
         self._store.save_view_context(self._context)
         self.ui.main_tabs.select(self.ui.detail)
-        self._attention.refresh(self._context.reviewed_run_ids)
+        target = self._pending_attention_target
+        self._pending_attention_target = None
+        if target is not None:
+            self.ui.detail.focus_attention_target(target)
+        self.ui.status.set(f"Inspection ready: {snapshot.run_id}.")
+        self._refresh_all()
+
+    def _inspection_failed(self, error: Exception) -> None:
+        self._pending_attention_target = None
+        self._show_error("Inspection failed", error)
 
     def _cancel_run(self) -> None:
         if self._selected_run_id is None:
@@ -329,30 +362,13 @@ class AdeTkApplication(TkProjectApplication):
     def _open_attention_selection(self, selection: AttentionSelection) -> None:
         self._activate_workspace(selection.workspace)
         self._selected_run_id = selection.run_id
-        self._refresh_workspace()
+        self._pending_attention_target = selection.target
+        self._refresh_all()
         self._inspect_run()
-        self.ui.detail.focus_attention_target(selection.target)
 
     def _open_commands(self, event: tk.Event[tk.Misc] | None = None) -> None:
         del event
-        open_command_palette(
-            self.root,
-            (
-                ("New Run", self._show_new_run),
-                ("Refresh Workspace", self._refresh_all),
-                ("Register Project", self._register_project),
-                ("Adopt Workspace", self._adopt_workspace),
-                ("Create Isolated Worktree", self._create_worktree),
-                ("Inspect Selected Run", self._inspect_run),
-                ("Attach Observed OMX tmux", self._attach_observed_tmux),
-                ("Open Workspace Terminal", self._open_terminal),
-                ("Open Finder", self._open_finder),
-                ("Open External Editor", self._open_editor),
-                ("Cancel Selected Run", self._cancel_run),
-                ("Resume Selected Run", self._resume_run),
-                ("Handoff Selected Run", self._handoff_run),
-            ),
-        )
+        open_ade_command_palette(self.root, self.ui.actions)
 
     def _attach_observed_tmux(self) -> None:
         launch = _launch_observed_tmux(
@@ -366,10 +382,9 @@ class AdeTkApplication(TkProjectApplication):
     def _scheduled_refresh(self) -> None:
         if not self.root.winfo_exists():
             return
-        with suppress(FileNotFoundError, OSError, ValueError):
+        with suppress(RuntimeError, tk.TclError):
             # Native process and filesystem state may change between polling reads.
-            self._refresh_workspace()
-            self._attention.refresh(self._context.reviewed_run_ids)
+            self._refresh_all()
         self.root.after(1_500, self._scheduled_refresh)
 
     def _close(self) -> None:
@@ -382,6 +397,9 @@ class AdeTkApplication(TkProjectApplication):
             }
         )
         self._store.save_view_context(self._context)
+        self.root.withdraw()
+        self._background_refresh.close()
+        self._background_inspection.close()
         self.root.destroy()
 
     def _active_main_view(self) -> str:

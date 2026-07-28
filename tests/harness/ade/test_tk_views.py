@@ -1,16 +1,30 @@
 import tkinter as tk
 from collections.abc import Iterator
 from contextlib import contextmanager
+from gc import collect
+from pathlib import Path
+from threading import Event
+from time import monotonic
 
 import pytest
+from comx_harness.ade.controller import AdeController
 from comx_harness.ade.recipe_catalog import builtin_recipes
+from comx_harness.ade.run_projection import WorkspaceRunProjectionReader
+from comx_harness.ade.state_store import AdeStateStore
+from comx_harness.ade.tk_app import AdeTkApplication
 from comx_harness.ade.tk_new_run_view import NewRunView
 from comx_harness.ade.tk_run_detail_view import RunDetailView, _terminal_text
+from comx_harness.ade.tk_run_inspection import (
+    RunInspectionReader,
+    RunInspectionSnapshot,
+)
 from comx_harness.schemas.ade_inspection_schemas import GitDiffProjection
 from comx_harness.schemas.ade_operator_schemas import (
     AttentionTarget,
     RunInspection,
+    WorkspaceRunProjection,
 )
+from comx_harness.schemas.ade_schemas import AdeStateSettings
 from comx_harness.schemas.artifact_schemas import ArtifactReport
 from comx_harness.schemas.lifecycle_schemas import (
     EventReport,
@@ -42,6 +56,7 @@ def _tk_root() -> Iterator[tk.Tk]:
         yield root
     finally:
         root.destroy()
+        collect()
 
 
 def test_new_run_view_preserves_multiline_objective_and_visible_plan_gate() -> None:
@@ -62,6 +77,89 @@ def test_new_run_view_preserves_multiline_objective_and_visible_plan_gate() -> N
         assert view.start_button.instate(["disabled"])
         view.focus_objective()
         assert root.focus_get() == view.objective
+
+
+def test_application_startup_does_not_wait_for_slow_run_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    refresh_release = Event()
+
+    def slow_projection(
+        self: WorkspaceRunProjectionReader,
+        workspace: str | Path,
+        *,
+        limit: int = 25,
+    ) -> WorkspaceRunProjection:
+        del self, limit
+        refresh_release.wait(timeout=2)
+        return WorkspaceRunProjection(workspace=str(workspace), runs=())
+
+    monkeypatch.setattr(WorkspaceRunProjectionReader, "read", slow_projection)
+    started = monotonic()
+    try:
+        application = AdeTkApplication(
+            Path.cwd(),
+            state_store=AdeStateStore(
+                AdeStateSettings(state_root=tmp_path / "ade-state")
+            ),
+        )
+    except tk.TclError as error:
+        pytest.skip(f"Tk display is unavailable: {error}")
+    startup_seconds = monotonic() - started
+    try:
+        application.root.withdraw()
+        application._show_new_run()
+
+        assert startup_seconds < 1
+        assert application.ui.main_tabs.select() == str(application.ui.new_run)
+    finally:
+        refresh_release.set()
+        application._close()
+        collect()
+
+
+def test_run_inspection_does_not_block_the_tk_event_loop(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    inspection_started = Event()
+    inspection_release = Event()
+
+    def slow_inspection(
+        self: RunInspectionReader,
+        controller: AdeController,
+        run_id: str,
+    ) -> RunInspectionSnapshot:
+        del self, controller, run_id
+        inspection_started.set()
+        inspection_release.wait(timeout=2)
+        raise RuntimeError("test inspection stopped")
+
+    monkeypatch.setattr(RunInspectionReader, "read", slow_inspection)
+    try:
+        application = AdeTkApplication(
+            Path.cwd(),
+            state_store=AdeStateStore(
+                AdeStateSettings(state_root=tmp_path / "ade-state")
+            ),
+        )
+    except tk.TclError as error:
+        pytest.skip(f"Tk display is unavailable: {error}")
+    application._selected_run_id = "run-slow"
+    started = monotonic()
+    application._inspect_run()
+    inspect_seconds = monotonic() - started
+    try:
+        application.root.withdraw()
+
+        assert inspection_started.wait(timeout=1)
+        assert inspect_seconds < 0.2
+        assert application.ui.status.get() == "Inspecting run-slow…"
+    finally:
+        inspection_release.set()
+        application._close()
+        collect()
 
 
 def test_run_detail_exposes_all_goal_tabs() -> None:

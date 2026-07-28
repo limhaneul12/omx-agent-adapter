@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import tkinter as tk
 from collections.abc import Callable
-from tkinter import scrolledtext, ttk
+from tkinter import ttk
 
+from comx_harness.ade.tk_theme import PALETTE, create_scrolled_text_area
 from comx_harness.schemas.ade_inspection_schemas import (
     ArtifactContentProjection,
     GitDiffProjection,
@@ -29,7 +30,6 @@ class RunDetailView(ttk.Frame):
     def __init__(
         self,
         master: tk.Misc,
-        *,
         terminal_action: Callable[[], None],
         tmux_action: Callable[[], None],
         finder_action: Callable[[], None],
@@ -40,7 +40,7 @@ class RunDetailView(ttk.Frame):
         artifact_action: Callable[[], None],
     ) -> None:
         super().__init__(master, padding=12)
-        self._text_by_tab: dict[str, scrolledtext.ScrolledText] = {}
+        self._text_by_tab: dict[str, tk.Text] = {}
         self._artifact_action = artifact_action
         self._terminal_action = terminal_action
         self._tmux_action = tmux_action
@@ -119,12 +119,15 @@ class RunDetailView(ttk.Frame):
             index,
             f"{index}+{len(target.entity_id)}c",
         )
-        text.tag_configure("attention-target", background="#fff1a8")
+        text.tag_configure(
+            "attention-target",
+            background=PALETTE.selection,
+            foreground=PALETTE.text,
+        )
         text.see(index)
 
     def _build_toolbar(
         self,
-        *,
         terminal_action: Callable[[], None],
         tmux_action: Callable[[], None],
         finder_action: Callable[[], None],
@@ -145,7 +148,8 @@ class RunDetailView(ttk.Frame):
             ("Resume", resume_action),
             ("Handoff", handoff_action),
         ):
-            ttk.Button(toolbar, text=label, command=action).pack(
+            style = "Danger.TButton" if label == "Cancel" else "TButton"
+            ttk.Button(toolbar, text=label, command=action, style=style).pack(
                 side="right",
                 padx=(6, 0),
             )
@@ -155,12 +159,14 @@ class RunDetailView(ttk.Frame):
         self.notebook.pack(fill="both", expand=True)
         for name in self._TAB_NAMES:
             frame = ttk.Frame(self.notebook, padding=8)
-            text = scrolledtext.ScrolledText(
+            text_area = create_scrolled_text_area(
                 frame,
                 wrap="none" if name in {"Activity", "Diff", "Artifacts"} else "word",
                 state="disabled",
+                monospace=True,
             )
-            text.pack(fill="both", expand=True)
+            text = text_area.text
+            text_area.container.pack(fill="both", expand=True)
             self._text_by_tab[name] = text
             if name == "Artifacts":
                 ttk.Button(
