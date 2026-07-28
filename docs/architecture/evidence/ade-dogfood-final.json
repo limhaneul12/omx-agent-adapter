@@ -1,0 +1,78 @@
+{
+  "ade_handoff": {
+    "controller_id": "human-ade",
+    "handoff_id": "handoff-idem-a803f7407c609d0b972b85b6",
+    "origin_run_id": "run-idem-f61a977e74f504830e0b3cc7",
+    "source_provider": "codex",
+    "source_result_sha256": "2ccca104f27471855fd688476e7ee8052ef823f1cd382f5174881f1ece54b219",
+    "target_provider": "omx",
+    "target_result_sha256": "2f07824932c483a93499e5e95c8024d6e53bdc9eb4c01ad92bde524261eb43c7",
+    "target_run_id": "run-idem-5ae14988179ccbc05f2880ed",
+    "target_status": "succeeded"
+  },
+  "completed_ade_controller_runs": [
+    {
+      "events_metadata_matches_file": true,
+      "owner_controller_id": "human-ade",
+      "parent_run_id": null,
+      "provider": "codex",
+      "provider_session_id": "019fa7b6-b182-7ec1-872c-6905d9e1bf2b",
+      "result_sha256": "2ccca104f27471855fd688476e7ee8052ef823f1cd382f5174881f1ece54b219",
+      "result_size_bytes": 1733,
+      "run_id": "run-idem-f61a977e74f504830e0b3cc7",
+      "status": "succeeded"
+    },
+    {
+      "events_metadata_matches_file": true,
+      "owner_controller_id": "human-ade",
+      "parent_run_id": null,
+      "provider": "omx",
+      "provider_session_id": "019fa7b7-7a7e-7903-84d4-8e63522d12df",
+      "result_sha256": "0343efa3fa064603009d02906cb5dae8918725327e123b63dd1dbfa27662a340",
+      "result_size_bytes": 1005,
+      "run_id": "run-idem-ae48c28886dd6f10c1c230bb",
+      "status": "succeeded"
+    },
+    {
+      "events_metadata_matches_file": true,
+      "owner_controller_id": "human-ade",
+      "parent_run_id": "run-idem-f61a977e74f504830e0b3cc7",
+      "provider": "codex",
+      "provider_session_id": "019fa7b6-b182-7ec1-872c-6905d9e1bf2b",
+      "result_sha256": "0015a8b448ac78f1368945216897d3bca341d852738a07ed070f49c381d59661",
+      "result_size_bytes": 1052,
+      "run_id": "run-idem-8e7836a85558c9ab6d2739c2",
+      "status": "succeeded"
+    },
+    {
+      "events_metadata_matches_file": true,
+      "owner_controller_id": "human-ade",
+      "parent_run_id": null,
+      "provider": "omx",
+      "provider_session_id": "019fa7bd-25cb-79b3-bf1c-58276e443dca",
+      "result_sha256": "2f07824932c483a93499e5e95c8024d6e53bdc9eb4c01ad92bde524261eb43c7",
+      "result_size_bytes": 2078,
+      "run_id": "run-idem-5ae14988179ccbc05f2880ed",
+      "status": "succeeded"
+    }
+  ],
+  "observed_on": "2026-07-28",
+  "schema_version": "ade-dogfood-evidence.v1",
+  "ui_restart_flow": {
+    "detached_operation_final_status": "succeeded",
+    "detached_pid": 76774,
+    "final_liveness": "finished",
+    "final_status_after_ade_cancel": "cancelled",
+    "first_ade_pid": 75803,
+    "liveness_after_reopen": "running",
+    "multiline_objective": "Inspect the final ADE implementation after the independent audit.\nDo not modify files; return one concise verdict tied to GOAL.md.",
+    "operation_id": "ade-operation-20260728T080504324397Z-9a63c4e7",
+    "reopened_ade_pid": 80405,
+    "restored_selected_run_id": "run-idem-0c702a745b61599adfda26c2",
+    "run_id": "run-idem-0c702a745b61599adfda26c2",
+    "run_visible_after_reopen": true,
+    "status_after_reopen": "running",
+    "status_before_first_ade_close": "running"
+  },
+  "workspace": "/Users/imhaneul/Documents/sky_document/project/omx-agent-adapter"
+}

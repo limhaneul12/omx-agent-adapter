@@ -1,31 +1,24 @@
 [project]
 name = "comx-agent"
-version = "0.1.0"
-description = "Agent-facing adapter layer for operating OMX as a stateful runtime"
+version = "0.2.0"
+description = "Local Agent Development Environment for Codex and OMX"
 readme = "README.md"
 requires-python = ">=3.13,<3.15"
 dependencies = [
-  "asyncer>=0.0.17,<0.1.0",
-  "httpx>=0.28,<1.0",
-  "mcp>=1.0,<2.0",
-  "msgspec>=0.19,<1.0",
   "orjson>=3.10,<4.0",
   "pydantic>=2.11,<3.0",
-  "pydantic-settings>=2.10,<3.0",
   "typer>=0.16,<1.0",
-  "typing-extensions>=4.14,<5.0",
 ]
 
 [dependency-groups]
 dev = [
   "pytest>=9.0.2",
-  "pytest-cov>=6.3.0",
   "pyrefly>=0.62.0",
   "ruff>=0.15.9",
 ]
 
 [project.scripts]
-comx-agent = "omx_agent_adapter_cli:app"
+comx-agent = "comx_harness.cli:app"
 
 [build-system]
 requires = ["hatchling>=1.27,<2.0"]
@@ -33,21 +26,23 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-  "src/omx_remote/**/*.py",
-  "src/omx_remote/**/*.md",
-  "prompt/**/*.md",
-  "omx_agent_adapter_cli.py",
+  "src/comx_harness/**/*.py",
   "README.md",
+  "GOAL.md",
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/omx_remote"]
-force-include = {"omx_agent_adapter_cli.py" = "omx_agent_adapter_cli.py", "prompt" = "prompt"}
+packages = ["src/comx_harness"]
+force-include = {"GOAL.md" = "GOAL.md"}
 
 [tool.ruff]
 target-version = "py313"
 line-length = 88
-src = ["src", "tests"]
+src = ["src/comx_harness", "tests/harness"]
+include = [
+  "src/comx_harness/**/*.py",
+  "tests/harness/**/*.py",
+]
 extend-exclude = [
   ".venv",
   ".ruff_cache",
@@ -56,14 +51,7 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4", "PIE", "PERF", "N", "RUF"]
-ignore = [
-  "E501",
-  "B008",
-  "SIM108",
-]
-exclude = [
-  "**/tests/**",
-]
+ignore = ["E501", "B008", "SIM108"]
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
@@ -74,23 +62,22 @@ indent-style = "space"
 
 [tool.pyrefly]
 python-version = "3.13"
-project-includes = ["src/omx_remote"]
+project-includes = ["src/comx_harness"]
 project-excludes = [
   "**/tests/**",
   "**/__pycache__",
   "**/.venv/**",
-  "**/venv/**",
-  "**/.mypy_cache/**",
-  "**/.ruff_cache/**",
   "**/build/**",
   "**/dist/**",
-  "**/.pytest_cache/**",
   "**/.git/**",
 ]
-search-path = ["src/omx_remote"]
+search-path = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src", "src/omx_remote"]
-addopts = "--strict-markers"
+testpaths = ["tests/harness"]
+pythonpath = ["src"]
+addopts = "--strict-markers -m 'not native'"
+markers = [
+  "native: requires installed provider binaries and ambient native runtime state",
+]
 norecursedirs = [".venv", ".pytest_cache", ".ruff_cache", "node_modules"]

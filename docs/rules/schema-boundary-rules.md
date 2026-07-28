@@ -217,7 +217,7 @@ Examples that should usually be root schemas rather than raw lists:
 
 - repo/flow collections in multi-operator snapshots;
 - active/launchable/resumable/cleanup/terminal flow ID collections;
-- worker assignment collections derived from a Ralph PRD;
+- verified artifact collections associated with a run or handoff;
 - repeated `NonEmptyString` collections that represent named domain tokens.
 
 Root collection validators should enforce collection-level invariants instead of scattering those checks across runtime helpers.

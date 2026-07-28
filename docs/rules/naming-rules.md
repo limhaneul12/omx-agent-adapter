@@ -42,13 +42,20 @@ Directory names should help a reader answer:
 - what problem space is this code about?
 - what kind of responsibility lives here?
 
-### CLI launcher feature folders
+### CLI adapter boundary
 
-`src/omx_remote/cli_launcher/` should stay thin at the top level. When a CLI
-surface gains multiple cooperating files for one feature area, put those files
-under a feature directory such as `cli_launcher/mcp/` or
-`cli_launcher/team_launcher/` instead of adding more flat siblings. Do not add
-nested folders for appearance only; the folder must own a real feature boundary.
+`src/comx_harness/cli.py` must remain a thin adapter over the exact-nine
+`HarnessTools` controller surface. `HarnessTools` delegates to the shared
+`HarnessService` application core; neither layer may create a second source of
+truth for lifecycle, provider, evidence, or storage behavior.
+
+`HarnessTools` and `HarnessService` intentionally expose the same exact nine
+public operations. They are the narrow facade exception to the normal six-method
+cohesion guideline. Do not add another public operation to either facade; move
+supporting behavior into concept-owned modules instead.
+
+When a CLI concern requires multiple cooperating modules, first prove that it is
+not a core application concern before adding an interface-specific package.
 
 ## `__init__.py` Rule
 

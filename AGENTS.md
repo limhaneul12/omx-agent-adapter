@@ -1,200 +1,166 @@
 # omx-agent-adapter Development Conventions
 
-This repository builds an agent-facing control layer that helps agents use OMX + Codex strongly, safely, and consistently.
+## Source of Truth
 
-## Project Positioning
+Read these documents before non-trivial work:
 
-- This project is **not** a new agent framework.
-- This project is **not** MCP itself.
-- This project is **not** a replacement for OMX, Codex, Ralph, Team, or Ultrawork.
-- This project **is** a control surface / adapter layer that helps agents operate the Codex/OMX stack through typed state, route guidance, evidence collection, runtime guardrails, and lifecycle artifacts.
-- The top-level operating lanes are intentionally limited to:
-  1. Goal only
-  2. Goal → Ralph
-  3. Goal → Ralph → Team(s)
-  4. Ultrawork only
-  5. UltraGoal, native OMX surface
-  6. Ralph → Team
-- `Ralph → Team` is a supported Ralph-owned lane, while `Goal → Ralph → Team(s)` is the Goal-supervised lane that uses Ralph-owned Team fanout internally.
-- Canonical lane/status details live in `README.md#operating-route-guide`.
+1. `GOAL.md` — why the product exists, its boundaries, and its success criteria.
+2. `AGENTS.md` — high-signal repository working rules.
+3. The relevant documents under `docs/rules/` — detailed implementation policy.
 
-## Rules Source of Truth
+Existing code never overrides `GOAL.md`. When implementation and goal conflict, change the implementation or explicitly revise the goal with a recorded decision.
 
-Detailed development policy should live under `docs/rules/`.
+## Product Positioning
 
-Use `AGENTS.md` for high-signal working rules and navigation.
-Use `docs/rules/` for longer source-of-truth policy documents.
+This repository builds the thinnest useful controller-neutral execution harness for Codex and OMX.
 
-Before making non-trivial structural or implementation changes, read the relevant rule documents first.
-At minimum, contributors should check the rule set that matches the work they are doing.
+It is:
 
-Current rule documents:
-- `docs/rules/type-development-rules.md`
-- `docs/rules/naming-rules.md`
-- `docs/rules/schema-boundary-rules.md`
-- `docs/rules/lint-and-typecheck-rules.md`
-- `docs/rules/pydantic/README.md`
+- a typed contract for direct Codex and OMX execution,
+- a normalized run lifecycle and evidence boundary,
+- a verified cross-runtime handoff mechanism,
+- and one shared application core for a human CLI, Hermes, or another trusted controller.
 
-Recommended reading order for normal code work:
-1. `docs/rules/type-development-rules.md`
-2. `docs/rules/schema-boundary-rules.md`
-3. `docs/rules/pydantic/README.md`
-4. `docs/rules/naming-rules.md`
-5. `docs/rules/lint-and-typecheck-rules.md`
+It is not:
 
-Rule ownership summary for agents:
-- `docs/rules/type-development-rules.md`
-  - repository-wide typing discipline
-  - `src/` vs `tests/` strictness expectations
-  - broad `Any` / loose dict usage policy
-- `docs/rules/pydantic/README.md`
-  - index for all Pydantic-specific schema rules
-  - use this when changing model shape, validation, defaults, strictness, or normalization
-- `docs/rules/schema-boundary-rules.md`
-  - repository-level boundary ownership and leakage rules
-  - JSON/JSONL transport seam policy, routing/normalization expectations, and raw passthrough guidance
-  - use this to decide where raw transport data must stop and which module owns normalization
-- `docs/rules/naming-rules.md`
-  - filename and module naming policy
-  - use this before creating new files or splitting an existing concept
-- `docs/rules/lint-and-typecheck-rules.md`
-  - verification gates and lint/typecheck expectations
-  - use this before final validation and when deciding whether a warning can be ignored
+- a new agent framework,
+- a second reasoning engine,
+- a fixed workflow catalog,
+- a company or council simulator,
+- a replacement for native Codex or OMX features,
+- a memory system,
+- an MCP marketplace,
+- a distributed scheduler,
+- or a GUI-owned lifecycle that bypasses the shared execution core.
 
-## Architecture Direction
+## Public Surface
 
-- Prefer a **library-first** architecture.
-- Keep the CLI **thin** and let reusable logic live in importable Python modules.
-- Treat OMX as the runtime/substrate and this repository as the agent-facing remote control layer.
-- Favor structured contracts and machine-readable outputs over ad-hoc text parsing wherever possible.
+The core public operations are intentionally limited to:
 
-## Source Layout Conventions
+1. `capabilities`
+2. `plan`
+3. `run`
+4. `handoff`
+5. `status`
+6. `events`
+7. `cancel`
+8. `resume`
+9. `artifacts`
 
-- Manage source code directly under `src/` by **feature/domain**, not under a nested `src/omx_agent_adapter/` package directory.
-- Prefer clear feature slices such as:
-  - `execution/`
-  - `runtime/`
-  - `teamwork/`
-  - `history/`
-  - `bridge/`
-  - `parsing/`
-  - `shared/`
-  - `schemas/`
-- Do not introduce a redundant package-name repetition pattern when the repository name already carries the project identity.
+A new public operation requires evidence that it owns a lifecycle, interoperability, evidence, or controller-contract problem that native Codex or OMX does not already solve.
 
-## Naming Rules
+## Native-First Rule
 
-- Prefer **purpose-driven filenames** over generic technical filenames.
-- Avoid vague or overly broad filenames such as:
-  - `enums.py`
-  - `utils.py`
-  - `types.py`
-  - `helpers.py`
-  - `status.py`
-  - `stream.py`
-- Prefer filenames that describe role and intent, for example:
-  - `runtime_snapshot.py`
-  - `event_feed.py`
-  - `payload_transport.py`
-  - `contract_promotion.py`
-  - `command_blueprint.py`
-- Avoid filenames that can collide with common library/module names or create ambiguity later.
-  - Example anti-patterns: `pandas.py`, `enum.py`, `typing.py`
+Codex owns Codex reasoning and native Codex workflows.
 
-## Pydantic Usage
+OMX owns Team, Ralph, UltraGoal, missions, capability locks, and other OMX-native orchestration.
 
-For detailed Pydantic policy, read:
-- `docs/rules/pydantic/README.md`
-- `docs/rules/type-development-rules.md`
+The harness may discover and invoke native capabilities. It must not rebuild them as Python workflows. Same-provider composition should use the provider's native behavior by default. Harness composition is reserved for cross-runtime handoff or measurable isolation/evidence value.
 
-Short version:
-- use `schemas/` for Pydantic-based contracts,
-- keep schemas concept-split with `{concept}_schemas.py`,
-- treat Pydantic v2 as the primary schema/contract system for this repository,
-- use `type-development-rules.md` for repository-wide typing policy and `docs/rules/pydantic/` for schema-specific rules,
-- do not treat Pydantic as the default raw transport parser in runtime/event-stream paths when a transport seam still needs routing or normalization,
-- if a named-field schema only needs the shared strict config, inherit from `StrictSchemaModel` in `schemas/common_schemas.py` rather than repeating identical per-class `model_config` declarations,
-- the shared named-field strict config is `extra="forbid"`, `frozen=True`, `use_enum_values=True`, and `validate_default=True`,
-- use a separate `StrictRootSchemaModel` for root-value contracts; the root base should omit `extra="forbid"`,
-- only keep per-schema `ConfigDict(...)` when that schema genuinely needs settings different from the shared strict default.
+## Architecture
 
-## Type Strictness Policy
+The shipped package is `src/comx_harness/`.
 
-For detailed type rules, read:
-- `docs/rules/type-development-rules.md`
+- `schemas/` owns strict public Pydantic contracts.
+- `native_provider/` owns native Codex and OMX invocation adapters.
+- `storage/` owns the local single-user filesystem store.
+- `event_normalization.py` owns JSONL/stdout/stderr normalization.
+- `run_evidence.py` owns artifact verification.
+- `native_execution.py` owns subprocess execution and process liveness.
+- `application/harness_service.py` owns controller-neutral Run orchestration.
+- `controller_surface.py` owns the exact-nine `HarnessTools` facade.
+- `ade/` owns Project, Workspace, presentation, and detached-launch services.
+- `cli.py` is a thin adapter over `HarnessTools`.
 
-Short version:
-- type discipline is a first-class goal,
-- missing or wrong types in production source are real defects,
-- `src/` should remain stricter than tests,
-- keep dynamic looseness localized to parsing or runtime-boundary seams.
+CLI, Hermes integration, MCP exposure, and future operator interfaces must call the same application service. No interface may own separate run truth.
 
-## Exception Organization
+## Boundary Ownership
 
-- Manage cross-cutting exceptions under `shared/exceptions.py` when the total exception surface is still small and the names remain clear.
-- Only split exceptions back into concept-specific modules if the single shared module becomes noisy enough to harm discoverability.
+Controllers own:
 
-## Shared Enums and Shared Types
+- objective interpretation,
+- runtime selection,
+- constraints,
+- and whether another run is needed.
 
-- A `shared/` folder is allowed and encouraged when it holds genuinely cross-cutting definitions.
-- Do **not** place all enums in a single `shared/enums.py` file.
-- Keep enums with enums, but split them by concept.
-- Recommended structure:
+Native providers own:
 
-```text
-shared/
-└── omx_enums/
-    ├── runtime_enums.py
-    ├── execution_enums.py
-    ├── teamwork_enums.py
-    ├── history_enums.py
-    └── bridge_enums.py
+- reasoning,
+- tool selection,
+- provider-specific workflows,
+- and native session behavior.
+
+The harness owns:
+
+- validated invocation,
+- run identity,
+- state and liveness,
+- event normalization,
+- cancellation and supported resume,
+- artifact provenance and verification,
+- idempotency,
+- and cross-runtime handoff.
+
+Alexandria owns durable memory. MCP is an attachment mechanism. Neither belongs inside the harness lifecycle core.
+
+## Type and Schema Rules
+
+Detailed policy remains under `docs/rules/`.
+
+High-signal rules:
+
+- Public contracts use strict, immutable Pydantic models.
+- Raw native JSONL remains localized to the event-normalization boundary.
+- Do not spread `Any`, loose dictionaries, or transport payloads through core services.
+- Required key presence and nullable values are distinct concerns.
+- Production functions and public methods require explicit types.
+- Use named, purpose-driven modules and identifiers.
+- Keep provider-specific differences visible instead of creating false abstractions.
+
+## Module Cohesion
+
+- A production module approaching 430 lines is a refactor trigger.
+- A class should own one cohesive behavior and normally expose no more than six public methods; application facades may expose the fixed nine-operation product surface when delegation remains thin.
+- Split execution, evidence, event normalization, storage, and orchestration rather than creating a runtime manager omnibus.
+- Do not add compatibility facades for unused historical code.
+
+## Safety and Truthfulness
+
+- Read-only execution is the default.
+- Mutation requires explicit controller intent and a non-read-only sandbox.
+- A process exit code of zero is not semantic success.
+- Required evidence must exist and be non-empty before success is reported.
+- Unsupported cancel or resume behavior must fail explicitly rather than be simulated.
+- Same idempotency keys must not create uncontrolled duplicate mutation.
+- Do not expose dangerous bypass shortcuts as product presets.
+
+## Development Order
+
+Follow the order in `GOAL.md`:
+
+1. reduce duplicated and speculative surfaces,
+2. stabilize direct Codex and OMX providers,
+3. prove cross-runtime handoff,
+4. connect Hermes through the shared core,
+5. dogfood the ADE and expand operator interfaces only from demonstrated need.
+
+## Verification
+
+Use `uv` and run all gates before declaring completion:
+
+```bash
+make ruff
+make pyrefly
+make test
+make ci
 ```
 
-- Apply the same principle to other shared cross-cutting definitions: keep similar things together, but still split by concept instead of building giant catch-all files.
+Also verify:
 
-## Python Version and Tooling
+- `comx-agent --help` exposes only the intended public surface,
+- capability discovery reflects the actual installed binaries,
+- planning performs no workspace mutation,
+- the wheel contains `comx_harness` and not removed legacy packages,
+- direct execution and cross-runtime handoff are covered by local fake-provider end-to-end tests.
 
-- Use `uv` for environment and dependency management.
-- Support Python 3.13 and 3.14 for the shipped package (`requires-python = ">=3.13,<3.15"`).
-- Keep Ruff and Pyrefly configured to the lower-bound Python 3.13 target unless the project intentionally drops 3.13 support; this prevents accidental 3.14-only syntax or stdlib imports from breaking 3.13 users.
-- Python 3.14 makes deferred annotation evaluation standard via PEP 649/749 and adds `annotationlib`, but do not remove `from __future__ import annotations` solely for style while 3.13 remains supported.
-- Do not adopt `typing.TypeForm` as a 3.14 feature; current PEP 747 documentation targets Python 3.15.
-- Avoid deprecated/removed typing aliases such as `typing.ByteString`; use concrete buffer-compatible types or `collections.abc.Buffer` when a buffer contract is needed.
-- Python version decisions should consider practical ecosystem compatibility, not only language-version preference.
-
-## Implementation Guidance
-
-- Start with the smallest viable adapter surface around proven OMX commands.
-- Favor structured, testable wrappers around:
-  - `omx exec --json`
-  - `omx state ... --json`
-  - `omx team ... --json`
-  - `omx adapt ... --json`
-- Prefer safe, read-only verification paths before adding mutating or interactive flows.
-- Do not overbuild backend/server infrastructure early; justify it with actual coordination requirements.
-- In runtime/event-stream code, keep the layer split explicit:
-  - transport parsing (`orjson`)
-  - routing/normalization
-  - stable contract validation (`Pydantic`)
-- If a payload may remain partially raw or heterogeneous, preserve that fact at the transport/normalization layer instead of forcing premature schema unification.
-
-## Typed Transport Contract Rule
-
-- In concept-owned transport or normalized `TypedDict` definitions, keep key-presence semantics honest, but do not overuse `Required[...]` / `NotRequired[...]` when modern `TypedDict` defaults already express the same thing.
-- Use plain fields for all-required `TypedDict` classes.
-- Use plain fields inside `TypedDict(..., total=False)` when every field is optional.
-- Keep `Required[...]` / `NotRequired[...]` only when mixed requiredness is genuinely needed in the same `TypedDict`.
-- Do not force `Required[...]` onto raw nested payload shapes whose upstream variability is still intentional or not yet split into honest discriminated transport types.
-- Required key presence and nullable value semantics are separate concerns. A key may still be required even when its value normalizes to `None` before schema validation.
-
-## General Principle
-
-When in doubt:
-1. keep the structure feature-oriented,
-2. keep contracts explicit,
-3. keep filenames purposeful,
-4. keep shared definitions grouped by kind and split by concept,
-5. keep the adapter easier for agents to use than the raw OMX surface.
-
-@RTK.md
+Do not commit or push unless the user explicitly asks.

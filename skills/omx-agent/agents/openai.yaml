@@ -1,0 +1,4 @@
+interface:
+  display_name: "comx-agent"
+  short_description: "Operate the Codex/OMX ADE and execution core"
+  default_prompt: "Use $omx-agent to choose and verify the safest ADE or CLI flow for this Codex/OMX task."
