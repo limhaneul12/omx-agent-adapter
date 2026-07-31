@@ -15,12 +15,34 @@ class RunPaths:
 
 
 @dataclass(frozen=True, slots=True)
+class StrategyPaths:
+    directory: Path
+    record: Path
+    events: Path
+    request: Path
+    launch: Path
+    result: Path
+    stdout: Path
+    stderr: Path
+
+
+@dataclass(frozen=True, slots=True)
+class MissionPaths:
+    directory: Path
+    record: Path
+    git_before: Path
+    git_evidence: Path
+
+
+@dataclass(frozen=True, slots=True)
 class WorkspaceLayout:
     workspace: Path
     root: Path
     runs_root: Path
     handoffs_root: Path
     idempotency_root: Path
+    strategies_root: Path
+    missions_root: Path
 
     @classmethod
     def from_workspace(cls, workspace: str | Path) -> "WorkspaceLayout":
@@ -32,6 +54,8 @@ class WorkspaceLayout:
             runs_root=root / "runs",
             handoffs_root=root / "handoffs",
             idempotency_root=root / "idempotency",
+            strategies_root=root / "strategies",
+            missions_root=root / "missions",
         )
         return layout
 
@@ -47,6 +71,28 @@ class WorkspaceLayout:
             events=directory / "events.jsonl",
         )
         return paths
+
+    def strategy_paths(self, strategy_id: str) -> StrategyPaths:
+        directory = self.strategies_root / strategy_id
+        return StrategyPaths(
+            directory=directory,
+            record=directory / "strategy.json",
+            events=directory / "events.jsonl",
+            request=directory / "request.json",
+            launch=directory / "launch.json",
+            result=directory / "result.json",
+            stdout=directory / "worker.stdout.log",
+            stderr=directory / "worker.stderr.log",
+        )
+
+    def _mission_paths(self, mission_id: str) -> MissionPaths:
+        directory = self.missions_root / mission_id
+        return MissionPaths(
+            directory=directory,
+            record=directory / "mission.json",
+            git_before=directory / "git-before.json",
+            git_evidence=directory / "git-policy-evidence.json",
+        )
 
     def handoff_path(self, handoff_id: str) -> Path:
         path = self.handoffs_root / f"{handoff_id}.json"

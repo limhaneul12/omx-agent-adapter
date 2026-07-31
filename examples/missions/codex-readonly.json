@@ -1,0 +1,28 @@
+{
+  "schema_version": "mission-request.v1",
+  "mission_id": "replace-with-unique-codex-mission-id",
+  "controller_id": "human-cli",
+  "objective": "Inspect the selected workspace, report evidence and unresolved risks, and do not modify any file.",
+  "workspace": ".",
+  "execution_profile": "codex-native",
+  "constraints": {
+    "mutation_allowed": false,
+    "preserve_unrelated_changes": true,
+    "commit_allowed": false,
+    "push_allowed": false
+  },
+  "verification": {
+    "require_process_success": true,
+    "require_semantic_success": true,
+    "required_artifacts": []
+  },
+  "timeout_seconds": 900,
+  "options": {
+    "model": null,
+    "reasoning_effort": "high",
+    "sandbox": "read-only",
+    "approval_policy": "never",
+    "search": false,
+    "ephemeral": true
+  }
+}

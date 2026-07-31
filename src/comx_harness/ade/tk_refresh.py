@@ -17,11 +17,18 @@ from comx_harness.schemas.ade_schemas import (
     WorkspaceStatus,
 )
 from comx_harness.schemas.provider_schemas import CapabilityReport
+from comx_harness.schemas.strategy_schemas import (
+    StrategyRecord,
+    StrategyStage,
+    StrategyStageRecord,
+)
 from comx_harness.shared.harness_enums.lifecycle_enums import (
     ProcessLiveness,
     RunStatus,
 )
 from comx_harness.shared.harness_enums.operator_enums import AttentionKind
+from comx_harness.storage.strategy_store import StrategyStore
+from comx_harness.storage.workspace_layout import WorkspaceLayout
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +53,7 @@ class AdeRefreshSnapshot:
     workspace_statuses: tuple[WorkspaceStatus, ...]
     active_status: WorkspaceStatus | None
     active_projection: WorkspaceRunProjection | None
+    active_strategies: tuple[StrategyRecord, ...]
     attention: tuple[AttentionRefreshEntry, ...]
     capabilities: CapabilityReport | None
     capability_error: str | None
@@ -69,6 +77,7 @@ class AdeRefreshReader:
         attention: list[AttentionRefreshEntry] = []
         active_status: WorkspaceStatus | None = None
         active_projection: WorkspaceRunProjection | None = None
+        active_strategies: tuple[StrategyRecord, ...] = ()
         active_controller: AdeController | None = None
         for workspace in catalog.workspaces:
             status = self._workspaces.inspect_workspace(workspace.workspace_id)
@@ -85,6 +94,9 @@ class AdeRefreshReader:
             if workspace.workspace_id == active_workspace_id:
                 active_status = status
                 active_projection = projection
+                active_strategies = StrategyStore(
+                    WorkspaceLayout.from_workspace(workspace.root_path)
+                ).list_records()
                 active_controller = controller
         capabilities: CapabilityReport | None = None
         capability_error: str | None = None
@@ -99,6 +111,7 @@ class AdeRefreshReader:
             workspace_statuses=tuple(statuses),
             active_status=active_status,
             active_projection=active_projection,
+            active_strategies=active_strategies,
             attention=tuple(attention),
             capabilities=capabilities,
             capability_error=capability_error,
@@ -120,6 +133,7 @@ class AdeRefreshRenderer:
     ) -> None:
         self._render_sidebar(snapshot, active_workspace=active_workspace)
         self._render_workspace(snapshot, selected_run_id=selected_run_id)
+        self._render_strategies(snapshot)
         self._render_capabilities(snapshot)
 
     def _render_sidebar(
@@ -197,6 +211,46 @@ class AdeRefreshRenderer:
         if selected_run_id and self._ui.runs.exists(selected_run_id):
             self._ui.runs.selection_set(selected_run_id)
 
+    def _render_strategies(self, snapshot: AdeRefreshSnapshot) -> None:
+        self._ui.strategies.delete(*self._ui.strategies.get_children())
+        for record in snapshot.active_strategies:
+            strategy_id = record.definition.strategy_id
+            parent = f"strategy:{strategy_id}"
+            self._ui.strategies.insert(
+                "",
+                "end",
+                iid=parent,
+                text=strategy_id,
+                open=True,
+                values=(
+                    record.status,
+                    record.current_stage_id or "",
+                    "",
+                    "",
+                    record.definition.mission,
+                    _strategy_evidence_label(record),
+                ),
+                tags=(str(record.status),),
+            )
+            definitions = {stage.stage_id: stage for stage in record.definition.stages}
+            for stage_record in record.stages:
+                definition = definitions[stage_record.stage_id]
+                self._ui.strategies.insert(
+                    parent,
+                    "end",
+                    iid=f"strategy-stage:{strategy_id}:{stage_record.stage_id}",
+                    text=stage_record.stage_id,
+                    values=(
+                        stage_record.status,
+                        stage_record.node_type,
+                        stage_record.provider or "",
+                        _stage_surface_label(definition),
+                        stage_record.run_id or stage_record.handoff_id or "unobserved",
+                        _stage_evidence_label(stage_record),
+                    ),
+                    tags=(str(stage_record.status),),
+                )
+
     def _render_capabilities(self, snapshot: AdeRefreshSnapshot) -> None:
         report = snapshot.capabilities
         if report is None:
@@ -265,3 +319,28 @@ def _run_state_tag(status: RunStatus, liveness: ProcessLiveness) -> str:
 def _run_objective_label(objective: str) -> str:
     label = " ".join(objective.split())
     return label
+
+
+def _stage_surface_label(stage: StrategyStage) -> str:
+    return stage.workflow or stage.native_surface or str(stage.node_type)
+
+
+def _stage_evidence_label(stage: StrategyStageRecord) -> str:
+    if not stage.evidence:
+        return stage.failure or "no evidence yet"
+    passed = sum(item.passed for item in stage.evidence)
+    failed = len(stage.evidence) - passed
+    label = f"{passed} passed"
+    if failed:
+        label = f"{label} · {failed} failed"
+    if stage.failure:
+        label = f"{label} · {stage.failure}"
+    return label
+
+
+def _strategy_evidence_label(record: StrategyRecord) -> str:
+    observed = sum(len(stage.evidence) for stage in record.stages)
+    failed = sum(not item.passed for stage in record.stages for item in stage.evidence)
+    if observed == 0:
+        return "no evidence yet"
+    return f"{observed - failed}/{observed} evidence passed"

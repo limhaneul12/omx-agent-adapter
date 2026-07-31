@@ -1,5 +1,6 @@
 from comx_harness.schemas.common_schemas import NonEmptyString, StrictModel
 from comx_harness.shared.harness_enums.provider_enums import Operation, ProviderId
+from comx_harness.shared.harness_enums.strategy_enums import CapabilitySupport
 
 
 class ProviderCapability(StrictModel):
@@ -15,6 +16,8 @@ class ProviderInfo(StrictModel):
     available: bool
     resolved_path: NonEmptyString | None = None
     version: NonEmptyString | None = None
+    authentication: CapabilitySupport = CapabilitySupport.UNKNOWN
+    authentication_detail: NonEmptyString = "Native authentication has not been probed."
     capabilities: tuple[ProviderCapability, ...]
     native_features: tuple[NonEmptyString, ...] = ()
 

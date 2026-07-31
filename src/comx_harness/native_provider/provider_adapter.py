@@ -12,11 +12,18 @@ from comx_harness.schemas.provider_schemas import ProviderCapability, ProviderIn
 from comx_harness.shared.exceptions.provider_exceptions import ProviderUnavailableError
 from comx_harness.shared.harness_enums.execution_enums import SandboxMode
 from comx_harness.shared.harness_enums.provider_enums import Operation, ProviderId
+from comx_harness.shared.harness_enums.strategy_enums import CapabilitySupport
 
 
 @dataclass(frozen=True, slots=True)
 class NativeContractProbe:
     compatible: bool
+    detail: str
+
+
+@dataclass(frozen=True, slots=True)
+class NativeAuthenticationProbe:
+    support: CapabilitySupport
     detail: str
 
 
@@ -38,6 +45,14 @@ class ProviderAdapter(ABC):
                 detail=f"{self.binary_name} binary is not installed",
             )
         )
+        authentication_probe = (
+            self._probe_authentication(resolved_path)
+            if resolved_path is not None
+            else NativeAuthenticationProbe(
+                support=CapabilitySupport.UNSUPPORTED,
+                detail=f"{self.binary_name} binary is not installed",
+            )
+        )
         capabilities = self._capabilities(
             available=available,
             contract_probe=contract_probe,
@@ -48,6 +63,8 @@ class ProviderAdapter(ABC):
             available=available,
             resolved_path=resolved_path,
             version=version,
+            authentication=authentication_probe.support,
+            authentication_detail=authentication_probe.detail,
             capabilities=capabilities,
             native_features=self.native_features(),
         )
@@ -87,6 +104,49 @@ class ProviderAdapter(ABC):
     @abstractmethod
     def native_features(self) -> tuple[str, ...]:
         """Return meaningful provider-specific capability names."""
+
+    def _probe_authentication(self, resolved_path: str) -> NativeAuthenticationProbe:
+        del resolved_path
+        return NativeAuthenticationProbe(
+            support=CapabilitySupport.UNKNOWN,
+            detail="The provider does not expose a safe local authentication probe.",
+        )
+
+    def _probe_authentication_command(
+        self,
+        argv: tuple[str, ...],
+        *,
+        success_support: CapabilitySupport,
+        success_detail: str,
+    ) -> NativeAuthenticationProbe:
+        try:
+            completed = subprocess.run(
+                argv,
+                capture_output=True,
+                check=False,
+                text=True,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            return NativeAuthenticationProbe(
+                support=CapabilitySupport.UNKNOWN,
+                detail=f"Authentication probe failed: {type(error).__name__}",
+            )
+        output = " ".join(
+            line.strip()
+            for line in (completed.stdout, completed.stderr)
+            if line.strip()
+        )
+        if completed.returncode == 0:
+            return NativeAuthenticationProbe(
+                support=success_support,
+                detail=success_detail,
+            )
+        detail = output[:240] or f"authentication command exited {completed.returncode}"
+        return NativeAuthenticationProbe(
+            support=CapabilitySupport.UNSUPPORTED,
+            detail=detail,
+        )
 
     def _capabilities(
         self,

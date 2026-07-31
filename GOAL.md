@@ -1,583 +1,540 @@
 # comx-agent Goal
 
-## 1. Mission
+Status: active
+Last revised: 2026-07-30
+Owner: single local operator
 
-Build a local, single-user Agent Development Environment for operating Codex and OMX across projects, worktrees, Runs, and agent sessions.
+## 1. Product identity
 
-```text
-Open Project
--> Select Workspace
--> Start Codex or OMX
--> Observe Agents and Tasks
--> Act on Attention
--> Inspect Terminal, Diff, Artifacts, and Evidence
--> Continue, Handoff, or Finish
-```
+`comx-agent` is a local, single-user **Agent Harness Workbench** backed by an
+**Agent Execution Control Plane**.
 
-`comx-agent` does not replace Codex reasoning or OMX orchestration. It provides the human operating environment around them.
+It exists so that either a human or a trusted higher-level Agent such as Hermes
+can use Codex and OMX through the same durable execution core.
 
-## 2. Product Decision
+The product is not a new coding model, not another chat application, and not a
+replacement for Codex or OMX. It is the local operating layer that makes their
+native execution capabilities safe to select, combine, observe, verify, resume,
+and compare.
 
-The primary product is an **Orca-inspired local ADE specialized for Codex and OMX**.
+## 2. Mission
 
-```text
-Human operator      -> comx-agent ADE
-Automation/debug    -> CLI
-Hermes/controllers  -> HarnessTools
-                           |
-                     HarnessService
-                           |
-                    Codex / OMX runtime
-```
+Build one local runtime where:
 
-The ADE is the main human interface. CLI and `HarnessTools` remain machine interfaces over the same execution core.
+- a human can submit and control development work through a GUI or CLI,
+- a trusted Agent can submit the same work through typed CLI or API contracts,
+- Codex and OMX keep ownership of their native reasoning and orchestration,
+- every execution has durable state, events, artifacts, and completion evidence,
+- failures remain inspectable and resumable across process and session boundaries,
+- no paid OpenAI API key or provider-owned OAuth implementation is required.
 
-The current curses interface is an execution prototype. It is not the target product and is not an acceptable usability baseline.
+The operating principle is:
 
-## 3. Orca Benchmark
+> One Core Runtime, three equal clients: GUI, CLI, and Agent API.
 
-Orca is the primary benchmark for the human operating experience.
-
-We benchmark:
-
-- project and worktree-centered navigation,
-- persistent agent sessions,
-- working, waiting, completed, failed, and attention states,
-- a global activity and Attention feed,
-- native terminal access,
-- tabs and practical split layouts,
-- diff and artifact inspection,
-- Quick Commands,
-- fast switching between concurrent work,
-- and restoration of previous operating context.
-
-We do not reproduce every Orca feature. The benchmark question is:
-
-> Does comx-agent make Codex and OMX work as understandable and operable as Orca makes parallel agent work?
-
-Implementation reuse requires a separate architecture and license review. GOAL defines product behavior, not reuse strategy.
-
-## 4. Problem
-
-Repeated Codex and OMX use is fragmented when the owner must:
-
-- remember different commands and flags,
-- manage repositories and worktrees manually,
-- track multiple native sessions,
-- discover which Run or subagent needs input,
-- switch between terminal, logs, diff, and artifacts,
-- recover interrupted work,
-- and manually transfer verified results between providers.
-
-A CLI wrapper alone does not solve this. The product must organize the local operating context while preserving native provider behavior.
-
-## 5. Product Definition
-
-`comx-agent` provides:
-
-- project registration,
-- workspace and git worktree management,
-- Codex and OMX session launch,
-- normalized Run lifecycle and evidence,
-- native agent and task visibility where evidence exists,
-- an Attention inbox,
-- native terminal attachment,
-- diff, artifact, event, and result inspection,
-- validated Recipes and Quick Commands,
-- supported continuation and bounded control,
-- and verified cross-provider handoff.
-
-It is not a reasoning engine, provider runtime, or multi-agent scheduler.
-
-## 6. Primary User
-
-The primary user is the owner of the local machine and repositories. The product is optimized for repeated personal use, not multi-user administration.
-
-Within seconds of opening the application, the owner should understand:
+## 3. Product model
 
 ```text
-Which projects have active work?
-Which agents are working or waiting?
-What needs my attention?
-What changed?
-What evidence was produced?
-What should I do next?
+Human                                      Trusted Agent / Hermes
+  |                                                |
+  | GUI or CLI                                     | typed CLI / API
+  +-----------------------+------------------------+
+                          |
+                       Mission
+              objective + constraints + verification
+                          |
+                    Mission Compiler
+                          |
+             inspectable bounded Strategy IR
+                          |
+                  Strategy Runtime
+                          |
+          exact-nine durable Run lifecycle
+                 /                    \
+        Codex native                OMX native
+                 \                    /
+                  events + artifacts
+                          |
+             Evidence and durable state
+                          |
+            GUI / CLI / Agent observation
 ```
 
-Hermes is a first-class machine controller, but Hermes-specific behavior must not define the human application architecture.
+No client owns a separate execution truth. GUI, CLI, and Agent API must call the
+same application services and read the same durable records.
 
-## 7. Product Model
+## 4. Primary public contract: Mission
+
+The normal caller-facing contract is a typed `Mission`.
+
+A Mission declares:
+
+- a stable Mission identifier,
+- the objective,
+- the workspace,
+- an explicit execution profile,
+- mutation and preservation constraints,
+- verification requirements,
+- timeout and normalized Run options.
+
+The caller should not need to manually author a multi-stage execution graph for
+normal use.
+
+Example conceptual request:
+
+```json
+{
+  "schema_version": "mission-request.v1",
+  "mission_id": "fix-tui-startup-001",
+  "controller_id": "hermes",
+  "objective": "Investigate and fix the TUI startup failure.",
+  "workspace": "/project/omx-agent-adapter",
+  "execution_profile": "codex-then-omx-review",
+  "constraints": {
+    "mutation_allowed": true,
+    "preserve_unrelated_changes": true,
+    "commit_allowed": false,
+    "push_allowed": false
+  },
+  "verification": {
+    "require_process_success": true,
+    "require_semantic_success": true,
+    "required_artifacts": []
+  },
+  "options": {
+    "sandbox": "workspace-write",
+    "approval_policy": "on-request",
+    "search": false,
+    "ephemeral": false
+  }
+}
+```
+
+## 5. Internal execution contract: Strategy
+
+A `Strategy` is a bounded, inspectable intermediate representation compiled from
+a Mission.
+
+It is not the default human-facing product surface.
+
+Strategy remains available for:
+
+- advanced trusted callers,
+- debugging,
+- deterministic replay,
+- Runtime tests,
+- future expert tooling.
+
+The first Strategy IR supports only:
+
+- `native_run`,
+- `native_resume`,
+- `handoff`,
+- `validator`,
+- `finish`.
+
+It must not accept arbitrary shell nodes, arbitrary Python execution, unbounded
+graphs, or hidden provider routing.
+
+## 6. Initial execution profiles
+
+The first Mission contract supports exactly three explicit profiles:
+
+1. `codex-native`
+2. `omx-native`
+3. `codex-then-omx-review`
+
+The direct profiles compile to one provider-native Run followed by a finish gate.
+
+The review profile compiles to:
 
 ```text
-Project
-└── Workspace
-    ├── Existing Directory or Git Worktree
-    ├── Run
-    │   ├── Provider Session
-    │   ├── Agent Session
-    │   │   └── Task
-    │   ├── Event
-    │   └── Artifact
-    └── View Context
-
-Recipe -> planned Run
-Quick Command -> one scoped project action
-Attention Item -> Run, Agent, Task, or Artifact requiring review
+Codex native Run
+  -> OMX verified handoff review
+  -> blocker-report.v1 validator
+  -> Codex resume only when verified blockers exist
+  -> finish when review passes or resume succeeds
 ```
 
-- **Project**: registered repository or local codebase.
-- **Workspace**: execution boundary inside a Project.
-- **Worktree**: optional isolated git workspace.
-- **Run**: one objective executed by one provider.
-- **Provider Session**: native Codex or OMX execution identity.
-- **Agent Session**: provider-observed participant in a Run.
-- **Task**: provider-observed work unit.
-- **Artifact**: result or evidence with provenance.
-- **Recipe**: validated execution preset.
-- **Quick Command**: reusable single project action.
-- **Attention Item**: evidence-based operator action or review item.
-- **View Context**: non-authoritative UI state.
+The review decision must be based on a verified structured artifact, not on
+unstructured model prose.
 
-Agent definitions, agent sessions, tasks, and Runs are distinct concepts.
+There is deliberately no `auto` profile in the first slice.
 
-## 8. Main Human Flow
+Automatic model or Harness selection may be added only after the platform has
+collected enough real evidence to compare:
+
+- task type,
+- selected model and Harness,
+- completion rate,
+- verification results,
+- elapsed time,
+- retries,
+- human interventions,
+- valid blockers discovered by review,
+- regressions and false completion declarations.
+
+Routing must become evidence-driven, not a hard-coded opinion about model names.
+
+## 7. Native ownership boundary
+
+Codex owns Codex-native behavior, including any native subagents, skills, session
+semantics, and provider-specific execution behavior.
+
+OMX owns OMX-native behavior, including Team, Ralph, loops, native workflows,
+and provider-specific scheduling.
+
+`comx-agent` owns:
+
+- capability discovery,
+- installation and authentication readiness normalization,
+- Mission validation,
+- Strategy compilation,
+- policy and permission boundaries,
+- durable execution state,
+- process launch and observation,
+- cancellation and resume routing,
+- cross-provider handoff provenance,
+- event normalization,
+- artifact verification,
+- evidence-based completion,
+- recovery and operator attention.
+
+The platform must not recreate provider-owned reasoning or subagent schedulers.
+
+## 8. Exact-nine Run lifecycle
+
+The existing Run lifecycle remains the stable lower-level execution contract and
+must remain exactly:
+
+1. `capabilities`
+2. `plan`
+3. `run`
+4. `handoff`
+5. `status`
+6. `events`
+7. `cancel`
+8. `resume`
+9. `artifacts`
+
+Mission and Strategy are aggregate layers over this lifecycle. They do not
+replace it and must not create a second provider execution path.
+
+## 9. GUI direction
+
+The GUI remains part of the product.
+
+It is a thin **Human Control Plane**, not a separate IDE Runtime and not a second
+source of truth.
+
+The GUI should eventually let the operator:
+
+- choose or register a Project and Workspace,
+- enter a Mission in natural language,
+- select an explicit execution profile,
+- set mutation, sandbox, approval, and verification constraints,
+- inspect the compiled Strategy in a human-readable form,
+- start, pause where supported, cancel, and resume execution,
+- observe current Stage, Provider, Run, events, artifacts, and evidence,
+- see approval needs and failure reasons,
+- review diffs and final evidence before accepting the result.
+
+The GUI must call the same Mission service used by CLI and trusted Agents.
+
+The GUI must not implement:
+
+- its own provider launch logic,
+- its own status inference,
+- its own Mission or Strategy state store,
+- hidden defaults that differ from CLI or Agent API,
+- a full code editor or language server in the current scope,
+- a visual arbitrary workflow builder.
+
+The Strategy tree remains the authoritative execution observation surface. The
+GUI Mission tab submits and previews Missions through the shared Mission service
+without duplicating Runtime logic.
+
+## 10. CLI and Agent API direction
+
+CLI is a first-class product surface for both humans and Agents.
+
+The primary Mission commands are:
 
 ```text
-Project
--> Workspace
--> Objective
--> Execution Choice
--> Plan
--> Run
--> Observe
--> Review Attention
--> Inspect Diff and Evidence
--> Continue, Handoff, or Finish
+agent plan-mission
+agent validate-mission
+agent execute-mission
 ```
 
-Normal launch should require only:
-
-- Project or Workspace,
-- multiline objective,
-- Recipe,
-- and safety choice.
-
-Advanced provider options must not dominate the default experience.
-
-## 9. Main Application Surfaces
-
-### Project and Workspace Sidebar
-
-Shows:
-
-- Projects,
-- existing and managed worktrees,
-- active provider sessions,
-- working, waiting, failed, and completed state,
-- unread or Attention indicators,
-- branch and dirty state,
-- and recent activity.
-
-Switching work must be easier than remembering terminal sessions.
-
-### Workspace Home
-
-Summarizes:
-
-- current objective,
-- active and recent Runs,
-- agent and task state,
-- Attention,
-- changed files,
-- verification status,
-- and next actions.
-
-### New Run
-
-Provides:
-
-- multiline objective editor,
-- Recipe cards or searchable picker,
-- provider and safety summary,
-- optional worktree choice,
-- exact plan preview,
-- and a clear Run action.
-
-Raw flags are advanced details.
-
-### Run Detail
-
-Provides stable tabs or panes:
+Strategy commands remain advanced/debug compatibility surfaces:
 
 ```text
-Overview | Agents | Tasks | Activity | Terminal | Diff | Artifacts | Evidence
+agent validate-strategy
+agent execute-strategy
+agent strategy-launch
+agent strategy-status
+agent strategy-events
+agent strategy-artifacts
 ```
 
-### Attention Inbox
-
-Aggregates action-worthy events across active workspaces. Selecting an item opens the exact Run, Agent, Task, terminal, or artifact requiring review.
-
-### Command Palette
-
-Searches:
-
-- navigation,
-- harness operations,
-- provider-native actions,
-- Quick Commands,
-- Recipes,
-- recent actions,
-- and favorites.
-
-Shortcuts accelerate use but are not required to understand it.
-
-## 10. Workspace and Worktree Goal
-
-The application must support:
-
-- adopting the current directory,
-- opening an existing worktree,
-- creating an isolated worktree,
-- showing branch and dirty state,
-- opening Finder or an external editor,
-- and preserving Workspace, Run, provider session, and artifact relationships.
-
-Isolation, mutation, commit, and push are separate permissions.
-
-Commit and push remain denied unless introduced as explicitly authorized capabilities.
-
-## 11. Agent and Subagent Visibility
-
-Where native evidence exists, expose:
-
-- identity and role,
-- provider,
-- parent-child relationship,
-- assigned Task,
-- semantic status,
-- liveness,
-- last observable activity,
-- waiting or blocked reason,
-- Workspace or Worktree,
-- native session or tmux identity,
-- and produced Artifacts.
-
-Evidence may come only from native events, task records, tool calls, process state, tmux state, files, artifacts, and structured APIs.
-
-Private chain-of-thought must never be exposed or inferred.
-
-Initial control boundary:
-
-```text
-Observe | Open | Attach | Provide Requested Input | Cancel | Resume
-```
-
-Worker creation, Task allocation, team sizing, iteration, and orchestration remain provider-owned.
-
-## 12. Attention Model
-
-The full timeline preserves detailed evidence. Attention contains only items likely to require action or review:
-
-- permission or approval required,
-- provider waiting for input,
-- blocked or failed Task,
-- stale or missing process,
-- failed verification,
-- completed result not reviewed,
-- unresolved diff or artifact issue,
-- or handoff ready for review.
-
-Every item must be explainable and link to supporting evidence. The owner must not scan raw logs to discover required intervention.
-
-## 13. Terminal, Diff, and Evidence
-
-Normalized and native views coexist.
-
-- **Terminal**: open or attach to actual Codex, OMX, or tmux sessions.
-- **Diff**: inspect changed files associated with the Workspace and Run.
-- **Artifacts**: show plans, results, logs, reports, and declared files with provenance.
-- **Evidence**: distinguish process completion from verified semantic success.
-
-The first product version may keep diff read-only and delegate editing to an external editor.
-
-## 14. Recipes and Quick Commands
-
-The product must not become a visual workflow builder or raw flag composer.
-
-A Recipe resolves an objective into a valid execution plan. A Quick Command performs one reusable project action, such as:
-
-```text
-Run Tests
-Open External Editor
-Inspect Status
-Attach to Leader
-Review Diff
-Continue Previous Run
-Handoff Verified Result
-```
-
-Provider-native workflows remain native:
-
-```text
-OMX Team / Ralph / UltraGoal / Ultrawork -> OMX
-Codex continuation or native agents      -> Codex
-Cross-provider continuation               -> comx-agent handoff
-```
-
-The ADE selects, launches, and observes native workflows. It does not recreate them as a Python workflow engine.
-
-## 15. Execution Core
-
-The typed provider execution core remains:
-
-```text
-capabilities | plan | run | handoff | status | events | cancel | resume | artifacts
-```
-
-These nine operations define the **Run lifecycle core**, not the whole ADE.
-
-Project registration, Workspace navigation, Worktree management, layout, external opening, and view preferences are application services around that core.
-
-ADE, CLI, Python API, MCP exposure, and Hermes must not create conflicting Run lifecycle implementations.
-
-## 16. Ownership Boundaries
-
-```text
-Operator
-- objective, constraints, workspace choice, approvals, review
-
-Codex / OMX
-- reasoning, tools, subagents, task allocation,
-  team behavior, iteration, native session semantics
-
-Execution Core
-- capability discovery, planning, invocation, Run lifecycle,
-  evidence, bounded control, cross-provider handoff
-
-ADE
-- Project and Workspace navigation, human interaction,
-  observation, Attention, terminal, diff, artifact presentation
-```
-
-Displaying native orchestration does not transfer ownership of it to comx-agent.
-
-## 17. State and Persistence
-
-Execution truth includes:
-
-- plans,
-- Run records,
-- events,
-- provider session identity,
-- artifacts,
-- handoffs,
-- and idempotency records.
-
-The application may persist:
-
-- registered Projects,
-- known Workspaces and Worktrees,
-- recent sessions,
-- tabs and layout,
-- panel sizes,
-- filters,
-- favorites,
-- and reviewed or unread presentation state.
-
-UI state must never become provider or Run truth.
-
-Closing the ADE and cancelling a Run are separate actions. Active Runs should survive application restart when native behavior permits and must be reconciled from durable records and actual liveness.
-
-## 18. Current Prototype Decision
-
-The curses interface proves that the execution core can be called interactively. It does not satisfy this goal.
-
-```text
-Execution Proof        -> Useful
-Reusable Core Services -> Keep
-Product UX              -> Failed
-Final Interface         -> Rejected
-```
-
-Retain where useful:
-
-- execution controllers,
-- Recipes,
-- Run projections,
-- Attention extraction,
-- OMX Team observation,
-- typed schemas,
-- rendering-independent tests,
-- and lifecycle integration.
-
-Do not preserve as design constraints:
-
-- flat text screens,
-- one-line objective input,
-- memorized-key navigation,
-- unclear focus,
-- and non-discoverable actions.
-
-The target interface requires multiline editing, visible focus, discoverable controls, responsive panels, mouse interaction, and visual hierarchy.
-
-## 19. MVP Scope
-
-The first useful ADE is complete when the owner can:
-
-1. launch without environment or PATH confusion,
-2. register and reopen a Project,
-3. see Workspaces and managed Worktrees,
-4. create or select a safe Workspace,
-5. enter a multiline objective,
-6. choose a Recipe,
-7. review provider and safety Plan,
-8. launch Codex or OMX without blocking the ADE,
-9. switch between active sessions,
-10. understand working, waiting, failed, completed, and Attention states,
-11. inspect available Agent and Task topology,
-12. open native terminal or tmux,
-13. inspect changed files and diff,
-14. inspect events, Artifacts, and verification evidence,
-15. cancel or resume supported work,
-16. perform verified cross-provider handoff,
-17. restore operating context after restart,
-18. and complete normal real work without raw provider commands for routine navigation.
-
-Fixed layout presets are acceptable. Source editing may remain external in the first version.
-
-## 20. Non-Goals
-
-`comx-agent` must not become:
-
-- a replacement for Codex or OMX,
-- a reasoning engine,
-- an adapter-owned multi-agent scheduler,
-- a distributed platform,
-- a multi-user SaaS product,
-- a visual workflow builder,
-- a full code editor in the first version,
-- a browser automation environment,
-- a GitHub project-management client,
-- a plugin marketplace,
-- a long-term memory system,
-- or an unbounded command and dashboard collection.
-
-Orca is an operating-experience benchmark, not permission to copy every feature.
-
-## 21. Design Principles
-
-- **Human workflow over command exposure**.
-- **Workspace clarity over hidden state**.
-- **Native over duplicated**.
-- **Typed over implicit**.
-- **Evidence over claims**.
-- **Attention over noise**.
-- **Observable truth over inference**.
-- **Read-only by default**.
-- **Discoverable before shortcut-heavy**.
-- **One execution truth**.
-- **Single-user simplicity**.
-- **Dogfood over speculative features**.
-
-## 22. Success Criteria
-
-### Human Usability
-
-- Useful work starts without a command manual.
-- Project, Workspace, Run, Agent, Task, and Attention relationships are visually clear.
-- Objective input supports multiline editing.
-- Focus and available actions are always visible.
-- Mouse, keyboard, resize, and common desktop or terminal contexts behave predictably.
-- The ADE is easier than raw Codex, OMX, tmux, and Worktree management.
-
-### Operational Clarity
-
-- Active work and Attention are identifiable within seconds.
-- Native terminal access remains available.
-- Diff, Artifacts, status, liveness, and verification connect to the same Run.
-- Missing evidence is shown as unknown, never fabricated.
-
-### Reliability
-
-- Codex and OMX execution work end to end.
-- Active work does not silently die when the ADE closes.
-- Duplicate mutation is prevented.
-- Process success is not semantic success.
-- Unsupported controls are reported honestly.
-- Handoff preserves provenance and verified evidence.
-
-### Product Quality
-
-- Headless tests are necessary but not sufficient.
-- Major human flows require interactive E2E validation.
-- Screenshots or recordings must be reviewed for layout and state clarity.
-- The owner must dogfood real work before a phase is complete.
-- “The command executed” is not proof of usable UX.
-
-## 23. Failure Conditions
-
-The project has failed if:
-
-- it remains a CLI wrapper with panels,
-- basic work requires memorized keys,
-- objective entry or session switching is harder than native tools,
-- Project and Worktree identity are unclear,
-- Attention requires reading raw logs,
-- terminal, diff, and Artifacts are disconnected,
-- the ADE becomes another provider runtime or scheduler,
-- UI state becomes Run truth,
-- Agent activity is fabricated,
-- the command catalog becomes the product,
-- Orca features are copied without serving Codex and OMX,
-- or passing tests are used to dismiss obvious operator friction.
-
-## 24. Development Order
-
-### Phase 0 — Orca Audit and Architecture Decision
-
-Audit Orca's product flow, architecture, reusable concepts, and license constraints. Decide whether to build independently, adapt selected components, or integrate through a compatible boundary.
-
-### Phase 1 — Preserve and Isolate the Execution Core
-
-Keep the nine Run operations stable. Separate reusable execution, projection, Attention, and provider-observation services from the rejected curses presentation.
-
-### Phase 2 — Application Shell
-
-Implement Project registration, Workspace and Worktree navigation, sidebar state, command palette, responsive layout, and state restoration before provider execution UI expands.
-
-### Phase 3 — New Run and Session Operation
-
-Implement multiline objective input, Recipe selection, Plan preview, asynchronous launch, session switching, status, and Attention.
-
-### Phase 4 — Native Inspection
-
-Add terminal attach, Agent and Task projections, diff, Artifacts, events, verification, cancel, resume, and handoff.
-
-### Phase 5 — Dogfood and Remove Friction
-
-Use the ADE for real Codex and OMX work. Measure setup time, navigation cost, missed Attention, recovery, and unnecessary concepts. Delete or redesign uncomfortable surfaces.
-
-### Phase 6 — Expand Only from Evidence
-
-Add richer panes, project actions, or providers only after repeated personal evidence proves the need.
-
-## 25. Related Systems
-
-- **Hermes** uses the typed execution core and verified Artifacts. It does not own the human interaction model.
-- **Alexandria** owns durable memory, retrieval, reconciliation, and knowledge relationships.
-- **MCP** attaches tools and resources. It is not the Run lifecycle or a marketplace requirement.
-
-## 26. Source-of-Truth Rule
-
-`GOAL.md` defines why the product exists, its required value, and its boundaries.
-
-- `AGENTS.md` and `docs/rules/` define development rules.
-- Architecture documents define application and execution boundaries.
-- Orca research documents record benchmark findings, not product authority.
-- Plans and issues define temporary work.
-- Recipes define optional execution presets.
-- UX specifications define screen behavior and acceptance tests.
-
-No existing implementation, archived workflow, UI prototype, research reference, or provider feature overrides this goal.
-
-When code conflicts with `GOAL.md`, either the code changes or this document is explicitly revised.
+The Agent API must be typed, deterministic, machine-readable, and safe for a
+trusted local controller. Human-readable decoration must never corrupt JSON
+contracts.
+
+## 11. Why the product remains valuable as models improve
+
+Model intelligence is not the durable moat of this project.
+
+As models become stronger, the platform should remove unnecessary central
+planning rather than compete with model reasoning.
+
+The durable responsibilities are operational:
+
+- what is installed and authenticated,
+- which native capabilities are actually available,
+- what permissions were granted,
+- which workspace was changed,
+- what process ran,
+- what evidence proves completion,
+- what artifacts were produced and digested,
+- where execution failed,
+- whether it can be cancelled or resumed,
+- how one model or Harness performed relative to another,
+- when a human must intervene.
+
+A stronger model makes the Runtime more useful when the Runtime stays thin,
+observable, and verifiable.
+
+## 12. Durable state model
+
+The Runtime must preserve enough state to reopen work after the original caller
+or process exits.
+
+Core entities are:
+
+- Project,
+- Workspace,
+- Worktree,
+- Mission,
+- Mission Plan,
+- Strategy,
+- Stage,
+- Run,
+- Handoff,
+- Event,
+- Artifact,
+- Evidence,
+- Attention item,
+- Execution profile.
+
+The Source of Truth is durable local state under `.comx-agent`, not GUI widgets,
+terminal scrollback, or transient in-memory objects.
+
+## 13. Evidence-based completion
+
+A Mission is not complete because a model says it is complete.
+
+Completion must use normalized evidence such as:
+
+- native process exit state,
+- normalized Run status,
+- required artifact existence,
+- non-zero artifact size where applicable,
+- SHA-256 digest,
+- structured validator output,
+- test, lint, typecheck, or build results when required,
+- verified blocker count for review profiles.
+
+Unstructured provider text may be displayed, but must not substitute for required
+structured evidence.
+
+## 14. Security and cost boundaries
+
+This is a local personal tool.
+
+The first product must:
+
+- reuse already installed local Codex and OMX CLIs,
+- reuse the operator's existing local login state,
+- avoid requiring an OpenAI API key,
+- avoid adding a paid provider abstraction merely to run the product,
+- avoid owning OAuth tokens or implementing an authentication service,
+- default to read-only execution,
+- require explicit writable sandbox selection for mutation,
+- reject arbitrary shell in Mission and Strategy contracts,
+- preserve unrelated workspace changes,
+- deny commit and push in the initial Mission contract,
+- never claim live provider execution without actual evidence.
+
+Single-user scope does not justify unsafe hidden behavior. It permits a smaller
+product, not a less inspectable Runtime.
+
+## 15. Current implemented baseline
+
+The repository currently contains:
+
+- the exact-nine typed Run lifecycle,
+- Codex and OMX native adapters,
+- durable Runs, events, artifacts, handoffs, cancellation, and resume routing,
+- provider capability and authentication probes,
+- Project, Workspace, Worktree, Recipe, Attention, CLI, and Tk GUI foundations,
+- a bounded Strategy Runtime,
+- detached Strategy execution and durable observation,
+- read-only GUI Strategy projection,
+- the Mission request contract,
+- deterministic Mission-to-Strategy compilation,
+- explicit initial execution profiles,
+- Mission planning, validation, and execution CLI surfaces.
+- durable Mission records linked to authoritative Strategy state,
+- Mission status, event, and artifact projection commands,
+- GUI Mission planning and detached submission,
+- structured pre/post Git policy evidence.
+
+This baseline must be reused rather than replaced.
+
+## 16. Development roadmap
+
+### Phase 1 — Runtime foundation
+
+Status: implemented baseline.
+
+- exact-nine lifecycle,
+- provider-native planning and launch,
+- durable state and events,
+- artifact verification,
+- resume, cancel, and handoff,
+- fake-provider and lifecycle tests.
+
+### Phase 2 — Strategy aggregate
+
+Status: implemented first vertical slice.
+
+- typed bounded Strategy IR,
+- capability validation,
+- sequential Stage execution,
+- conditional resume,
+- evidence gates,
+- detached worker,
+- Agent commands,
+- GUI observation projection.
+
+### Phase 3 — Mission public contract
+
+Status: implemented first vertical slice.
+
+- strict Mission schema,
+- explicit execution profiles,
+- deterministic Mission compiler,
+- Mission plan and validation reports,
+- Mission CLI and Agent surface,
+- tests for safety boundaries and compilation,
+- durable Mission records linked to authoritative Strategy state,
+- Mission status, event, and artifact observation aliases,
+- structured pre/post Git policy evidence.
+
+Remaining:
+
+- real native Codex and OMX execution evidence,
+- real cross-provider review and conditional-resume evidence,
+- native command-level commit and push-denial evidence beyond local Git
+  snapshots.
+
+### Phase 4 — Human Control Plane
+
+Status: implemented first vertical slice.
+
+- Mission form,
+- execution profile picker,
+- readable plan preview,
+- detached Mission submission through the shared Mission service,
+- existing live Stage and Run projection,
+- operator dogfooding of the Mission form and compiled plan preview,
+- responsive visibility of profile, sandbox, approval, timeout, and mutation
+  controls,
+- no GUI-specific Runtime state.
+
+Remaining:
+
+- stronger approval and failure Attention UX,
+- Mission-oriented artifact and Git evidence review,
+- reopen and detached-recovery verification against real provider processes.
+
+### Phase 5 — Native capability expansion
+
+Only after live contracts are verified:
+
+- OMX Team and loop launch surfaces,
+- provider-native structured subagent observation where genuinely available,
+- richer Codex native session and resume evidence,
+- detached recovery across real provider processes,
+- explicit unsupported/conditional/unknown capability reporting.
+
+### Phase 6 — Evidence-driven profile recommendation
+
+Only after sufficient real Mission history exists:
+
+- compare profiles by task class and evidence,
+- expose recommendations with reasons and uncertainty,
+- let Hermes or a human accept or override a recommendation,
+- never silently route based only on a model version name.
+
+## 17. Acceptance criteria
+
+The product is successful when all of the following are true:
+
+1. The same Mission JSON can be planned and validated by a human CLI or a trusted
+   Agent without different semantics.
+2. GUI, CLI, and Agent API call one Mission and Runtime service path.
+3. A Mission compiles to an inspectable Strategy before execution.
+4. Direct Codex and OMX profiles reuse the existing Run lifecycle.
+5. Cross-provider review uses verified artifacts and conditional resume.
+6. Runtime state can be reopened after the caller exits.
+7. Unsupported or unknown native capabilities are reported rather than guessed.
+8. Read-only is the default and mutation requires an explicit writable sandbox.
+9. No API key, new paid provider, commit, or push is required to use the product.
+10. Test, lint, typecheck, and build gates remain green.
+11. Real provider behavior is distinguished from fake-provider and contract tests.
+12. The GUI remains useful to the operator without becoming a second Runtime.
+
+## 18. Explicit non-goals
+
+The current product does not aim to become:
+
+- a VS Code, Cursor, Codex app, or Orca clone,
+- a full code editor,
+- a multi-user SaaS,
+- a cloud scheduler,
+- an authentication or billing platform,
+- a new foundation model,
+- a replacement for provider-native subagents or teams,
+- an arbitrary workflow graph engine,
+- an autonomous router based on unsupported assumptions,
+- an OpenAI API wrapper that creates new cost requirements.
+
+## 19. Development discipline
+
+Every implementation session must:
+
+- freshly inspect repository state and rules,
+- preserve unrelated dirty worktree changes,
+- use typed boundary models,
+- keep GUI, CLI, and Agent interfaces thin,
+- reuse existing application services and lifecycle state,
+- add the closest tests for each new contract,
+- run Ruff, Pyrefly, tests, and build gates as applicable,
+- report failures and live-execution limits honestly,
+- leave a development journal with decisions, changed files, verification, known
+  limits, and exact resume guidance,
+- never commit or push unless the operator explicitly requests it.
+
+## 20. Final product statement
+
+`comx-agent` is a personal local workbench for operating Codex and OMX well.
+
+A human uses GUI or CLI. Hermes or another trusted Agent uses typed CLI or API.
+Both submit the same Mission, observe the same durable Runtime, and rely on the
+same evidence.
+
+The platform does not try to outthink increasingly capable models. It gives
+those models a stable place to run, a clear permission boundary, durable memory
+of what happened, and proof of whether the work actually succeeded.

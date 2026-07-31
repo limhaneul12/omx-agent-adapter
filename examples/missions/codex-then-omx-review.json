@@ -1,0 +1,28 @@
+{
+  "schema_version": "mission-request.v1",
+  "mission_id": "replace-with-unique-cross-review-mission-id",
+  "controller_id": "human-cli",
+  "objective": "Inspect the selected workspace and produce a verified result. Do not modify project source files. The OMX review may write only the harness-owned blocker artifact required by this profile.",
+  "workspace": ".",
+  "execution_profile": "codex-then-omx-review",
+  "constraints": {
+    "mutation_allowed": true,
+    "preserve_unrelated_changes": true,
+    "commit_allowed": false,
+    "push_allowed": false
+  },
+  "verification": {
+    "require_process_success": true,
+    "require_semantic_success": true,
+    "required_artifacts": []
+  },
+  "timeout_seconds": 1200,
+  "options": {
+    "model": null,
+    "reasoning_effort": "high",
+    "sandbox": "workspace-write",
+    "approval_policy": "on-request",
+    "search": false,
+    "ephemeral": false
+  }
+}

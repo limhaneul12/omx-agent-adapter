@@ -9,11 +9,13 @@ from comx_harness.ade.artifact_content import ArtifactContentService
 from comx_harness.ade.background_refresh import BackgroundRefreshCoordinator
 from comx_harness.ade.controller import AdeController
 from comx_harness.ade.diff_service import GitDiffService
+from comx_harness.ade.mission_platform import AdeMissionTools
 from comx_harness.ade.recipe_catalog import builtin_recipes
 from comx_harness.ade.state_store import AdeStateStore
 from comx_harness.ade.tk_attention import AttentionPane
 from comx_harness.ade.tk_command_palette import open_ade_command_palette
 from comx_harness.ade.tk_dialogs import MultilineInputDialog
+from comx_harness.ade.tk_mission_actions import execute_mission, plan_mission
 from comx_harness.ade.tk_project_application import TkProjectApplication
 from comx_harness.ade.tk_refresh import (
     AdeRefreshReader,
@@ -30,6 +32,7 @@ from comx_harness.ade.tk_runtime_helpers import (
 )
 from comx_harness.ade.tk_shell import AdeTkShell, TkActionSet
 from comx_harness.schemas.ade_operator_schemas import AttentionTarget, RunInspection
+from comx_harness.schemas.mission_schemas import MissionRequest
 
 
 class AdeTkApplication(TkProjectApplication):
@@ -43,6 +46,8 @@ class AdeTkApplication(TkProjectApplication):
     ) -> None:
         super().__init__(initial_workspace, state_store=state_store)
         self._artifact_content = ArtifactContentService()
+        self._missions = AdeMissionTools()
+        self._planned_mission: MissionRequest | None = None
         self._inspection_reader = RunInspectionReader(GitDiffService())
         self._selected_run_id = self._context.selected_run_id
         self._inspection: RunInspection | None = None
@@ -106,6 +111,8 @@ class AdeTkApplication(TkProjectApplication):
             handoff_run=self._handoff_run,
             review_plan=self._review_plan,
             start_run=self._start_run,
+            plan_mission=lambda: plan_mission(self),
+            execute_mission=lambda: execute_mission(self),
             open_artifact=self._open_first_artifact,
             open_commands=self._open_commands,
         )

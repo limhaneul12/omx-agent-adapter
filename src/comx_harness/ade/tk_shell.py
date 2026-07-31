@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from tkinter import ttk
 
+from comx_harness.ade.tk_mission_view import MissionView
 from comx_harness.ade.tk_new_run_view import NewRunView
 from comx_harness.ade.tk_run_detail_view import RunDetailView
 from comx_harness.ade.tk_theme import PALETTE, configure_orca_theme
@@ -32,6 +33,8 @@ class TkActionSet:
     handoff_run: Action
     review_plan: Action
     start_run: Action
+    plan_mission: Action
+    execute_mission: Action
     open_artifact: Action
     open_commands: Action
 
@@ -217,6 +220,35 @@ class AdeTkShell:
             pady=(3, 16),
         )
         self._build_workspace_metrics(home)
+        ttk.Label(home, text="AGENT STRATEGIES", style="Section.TLabel").pack(
+            anchor="w",
+            pady=(18, 8),
+        )
+        self.strategies = ttk.Treeview(
+            home,
+            columns=("status", "stage", "provider", "surface", "run", "evidence"),
+            show="tree headings",
+            height=8,
+            selectmode="browse",
+        )
+        self.strategies.heading("#0", text="STRATEGY / STAGE")
+        self.strategies.column("#0", width=190, stretch=True)
+        for column, width in (
+            ("status", 95),
+            ("stage", 120),
+            ("provider", 75),
+            ("surface", 110),
+            ("run", 180),
+            ("evidence", 180),
+        ):
+            self.strategies.heading(column, text=column.upper())
+            self.strategies.column(
+                column,
+                width=width,
+                stretch=column in {"run", "evidence"},
+            )
+        self._configure_strategy_tags()
+        self.strategies.pack(fill="x")
         ttk.Label(home, text="RECENT RUNS", style="Section.TLabel").pack(
             anchor="w",
             pady=(18, 8),
@@ -252,6 +284,12 @@ class AdeTkShell:
             start_action=self.actions.start_run,
         )
         self.main_tabs.add(self.new_run, text="New Run")
+        self.mission = MissionView(
+            self.main_tabs,
+            plan_action=self.actions.plan_mission,
+            execute_action=self.actions.execute_mission,
+        )
+        self.main_tabs.add(self.mission, text="Mission")
         self.detail = RunDetailView(
             self.main_tabs,
             terminal_action=self.actions.open_terminal,
@@ -264,6 +302,12 @@ class AdeTkShell:
             artifact_action=self.actions.open_artifact,
         )
         self.main_tabs.add(self.detail, text="Run Detail")
+
+    def _configure_strategy_tags(self) -> None:
+        self.strategies.tag_configure("running", foreground=PALETTE.accent)
+        self.strategies.tag_configure("succeeded", foreground=PALETTE.success)
+        self.strategies.tag_configure("failed", foreground=PALETTE.failure)
+        self.strategies.tag_configure("cancelled", foreground=PALETTE.muted)
 
     def _build_attention(self, parent: ttk.Frame) -> None:
         ttk.Label(parent, text="ATTENTION", style="RailHeader.TLabel").pack(

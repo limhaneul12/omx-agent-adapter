@@ -1,8 +1,8 @@
 # comx-agent
 
-`comx-agent` is a local Codex/OMX Agent Development Environment backed by a thin, controller-neutral execution harness.
+`comx-agent` is a local, single-user **Agent Harness Workbench** backed by an **Agent Execution Control Plane**. A human can use the GUI or CLI, while Hermes or another trusted Agent can use the typed CLI or application surface. All clients submit work to the same durable Runtime.
 
-The project does not replace native Codex reasoning or OMX orchestration. It gives a human, Hermes, or another trusted controller one typed contract for direct execution, normalized lifecycle state, verified artifacts, bounded cancellation/resume, and cross-runtime handoff.
+The project does not replace native Codex reasoning or OMX orchestration. Its normal public contract is a typed `Mission`; the platform compiles that Mission into inspectable bounded Strategy IR and reuses the exact-nine Run lifecycle for execution, state, artifacts, cancellation, resume, and cross-provider handoff.
 
 `GOAL.md` is the product source of truth.
 
@@ -20,7 +20,7 @@ resume         Resume when a native provider session id exists.
 artifacts      Read result, logs, events, plan, and declared evidence.
 ```
 
-The nine operations are the Run lifecycle core. The desktop ADE and the typed `AdeAgentTools` / `comx-agent agent ...` surface add Project, Workspace, Worktree, and cross-workspace Attention services without creating a second Run lifecycle.
+The nine operations are the Run lifecycle core. Mission and Strategy coordinate those operations; neither creates a second provider lifecycle. The desktop ADE, CLI, and typed Agent surfaces share the same Project, Workspace, Worktree, Attention, Strategy, Run, event, artifact, and evidence state.
 
 ## Installation
 
@@ -106,7 +106,70 @@ uv run comx-agent agent operation OPERATION_ID
 uv run comx-agent agent operations
 ```
 
-`agent context` also includes detached operation records, so another agent process can reopen the same ADE state and continue observation. The worker still calls exactly one existing `HarnessTools` operation; it is not a scheduler or a second runtime.
+`agent context` also includes detached operation records, so another agent process can reopen the same ADE state and continue observation. The per-operation worker still calls exactly one existing `HarnessTools` operation; it is not a scheduler or a second runtime.
+
+### Mission-first execution
+
+For normal human or Agent use, submit one strict Mission instead of manually authoring Strategy stages:
+
+```json
+{
+  "schema_version": "mission-request.v1",
+  "mission_id": "repository-review-001",
+  "controller_id": "human-cli",
+  "objective": "Inspect the repository without modifying it.",
+  "workspace": "/absolute/workspace/path",
+  "execution_profile": "codex-native"
+}
+```
+
+Complete strict templates are available under [`examples/missions/`](examples/missions/README.md). Copy one, replace `mission_id` with a unique value, and set the canonical Workspace path before execution.
+
+```bash
+uv run comx-agent agent capabilities
+uv run comx-agent agent plan-mission mission.json
+uv run comx-agent agent validate-mission mission.json
+uv run comx-agent agent execute-mission mission.json
+uv run comx-agent agent mission-status /absolute/workspace MISSION_ID
+uv run comx-agent agent mission-events /absolute/workspace MISSION_ID
+uv run comx-agent agent mission-artifacts /absolute/workspace MISSION_ID
+```
+
+Mission execution is detached by default. Use `--foreground` only for tests or bounded operator workflows. Reusing a `mission_id` with a different request is rejected; re-observe the existing Mission instead. The initial explicit profiles are:
+
+```text
+codex-native
+omx-native
+codex-then-omx-review
+```
+
+There is deliberately no `auto` profile yet. The platform will consider evidence-driven profile recommendations only after real Mission history can compare completion, verification, elapsed time, retries, regressions, valid review blockers, and human intervention.
+
+Read-only is the default. Mutation requires both `constraints.mutation_allowed=true` and an explicit writable sandbox. The initial Mission contract rejects arbitrary shell fields and denies commit and push.
+
+The cross-provider profile compiles deterministically to Codex execution, OMX verified handoff review, a `blocker-report.v1` validator, conditional Codex resume only when verified blockers exist, and a final evidence gate. It requires a writable sandbox because the reviewer must write the harness-owned blocker artifact; use an isolated Git worktree for the first live run. See [`docs/architecture/mission-runtime.md`](docs/architecture/mission-runtime.md).
+
+`agent capabilities` separates installation, parser compatibility, authentication knowledge, and live execution readiness. A local ChatGPT login or accepted `--help` contract is not live Mission proof. Until a native Mission succeeds end to end, readiness remains `conditional` and the limitation must be reported rather than inferred away.
+
+### Advanced/debug Strategy IR
+
+A trusted expert caller may still submit strict Strategy IR directly. This is retained for debugging, deterministic Runtime tests, replay, and advanced integrations rather than as the normal product surface. The first schema supports `native_run`, `native_resume`, `handoff`, `validator`, and `finish` nodes over one Workspace. It supports a sequential order plus three bounded conditions: all dependencies succeeded, any dependency succeeded, or any dependency failed. There is no arbitrary shell node or general graph engine.
+
+```bash
+uv run comx-agent agent capabilities
+uv run comx-agent agent validate-strategy strategy.json
+uv run comx-agent agent execute-strategy strategy.json
+uv run comx-agent agent strategy-launch /absolute/workspace STRATEGY_ID
+uv run comx-agent agent strategy-status /absolute/workspace STRATEGY_ID
+uv run comx-agent agent strategy-events /absolute/workspace STRATEGY_ID
+uv run comx-agent agent strategy-artifacts /absolute/workspace STRATEGY_ID
+```
+
+Execution is detached by default. `--foreground` is available for tests and bounded operator workflows. A Strategy worker calls the existing `run`, `resume`, `handoff`, `status`, and `artifacts` contracts. It never owns provider authentication and never asks for an OpenAI API key.
+
+Capability discovery distinguishes binary installation, authentication knowledge, execution readiness, and unavailability. `supported`, `conditional`, `unsupported`, and `unknown` are separate states. Codex authentication is probed through the local `codex login status` command without reading or storing a token. OMX authentication remains conditional on that local Codex login until an OMX native execution succeeds. Parser compatibility and diagnostic commands alone are not reported as live execution proof.
+
+Evidence-based completion uses native exit status, normalized Run status, required artifact existence, non-zero size, and SHA-256 digest. A blocker-controlled resume requires a verified `blocker-report.v1` JSON artifact; model prose is not parsed to invent a blocker count.
 
 ## Human ADE
 
@@ -116,6 +179,8 @@ Open the native local desktop application in the current project:
 uv run comx-agent ade --cwd .
 ```
 
+The ADE remains part of the product as a thin Human Control Plane. It does not own provider execution or separate Runtime truth. In the Mission tab, enter the objective, select an explicit profile, confirm mutation, sandbox, approval, and timeout, preview `MissionService.plan()` output, and then submit the detached Mission. Continue observation through the authoritative durable Strategy and Run state rather than a GUI-only copy.
+
 The ADE uses Python's standard-library desktop toolkit, so the wheel adds no
 second JavaScript runtime or application server. It provides:
 
@@ -123,7 +188,9 @@ second JavaScript runtime or application server. It provides:
 - visible branch, dirty, missing, Run, liveness, and Attention state,
 - multiline objective editing and discoverable Recipe selection,
 - exact idempotent Plan preview before execution,
+- Mission plan preview and detached Mission submission through the shared service,
 - detached Run, resume, and handoff workers that survive ADE closure,
+- read-only Strategy and Stage observation from Workspace Runtime state,
 - fast switching between recent Runs,
 - stable Overview, Agents, Tasks, Activity, Terminal, Diff, Artifacts, and
   Evidence tabs,
@@ -165,7 +232,7 @@ structured native evidence. The ADE does not infer it from model text. OMX Team
 observation is read-only: the ADE does not create workers, assign Tasks, resize
 teams, route messages, or shut down teams.
 
-The ADE does not own a workflow engine, embedded source editor, browser
+The ADE does not own the Strategy Runtime or a workflow engine, embedded source editor, browser
 automation environment, GitHub client, long-term memory, or provider
 orchestration.
 
@@ -265,12 +332,20 @@ Each workspace owns a local single-user store:
 │   ├── stderr.log
 │   └── events.jsonl
 ├── handoffs/<handoff-id>.json
+├── strategies/<strategy-id>/
+│   ├── strategy.json
+│   ├── events.jsonl
+│   ├── request.json
+│   ├── launch.json
+│   ├── result.json
+│   ├── worker.stdout.log
+│   └── worker.stderr.log
 └── idempotency/
     ├── <sha256>.json
     └── locks/<sha256>.lock
 ```
 
-A provider process exiting with code zero is not enough for success. `result.md`, `plan.json`, and every declared required artifact must exist and be non-empty before the run is reported as `succeeded`.
+A provider process exiting with code zero is not enough for success. `result.md`, `plan.json`, and every declared required artifact must exist, be non-empty, and have a digest before the run is reported as `succeeded`. Strategy state references those verified Run artifacts rather than copying provider claims into a second truth store.
 
 ## Python and Hermes integration
 

@@ -6,6 +6,14 @@ from pathlib import Path
 import typer
 from comx_harness.ade.agent_operations import AdeAgentOperations
 from comx_harness.ade.agent_platform import AdeAgentTools
+from comx_harness.ade.mission_platform import (
+    AdeMissionObservationTools,
+    AdeMissionTools,
+)
+from comx_harness.ade.strategy_platform import (
+    AdeStrategyObservationTools,
+    AdeStrategyTools,
+)
 from comx_harness.cli_output import emit_model, fail_operation
 from comx_harness.schemas.ade_agent_schemas import (
     AdoptWorkspaceRequest,
@@ -17,6 +25,8 @@ from comx_harness.schemas.ade_agent_schemas import (
     WorkspaceReference,
 )
 from comx_harness.schemas.ade_inspection_schemas import DetachedOperationRequest
+from comx_harness.schemas.mission_schemas import MissionRequest
+from comx_harness.schemas.strategy_schemas import StrategyDefinition
 from comx_harness.storage.json_file_store import read_json
 from pydantic import ValidationError
 
@@ -43,6 +53,183 @@ def _platform(state_root: Path | None) -> AdeAgentTools:
 
 def _operations(state_root: Path | None) -> AdeAgentOperations:
     return AdeAgentOperations(state_root=state_root)
+
+
+def _strategies() -> AdeStrategyTools:
+    return AdeStrategyTools()
+
+
+def _missions() -> AdeMissionTools:
+    return AdeMissionTools()
+
+
+def _mission_observations() -> AdeMissionObservationTools:
+    return AdeMissionObservationTools()
+
+
+def _strategy_observations() -> AdeStrategyObservationTools:
+    return AdeStrategyObservationTools()
+
+
+@agent_app.command("capabilities")
+def capabilities_command() -> None:
+    """Read provider readiness and normalized native Strategy capabilities."""
+    try:
+        emit_model(_strategies().capabilities())
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("plan-mission")
+def plan_mission_command(request_path: Path = typer.Argument(...)) -> None:
+    """Compile one public Mission into inspectable bounded Strategy IR."""
+    try:
+        request = MissionRequest.model_validate(read_json(request_path))
+        emit_model(_missions().plan(request))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("validate-mission")
+def validate_mission_command(request_path: Path = typer.Argument(...)) -> None:
+    """Validate one Mission and its compiled Strategy without executing it."""
+    try:
+        request = MissionRequest.model_validate(read_json(request_path))
+        emit_model(_missions().validate(request))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("execute-mission")
+def execute_mission_command(
+    request_path: Path = typer.Argument(...),
+    foreground: bool = typer.Option(False, "--foreground"),
+) -> None:
+    """Start a Mission through the shared Strategy Runtime, detached by default."""
+    try:
+        request = MissionRequest.model_validate(read_json(request_path))
+        missions = _missions()
+        result = (
+            missions.execute_foreground(request)
+            if foreground
+            else missions.execute(request)
+        )
+        emit_model(result)
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("mission-status")
+def mission_status_command(
+    workspace: Path = typer.Argument(...),
+    mission_id: str = typer.Argument(...),
+) -> None:
+    """Read Mission identity and its authoritative Strategy projection."""
+    try:
+        emit_model(_mission_observations().status(str(workspace), mission_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("mission-events")
+def mission_events_command(
+    workspace: Path = typer.Argument(...),
+    mission_id: str = typer.Argument(...),
+) -> None:
+    """Read ordered Strategy events through the Mission identity."""
+    try:
+        emit_model(_mission_observations().events(str(workspace), mission_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("mission-artifacts")
+def mission_artifacts_command(
+    workspace: Path = typer.Argument(...),
+    mission_id: str = typer.Argument(...),
+) -> None:
+    """Read verified Strategy and Run artifacts through the Mission identity."""
+    try:
+        emit_model(_mission_observations().artifacts(str(workspace), mission_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("validate-strategy")
+def validate_strategy_command(request_path: Path = typer.Argument(...)) -> None:
+    """Validate advanced or debug Strategy IR without executing it."""
+    try:
+        definition = StrategyDefinition.model_validate(read_json(request_path))
+        emit_model(_strategies().validate(definition))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("execute-strategy")
+def execute_strategy_command(
+    request_path: Path = typer.Argument(...),
+    foreground: bool = typer.Option(False, "--foreground"),
+) -> None:
+    """Start advanced or debug Strategy IR in a detached worker by default."""
+    try:
+        definition = StrategyDefinition.model_validate(read_json(request_path))
+        strategies = _strategies()
+        result = (
+            strategies.execute_foreground(definition)
+            if foreground
+            else strategies.execute(definition)
+        )
+        emit_model(result)
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("strategy-launch")
+def strategy_launch_command(
+    workspace: Path = typer.Argument(...),
+    strategy_id: str = typer.Argument(...),
+) -> None:
+    """Read the detached worker launch envelope for one Strategy."""
+    try:
+        emit_model(_strategy_observations().launch_status(str(workspace), strategy_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("strategy-status")
+def strategy_status_command(
+    workspace: Path = typer.Argument(...),
+    strategy_id: str = typer.Argument(...),
+) -> None:
+    """Read the durable Runtime state for one Strategy."""
+    try:
+        emit_model(_strategy_observations().status(str(workspace), strategy_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("strategy-events")
+def strategy_events_command(
+    workspace: Path = typer.Argument(...),
+    strategy_id: str = typer.Argument(...),
+) -> None:
+    """Read ordered durable Strategy events."""
+    try:
+        emit_model(_strategy_observations().events(str(workspace), strategy_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
+
+
+@agent_app.command("strategy-artifacts")
+def strategy_artifacts_command(
+    workspace: Path = typer.Argument(...),
+    strategy_id: str = typer.Argument(...),
+) -> None:
+    """Read verified Run artifacts associated with one Strategy."""
+    try:
+        emit_model(_strategy_observations().artifacts(str(workspace), strategy_id))
+    except _AGENT_ERRORS as error:
+        fail_operation(error)
 
 
 @agent_app.command("context")

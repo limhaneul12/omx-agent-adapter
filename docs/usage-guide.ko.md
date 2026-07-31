@@ -247,7 +247,54 @@ uv run comx-agent agent operations
 
 이 worker는 한 번에 하나의 기존 `HarnessTools` operation만 호출한다. 자체 스케줄러나 별도 lifecycle이 아니다.
 
-## 7. Run lifecycle CLI 사용법
+## 7. Mission-first 실행
+
+일반적인 사람·Hermes·신뢰된 Agent의 기본 입력은 개별 Run 명령이 아니라
+strict `Mission` JSON이다. Mission은 objective, Workspace, 명시적 profile,
+mutation 제약, 검증 조건을 선언하고 실행 전에 inspectable Strategy로
+컴파일된다.
+
+검증된 템플릿은 [`examples/missions`](../examples/missions/README.md)에 있다.
+복사한 뒤 `mission_id`를 매 실행마다 고유하게 바꾸고 `workspace`를 실제
+canonical 경로로 지정한다. 같은 ID에 다른 요청을 넣으면 거절된다.
+
+```bash
+uv run comx-agent agent capabilities
+uv run comx-agent agent plan-mission mission.json
+uv run comx-agent agent validate-mission mission.json
+uv run comx-agent agent execute-mission mission.json
+uv run comx-agent agent mission-status /absolute/workspace MISSION_ID
+uv run comx-agent agent mission-events /absolute/workspace MISSION_ID
+uv run comx-agent agent mission-artifacts /absolute/workspace MISSION_ID
+```
+
+지원하는 초기 profile은 다음 세 가지다.
+
+```text
+codex-native
+omx-native
+codex-then-omx-review
+```
+
+`codex-native`와 `omx-native` 읽기 전용 Mission은
+`mutation_allowed=false`, `sandbox=read-only`를 사용한다.
+`codex-then-omx-review`는 OMX가 harness 소유의
+`.comx-agent/v2/mission-artifacts/<mission-id>/blockers.json`을 기록해야
+하므로 `mutation_allowed=true`와 `workspace-write`가 필요하다. 첫 실전
+검증은 격리된 Git worktree에서 수행하고 objective에는 source 파일 변경
+금지를 명시한다.
+
+실행은 기본적으로 detached다. GUI에서는 Mission 탭에서 objective와
+profile을 선택하고 mutation, sandbox, approval, timeout을 확인한 뒤 Plan을
+미리 보고 실행한다. GUI, CLI, Agent는 모두 같은 `MissionService`와 durable
+Strategy/Run state를 사용한다.
+
+`agent capabilities`의 installed, authenticated, parser-compatible 상태는
+실제 실행 성공과 다르다. Codex 로그인이나 OMX parser contract가 확인돼도
+native Mission이 끝까지 성공하기 전에는 `execution_ready=conditional`일 수
+있다. 이 상태를 성공으로 추정하지 말고 실제 Mission evidence로 승격한다.
+
+## 8. Run lifecycle CLI 사용법
 
 ### 권장 순서
 
@@ -352,7 +399,7 @@ Handoff는 source Run ID, provider, Artifact SHA-256과 검증된 본문을 targ
 provider에 전달한다. 같은 provider로의 handoff는 native composition을
 사용해야 하므로 거절된다.
 
-## 8. Python API
+## 9. Python API
 
 ```python
 from comx_harness import (
@@ -386,7 +433,7 @@ state = tools.status(
 `HarnessService`가 소유하며 CLI, ADE, Hermes가 별도 Run truth를 만들면
 안 된다.
 
-## 9. 저장 위치
+## 10. 저장 위치
 
 Workspace별 실행 기록:
 
@@ -416,7 +463,7 @@ ADE state는 Project/Workspace/선택 tab 같은 화면 상태와 detached opera
 metadata만 가진다. authoritative Run record는 항상 Workspace의
 `.comx-agent/v2`에 있다.
 
-## 10. 문제 해결
+## 11. 문제 해결
 
 ### ADE가 Tcl/Tk 오류로 열리지 않음
 
@@ -464,7 +511,7 @@ uv run comx-agent artifacts RUN_ID --cwd .
 contract를 지원하지 않는 경우다. 새 Run이 필요한지는 controller가
 결정해야 하며 harness가 가짜 resume을 만들지 않는다.
 
-## 11. 개발자 검증
+## 12. 개발자 검증
 
 ```bash
 make ruff
