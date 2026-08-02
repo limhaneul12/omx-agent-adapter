@@ -85,6 +85,25 @@ uv run comx-agent agent inspect-workspace WORKSPACE_ID
 
 The Python equivalent is `AdeAgentTools`. Use it for Project/Workspace/Worktree context, then use `HarnessTools` for the exact-nine Run lifecycle. Worktree creation never implies commit or push permission.
 
+Project-scoped Codex custom subagents can be validated and registered from one
+strict JSON spec without launching Codex or adding a Run lifecycle operation:
+
+```bash
+uv run comx-agent agent codex-subagents validate \
+  /absolute/workspace examples/codex-subagents/stock-informer.json
+uv run comx-agent agent codex-subagents register \
+  /absolute/workspace examples/codex-subagents/stock-informer.json
+uv run comx-agent agent codex-subagents list /absolute/workspace
+```
+
+This surface writes only `<workspace>/.codex/config.toml` and
+`<workspace>/.codex/agents/<name>.toml`. It never writes user-global
+`~/.codex`, starts providers, or schedules child agents. Codex remains the owner
+of subagent selection and execution, and it loads project config only for a
+trusted project. See
+[`docs/examples/comx-agent-subagents-toml.md`](docs/examples/comx-agent-subagents-toml.md)
+for the JSON contract and validation behavior.
+
 For Orca-like non-blocking operation, serialize one strict detached request and start it through the same worker used by the desktop ADE:
 
 ```json

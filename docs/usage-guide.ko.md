@@ -220,6 +220,37 @@ agent context
 
 Worktree 생성은 격리 공간만 만든다. mutation, commit, push 권한을 자동으로 부여하지 않는다.
 
+### Project-scoped Codex custom subagent 등록
+
+Codex native subagent의 project 설정은 strict JSON spec 하나로 검증하고
+materialize할 수 있다.
+
+```bash
+uv run comx-agent agent codex-subagents validate \
+  /absolute/workspace examples/codex-subagents/stock-informer.json
+uv run comx-agent agent codex-subagents register \
+  /absolute/workspace examples/codex-subagents/stock-informer.json
+uv run comx-agent agent codex-subagents list /absolute/workspace
+```
+
+- `validate`: spec과 project-local 목적 경로를 검증하지만 디렉터리나 파일을
+  만들지 않는다.
+- `register`: 요청한 agent의 `<workspace>/.codex/agents/<name>.toml`과
+  `<workspace>/.codex/config.toml` registration을 생성하거나 갱신한다.
+- `list`: config에 등록된 agent와 agent TOML 상태, 누락·불일치·미등록 파일
+  warning을 JSON으로 반환한다.
+
+이 명령은 `~/.codex`를 수정하지 않고 Codex/OMX/child agent를 실행하지
+않는다. `read-only`와 `workspace-write`만 허용하며 `danger-full-access`, path
+traversal name, symlink로 workspace 밖을 가리키는 `.codex` 경로를 거절한다.
+등록 상태는 설정 파일의 정합성 증거이지 실제 spawn 또는 topology 증거가
+아니다. Codex는 trust된 project의 `.codex/config.toml`만 읽으며 native
+subagent 선택과 실행은 계속 Codex가 소유한다.
+
+전체 spec과 stock-informer 예시는
+[`docs/examples/comx-agent-subagents-toml.md`](examples/comx-agent-subagents-toml.md)를
+참고한다.
+
 ### Agent 비동기 실행
 
 Agent가 여러 Workspace를 운영하거나 호출 프로세스가 끝난 뒤에도 Run을 계속해야 한다면 GUI와 동일한 detached worker를 사용한다. 먼저 strict request JSON을 만든다.

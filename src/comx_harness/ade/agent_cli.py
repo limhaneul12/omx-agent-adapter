@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 from comx_harness.ade.agent_operations import AdeAgentOperations
 from comx_harness.ade.agent_platform import AdeAgentTools
+from comx_harness.ade.codex_subagent_cli import codex_subagents_app
 from comx_harness.ade.mission_platform import (
     AdeMissionObservationTools,
     AdeMissionTools,
@@ -35,6 +36,7 @@ agent_app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
 )
+agent_app.add_typer(codex_subagents_app, name="codex-subagents")
 
 _AGENT_ERRORS = (
     ValidationError,

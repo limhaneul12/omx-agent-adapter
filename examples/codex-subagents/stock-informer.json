@@ -1,0 +1,46 @@
+{
+  "schema_version": "codex-subagent-registration.v1",
+  "max_concurrent_threads_per_session": 5,
+  "agents": [
+    {
+      "name": "luna_feature_auditor_max",
+      "description": "Audit feature scope, repository fit, and implementation evidence.",
+      "developer_instructions": "Review the requested feature against repository rules. Stay read-only and report concrete file evidence, risks, and missing verification.",
+      "model": "gpt-5.6-luna",
+      "model_reasoning_effort": "max",
+      "sandbox_mode": "read-only"
+    },
+    {
+      "name": "luna_test_analyst_max",
+      "description": "Analyze test coverage, failures, and the smallest useful verification set.",
+      "developer_instructions": "Inspect tests and verification evidence without editing files. Identify missing cases, likely regressions, and focused commands.",
+      "model": "gpt-5.6-luna",
+      "model_reasoning_effort": "max",
+      "sandbox_mode": "read-only"
+    },
+    {
+      "name": "terra_integration_reviewer",
+      "description": "Review integration boundaries and cross-module compatibility.",
+      "developer_instructions": "Review the proposed integration against current contracts and native ownership boundaries. Remain read-only and return evidence-backed findings.",
+      "model": "gpt-5.6-terra",
+      "model_reasoning_effort": "high",
+      "sandbox_mode": "read-only"
+    },
+    {
+      "name": "luna_docs_researcher_medium",
+      "description": "Locate relevant repository documentation and summarize current guidance.",
+      "developer_instructions": "Read repository documentation and identify the current rules and examples relevant to the assigned question. Do not modify files.",
+      "model": "gpt-5.6-luna",
+      "model_reasoning_effort": "medium",
+      "sandbox_mode": "read-only"
+    },
+    {
+      "name": "luna_bounded_worker_max",
+      "description": "Implement one explicitly bounded workspace change and report verification.",
+      "developer_instructions": "Modify only the files assigned by the parent agent, preserve unrelated work, run focused verification, and report conflicts or scope expansion upward.",
+      "model": "gpt-5.6-luna",
+      "model_reasoning_effort": "max",
+      "sandbox_mode": "workspace-write"
+    }
+  ]
+}

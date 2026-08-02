@@ -1,72 +1,67 @@
-# Agent Remote Subagents TOML
+# Project-scoped Codex subagent registration
 
-Use `comx-agent agents` to validate repo-local TOML subagent configuration and materialize supported entries into Codex native agent files.
+`comx-agent agent codex-subagents` validates and materializes Codex-native custom
+agent configuration from a strict JSON document. This is an ADE application
+surface, not a Run lifecycle operation or a subagent scheduler.
 
-Minimal `.comx-agent.toml` shape:
-
-```toml
-[agents.reviewer]
-enabled = true
-provider = "codex"
-role = "code-reviewer"
-model = "gpt-5.5"
-effort = "high"
-persona = "Review the current diff against repository rules."
-routing_hints = ["review", "current-diff"]
-```
-
-Agent ids become generated filenames during Codex materialization. Keep them filesystem-safe: start with a letter or digit and use only letters, digits, `-`, or `_`.
-
-Human flow:
-
-```bash
-comx-agent agents validate --cwd .
-comx-agent agents list --cwd .
-comx-agent agents plan-apply-codex --cwd . --json
-comx-agent agents apply-codex --cwd . --dry-run --json
-comx-agent agents codex-status --cwd . --json
-```
-
-Materialization targets:
-
-- `--target project` writes `.codex/agents/<agent>.toml`. This is the Codex-documented project-scoped location and remains the default.
-- `--target global --namespace <project-slug>` writes `~/.codex/agents/<project-slug>-<agent>.toml`. Use this for non-interactive `codex exec` dogfood when project-local custom agents are not visible to the spawn surface.
-
-Global target preview:
-
-```bash
-comx-agent agents plan-apply-codex --cwd . --target global --namespace my-project --json
-comx-agent agents apply-codex --cwd . --target global --namespace my-project --dry-run --json
-comx-agent agents codex-status --cwd . --target global --namespace my-project --json
-```
-
-Agent JSON contract example from `comx-agent agents validate --cwd . --json` when no config exists yet:
+The complete stock-informer dogfood example is
+[`examples/codex-subagents/stock-informer.json`](../../examples/codex-subagents/stock-informer.json).
+Its contract is:
 
 ```json
 {
-  "valid": true,
-  "config_path": ".comx-agent.toml",
-  "agent_count": 0,
-  "warnings": [
-    "No agent config found at .comx-agent.toml."
-  ],
-  "error": null
-}
-```
-
-Codex materialization status example from `comx-agent agents codex-status --cwd . --json`:
-
-```json
-{
-  "up_to_date": true,
-  "supported": true,
-  "target": "project",
-  "files": [],
-  "warning_count": 1,
-  "warnings": [
-    "No agent config found at .comx-agent.toml."
+  "schema_version": "codex-subagent-registration.v1",
+  "max_concurrent_threads_per_session": 5,
+  "agents": [
+    {
+      "name": "luna_feature_auditor_max",
+      "description": "Audit feature scope, repository fit, and implementation evidence.",
+      "developer_instructions": "Review the requested feature against repository rules.",
+      "model": "gpt-5.6-luna",
+      "model_reasoning_effort": "max",
+      "sandbox_mode": "read-only"
+    }
   ]
 }
 ```
 
-Materialization rule: use `plan-apply-codex` or `apply-codex --dry-run` before writing Codex agent TOML. Keep repo source in `.comx-agent.toml`, use project target for documented local files, and use global namespaced target only when the execution surface has proven it needs globally discoverable agent names.
+Each agent requires all six agent fields. Names must start with a lowercase
+letter and contain only lowercase letters, digits, `_`, or `-`. The model id is
+restricted to a filesystem-neutral model token. Supported reasoning efforts are
+`low`, `medium`, `high`, `xhigh`, and `max`; supported sandboxes are
+`read-only` and `workspace-write`. The optional concurrency value must be from
+1 through 64 and must be a JSON integer rather than a coerced string, float, or
+boolean.
+
+Use the commands in read-before-write order:
+
+```bash
+comx-agent agent codex-subagents validate WORKSPACE SPEC.json
+comx-agent agent codex-subagents register WORKSPACE SPEC.json
+comx-agent agent codex-subagents list WORKSPACE
+```
+
+`validate` does not create `.codex` or change any file. `register` creates or
+updates only these project-local paths:
+
+```text
+WORKSPACE/.codex/config.toml
+WORKSPACE/.codex/agents/<agent-name>.toml
+```
+
+Requested `[agents.<name>]` sections are replaced deterministically while
+unrelated TOML sections and unrequested registrations remain in place. Agent
+files not referenced by config are retained and reported as warnings; the
+command does not delete them.
+
+The registry rejects traversal names, absolute or non-deterministic agent file
+references, unsafe sandbox values, malformed existing TOML, and symlinked
+`.codex`, `agents`, config, or requested agent-file targets. It never writes to
+`~/.codex` and never launches Codex, OMX, or child agents.
+
+Codex remains the source of truth for native selection, spawning, and session
+semantics. A clean `list` result proves only that the project files are
+internally consistent. Codex loads project `.codex/config.toml` only for trusted
+projects, and comx-agent still reports native Codex subagent topology as unknown
+without structured provider evidence. The project config shape follows the
+[Codex configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference#configtoml).
