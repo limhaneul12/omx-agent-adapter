@@ -54,10 +54,17 @@ unrelated TOML sections and unrequested registrations remain in place. Agent
 files not referenced by config are retained and reported as warnings; the
 command does not delete them.
 
+The updater reads existing config semantics before making targeted text edits.
+Quoted agent tables such as `[agents."reviewer"]`, top-level
+`agents.max_threads`, and quoted concurrency keys under `[agents]` are accepted
+and normalized without rewriting unrelated sections. A shape that cannot be
+updated without touching unrelated values is rejected instead of being guessed.
+
 The registry rejects traversal names, absolute or non-deterministic agent file
 references, unsafe sandbox values, malformed existing TOML, and symlinked
-`.codex`, `agents`, config, or requested agent-file targets. It never writes to
-`~/.codex` and never launches Codex, OMX, or child agents.
+`.codex`, `agents`, config, or requested agent-file targets. User home,
+user-global `~/.codex`, descendants of that directory, and symlink aliases are
+not valid Workspaces. The command never launches Codex, OMX, or child agents.
 
 Codex remains the source of truth for native selection, spawning, and session
 semantics. A clean `list` result proves only that the project files are

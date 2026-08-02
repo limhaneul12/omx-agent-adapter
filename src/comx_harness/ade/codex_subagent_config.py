@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass
 
@@ -13,6 +14,7 @@ from comx_harness.schemas.codex_subagent_schemas import (
 _MARKER_KEY = "__comx_agent_toml_marker__"
 _MAX_THREADS_KEY = "max_concurrent_threads_per_session"
 _LEGACY_MAX_THREADS_KEY = "max_threads"
+_BARE_KEY = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,7 +327,7 @@ def _render_registration_section(agent: CodexSubagentSpec) -> str:
 
 
 def _toml_key(value: str) -> str:
-    if value.replace("_", "a").replace("-", "a").isalnum():
+    if _BARE_KEY.fullmatch(value) is not None:
         return value
     return _toml_string(value)
 

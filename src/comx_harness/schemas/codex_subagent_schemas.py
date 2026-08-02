@@ -69,9 +69,9 @@ class CodexSubagentRegistrationSpec(StrictModel):
     max_concurrent_threads_per_session: StrictInt | None = Field(
         default=None,
         ge=1,
-        le=64,
+        le=5,
     )
-    agents: tuple[CodexSubagentSpec, ...] = Field(min_length=1)
+    agents: tuple[CodexSubagentSpec, ...] = Field(min_length=1, max_length=5)
 
     @model_validator(mode="after")
     def _reject_duplicate_names(self) -> CodexSubagentRegistrationSpec:

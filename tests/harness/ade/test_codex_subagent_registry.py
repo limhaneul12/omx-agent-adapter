@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from comx_harness.ade.codex_subagent_registry import CodexSubagentRegistry
@@ -58,19 +59,31 @@ def test_codex_subagent_max_effort_does_not_expand_run_options() -> None:
 def test_registration_spec_rejects_invalid_or_traversing_names(
     invalid_name: str,
 ) -> None:
-    raw_spec = read_json(DOGFOOD_SPEC_PATH)
-    raw_spec["agents"][0]["name"] = invalid_name
+    raw_spec = cast(dict[str, Any], read_json(DOGFOOD_SPEC_PATH))
+    agents = cast(list[dict[str, Any]], raw_spec["agents"])
+    agents[0]["name"] = invalid_name
 
     with pytest.raises(ValidationError):
         CodexSubagentRegistrationSpec.model_validate(raw_spec)
 
 
-@pytest.mark.parametrize("invalid_threads", (True, 5.0, "5"))
-def test_registration_spec_rejects_coerced_thread_counts(
+@pytest.mark.parametrize("invalid_threads", (True, 5.0, "5", 6))
+def test_registration_spec_rejects_invalid_thread_counts(
     invalid_threads: object,
 ) -> None:
-    raw_spec = read_json(DOGFOOD_SPEC_PATH)
+    raw_spec = cast(dict[str, Any], read_json(DOGFOOD_SPEC_PATH))
     raw_spec["max_concurrent_threads_per_session"] = invalid_threads
+
+    with pytest.raises(ValidationError):
+        CodexSubagentRegistrationSpec.model_validate(raw_spec)
+
+
+def test_registration_spec_rejects_more_than_five_agents() -> None:
+    raw_spec = cast(dict[str, Any], read_json(DOGFOOD_SPEC_PATH))
+    agents = cast(list[dict[str, Any]], raw_spec["agents"])
+    extra_agent = dict(agents[-1])
+    extra_agent["name"] = "sixth_read_only_auditor"
+    agents.append(extra_agent)
 
     with pytest.raises(ValidationError):
         CodexSubagentRegistrationSpec.model_validate(raw_spec)

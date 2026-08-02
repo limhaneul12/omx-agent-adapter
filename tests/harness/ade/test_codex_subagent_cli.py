@@ -137,3 +137,27 @@ def test_codex_subagent_cli_rejects_user_global_codex_workspace() -> None:
     assert payload["status"] == "error"
     assert payload["code"] == "operation_failed"
     assert "user-global Codex directory" in payload["message"]
+
+
+def test_codex_subagent_cli_rejects_user_global_codex_alias(
+    tmp_path: Path,
+) -> None:
+    codex_alias = tmp_path / "codex-alias"
+    codex_alias.symlink_to(Path.home() / ".codex", target_is_directory=True)
+
+    result = runner.invoke(
+        app,
+        [
+            "agent",
+            "codex-subagents",
+            "validate",
+            str(codex_alias),
+            str(DOGFOOD_SPEC_PATH),
+        ],
+    )
+
+    assert result.exit_code == 2
+    payload = orjson.loads(result.stderr)
+    assert payload["status"] == "error"
+    assert payload["code"] == "operation_failed"
+    assert "user-global Codex directory" in payload["message"]
